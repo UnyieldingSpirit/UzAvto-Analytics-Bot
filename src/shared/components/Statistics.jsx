@@ -7,11 +7,11 @@ import * as d3 from 'd3';
 
 export default function Statistics() {
   // State variables
-  const [view, setView] = useState<'models' | 'dealers' | 'salespeople'>('models');
-  const [selectedModel, setSelectedModel] = useState<Model | null>(null);
-  const [selectedDealer, setSelectedDealer] = useState<Dealer | null>(null);
-  const [chartType, setChartType] = useState<'bar' | 'pie' | 'stacked' | 'line'>('bar');
-  const [data, setData] = useState<DashboardData>({
+  const [view, setView] = useState('models');
+  const [selectedModel, setSelectedModel] = useState(null);
+  const [selectedDealer, setSelectedDealer] = useState(null);
+  const [chartType, setChartType] = useState('bar');
+  const [data, setData] = useState({
     modelData: [],
     dealerData: [],
     salespersonData: [],
@@ -19,13 +19,13 @@ export default function Statistics() {
   });
 
   // Refs for chart containers
-  const modelChartRef = useRef<HTMLDivElement>(null);
-  const modelSecondaryChartRef = useRef<HTMLDivElement>(null);
-  const dealerChartRef = useRef<HTMLDivElement>(null);
-  const dealerSecondaryChartRef = useRef<HTMLDivElement>(null);
-  const salespersonChartRef = useRef<HTMLDivElement>(null);
-  const salespersonSecondaryChartRef = useRef<HTMLDivElement>(null);
-  const trendChartRef = useRef<HTMLDivElement>(null);
+  const modelChartRef = useRef(null);
+  const modelSecondaryChartRef = useRef(null);
+  const dealerChartRef = useRef(null);
+  const dealerSecondaryChartRef = useRef(null);
+  const salespersonChartRef = useRef(null);
+  const salespersonSecondaryChartRef = useRef(null);
+  const trendChartRef = useRef(null);
 
   // Filtered data
   const filteredDealerData = selectedModel
