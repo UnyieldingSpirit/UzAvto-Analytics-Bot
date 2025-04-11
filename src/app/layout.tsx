@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Script from 'next/script';
-import EnhancedMainWrapper from "../components/layout/EnhancedMainWrapper";
+import EnhancedMainWrapper from "../shared/layout/EnhancedMainWrapper";
 
 const inter = Inter({
   subsets: ['latin', 'cyrillic'],
