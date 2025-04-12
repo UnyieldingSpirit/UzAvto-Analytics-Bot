@@ -158,7 +158,6 @@ export default function EnhancedFinancialAnalytics() {
     if (displayMode === 'compare') {
       // В режиме сравнения можно выбрать несколько лет
       if (selectedYears.includes(year)) {
-        // Если хотя бы один год останется выбранным
         if (selectedYears.length > 1) {
           setSelectedYears(selectedYears.filter(y => y !== year));
         }
@@ -324,31 +323,95 @@ export default function EnhancedFinancialAnalytics() {
       colors: focusCategory === 'all' ? d3.schemeBlues[9].slice(3) : [SALE_TYPES[focusCategory.toUpperCase()].color],
       animated: true
     };
-    
+    const mockData = [
+  // Январь
+  { month: "Январь", year: 2024, value: 210000 },
+  { month: "Январь", year: 2025, value: 245000 },
+  // Февраль  
+  { month: "Февраль", year: 2024, value: 180000 },
+  { month: "Февраль", year: 2025, value: 220000 },
+  // Март
+  { month: "Март", year: 2024, value: 240000 },
+  { month: "Март", year: 2025, value: 290000 },
+  // Апрель
+  { month: "Апрель", year: 2024, value: 260000 },
+  { month: "Апрель", year: 2025, value: 300000 },
+  // Май
+  { month: "Май", year: 2024, value: 290000 },
+  { month: "Май", year: 2025, value: 335000 },
+  // Июнь
+  { month: "Июнь", year: 2024, value: 310000 },
+  { month: "Июнь", year: 2025, value: 360000 },
+  // Июль
+  { month: "Июль", year: 2024, value: 350000 },
+  { month: "Июль", year: 2025, value: 410000 },
+  // Август
+  { month: "Август", year: 2024, value: 340000 },
+  { month: "Август", year: 2025, value: 400000 },
+  // Сентябрь
+  { month: "Сентябрь", year: 2024, value: 300000 },
+  { month: "Сентябрь", year: 2025, value: 360000 },
+  // Октябрь
+  { month: "Октябрь", year: 2024, value: 280000 },
+  { month: "Октябрь", year: 2025, value: 330000 },
+  // Ноябрь
+  { month: "Ноябрь", year: 2024, value: 320000 },
+  { month: "Ноябрь", year: 2025, value: 380000 },
+  // Декабрь
+  { month: "Декабрь", year: 2024, value: 380000 },
+  { month: "Декабрь", year: 2025, value: 450000 }
+];
     // Отрисовка в зависимости от выбранного типа графика
-    if (viewType === 'bar') {
+if (viewType === 'bar') {
+  if (displayMode === 'compare') {
+    // Подготовка данных для сравнения двух лет в виде сгруппированных столбцов
+    const monthGroups = [];
+    
+    // Получаем уникальные месяцы из данных
+    const allMonths = [...new Set(filteredData.map(item => item.month))].sort((a, b) => a - b);
+    
+    // Для каждого месяца создаем группу с данными обоих годов
+    allMonths.forEach(monthNum => {
+      const monthName = MONTHS[monthNum - 1];
+      const monthData = {
+        month: monthNum,
+        name: monthName,
+        years: {}
+      };
+      
+      // Собираем данные для каждого года в этом месяце
+      selectedYears.forEach(year => {
+        const yearData = filteredData.find(
+          item => item.month === monthNum && item.year === year
+        );
+        
+        if (yearData) {
+          monthData.years[year] = focusCategory === 'all' ? 
+            yearData.total : yearData[focusCategory];
+        } else {
+          monthData.years[year] = 0;
+        }
+      });
+      
+      monthGroups.push(monthData);
+    });
+    
+    // Создаем данные для D3
+    const chartConfig = {
+      container: mainChartRef.current,
+      title: `Сравнение продаж по месяцам ${selectedYears.join(' и ')}` +
+        (focusCategory !== 'all' ? ` (${SALE_TYPES[focusCategory.toUpperCase()].name})` : ''),
+      height: 400,
+      animated: true
+    };
+    
+    // Создаем кастомную группированную диаграмму с месяцами и годами
+    renderGroupedBarChart(mockData, chartConfig);
+  } else {
+    D3Visualizer.createBarChart(chartData, chartOptions);
+  }
+} else if (viewType === 'line' || viewType === 'area') {
       if (displayMode === 'compare') {
-        // Для режима сравнения используем stacked bar chart
-        D3Visualizer.createStackedBarChart(chartData, {
-          ...chartOptions,
-          colors: selectedYears.map((year, index) => {
-            // Создаем уникальные цвета для каждого года
-            if (focusCategory !== 'all') {
-              const baseColor = d3.hsl(SALE_TYPES[focusCategory.toUpperCase()].color);
-              baseColor.l = 0.4 + (index * 0.2);
-              return baseColor.toString();
-            }
-            
-            return d3.schemeSet1[index % d3.schemeSet1.length];
-          })
-        });
-      } else {
-        D3Visualizer.createBarChart(chartData, chartOptions);
-      }
-    } else if (viewType === 'line' || viewType === 'area') {
-      // Преобразование данных для линейного графика
-      if (displayMode === 'compare') {
-        // Для режима сравнения строим мультилинейный график
         renderMultiLineChart();
       } else {
         const lineData = chartData.map(item => ({
@@ -367,7 +430,6 @@ export default function EnhancedFinancialAnalytics() {
         }
       }
     } else if (viewType === 'stacked') {
-      // Подготовка данных для stacked bar chart по категориям продаж
       const stackedData = filteredData.map(month => {
         return {
           category: displayMode === 'yearly' ? month.name : (month.label || `${month.name} ${month.year}`),
@@ -689,6 +751,139 @@ export default function EnhancedFinancialAnalytics() {
     }
   };
   
+function renderGroupedBarChart(data, options) {
+  const {
+    container,
+    title = 'Сравнение по месяцам',
+    groupKey = 'month',
+    valueKey = 'year',
+    colors = ['#3b82f6', '#8b5cf6']
+  } = options;
+  
+  container.innerHTML = '';
+  const width = container.clientWidth;
+  const height = 400;
+  const margin = { top: 40, right: 50, bottom: 60, left: 60 };
+  
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height)
+    .style('background', '#1f2937')
+    .style('border-radius', '0.5rem');
+  
+  // Заголовок
+  svg.append('text')
+    .attr('x', width / 2)
+    .attr('y', margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '1.2rem')
+    .style('font-weight', 'bold')
+    .style('fill', '#f9fafb')
+    .text(title);
+  
+  const groups = Array.from(new Set(data.map(d => d[groupKey])));
+  const keys = Array.from(new Set(data.map(d => d[valueKey])));
+  
+  // Создаем шкалы
+  const x0 = d3.scaleBand()
+    .domain(groups)
+    .range([margin.left, width - margin.right])
+    .padding(0.2);
+  
+  const x1 = d3.scaleBand()
+    .domain(keys)
+    .range([0, x0.bandwidth()])
+    .padding(0.05);
+  
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(data, d => d.value) * 1.1])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
+  
+  // Создаем цветовую шкалу
+  const colorScale = d3.scaleOrdinal()
+    .domain(keys)
+    .range(colors);
+  
+  // Создаем оси
+  svg.append('g')
+    .attr('transform', `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(x0))
+    .call(g => g.selectAll('text')
+      .style('fill', '#f9fafb')
+      .style('font-size', '0.8rem')
+      .attr('transform', 'rotate(-25)')
+      .attr('text-anchor', 'end')
+      .attr('dy', '0.5em'));
+  
+  svg.append('g')
+    .attr('transform', `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y).ticks(5))
+    .call(g => g.selectAll('text')
+      .style('fill', '#f9fafb'));
+  
+  // Группируем данные для отображения
+  const groupedData = {};
+  data.forEach(d => {
+    if (!groupedData[d[groupKey]]) {
+      groupedData[d[groupKey]] = {};
+    }
+    groupedData[d[groupKey]][d[valueKey]] = d.value;
+  });
+  
+  // Преобразуем в формат для d3
+  const chartData = groups.map(group => {
+    const item = { group };
+    keys.forEach(key => {
+      item[key] = groupedData[group]?.[key] || 0;
+    });
+    return item;
+  });
+  
+  // Создаем группы для столбцов
+  const barGroups = svg.append('g')
+    .selectAll('g')
+    .data(chartData)
+    .join('g')
+    .attr('transform', d => `translate(${x0(d.group)},0)`);
+  
+  // Добавляем столбцы
+  keys.forEach(key => {
+    barGroups.append('rect')
+      .attr('x', () => x1(key))
+      .attr('width', x1.bandwidth())
+      .attr('y', d => y(d[key]))
+      .attr('height', d => height - margin.bottom - y(d[key]))
+      .attr('fill', colorScale(key))
+      .attr('rx', 4)
+      .attr('opacity', 0.9);
+  });
+  
+  // Добавляем легенду
+  const legend = svg.append('g')
+    .attr('transform', `translate(${width - margin.right + 10}, ${margin.top})`);
+  
+  keys.forEach((key, i) => {
+    const legendRow = legend.append('g')
+      .attr('transform', `translate(0, ${i * 20})`);
+    
+    legendRow.append('rect')
+      .attr('width', 15)
+      .attr('height', 15)
+      .attr('fill', colorScale(key));
+    
+    legendRow.append('text')
+      .attr('x', 25)
+      .attr('y', 12)
+      .style('font-size', '0.8rem')
+      .style('fill', '#f9fafb')
+      .text(key);
+  });
+  
+  return svg.node();
+}
+
   // Мультилинейный график для сравнения по годам
   const renderMultiLineChart = () => {
     if (!mainChartRef.current) return;
