@@ -1095,7 +1095,7 @@ const renderPeriodComparisonTable = () => {
 // Показываем опции выбора детализации (модели или регионы)
 const showSelectionOptions = (year, month, monthName) => {
   if (!mainChartRef.current) return;
-  
+  d3.selectAll('.chart-tooltip, .bar-tooltip, .model-tooltip').remove();
   // Очищаем контейнер
   mainChartRef.current.innerHTML = '';
   
@@ -1247,254 +1247,621 @@ const showSelectionOptions = (year, month, monthName) => {
 // Детализация по моделям автомобилей
 const showCarModelDetails = (year, month, monthName) => {
   if (!mainChartRef.current) return;
-  
+  d3.selectAll('.chart-tooltip, .bar-tooltip, .model-tooltip').remove();
   // Очищаем контейнер
   mainChartRef.current.innerHTML = '';
   
-  // Создаем основной контейнер со стилями
+  // Создаем основной контейнер с современным градиентным фоном
   const container = d3.select(mainChartRef.current)
     .append('div')
     .style('width', '100%')
     .style('height', '100%')
-    .style('background', 'linear-gradient(135deg, #1f2937 0%, #111827 100%)')
+    .style('background', 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)')
     .style('border-radius', '1rem')
     .style('padding', '20px')
-    .style('box-shadow', '0 10px 25px -5px rgba(0, 0, 0, 0.3)');
-  
-  // Добавляем заголовок и кнопку возврата
+    .style('box-shadow', '0 15px 35px -10px rgba(0, 0, 0, 0.5)')
+    .style('border', '1px solid rgba(59, 130, 246, 0.15)');
+    
+  // Добавляем стилизованный заголовок и кнопки с улучшенным интерфейсом
   const header = container.append('div')
     .style('display', 'flex')
     .style('justify-content', 'space-between')
     .style('align-items', 'center')
-    .style('margin-bottom', '20px');
+    .style('margin-bottom', '20px')
+    .style('padding-bottom', '15px')
+    .style('border-bottom', '1px solid rgba(59, 130, 246, 0.2)');
   
-  header.append('h2')
-    .style('font-size', '1.4rem')
+  // Добавляем иконку и анимированный заголовок
+  const titleSection = header.append('div')
+    .style('display', 'flex')
+    .style('align-items', 'center')
+    .style('gap', '12px');
+    
+  titleSection.append('div')
+    .style('background', 'rgba(59, 130, 246, 0.2)')
+    .style('width', '40px')
+    .style('height', '40px')
+    .style('border-radius', '10px')
+    .style('display', 'flex')
+    .style('align-items', 'center')
+    .style('justify-content', 'center')
+    .html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>');
+  
+  titleSection.append('h2')
+    .style('font-size', '1.5rem')
     .style('font-weight', 'bold')
     .style('color', '#f9fafb')
-    .html(`Продажи по моделям: <span style="color: #60a5fa;">${monthName} ${year}</span>`);
+    .style('margin', '0')
+    .html(`Аналитика продаж: <span style="background: linear-gradient(90deg, #60a5fa, #93c5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${monthName} ${year}</span>`);
   
+  // Улучшенные интерактивные кнопки
   const buttonGroup = header.append('div')
     .style('display', 'flex')
-    .style('gap', '10px');
+    .style('gap', '12px');
   
-  // Кнопка возврата к выбору
-  buttonGroup.append('button')
-    .style('background', 'rgba(59, 130, 246, 0.2)')
+  // Кнопка возврата к выбору с улучшенным дизайном и анимацией
+  const backButton = buttonGroup.append('button')
+    .style('background', 'rgba(59, 130, 246, 0.15)')
     .style('color', '#60a5fa')
-    .style('border', 'none')
+    .style('border', '1px solid rgba(59, 130, 246, 0.25)')
     .style('padding', '8px 15px')
     .style('border-radius', '8px')
     .style('font-size', '0.85rem')
+    .style('font-weight', '500')
     .style('cursor', 'pointer')
-    .text('← Назад к выбору')
+    .style('display', 'flex')
+    .style('align-items', 'center')
+    .style('gap', '6px')
+    .style('transition', 'all 0.2s ease-in-out')
+    .html('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Выбор режима')
+    .on('mouseover', function() {
+      d3.select(this)
+        .style('background', 'rgba(59, 130, 246, 0.25)')
+        .style('transform', 'translateY(-2px)');
+    })
+    .on('mouseout', function() {
+      d3.select(this)
+        .style('background', 'rgba(59, 130, 246, 0.15)')
+        .style('transform', 'translateY(0)');
+    })
     .on('click', () => showSelectionOptions(year, month, monthName));
   
-  // Кнопка возврата к общему графику
-  buttonGroup.append('button')
-    .style('background', 'rgba(16, 185, 129, 0.2)')
+  // Кнопка возврата к общему обзору
+  const overviewButton = buttonGroup.append('button')
+    .style('background', 'rgba(16, 185, 129, 0.15)')
     .style('color', '#34d399')
-    .style('border', 'none')
+    .style('border', '1px solid rgba(16, 185, 129, 0.25)')
     .style('padding', '8px 15px')
     .style('border-radius', '8px')
     .style('font-size', '0.85rem')
+    .style('font-weight', '500')
     .style('cursor', 'pointer')
-    .text('← К общему графику')
+    .style('display', 'flex')
+    .style('align-items', 'center')
+    .style('gap', '6px')
+    .style('transition', 'all 0.2s ease-in-out')
+    .html('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Общий обзор')
+    .on('mouseover', function() {
+      d3.select(this)
+        .style('background', 'rgba(16, 185, 129, 0.25)')
+        .style('transform', 'translateY(-2px)');
+    })
+    .on('mouseout', function() {
+      d3.select(this)
+        .style('background', 'rgba(16, 185, 129, 0.15)')
+        .style('transform', 'translateY(0)');
+    })
     .on('click', renderPeriodComparisonTable);
   
-  // Создаем сетку для графиков
-  const grid = container.append('div')
+  // Добавляем информационную панель с ключевыми показателями
+  const infoPanel = container.append('div')
     .style('display', 'grid')
-    .style('grid-template-columns', '1fr 1fr')
-    .style('grid-template-rows', 'auto auto')
-    .style('gap', '20px')
-    .style('height', 'calc(100% - 60px)');
+    .style('grid-template-columns', 'repeat(auto-fit, minmax(200px, 1fr))')
+    .style('gap', '12px')
+    .style('margin-bottom', '20px')
+    .style('padding', '10px')
+    .style('border-radius', '8px')
+    .style('background', 'rgba(30, 41, 59, 0.4)')
+    .style('border', '1px solid rgba(59, 130, 246, 0.1)');
   
-  // Генерируем модели автомобилей для Узбекистана
+  // Генерируем модели автомобилей для анализа
   const carModels = [
-    { name: 'Chevrolet Nexia', sales: Math.round(550000 + Math.random() * 150000), count: Math.round(85 + Math.random() * 25) },
-    { name: 'Chevrolet Cobalt', sales: Math.round(480000 + Math.random() * 120000), count: Math.round(70 + Math.random() * 20) },
-    { name: 'Chevrolet Spark', sales: Math.round(320000 + Math.random() * 90000), count: Math.round(90 + Math.random() * 30) },
-    { name: 'Ravon Gentra', sales: Math.round(410000 + Math.random() * 100000), count: Math.round(65 + Math.random() * 15) },
-    { name: 'Chevrolet Lacetti', sales: Math.round(490000 + Math.random() * 130000), count: Math.round(60 + Math.random() * 20) },
-    { name: 'Chevrolet Malibu', sales: Math.round(720000 + Math.random() * 180000), count: Math.round(40 + Math.random() * 15) },
-    { name: 'Chevrolet Captiva', sales: Math.round(850000 + Math.random() * 200000), count: Math.round(35 + Math.random() * 10) },
-    { name: 'Hyundai Sonata', sales: Math.round(680000 + Math.random() * 170000), count: Math.round(30 + Math.random() * 12) },
-    { name: 'Kia K5', sales: Math.round(750000 + Math.random() * 180000), count: Math.round(28 + Math.random() * 10) },
-    { name: 'Toyota Camry', sales: Math.round(950000 + Math.random() * 220000), count: Math.round(25 + Math.random() * 8) }
+    { id: 'nx', name: 'Chevrolet Nexia', sales: Math.round(550000 + Math.random() * 150000), count: Math.round(85 + Math.random() * 25) },
+    { id: 'cb', name: 'Chevrolet Cobalt', sales: Math.round(480000 + Math.random() * 120000), count: Math.round(70 + Math.random() * 20) },
+    { id: 'sp', name: 'Chevrolet Spark', sales: Math.round(320000 + Math.random() * 90000), count: Math.round(90 + Math.random() * 30) },
+    { id: 'gn', name: 'Ravon Gentra', sales: Math.round(410000 + Math.random() * 100000), count: Math.round(65 + Math.random() * 15) },
+    { id: 'lc', name: 'Chevrolet Lacetti', sales: Math.round(490000 + Math.random() * 130000), count: Math.round(60 + Math.random() * 20) },
+    { id: 'ml', name: 'Chevrolet Malibu', sales: Math.round(720000 + Math.random() * 180000), count: Math.round(40 + Math.random() * 15) },
+    { id: 'cp', name: 'Chevrolet Captiva', sales: Math.round(850000 + Math.random() * 200000), count: Math.round(35 + Math.random() * 10) },
+    { id: 'sn', name: 'Hyundai Sonata', sales: Math.round(680000 + Math.random() * 170000), count: Math.round(30 + Math.random() * 12) },
+    { id: 'k5', name: 'Kia K5', sales: Math.round(750000 + Math.random() * 180000), count: Math.round(28 + Math.random() * 10) },
+    { id: 'cm', name: 'Toyota Camry', sales: Math.round(950000 + Math.random() * 220000), count: Math.round(25 + Math.random() * 8) }
   ];
   
   // Сортируем модели по объему продаж
   carModels.sort((a, b) => b.sales - a.sales);
   
-  // Общая сумма продаж
+  // Рассчитываем общие показатели
   const totalSales = carModels.reduce((sum, model) => sum + model.sales, 0);
   const totalCount = carModels.reduce((sum, model) => sum + model.count, 0);
+  const avgPrice = Math.round(totalSales / totalCount);
   
-  // 1. Верхний левый график - горизонтальные столбцы по моделям
-  const barChartContainer = grid.append('div')
+  // Добавляем информационные карточки с ключевыми показателями
+  const createInfoCard = (title, value, subtitle, icon, color) => {
+    const card = infoPanel.append('div')
+      .style('background', `rgba(${color}, 0.1)`)
+      .style('border-radius', '8px')
+      .style('padding', '12px')
+      .style('border-left', `3px solid rgba(${color}, 0.5)`)
+      .style('transition', 'transform 0.2s ease')
+      .style('cursor', 'default')
+      .on('mouseover', function() {
+        d3.select(this).style('transform', 'translateY(-2px)');
+      })
+      .on('mouseout', function() {
+        d3.select(this).style('transform', 'translateY(0)');
+      });
+    
+    const cardHeader = card.append('div')
+      .style('display', 'flex')
+      .style('justify-content', 'space-between')
+      .style('align-items', 'center')
+      .style('margin-bottom', '8px');
+    
+    cardHeader.append('div')
+      .style('font-size', '0.85rem')
+      .style('color', '#9ca3af')
+      .text(title);
+    
+    cardHeader.append('div')
+      .style('width', '24px')
+      .style('height', '24px')
+      .style('display', 'flex')
+      .style('align-items', 'center')
+      .style('justify-content', 'center')
+      .style('color', `rgba(${color}, 0.8)`)
+      .html(icon);
+    
+    card.append('div')
+      .style('font-size', '1.25rem')
+      .style('font-weight', 'bold')
+      .style('color', '#f9fafb')
+      .style('margin-bottom', '4px')
+      .text(value);
+    
+    if (subtitle) {
+      card.append('div')
+        .style('font-size', '0.75rem')
+        .style('color', '#9ca3af')
+        .text(subtitle);
+    }
+  };
+  
+  // Создаем информационные карточки
+  createInfoCard(
+    'Общая сумма продаж',
+    formatProfitCompact(totalSales),
+    `${totalCount} автомобилей`,
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
+    '59, 130, 246'
+  );
+  
+  createInfoCard(
+    'Средняя цена',
+    formatProfitCompact(avgPrice),
+    'За единицу',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
+    '139, 92, 246'
+  );
+  
+  createInfoCard(
+    'Премиум сегмент',
+    ((carModels.filter(m => m.sales / m.count > 700000).reduce((sum, m) => sum + m.sales, 0) / totalSales) * 100).toFixed(1) + '%',
+    'От общих продаж',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>',
+    '245, 158, 11'
+  );
+  
+  createInfoCard(
+    'Лидер продаж',
+    carModels[0].name,
+    `${carModels[0].count} шт.`,
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>',
+    '16, 185, 129'
+  );
+  
+  // Создаем контейнер для основного анализа с сетчатой структурой
+  const gridContainer = container.append('div')
+    .style('display', 'grid')
+    .style('grid-template-columns', 'minmax(0, 2fr) minmax(0, 1fr)')
+    .style('grid-template-rows', 'minmax(300px, 1fr) minmax(200px, auto)')
+    .style('gap', '15px')
+    .style('height', 'calc(100% - 170px)');
+  
+  // 1. Основной график - Горизонтальные столбцы по моделям с интерактивными элементами
+  const barChartContainer = gridContainer.append('div')
     .style('grid-column', '1')
     .style('grid-row', '1 / span 2')
     .style('background', 'rgba(17, 24, 39, 0.4)')
     .style('border-radius', '12px')
-    .style('padding', '15px')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)');
+    .style('padding', '16px')
+    .style('border', '1px solid rgba(59, 130, 246, 0.1)')
+    .style('display', 'flex')
+    .style('flex-direction', 'column');
   
-  barChartContainer.append('h3')
+  // Заголовок с фильтрами
+  const barChartHeader = barChartContainer.append('div')
+    .style('display', 'flex')
+    .style('justify-content', 'space-between')
+    .style('align-items', 'center')
+    .style('margin-bottom', '15px');
+  
+  barChartHeader.append('h3')
     .style('font-size', '1.1rem')
     .style('color', '#f9fafb')
-    .style('margin-bottom', '15px')
-    .style('text-align', 'center')
+    .style('margin', '0')
     .text('Объем продаж по моделям');
   
-  // Создаем график продаж по моделям
-  const barSvg = barChartContainer.append('svg')
+  const barChartFilters = barChartHeader.append('div')
+    .style('display', 'flex')
+    .style('gap', '8px');
+  
+  // Добавляем переключатели представления
+  const viewOptions = [
+    { id: 'sales', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6" y2="6"></line><line x1="6" y1="18" x2="6" y2="18"></line></svg>', label: 'Продажи' },
+    { id: 'count', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>', label: 'Количество' }
+  ];
+  
+  // Создаем группу кнопок для переключения режима просмотра
+  const viewToggle = barChartFilters.append('div')
+    .style('display', 'flex')
+    .style('background', 'rgba(30, 41, 59, 0.5)')
+    .style('border-radius', '6px')
+    .style('padding', '2px');
+  
+  // Переменная для хранения текущего режима просмотра
+  let currentView = 'sales';
+  
+  viewOptions.forEach((option, i) => {
+    viewToggle.append('button')
+      .attr('id', `view-${option.id}`)
+      .style('background', option.id === currentView ? 'rgba(59, 130, 246, 0.4)' : 'transparent')
+      .style('color', option.id === currentView ? '#f9fafb' : '#9ca3af')
+      .style('border', 'none')
+      .style('border-radius', '4px')
+      .style('padding', '5px 8px')
+      .style('font-size', '0.75rem')
+      .style('display', 'flex')
+      .style('align-items', 'center')
+      .style('gap', '4px')
+      .style('cursor', 'pointer')
+      .style('transition', 'all 0.2s ease')
+      .html(`${option.icon} ${option.label}`)
+      .on('click', function() {
+        // Обновляем стили кнопок
+        viewToggle.selectAll('button')
+          .style('background', 'transparent')
+          .style('color', '#9ca3af');
+        
+        d3.select(this)
+          .style('background', 'rgba(59, 130, 246, 0.4)')
+          .style('color', '#f9fafb');
+        
+        // Обновляем текущий режим просмотра
+        currentView = option.id;
+        
+        // Перерисовываем график
+        updateBarChart(currentView);
+      });
+  });
+  
+  // Создаем SVG-контейнер для графика
+  const barChartSvg = barChartContainer.append('div')
+    .style('flex-grow', '1')
+    .style('width', '100%')
+    .style('height', '0')
+    .style('position', 'relative')
+    .append('svg')
     .attr('width', '100%')
-    .attr('height', 'calc(100% - 30px)');
+    .attr('height', '100%')
+    .style('overflow', 'visible');
   
-  const barWidth = barSvg.node().clientWidth;
-  const barHeight = barSvg.node().clientHeight;
-  const barMargin = { top: 20, right: 120, bottom: 30, left: 150 };
-  
-  const barX = d3.scaleLinear()
-    .domain([0, d3.max(carModels, d => d.sales)])
-    .nice()
-    .range([barMargin.left, barWidth - barMargin.right]);
-  
-  const barY = d3.scaleBand()
-    .domain(carModels.map(d => d.name))
-    .range([barMargin.top, barHeight - barMargin.bottom])
-    .padding(0.3);
-  
-  // Создаем линейный градиент для заливки полос
-  const barDefs = barSvg.append('defs');
-  const barGradient = barDefs.append('linearGradient')
-    .attr('id', 'sales-bar-gradient')
-    .attr('x1', '0%')
-    .attr('y1', '0%')
-    .attr('x2', '100%')
-    .attr('y2', '0%');
-  
-  barGradient.append('stop')
-    .attr('offset', '0%')
-    .attr('stop-color', '#3b82f6')
-    .attr('stop-opacity', 0.8);
-  
-  barGradient.append('stop')
-    .attr('offset', '100%')
-    .attr('stop-color', '#60a5fa')
-    .attr('stop-opacity', 0.6);
-  
-  // Добавляем оси
-  barSvg.append('g')
-    .attr('transform', `translate(0,${barHeight - barMargin.bottom})`)
-    .call(d3.axisBottom(barX).ticks(5).tickFormat(d => formatProfitCompact(d)))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text')
-      .style('fill', '#d1d5db')
-      .style('font-size', '0.8rem'));
-  
-  barSvg.append('g')
-    .attr('transform', `translate(${barMargin.left},0)`)
-    .call(d3.axisLeft(barY))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text')
-      .style('fill', '#d1d5db')
-      .style('font-size', '0.85rem')
-      .style('font-weight', d => carModels[0].name === d ? 'bold' : 'normal'));
-  
-  // Создаем тултип
-  const barTooltip = d3.select('body').append('div')
-    .attr('class', 'bar-tooltip')
-    .style('position', 'absolute')
-    .style('visibility', 'hidden')
-    .style('background', 'rgba(17, 24, 39, 0.95)')
-    .style('color', '#f9fafb')
-    .style('padding', '10px 15px')
-    .style('border-radius', '5px')
-    .style('font-size', '0.9rem')
-    .style('box-shadow', '0 4px 15px rgba(0, 0, 0, 0.3)')
-    .style('border', '1px solid rgba(59, 130, 246, 0.3)')
-    .style('z-index', 10);
-  
-  // Добавляем полосы для моделей с анимацией и интерактивностью
-  barSvg.selectAll('.car-model-bar')
-    .data(carModels)
-    .join('rect')
-    .attr('class', 'car-model-bar')
-    .attr('x', barMargin.left)
-    .attr('y', d => barY(d.name))
-    .attr('height', barY.bandwidth())
-    .attr('fill', 'url(#sales-bar-gradient)')
-    .attr('rx', 4)
-    .style('cursor', 'pointer')
-    .on('mouseover', function(event, d) {
-      d3.select(this).attr('opacity', 0.8);
+  // Функция обновления графика в зависимости от выбранного представления
+  function updateBarChart(viewMode) {
+    // Очищаем текущий график
+    barChartSvg.selectAll('*').remove();
+    
+    // Определяем размеры графика
+    const barWidth = barChartSvg.node().clientWidth;
+    const barHeight = barChartSvg.node().clientHeight;
+    const barMargin = { top: 10, right: 120, bottom: 20, left: 180 };
+    
+    // Подготавливаем данные в зависимости от режима
+    const data = carModels.map(model => ({
+      id: model.id,
+      name: model.name,
+      value: viewMode === 'sales' ? model.sales : model.count,
+      // Добавляем доп. информацию для тултипа
+      sales: model.sales,
+      count: model.count,
+      avgPrice: Math.round(model.sales / model.count)
+    }));
+    
+    // Создаем шкалы
+    const barX = d3.scaleLinear()
+      .domain([0, d3.max(data, d => d.value) * 1.05])
+      .nice()
+      .range([barMargin.left, barWidth - barMargin.right]);
+    
+    const barY = d3.scaleBand()
+      .domain(data.map(d => d.name))
+      .range([barMargin.top, barHeight - barMargin.bottom])
+      .padding(0.3);
+    
+    // Создаем линейный градиент для заливки полос
+    const barDefs = barChartSvg.append('defs');
+    
+    // Основной градиент
+    const barGradient = barDefs.append('linearGradient')
+      .attr('id', 'sales-bar-gradient')
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '100%')
+      .attr('y2', '0%');
+    
+    barGradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', '#3b82f6')
+      .attr('stop-opacity', 0.9);
+    
+    barGradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', '#60a5fa')
+      .attr('stop-opacity', 0.7);
+    
+    // Градиент для наведения
+    const barHoverGradient = barDefs.append('linearGradient')
+      .attr('id', 'sales-bar-hover-gradient')
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '100%')
+      .attr('y2', '0%');
+    
+    barHoverGradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', '#2563eb')
+      .attr('stop-opacity', 1);
+    
+    barHoverGradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', '#3b82f6')
+      .attr('stop-opacity', 0.8);
+    
+    // Добавляем фоновую сетку
+    barChartSvg.append('g')
+      .selectAll('line')
+      .data(barX.ticks(5))
+      .join('line')
+      .attr('x1', d => barX(d))
+      .attr('x2', d => barX(d))
+      .attr('y1', barMargin.top - 5)
+      .attr('y2', barHeight - barMargin.bottom)
+      .attr('stroke', 'rgba(75, 85, 99, 0.2)')
+      .attr('stroke-dasharray', '3,3');
+    
+    // Добавляем оси с улучшенными стилями
+    barChartSvg.append('g')
+      .attr('transform', `translate(0,${barHeight - barMargin.bottom})`)
+      .call(d3.axisBottom(barX)
+        .ticks(5)
+        .tickFormat(d => viewMode === 'sales' ? formatProfitCompact(d) : d3.format('~s')(d)))
+      .call(g => g.select('.domain').remove())
+      .call(g => g.selectAll('text')
+        .style('fill', '#9ca3af')
+        .style('font-size', '0.7rem'));
+    
+    barChartSvg.append('g')
+      .attr('transform', `translate(${barMargin.left},0)`)
+      .call(d3.axisLeft(barY))
+      .call(g => g.select('.domain').remove())
+      .call(g => g.selectAll('.tick line').remove())
+      .call(g => g.selectAll('text')
+        .style('fill', '#d1d5db')
+        .style('font-size', '0.8rem')
+        .style('font-weight', (d, i) => i === 0 ? 'bold' : 'normal'));
+    
+    // Создаем улучшенный тултип
+    const barTooltip = d3.select('body').select('.model-tooltip');
+    
+    if (barTooltip.empty()) {
+      d3.select('body').append('div')
+        .attr('class', 'model-tooltip')
+        .style('position', 'absolute')
+        .style('visibility', 'hidden')
+        .style('background', 'rgba(15, 23, 42, 0.95)')
+        .style('color', '#f9fafb')
+        .style('padding', '12px 15px')
+        .style('border-radius', '8px')
+        .style('font-size', '0.9rem')
+        .style('box-shadow', '0 10px 25px rgba(0, 0, 0, 0.2)')
+        .style('border', '1px solid rgba(59, 130, 246, 0.3)')
+        .style('z-index', 1000)
+        .style('max-width', '280px')
+        .style('backdrop-filter', 'blur(4px)');
+    }
+    
+    // Анимированная функция для тултипа
+    const showTooltip = (event, d) => {
+      const tooltip = d3.select('body').select('.model-tooltip');
       
-      // Показываем тултип с детальной информацией
-      const percentage = ((d.sales / totalSales) * 100).toFixed(1);
-      barTooltip.html(`
-        <div style="font-weight: bold; margin-bottom: 5px;">${d.name}</div>
-        <div>Продажи: <strong>${formatProfitCompact(d.sales)}</strong></div>
-        <div>Количество: <strong>${d.count} шт.</strong></div>
-        <div>Доля в продажах: <strong>${percentage}%</strong></div>
-        <div style="font-size: 0.8rem; color: #9ca3af; margin-top: 5px;">
-          Нажмите для анализа по регионам
+      // Вычисляем процент
+      const percentage = viewMode === 'sales'
+        ? ((d.sales / totalSales) * 100).toFixed(1)
+        : ((d.count / totalCount) * 100).toFixed(1);
+      
+      // Добавляем красиво форматированное содержимое тултипа
+      tooltip.html(`
+        <div style="border-bottom: 1px solid rgba(75, 85, 99, 0.3); margin-bottom: 8px; padding-bottom: 8px;">
+          <div style="font-weight: bold; font-size: 1rem; margin-bottom: 4px;">${d.name}</div>
+          <div style="font-size: 0.8rem; color: #9ca3af;">Нажмите для детального анализа</div>
         </div>
-      `)
-      .style('visibility', 'visible')
-      .style('left', `${event.pageX + 15}px`)
-      .style('top', `${event.pageY - 20}px`);
-    })
-    .on('mouseout', function() {
-      d3.select(this).attr('opacity', 1);
-      barTooltip.style('visibility', 'hidden');
-    })
-    .on('click', (event, d) => {
-      // При клике показываем распределение по регионам для модели
-      showModelRegionalDistribution(d.name, year, month, monthName);
-    })
-    // Анимация
-    .attr('width', 0)
-    .transition()
-    .duration(800)
-    .delay((d, i) => i * 50)
-    .attr('width', d => barX(d.sales) - barMargin.left);
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <div style="font-size: 0.75rem; color: #9ca3af;">Продажи</div>
+            <div style="font-weight: bold;">${formatProfitCompact(d.sales)}</div>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; color: #9ca3af;">Количество</div>
+            <div style="font-weight: bold;">${d.count} шт.</div>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; color: #9ca3af;">Средняя цена</div>
+            <div style="font-weight: bold;">${formatProfitCompact(d.avgPrice)}</div>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; color: #9ca3af;">Доля</div>
+            <div style="font-weight: bold; color: #60a5fa;">${percentage}%</div>
+          </div</div>
+      `);
+      
+      // Анимированное появление тултипа
+      tooltip
+        .style('visibility', 'visible')
+        .style('opacity', '0')
+        .style('transform', 'translateY(10px)')
+        .style('left', `${event.pageX + 15}px`)
+        .style('top', `${event.pageY - 20}px`)
+        .transition()
+        .duration(200)
+        .style('opacity', '1')
+        .style('transform', 'translateY(0)');
+    };
+    
+    const hideTooltip = () => {
+      const tooltip = d3.select('body').select('.model-tooltip');
+      
+      tooltip
+        .transition()
+        .duration(200)
+        .style('opacity', '0')
+        .style('transform', 'translateY(10px)')
+        .on('end', function() {
+          tooltip.style('visibility', 'hidden');
+        });
+    };
+    
+    // Добавляем полосы для моделей с улучшенной анимацией и интерактивностью
+    const bars = barChartSvg.selectAll('.car-model-bar')
+      .data(data)
+      .join('rect')
+      .attr('class', 'car-model-bar')
+      .attr('x', barMargin.left)
+      .attr('y', d => barY(d.name))
+      .attr('height', barY.bandwidth())
+      .attr('fill', 'url(#sales-bar-gradient)')
+      .attr('rx', 6)
+      .attr('ry', 6)
+      .style('cursor', 'pointer')
+      .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))')
+      .style('transition', 'all 0.2s ease-in-out')
+      .on('mouseover', function(event, d) {
+        d3.select(this)
+          .attr('fill', 'url(#sales-bar-hover-gradient)')
+          .style('filter', 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))');
+          
+        showTooltip(event, d);
+      })
+      .on('mousemove', function(event, d) {
+        const tooltip = d3.select('body').select('.model-tooltip');
+        tooltip
+          .style('left', `${event.pageX + 15}px`)
+          .style('top', `${event.pageY - 20}px`);
+      })
+      .on('mouseout', function() {
+        d3.select(this)
+          .attr('fill', 'url(#sales-bar-gradient)')
+          .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))');
+          
+        hideTooltip();
+      })
+      .on('click', (event, d) => {
+        showModelRegionalDistribution(d.name, year, month, monthName);
+      })
+      // Анимированное появление
+      .attr('width', 0)
+      .transition()
+      .duration(800)
+      .delay((d, i) => i * 70)
+      .ease(d3.easeElasticOut.amplitude(0.8).period(1))
+      .attr('width', d => barX(d.value) - barMargin.left);
+    
+    // Добавляем подписи значений с анимацией
+    barChartSvg.selectAll('.car-model-label')
+      .data(data)
+      .join('text')
+      .attr('class', 'car-model-label')
+      .attr('x', d => barX(d.value) + 10)
+      .attr('y', d => barY(d.name) + barY.bandwidth() / 2)
+      .attr('dy', '0.35em')
+      .style('font-size', '0.85rem')
+      .style('font-weight', '500')
+      .style('fill', '#f9fafb')
+      .style('opacity', 0)
+      .text(d => viewMode === 'sales' ? formatProfitCompact(d.value) : `${d.value} шт.`)
+      .transition()
+      .duration(500)
+      .delay((d, i) => 800 + i * 70)
+      .style('opacity', 1);
+    
+    // Добавляем индикаторы изменения относительно прошлого периода
+    barChartSvg.selectAll('.trend-indicator')
+      .data(data)
+      .join('text')
+      .attr('class', 'trend-indicator')
+      .attr('x', d => barMargin.left - 25)
+      .attr('y', d => barY(d.name) + barY.bandwidth() / 2)
+      .attr('dy', '0.35em')
+      .style('font-size', '0.75rem')
+      .style('font-weight', '500')
+      .style('text-anchor', 'end')
+      .style('fill', (d, i) => {
+        // Имитируем данные изменения
+        const change = (i % 3 === 0) ? -5 - Math.random() * 10 : 5 + Math.random() * 15;
+        return change >= 0 ? '#10b981' : '#ef4444';
+      })
+      .text((d, i) => {
+        // Имитируем данные изменения
+        const change = (i % 3 === 0) ? -5 - Math.random() * 10 : 5 + Math.random() * 15;
+        return `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(1)}%`;
+      })
+      .style('opacity', 0)
+      .transition()
+      .duration(500)
+      .delay((d, i) => 1000 + i * 70)
+      .style('opacity', 0.9);
+  }
   
-  // Добавляем подписи значений
-  barSvg.selectAll('.car-model-label')
-    .data(carModels)
-    .join('text')
-    .attr('class', 'car-model-label')
-    .attr('x', d => barX(d.sales) + 5)
-    .attr('y', d => barY(d.name) + barY.bandwidth() / 2)
-    .attr('dy', '0.35em')
-    .style('font-size', '0.85rem')
-    .style('fill', '#f9fafb')
-    .style('opacity', 0)
-    .text(d => `${d.count} шт.`)
-    .transition()
-    .duration(500)
-    .delay((d, i) => 800 + i * 50)
-    .style('opacity', 1);
+  // Первичная отрисовка графика
+  updateBarChart('sales');
   
-  // 2. Правый верхний график - круговая диаграмма распределения моделей
-  const pieChartContainer = grid.append('div')
+  // 2. Правый верхний график - улучшенная круговая диаграмма с интерактивностью
+  const pieChartContainer = gridContainer.append('div')
     .style('grid-column', '2')
     .style('grid-row', '1')
     .style('background', 'rgba(17, 24, 39, 0.4)')
     .style('border-radius', '12px')
-    .style('padding', '15px')
+    .style('padding', '16px')
     .style('border', '1px solid rgba(59, 130, 246, 0.1)');
   
+  // Заголовок
   pieChartContainer.append('h3')
     .style('font-size', '1.1rem')
     .style('color', '#f9fafb')
     .style('margin-bottom', '15px')
     .style('text-align', 'center')
-    .text('Структура продаж по моделям');
+    .text('Структура продаж');
   
-  // Создаем круговую диаграмму
+  // Создаем SVG для пончиковой диаграммы
   const pieSvg = pieChartContainer.append('svg')
     .attr('width', '100%')
     .attr('height', 'calc(100% - 30px)');
@@ -1503,26 +1870,42 @@ const showCarModelDetails = (year, month, monthName) => {
   const pieHeight = pieSvg.node().clientHeight;
   const pieRadius = Math.min(pieWidth, pieHeight) / 2 * 0.8;
   
+  // Создаем улучшенную цветовую схему
   const pieColor = d3.scaleOrdinal()
     .domain(carModels.map(d => d.name))
-    .range(d3.quantize(t => d3.interpolateSpectral(t * 0.8 + 0.1), carModels.length));
+    .range([
+      '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981',
+      '#0ea5e9', '#6366f1', '#a855f7', '#d946ef', '#f43f5e'
+    ]);
   
+  // Создаем генератор пончика с закругленными краями
   const pie = d3.pie()
     .value(d => d.sales)
-    .sort(null);
+    .sort(null)
+    .padAngle(0.02);
   
   const arc = d3.arc()
-    .innerRadius(pieRadius * 0.4) // Для пончика
-    .outerRadius(pieRadius);
+    .innerRadius(pieRadius * 0.5)
+    .outerRadius(pieRadius * 0.95)
+    .cornerRadius(5);
   
   const arcHover = d3.arc()
-    .innerRadius(pieRadius * 0.4)
-    .outerRadius(pieRadius * 1.05);
+    .innerRadius(pieRadius * 0.48)
+    .outerRadius(pieRadius * 1)
+    .cornerRadius(5);
+  
+  // Создаем группу для пончика
+  const pieG = pieSvg.append('g')
+    .attr('transform', `translate(${pieWidth / 2}, ${pieHeight / 2})`);
   
   // Создаем градиенты для каждого сегмента
+  const pieDefs = pieSvg.append('defs');
+  
   carModels.forEach((model, i) => {
-    const gradientId = `pie-gradient-${i}`;
-    const gradient = barDefs.append('linearGradient')
+    const color = pieColor(model.name);
+    const gradientId = `pie-gradient-${model.id}`;
+    
+    const gradient = pieDefs.append('linearGradient')
       .attr('id', gradientId)
       .attr('x1', '0%')
       .attr('y1', '0%')
@@ -1531,64 +1914,104 @@ const showCarModelDetails = (year, month, monthName) => {
     
     gradient.append('stop')
       .attr('offset', '0%')
-      .attr('stop-color', d3.rgb(pieColor(model.name)).brighter(0.5))
-      .attr('stop-opacity', 0.9);
+      .attr('stop-color', d3.rgb(color).brighter(0.5))
+      .attr('stop-opacity', 0.95);
     
     gradient.append('stop')
       .attr('offset', '100%')
-      .attr('stop-color', pieColor(model.name))
-      .attr('stop-opacity', 0.7);
+      .attr('stop-color', color)
+      .attr('stop-opacity', 0.8);
+    
+    // Создаем градиент для эффекта наведения
+    const hoverGradientId = `pie-hover-gradient-${model.id}`;
+    
+    const hoverGradient = pieDefs.append('linearGradient')
+      .attr('id', hoverGradientId)
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '100%')
+      .attr('y2', '100%');
+    
+    hoverGradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', d3.rgb(color).brighter(0.7))
+      .attr('stop-opacity', 1);
+    
+    hoverGradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', d3.rgb(color).brighter(0.2))
+      .attr('stop-opacity', 0.9);
   });
   
-  // Создаем группу для пончика
-  const pieG = pieSvg.append('g')
-    .attr('transform', `translate(${pieWidth / 2}, ${pieHeight / 2})`);
+  // Добавляем фильтр для эффекта свечения
+  pieDefs.append('filter')
+    .attr('id', 'glow')
+    .append('feGaussianBlur')
+    .attr('stdDeviation', '3')
+    .attr('result', 'coloredBlur');
   
-  // Создаем сегменты пончика
+  // Создаем сегменты пончика с новыми визуальными эффектами
   const pieArcs = pieG.selectAll('path')
     .data(pie(carModels))
     .join('path')
-    .attr('fill', (d, i) => `url(#pie-gradient-${i})`)
+    .attr('d', arc)
+    .attr('fill', d => `url(#pie-gradient-${d.data.id})`)
     .attr('stroke', '#111827')
     .attr('stroke-width', 1)
+    .attr('data-model', d => d.data.id)
     .style('cursor', 'pointer')
+    .style('transition', 'all 0.3s ease')
     .on('mouseover', function(event, d) {
       d3.select(this)
-        .transition()
-        .duration(200)
-        .attr('d', arcHover);
+        .attr('fill', `url(#pie-hover-gradient-${d.data.id})`)
+        .attr('d', arcHover)
+        .style('filter', 'url(#glow)');
       
-      // Показываем значение в центре
-      centerText.text(d.data.name);
+      // Обновляем текст в центре
+      centerText.text(d.data.name)
+        .style('font-size', d.data.name.length > 15 ? '0.8rem' : '0.9rem');
+        
       centerNumber.text(formatProfitCompact(d.data.sales));
       centerPercent.text(`${((d.data.sales / totalSales) * 100).toFixed(1)}%`);
-    })
-    .on('mouseout', function() {
-      d3.select(this)
-        .transition()
-        .duration(200)
-        .attr('d', arc);
       
-      // Восстанавливаем общую сумму в центре
-      centerText.text('Общий объем');
+      // Подсвечиваем соответствующую метку
+      pieG.selectAll('.pie-label')
+        .filter(label => label.data.id === d.data.id)
+        .style('font-weight', 'bold')
+        .style('fill', '#fff');
+    })
+    .on('mouseout', function(event, d) {
+      d3.select(this)
+        .attr('fill', `url(#pie-gradient-${d.data.id})`)
+        .attr('d', arc)
+        .style('filter', 'none');
+      
+      // Восстанавливаем текст в центре
+      centerText.text('Общий объем')
+        .style('font-size', '0.9rem');
+        
       centerNumber.text(formatProfitCompact(totalSales));
       centerPercent.text('100%');
+      
+      // Восстанавливаем метки
+      pieG.selectAll('.pie-label')
+        .style('font-weight', 'normal')
+        .style('fill', '#d1d5db');
     })
     .on('click', (event, d) => {
-      // При клике показываем распределение по регионам
       showModelRegionalDistribution(d.data.name, year, month, monthName);
     });
   
-  // Анимация появления сегментов
-  pieArcs.each(function(d) {
-    const self = this;
+  // Добавляем анимацию с поочередным появлением сегментов
+  pieArcs.each(function(d, i) {
     const totalLength = Math.PI * 2;
-    const i = d.index;
     
     d3.select(this)
+      .style('opacity', 0)
       .transition()
-      .duration(500)
+      .duration(700)
       .delay(i * 100)
+      .style('opacity', 1)
       .attrTween('d', function() {
         const interpolate = d3.interpolate(
           { startAngle: d.startAngle, endAngle: d.startAngle },
@@ -1600,169 +2023,220 @@ const showCarModelDetails = (year, month, monthName) => {
       });
   });
   
-  // Добавляем текст в центр пончика
-  const centerText = pieG.append('text')
+  // Добавляем текст в центр пончика с улучшенным стилем
+  const centerGroup = pieG.append('g');
+  
+  // Добавляем декоративный круг в центре
+  centerGroup.append('circle')
+    .attr('r', pieRadius * 0.48)
+    .attr('fill', 'rgba(17, 24, 39, 0.7)')
+    .attr('stroke', 'rgba(59, 130, 246, 0.2)')
+    .attr('stroke-width', 1);
+  
+  const centerText = centerGroup.append('text')
     .attr('text-anchor', 'middle')
-    .attr('dy', '-1em')
+    .attr('dy', '-1.2em')
     .style('font-size', '0.9rem')
     .style('fill', '#d1d5db')
+    .style('transition', 'all 0.3s ease')
     .text('Общий объем');
   
-  const centerNumber = pieG.append('text')
+  const centerNumber = centerGroup.append('text')
     .attr('text-anchor', 'middle')
-    .attr('dy', '0.5em')
-    .style('font-size', '1.2rem')
+    .attr('dy', '0.4em')
+    .style('font-size', '1.3rem')
     .style('font-weight', 'bold')
     .style('fill', '#f9fafb')
     .text(formatProfitCompact(totalSales));
   
-  const centerPercent = pieG.append('text')
+  const centerPercent = centerGroup.append('text')
     .attr('text-anchor', 'middle')
     .attr('dy', '2em')
-    .style('font-size', '1rem')
+    .style('font-size', '1.1rem')
     .style('fill', '#60a5fa')
+    .style('font-weight', '500')
     .text('100%');
   
-  // 3. Правый нижний график - метрики эффективности продаж
-  const metricsContainer = grid.append('div')
+  // Добавляем компактные метки для сегментов (показываем только топ-5)
+  const topModels = carModels.slice(0, 5);
+  const pieLabels = pieG.selectAll('.pie-label')
+    .data(pie(topModels))
+    .join('text')
+    .attr('class', 'pie-label')
+    .attr('transform', d => {
+      const pos = arc.centroid(d);
+      const offset = 1.8; // Увеличиваем смещение
+      return `translate(${pos[0] * offset}, ${pos[1] * offset})`;
+    })
+    .attr('text-anchor', 'middle')
+    .attr('dy', '0.35em')
+    .style('font-size', '0.7rem')
+    .style('fill', '#d1d5db')
+    .style('pointer-events', 'none')
+    .style('opacity', 0)
+    .text(d => d.data.name.split(' ').pop()) // Отображаем только модель
+    .transition()
+    .duration(500)
+    .delay((d, i) => 1000 + i * 100)
+    .style('opacity', 1);
+  
+  // 3. Правый нижний график - улучшенная панель метрик
+  const metricsContainer = gridContainer.append('div')
     .style('grid-column', '2')
     .style('grid-row', '2')
     .style('background', 'rgba(17, 24, 39, 0.4)')
     .style('border-radius', '12px')
-    .style('padding', '15px')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)');
+    .style('padding', '16px')
+    .style('border', '1px solid rgba(59, 130, 246, 0.1)')
+    .style('display', 'flex')
+    .style('flex-direction', 'column');
   
   metricsContainer.append('h3')
     .style('font-size', '1.1rem')
     .style('color', '#f9fafb')
     .style('margin-bottom', '15px')
     .style('text-align', 'center')
-    .text('Ключевые метрики');
+    .text('Ключевые показатели');
   
-  // Создаем контейнер для метрик
+  // Создаем контейнер для метрик с улучшенным интерфейсом
   const metricsGrid = metricsContainer.append('div')
     .style('display', 'grid')
-    .style('grid-template-columns', '1fr 1fr')
-    .style('grid-gap', '15px')
-    .style('height', 'calc(100% - 30px)');
+    .style('grid-template-columns', 'repeat(auto-fit, minmax(150px, 1fr))')
+    .style('gap', '12px')
+    .style('flex-grow', '1');
   
-  // Функция для создания красивой карточки метрики
-  const createMetricCard = (title, value, unit, icon, color, subtitle) => {
+  // Функция для создания улучшенной карточки метрики
+  const createMetricCard = (title, value, subtitle, icon, color) => {
     const card = metricsGrid.append('div')
-      .style('background', 'rgba(30, 41, 59, 0.5)')
+      .style('background', `rgba(${color}, 0.08)`)
       .style('border-radius', '10px')
       .style('padding', '15px')
       .style('display', 'flex')
       .style('flex-direction', 'column')
       .style('justify-content', 'center')
       .style('position', 'relative')
-      .style('overflow', 'hidden');
-    
-    // Добавляем градиентный фон
-    card.append('div')
-      .style('position', 'absolute')
-      .style('top', '0')
-      .style('left', '0')
-      .style('width', '100%')
-      .style('height', '100%')
-      .style('background', `linear-gradient(135deg, ${color}15 0%, ${color}05 100%)`)
-      .style('z-index', '0');
-    
-    // Добавляем иконку на фон
-    card.append('div')
-      .style('position', 'absolute')
-      .style('top', '10px')
-      .style('right', '10px')
-      .style('font-size', '2.5rem')
-      .style('color', `${color}25`)
-      .style('z-index', '0')
-      .html(icon);
+      .style('border', `1px solid rgba(${color}, 0.2)`)
+      .style('transition', 'all 0.2s ease')
+      .style('cursor', 'default')
+      .on('mouseover', function() {
+        d3.select(this)
+          .style('transform', 'translateY(-2px)')
+          .style('box-shadow', `0 6px 16px -6px rgba(${color}, 0.25)`);
+      })
+      .on('mouseout', function() {
+        d3.select(this)
+          .style('transform', 'translateY(0)')
+          .style('box-shadow', 'none');
+      });
     
     // Добавляем содержимое
     const content = card.append('div')
       .style('position', 'relative')
       .style('z-index', '1');
     
+    const iconContainer = content.append('div')
+      .style('position', 'absolute')
+      .style('top', '-8px')
+      .style('right', '-8px')
+      .style('width', '28px')
+      .style('height', '28px')
+      .style('border-radius', '50%')
+      .style('background', `rgba(${color}, 0.2)`)
+      .style('display', 'flex')
+      .style('align-items', 'center')
+      .style('justify-content', 'center')
+      .style('color', `rgb(${color})`)
+      .html(icon);
+    
     content.append('div')
-      .style('font-size', '0.9rem')
+      .style('font-size', '0.8rem')
       .style('color', '#9ca3af')
       .style('margin-bottom', '5px')
       .text(title);
     
-    const valueRow = content.append('div')
-      .style('display', 'flex')
-      .style('align-items', 'baseline')
-      .style('margin-bottom', '5px');
-    
-    valueRow.append('span')
-      .style('font-size', '1.6rem')
+    content.append('div')
+      .style('font-size', '1.2rem')
       .style('font-weight', 'bold')
-      .style('color', color)
+      .style('color', `rgb(${color})`)
+      .style('margin-bottom', '4px')
       .text(value);
-    
-    valueRow.append('span')
-      .style('font-size', '0.9rem')
-      .style('color', '#d1d5db')
-      .style('margin-left', '5px')
-      .text(unit);
     
     if (subtitle) {
       content.append('div')
-        .style('font-size', '0.8rem')
+        .style('font-size', '0.75rem')
         .style('color', '#9ca3af')
         .text(subtitle);
     }
   };
   
-  // Создаем метрики
+  // Создаем метрики с улучшенными иконками и стилем
   createMetricCard(
     'Средняя цена продажи',
     formatProfitCompact(totalSales / totalCount),
-    'UZS',
-    '<i class="fas fa-tag"></i>',
-    '#60a5fa',
-    `На основе ${totalCount} проданных авто`
+    `На базе ${totalCount} авто`,
+    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
+    '59, 130, 246'
   );
   
   createMetricCard(
     'Премиум сегмент',
-    ((carModels.filter(m => m.sales / m.count > 700000).reduce((sum, m) => sum + m.sales, 0) / totalSales) * 100).toFixed(1),
-    '%',
-    '<i class="fas fa-crown"></i>',
-    '#f59e0b',
-    'Доля высокодоходных моделей'
+    ((carModels.filter(m => m.sales / m.count > 700000).reduce((sum, m) => sum + m.sales, 0) / totalSales) * 100).toFixed(1) + '%',
+    'Высокодоходные модели',
+    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>',
+    '245, 158, 11'
   );
   
   createMetricCard(
-    'Самая продаваемая модель',
-    carModels.reduce((max, model) => model.count > max.count ? model : max, { count: 0 }).name,
-    '',
-    '<i class="fas fa-trophy"></i>',
-    '#10b981'
+    'Топ-модель',
+    carModels.reduce((max, model) => model.count > max.count ? model : max, { count: 0 }).name.split(' ').pop(),
+    'По количеству продаж',
+    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>',
+    '16, 185, 129'
   );
   
   createMetricCard(
-    'Самая доходная модель',
-    carModels.reduce((max, model) => model.sales > max.sales ? model : max, { sales: 0 }).name,
-    '',
-    '<i class="fas fa-dollar-sign"></i>',
-    '#ec4899'
+    'Доходная модель',
+    carModels.reduce((max, model) => model.sales > max.sales ? model : max, { sales: 0 }).name.split(' ').pop(),
+    'По объему продаж',
+    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>',
+    '236, 72, 153'
   );
   
-  // Добавляем подсказку о возможности клика
+  // Добавляем подсказку о возможности интерактивности с улучшенным стилем
   container.append('div')
     .style('text-align', 'center')
-    .style('margin-top', '10px')
-    .style('font-size', '0.85rem')
-    .style('color', '#9ca3af')
-    .style('font-style', 'italic')
-    .text('Нажмите на модель для анализа распределения по регионам');
-};
+    .style('margin-top', '12px')
+    .style('padding', '10px')
+    .style('background', 'rgba(17, 24, 39, 0.5)')
+    .style('border-radius', '8px')
+    .style('border', '1px dashed rgba(59, 130, 246, 0.3)')
+    .style('display', 'flex')
+    .style('align-items', 'center')
+    .style('justify-content', 'center')
+    .style('gap', '8px')
+    .html(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M12 16v-4"></path>
+        <path d="M12 8h.01"></path>
+      </svg>
+      <span style="color: #9ca3af; font-size: 0.9rem;">Нажмите на любую модель для анализа распределения по регионам</span>
+    `);
+  
+  // Загружаем Font Awesome для иконок
+  if (!document.querySelector('[href*="font-awesome"]')) {
+    const head = document.head || document.getElementsByTagName('head')[0];
+    const fontAwesome = document.createElement('link');
+    fontAwesome.rel = 'stylesheet';
+    fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css';
+    head.appendChild(fontAwesome);
+  }
+}
 
 // Детализация по регионам Узбекистана
 const showRegionDetails = (year, month, monthName) => {
   if (!mainChartRef.current) return;
-  
+  d3.selectAll('.chart-tooltip, .bar-tooltip, .model-tooltip').remove();
   mainChartRef.current.innerHTML = '';
   
   const container = d3.select(mainChartRef.current)
@@ -2855,7 +3329,7 @@ function updateRegionComparisonData(compareYear, currentYear, month, monthName, 
 // Показывает распределение моделей по регионам
 const showModelRegionalDistribution = (modelName, year, month, monthName) => {
   if (!mainChartRef.current) return;
-  
+  d3.selectAll('.chart-tooltip, .bar-tooltip, .model-tooltip').remove();
   // Очищаем контейнер
   mainChartRef.current.innerHTML = '';
   
@@ -4475,7 +4949,6 @@ const renderGroupedBarChart = (data, options) => {
     }
   };
   
-  // Круговой индикатор выполнения плана с дополнительными индикаторами
 // Кардинально переработанный круговой индикатор выполнения плана
 const renderProgressChart = () => {
   if (!progressChartRef.current || Object.keys(financialData).length === 0) return;
@@ -6188,7 +6661,6 @@ const renderProgressChart = () => {
     return filteredData.reduce((sum, month) => sum + month.total, 0);
   };
   
-  // Обработчик переключения режима отображения
 // Обработчик переключения режима отображения
 const handleDisplayModeChange = (mode) => {
   setDisplayMode(mode);
@@ -6637,10 +7109,10 @@ return (
             <div ref={mainChartRef} className="w-full h-full"></div>
           </div>
           
-          {/* <div className="bg-gray-800 rounded-xl p-10 border border-gray-700/50 shadow-lg">
+          <div className="bg-gray-800 rounded-xl p-10 border border-gray-700/50 shadow-lg">
             <h3 className="text-xl font-semibold text-white mb-4 text-center">Выполнение плана</h3>
             <div ref={progressChartRef} className="w-full h-64"></div>
-          </div> */}
+          </div>
         </div>
         
         {/* РАЗДЕЛ: Детализация и распределение по категориям */}

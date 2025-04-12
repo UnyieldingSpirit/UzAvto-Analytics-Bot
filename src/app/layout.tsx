@@ -92,7 +92,6 @@ export default function RootLayout({
               min-height: var(--tg-viewport-stable-height, 100vh);
               /* Добавляем отступы для полноэкранного режима */
               padding-top: var(--safe-area-inset-top, 0px);
-              padding-bottom: calc(var(--safe-area-inset-bottom, 0px) + 100px);
             }
             
             /* Стили для режима Telegram expanded */
