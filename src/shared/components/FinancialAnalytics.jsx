@@ -189,54 +189,73 @@ const [endYear, setEndYear] = useState(currentDate.year);
     }
   };
   
-  useEffect(() => {
-    if (Object.keys(financialData).length === 0) return;
-    
-    if (displayMode === 'yearly' || displayMode === 'compare') {
-      // Фильтрация по выбранному году или годам
-      const allFilteredData = [];
-      
-      selectedYears.forEach(year => {
-        if (financialData[year]) {
-          financialData[year].months.forEach(month => {
-            allFilteredData.push({
-              ...month,
-              year
-            });
-          });
-        }
-      });
-      
-      setFilteredData(allFilteredData);
-    } else if (displayMode === 'period') {
-
-      const filteredMonths = [];
-      
-      for (let year = startYear; year <= endYear; year++) {
-        if (!financialData[year]) continue;
-        
+useEffect(() => {
+  if (Object.keys(financialData).length === 0) return;
+  
+  const currentDate = getCurrentMonthAndYear();
+  const currentMonth = currentDate.month;
+  const currentYear = currentDate.year;
+  
+  const filteredMonths = [];
+  
+  if (displayMode === 'yearly') {
+    // Для годового режима - все месяцы выбранного года
+    selectedYears.forEach(year => {
+      if (financialData[year]) {
         financialData[year].months.forEach(month => {
-          if (
-            (year === startYear && month.month < startMonth) || 
-            (year === endYear && month.month > endMonth)
-          ) {
-            return;
-          }
-          
           filteredMonths.push({
             ...month,
-            year,
-            label: `${month.name} ${year}`
+            year
           });
         });
       }
+    });
+  } else if (displayMode === 'compare') {
+    // Для режима сравнения - все месяцы выбранных лет
+    selectedYears.forEach(year => {
+      if (financialData[year]) {
+        financialData[year].months.forEach(month => {
+          filteredMonths.push({
+            ...month,
+            year
+          });
+        });
+      }
+    });
+  } else if (displayMode === 'period') {
+    // Полный диапазон выбранного периода
+    for (let year = startYear; year <= endYear; year++) {
+      if (!financialData[year]) continue;
       
-      setFilteredData(filteredMonths);
+      financialData[year].months.forEach(month => {
+        if (
+          (year === startYear && month.month < startMonth) || 
+          (year === endYear && month.month > endMonth)
+        ) {
+          return;
+        }
+        
+        filteredMonths.push({
+          ...month,
+          year,
+          label: `${month.name} ${year}`
+        });
+      });
     }
-  }, [
-    financialData, selectedYears, displayMode, 
-    startMonth, startYear, endMonth, endYear
-  ]);
+  }
+  
+  setFilteredData(filteredMonths);
+}, [
+  financialData, 
+  selectedYears, 
+  displayMode, 
+  startMonth, 
+  startYear, 
+  endMonth, 
+  endYear,
+  viewType,  // Добавлен для обновления при смене типа графика
+  focusCategory  // Добавлен для обновления при смене категории
+]);
   
   // Отрисовка графиков
 // Отрисовка графиков
@@ -395,9 +414,9 @@ if (viewType === 'bar') {
     D3Visualizer.createBarChart(chartData, chartOptions);
   }
 } else if (viewType === 'line' || viewType === 'area') {
-      if (displayMode === 'compare') {
-        renderMultiLineChart();
-      } else {
+     if (displayMode === 'compare') {
+    renderMultiLineChart(); // Добавьте этот метод, если он не реализован
+  } else {
         const lineData = chartData.map(item => ({
           x: item.label, 
           y: item.value
@@ -430,13 +449,11 @@ if (viewType === 'bar') {
         title: 'Структура продаж по месяцам',
         colors: [SALE_TYPES.RETAIL.color, SALE_TYPES.WHOLESALE.color, SALE_TYPES.PROMO.color]
       });
-    } else if (viewType === 'radar') {
-      // Отрисовка радарного графика для сравнения месяцев
-      renderRadarChart();
-    } else if (viewType === 'mixed') {
-      // Комбинированный график (столбцы + линия)
-      renderMixedChart();
-    }
+ } else if (viewType === 'radar') {
+  renderRadarChart();
+} else if (viewType === 'mixed') {
+  renderMixedChart();
+}
   };
   
   // Пользовательский линейный график с дополнительными функциями
@@ -985,6 +1002,7 @@ const renderPeriodComparisonTable = () => {
   
   return svg.node();
 };
+  
 // Добавляем новую функцию для создания сгруппированных столбцов сравнения
 const renderGroupedBarChart = (data, options) => {
   const {
@@ -4240,7 +4258,7 @@ return (
         
         {/* РАЗДЕЛ: Основной график и прогресс */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <div className="lg:col-span-2 bg-gray-800 rounded-xl p-5 border border-gray-700/50 shadow-lg">
+          <div className="lg:col-span-2 bg-gray-800 rounded-xl p-2 border border-gray-700/50 shadow-lg">
             <div ref={mainChartRef} className="w-full h-full"></div>
           </div>
           
