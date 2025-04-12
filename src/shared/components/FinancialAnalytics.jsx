@@ -30,6 +30,18 @@ const MONTHS = [
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
 ];
 
+// Форматирование больших чисел с сокращениями (млн, млрд)
+const formatShortNumber = (number) => {
+  if (number >= 1000000000) {
+    return `${(number / 1000000000).toFixed(1)}B`; // миллиарды
+  } else if (number >= 1000000) {
+    return `${(number / 1000000).toFixed(1)}M`; // миллионы
+  } else if (number >= 1000) {
+    return `${(number / 1000).toFixed(1)}K`; // тысячи
+  }
+  return Math.round(number).toLocaleString('ru-RU');
+};
+
 // Генерация демо-данных
 const generateFinancialData = () => {
   const years = [2023, 2024, 2025];
@@ -125,13 +137,20 @@ export default function EnhancedFinancialAnalytics() {
   const [financialData, setFinancialData] = useState({});
   const [selectedYears, setSelectedYears] = useState([2024]); // Теперь может быть несколько выбранных лет
   const [filteredData, setFilteredData] = useState([]);
-  const [displayMode, setDisplayMode] = useState('yearly'); // 'yearly', 'period', 'compare'
-  
+  const [displayMode, setDisplayMode] = useState('period'); // 'yearly', 'period', 'compare'
+  const getCurrentMonthAndYear = () => {
+  const now = new Date();
+  return {
+    month: now.getMonth() + 1,
+    year: now.getFullYear()
+  };
+  };
   // Стейты для фильтров по периоду
-  const [startMonth, setStartMonth] = useState(1);
-  const [startYear, setStartYear] = useState(2023);
-  const [endMonth, setEndMonth] = useState(12);
-  const [endYear, setEndYear] = useState(2025);
+const currentDate = getCurrentMonthAndYear();
+const [startMonth, setStartMonth] = useState(1); // Начинаем с января
+const [startYear, setStartYear] = useState(currentDate.year - 1); // Прошлый год
+const [endMonth, setEndMonth] = useState(currentDate.month); // Текущий месяц
+const [endYear, setEndYear] = useState(currentDate.year);
   
   // Стейты для представления
   const [viewType, setViewType] = useState('bar'); // 'bar', 'line', 'stacked', 'area', 'radar', 'mixed'
@@ -170,7 +189,6 @@ export default function EnhancedFinancialAnalytics() {
     }
   };
   
-  // Фильтрация данных при изменении параметров
   useEffect(() => {
     if (Object.keys(financialData).length === 0) return;
     
@@ -191,7 +209,7 @@ export default function EnhancedFinancialAnalytics() {
       
       setFilteredData(allFilteredData);
     } else if (displayMode === 'period') {
-      // Фильтрация по выбранному периоду
+
       const filteredMonths = [];
       
       for (let year = startYear; year <= endYear; year++) {
@@ -221,25 +239,28 @@ export default function EnhancedFinancialAnalytics() {
   ]);
   
   // Отрисовка графиков
-  useEffect(() => {
-    if (!filteredData.length) return;
-    
-    renderMainChart();
-    renderProgressChart();
-    renderDetailsChart();
-    renderYearlyTrendChart();
-    
-    if (displayMode === 'compare') {
-      renderYearComparisonChart();
-    }
-    
-    renderForecastChart();
-    renderCategoryDistribution();
-    
-    if (showQuarterlyData) {
-      renderQuarterlyChart();
-    }
-  }, [filteredData, viewType, displayMode, focusCategory, showQuarterlyData]);
+// Отрисовка графиков
+useEffect(() => {
+  if (!filteredData.length) return;
+  
+  renderMainChart();
+  renderProgressChart();
+  renderDetailsChart();
+  renderYearlyTrendChart();
+  
+  if (displayMode === 'compare') {
+    renderYearComparisonChart();
+  } else if (displayMode === 'period') {
+    renderPeriodComparisonTable();
+  }
+  
+  renderForecastChart();
+  renderCategoryDistribution();
+  
+  if (showQuarterlyData) {
+    renderQuarterlyChart();
+  }
+}, [filteredData, viewType, displayMode, focusCategory, showQuarterlyData]);
   
   // Функция отрисовки основного графика
   const renderMainChart = () => {
@@ -714,6 +735,256 @@ if (viewType === 'bar') {
     }
   };
   
+
+// Модификация функции renderPeriodComparisonTable для создания столбчатого графика
+// Функция для более удобного форматирования больших чисел
+const formatProfitCompact = (number) => {
+  if (number >= 1000000000000) { // триллионы
+    return `${(number / 1000000000000).toFixed(1)}T`;
+  } else if (number >= 1000000000) { // миллиарды
+    return `${(number / 1000000000).toFixed(1)}B`;
+  } else if (number >= 1000000) { // миллионы
+    return `${(number / 1000000).toFixed(1)}M`;
+  } else if (number >= 1000) { // тысячи
+    return `${(number / 1000).toFixed(1)}K`;
+  }
+  return Math.round(number).toLocaleString('ru-RU');
+};
+
+// Модифицированная функция рендеринга периода
+const renderPeriodComparisonTable = () => {
+  if (!mainChartRef.current || !filteredData.length) return;
+  
+  // Очистка контейнера
+  mainChartRef.current.innerHTML = '';
+  
+  // Группируем данные по месяцам для сравнения между годами
+  const monthsData = {};
+  
+  // Собираем все данные в структуру по месяцам и годам
+  filteredData.forEach(item => {
+    const monthKey = item.month; // Используем номер месяца как ключ
+    
+    if (!monthsData[monthKey]) {
+      monthsData[monthKey] = {
+        month: monthKey,
+        name: item.name,
+        years: {}
+      };
+    }
+    
+    // Добавляем данные для текущего года и месяца
+    const value = focusCategory === 'all' ? item.total : item[focusCategory];
+    monthsData[monthKey].years[item.year] = value;
+  });
+  
+  // Преобразуем в массив и сортируем по номеру месяца
+  const sortedMonths = Object.values(monthsData).sort((a, b) => a.month - b.month);
+  
+  // Получаем уникальные годы из данных и сортируем их
+  const years = [...new Set(filteredData.map(item => item.year))].sort();
+  
+  // Создаем SVG
+  const width = mainChartRef.current.clientWidth;
+  const height = 400;
+  const margin = { top: 50, right: 120, bottom: 70, left: 70 };
+  
+  const svg = d3.select(mainChartRef.current)
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height)
+    .style('background', '#1f2937')
+    .style('border-radius', '0.5rem');
+  
+  // Добавляем заголовок
+  const monthRangeText = startMonth === endMonth && startYear === endYear 
+    ? `${MONTHS[startMonth-1]} ${startYear}` 
+    : `${MONTHS[startMonth-1]} - ${MONTHS[endMonth-1]} (${startYear}${startYear !== endYear ? `-${endYear}` : ''})`;
+  
+  svg.append('text')
+    .attr('x', width / 2)
+    .attr('y', margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '1.2rem')
+    .style('font-weight', 'bold')
+    .style('fill', '#f9fafb')
+    .text(`Сравнение ${focusCategory !== 'all' ? SALE_TYPES[focusCategory.toUpperCase()].name.toLowerCase() : 'продаж'} за период: ${monthRangeText}`);
+  
+  // Определяем шкалы для группированных столбцов
+  // Создаем массив групп месяцев
+  const groups = sortedMonths.map(m => m.name);
+  
+  // Создаем шкалы
+  const x0 = d3.scaleBand()
+    .domain(groups)
+    .range([margin.left, width - margin.right])
+    .padding(0.2);
+  
+  const x1 = d3.scaleBand()
+    .domain(years)
+    .range([0, x0.bandwidth()])
+    .padding(0.05);
+  
+  // Находим максимальное значение для шкалы Y
+  const maxValue = d3.max(sortedMonths, month => 
+    d3.max(Object.values(month.years), value => value || 0)
+  );
+  
+  const y = d3.scaleLinear()
+    .domain([0, maxValue * 1.1])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
+  
+  // Создаем цветовую схему для разных лет
+  const colorScale = d3.scaleOrdinal()
+    .domain(years)
+    .range(years.map((_, i) => {
+      // Если есть фокус на категории, используем её цвет как базовый
+      if (focusCategory !== 'all') {
+        const baseColor = d3.hsl(SALE_TYPES[focusCategory.toUpperCase()].color);
+        baseColor.l = 0.4 + (i * 0.15); // Регулируем яркость для разных лет
+        return baseColor.toString();
+      }
+      // Иначе используем стандартную палитру цветов
+      return d3.schemeCategory10[i % d3.schemeCategory10.length];
+    }));
+  
+  // Добавляем оси
+  const xAxis = g => g
+    .attr('transform', `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(x0).tickSizeOuter(0))
+    .call(g => g.select('.domain').remove())
+    .call(g => g.selectAll('text')
+      .style('fill', '#f9fafb')
+      .style('font-size', '0.8rem')
+      .attr('dy', '0.5em')
+      .attr('transform', 'rotate(-25)')
+      .attr('text-anchor', 'end'));
+  
+  const yAxis = g => g
+    .attr('transform', `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y).ticks(5).tickFormat(d => formatProfitCompact(d)))
+    .call(g => g.select('.domain').remove())
+    .call(g => g.selectAll('text').style('fill', '#f9fafb'))
+    .call(g => g.selectAll('.tick line')
+      .attr('x2', width - margin.left - margin.right)
+      .attr('stroke-opacity', 0.1));
+  
+  // Добавляем оси на SVG
+  svg.append('g').call(xAxis);
+  svg.append('g').call(yAxis);
+  
+  // Создаем группы для каждого месяца
+  const monthGroups = svg.append('g')
+    .selectAll('g')
+    .data(sortedMonths)
+    .join('g')
+    .attr('transform', d => `translate(${x0(d.name)},0)`);
+  
+  // Для каждой группы месяцев добавляем столбцы по годам
+  monthGroups.selectAll('rect')
+    .data(d => years.map(year => ({
+      year,
+      value: d.years[year] || 0,
+      month: d.name
+    })))
+    .join('rect')
+    .attr('x', d => x1(d.year))
+    .attr('y', d => y(d.value))
+    .attr('width', x1.bandwidth())
+    .attr('height', d => height - margin.bottom - y(d.value))
+    .attr('fill', d => colorScale(d.year))
+    .attr('rx', 4)
+    .attr('opacity', 0.9)
+    // Анимация появления
+    .attr('y', height - margin.bottom)
+    .attr('height', 0)
+    .transition()
+    .duration(800)
+    .delay((d, i) => i * 50)
+    .attr('y', d => y(d.value))
+    .attr('height', d => height - margin.bottom - y(d.value));
+  
+  // Добавляем подписи значений над столбцами
+  monthGroups.selectAll('text')
+    .data(d => years.map(year => ({
+      year,
+      value: d.years[year] || 0,
+      month: d.name
+    })))
+    .join('text')
+    .filter(d => d.value > 0) // Подписываем только ненулевые значения
+    .attr('x', d => x1(d.year) + x1.bandwidth() / 2)
+    .attr('y', d => y(d.value) - 5)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '0.7rem')
+    .style('fill', '#f9fafb')
+    .style('opacity', 0)
+    .text(d => formatProfitCompact(d.value))
+    .transition()
+    .duration(500)
+    .delay((d, i) => 800 + i * 50)
+    .style('opacity', 1);
+  
+  // Добавляем легенду
+  const legend = svg.append('g')
+    .attr('transform', `translate(${width - margin.right + 20}, ${margin.top})`);
+  
+  // Создаем строки легенды для каждого года
+  years.forEach((year, i) => {
+    const legendRow = legend.append('g')
+      .attr('transform', `translate(0, ${i * 25})`);
+    
+    // Прямоугольник с цветом года
+    legendRow.append('rect')
+      .attr('width', 15)
+      .attr('height', 15)
+      .attr('rx', 3)
+      .attr('fill', colorScale(year));
+    
+    // Текст с годом
+    legendRow.append('text')
+      .attr('x', 25)
+      .attr('y', 12)
+      .style('font-size', '0.9rem')
+      .style('fill', '#f9fafb')
+      .text(year);
+    
+    // Если есть более одного года, добавляем процент изменения
+    if (years.length > 1 && i > 0) {
+      // Получаем суммарные значения для текущего и предыдущего годов
+      const currentYearTotal = sortedMonths.reduce((sum, month) => 
+        sum + (month.years[year] || 0), 0);
+      
+      const prevYear = years[i-1];
+      const prevYearTotal = sortedMonths.reduce((sum, month) => 
+        sum + (month.years[prevYear] || 0), 0);
+      
+      // Если предыдущий год имеет ненулевые значения, показываем процент изменения
+      if (prevYearTotal > 0) {
+        const growthPercent = ((currentYearTotal / prevYearTotal) - 1) * 100;
+        const growthText = `${growthPercent >= 0 ? '+' : ''}${growthPercent.toFixed(1)}%`;
+        
+        legendRow.append('text')
+          .attr('x', 70)
+          .attr('y', 12)
+          .style('font-size', '0.8rem')
+          .style('fill', growthPercent >= 0 ? '#10b981' : '#ef4444')
+          .text(growthText);
+      }
+    }
+  });
+  
+  // Добавляем подпись к оси Y для уточнения формата чисел
+  svg.append('text')
+    .attr('x', margin.left - 50)
+    .attr('y', margin.top - 10)
+    .style('font-size', '0.7rem')
+    .style('fill', '#9ca3af')
+    .text('* 1M = 1 000 000');
+  
+  return svg.node();
+};
 // Добавляем новую функцию для создания сгруппированных столбцов сравнения
 const renderGroupedBarChart = (data, options) => {
   const {
@@ -3525,23 +3796,25 @@ const renderProgressChart = () => {
   };
   
   // Обработчик переключения режима отображения
-  const handleDisplayModeChange = (mode) => {
-    setDisplayMode(mode);
-    
-    if (mode === 'yearly') {
-      setSelectedYears([2024]); // Устанавливаем текущий год по умолчанию
-    } else if (mode === 'compare') {
-      // Для сравнения берем последние два года
-      const years = Object.keys(financialData).map(Number).sort((a, b) => b - a);
-      setSelectedYears([years[0], years[1]].filter(Boolean));
-    } else {
-      // Для периода устанавливаем весь доступный диапазон
-      setStartMonth(1);
-      setStartYear(2023);
-      setEndMonth(12);
-      setEndYear(2025);
-    }
-  };
+// Обработчик переключения режима отображения
+const handleDisplayModeChange = (mode) => {
+  setDisplayMode(mode);
+  
+  if (mode === 'yearly') {
+    setSelectedYears([2024]); // Устанавливаем текущий год по умолчанию
+  } else if (mode === 'compare') {
+    // Для сравнения берем последние два года
+    const years = Object.keys(financialData).map(Number).sort((a, b) => b - a);
+    setSelectedYears([years[0], years[1]].filter(Boolean));
+  } else if (mode === 'period') {
+    // Для периода устанавливаем текущий месяц и аналогичный период прошлого года
+    const currentDate = getCurrentMonthAndYear();
+    setStartMonth(1); // С января
+    setStartYear(currentDate.year - 1); // Прошлый год
+    setEndMonth(currentDate.month); // До текущего месяца
+    setEndYear(currentDate.year); // Текущий год
+  }
+};
   
   // Проверка корректности выбранного периода
   const isPeriodValid = () => {
