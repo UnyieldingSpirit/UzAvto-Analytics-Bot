@@ -5,22 +5,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as d3 from 'd3';
 import { D3Visualizer } from '@/src/utils/dataVisualizer';
 
-// Структура для типов продаж
 const SALE_TYPES = {
   RETAIL: {
     id: 'retail',
     name: 'Розничные продажи',
-    color: '#3b82f6' // blue
+    color: '#3b82f6'
   },
   WHOLESALE: {
     id: 'wholesale',
     name: 'Оптовые продажи',
-    color: '#8b5cf6' // purple
+    color: '#8b5cf6'
   },
   PROMO: {
     id: 'promo',
     name: 'Акционные продажи',
-    color: '#ec4899' // pink
+    color: '#ec4899'
   }
 };
 
@@ -30,17 +29,6 @@ const MONTHS = [
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
 ];
 
-// Форматирование больших чисел с сокращениями (млн, млрд)
-const formatShortNumber = (number) => {
-  if (number >= 1000000000) {
-    return `${(number / 1000000000).toFixed(1)}B`; // миллиарды
-  } else if (number >= 1000000) {
-    return `${(number / 1000000).toFixed(1)}M`; // миллионы
-  } else if (number >= 1000) {
-    return `${(number / 1000).toFixed(1)}K`; // тысячи
-  }
-  return Math.round(number).toLocaleString('ru-RU');
-};
 
 // Генерация демо-данных
 const generateFinancialData = () => {
@@ -4262,7 +4250,7 @@ return (
             <div ref={mainChartRef} className="w-full h-full"></div>
           </div>
           
-          <div className="bg-gray-800 rounded-xl p-5 border border-gray-700/50 shadow-lg">
+          <div className="bg-gray-800 rounded-xl p-10 border border-gray-700/50 shadow-lg">
             <h3 className="text-xl font-semibold text-white mb-4 text-center">Выполнение плана</h3>
             <div ref={progressChartRef} className="w-full h-64"></div>
           </div>
