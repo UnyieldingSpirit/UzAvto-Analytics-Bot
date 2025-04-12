@@ -2852,872 +2852,238 @@ function updateRegionComparisonData(compareYear, currentYear, month, monthName, 
  }
 };
       
-
-// Показывает распределение моделей по регионам
 // Показывает распределение моделей по регионам
 const showModelRegionalDistribution = (modelName, year, month, monthName) => {
   if (!mainChartRef.current) return;
   
+  // Очищаем контейнер
   mainChartRef.current.innerHTML = '';
   
+  // Создаем основной контейнер
   const container = d3.select(mainChartRef.current)
     .append('div')
     .style('width', '100%')
-    .style('height', '100%')
-    .style('background', 'linear-gradient(135deg, #1f2937 0%, #111827 100%)')
+    .style('background', 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)')
     .style('border-radius', '1rem')
-    .style('padding', '20px')
-    .style('box-shadow', '0 10px 25px -5px rgba(0, 0, 0, 0.3)');
+    .style('padding', '20px');
   
-  // Заголовок и навигация
+  // Добавляем заголовок и навигацию
   const header = container.append('div')
     .style('display', 'flex')
     .style('justify-content', 'space-between')
-    .style('align-items', 'center')
-    .style('margin-bottom', '20px');
+    .style('margin-bottom', '20px')
+    .style('border-bottom', '1px solid rgba(59, 130, 246, 0.2)')
+    .style('padding-bottom', '10px');
   
   header.append('h2')
     .style('font-size', '1.4rem')
-    .style('font-weight', 'bold')
     .style('color', '#f9fafb')
     .html(`<span style="color: #60a5fa;">${modelName}</span>: распределение по регионам (${monthName} ${year})`);
   
-  const buttonGroup = header.append('div')
-    .style('display', 'flex')
-    .style('gap', '10px');
+  // Кнопки навигации
+  const buttons = header.append('div').style('display', 'flex').style('gap', '10px');
   
-  buttonGroup.append('button')
-    .style('background', 'rgba(59, 130, 246, 0.2)')
+  buttons.append('button')
+    .style('background', 'rgba(59, 130, 246, 0.1)')
     .style('color', '#60a5fa')
-    .style('border', 'none')
+    .style('border', '1px solid rgba(59, 130, 246, 0.3)')
     .style('padding', '8px 15px')
     .style('border-radius', '8px')
-    .style('font-size', '0.85rem')
-    .style('cursor', 'pointer')
-    .text('← К анализу регионов')
-    .on('click', () => showRegionDetails(year, month, monthName));
+    .text('← К выбору модели')
+    .on('click', () => showCarModelDetails(year, month, monthName));
   
-  buttonGroup.append('button')
-    .style('background', 'rgba(16, 185, 129, 0.2)')
+  buttons.append('button')
+    .style('background', 'rgba(16, 185, 129, 0.1)')
     .style('color', '#34d399')
-    .style('border', 'none')
+    .style('border', '1px solid rgba(16, 185, 129, 0.3)')
     .style('padding', '8px 15px')
     .style('border-radius', '8px')
-    .style('font-size', '0.85rem')
-    .style('cursor', 'pointer')
-    .text('← К общему графику')
+    .text('← К общему обзору')
     .on('click', renderPeriodComparisonTable);
   
-  // Контроль периода сравнения
-  const timeControl = container.append('div')
-    .style('display', 'flex')
-    .style('align-items', 'center')
-    .style('justify-content', 'center')
-    .style('margin-bottom', '20px')
-    .style('background', 'rgba(17, 24, 39, 0.4)')
-    .style('border-radius', '8px')
-    .style('padding', '10px');
-  
-  timeControl.append('span')
-    .style('color', '#d1d5db')
-    .style('margin-right', '10px')
-    .text('Сравнить с:');
-  
-  const yearSelector = timeControl.append('select')
-    .style('background', 'rgba(30, 41, 59, 0.7)')
-    .style('color', '#f9fafb')
-    .style('border', '1px solid rgba(75, 85, 99, 0.5)')
-    .style('border-radius', '6px')
-    .style('padding', '5px 10px')
-    .style('cursor', 'pointer')
-    .on('change', function() {
-      const selectedYear = +this.value;
-      updateModelDistributionComparison(modelName, selectedYear, year, month, monthName);
-    });
-  
-  yearSelector.append('option')
-    .attr('value', year-1)
-    .text(`${year-1} год`);
-  
-  yearSelector.append('option')
-    .attr('value', year-2)
-    .text(`${year-2} год`);
-  
-  // Создаем сетку для графиков
-  const grid = container.append('div')
+  // Информационная панель
+  const infoPanel = container.append('div')
     .style('display', 'grid')
-    .style('grid-template-columns', '1fr 1fr')
-    .style('grid-template-rows', 'auto auto')
-    .style('gap', '20px')
-    .style('height', 'calc(100% - 100px)');
+    .style('grid-template-columns', 'repeat(auto-fit, minmax(200px, 1fr))')
+    .style('gap', '15px')
+    .style('margin-bottom', '20px');
   
-  // Данные модели в регионах для текущего года
-  const regionData = [
-    { name: 'Ташкент', sales: Math.round(550000 + Math.random() * 150000), count: Math.round(25 + Math.random() * 15) },
-    { name: 'Самарканд', sales: Math.round(480000 + Math.random() * 120000), count: Math.round(20 + Math.random() * 10) },
-    { name: 'Бухара', sales: Math.round(320000 + Math.random() * 90000), count: Math.round(15 + Math.random() * 15) },
-    { name: 'Фергана', sales: Math.round(410000 + Math.random() * 100000), count: Math.round(12 + Math.random() * 8) },
-    { name: 'Андижан', sales: Math.round(490000 + Math.random() * 130000), count: Math.round(10 + Math.random() * 8) },
-    { name: 'Наманган', sales: Math.round(720000 + Math.random() * 180000), count: Math.round(8 + Math.random() * 7) },
-    { name: 'Навои', sales: Math.round(850000 + Math.random() * 200000), count: Math.round(6 + Math.random() * 5) },
-    { name: 'Карши', sales: Math.round(680000 + Math.random() * 170000), count: Math.round(5 + Math.random() * 5) },
-    { name: 'Ургенч', sales: Math.round(750000 + Math.random() * 180000), count: Math.round(4 + Math.random() * 4) },
-    { name: 'Джизак', sales: Math.round(950000 + Math.random() * 220000), count: Math.round(3 + Math.random() * 3) }
+  // Генерируем данные о модели
+  const totalSales = Math.round(500000 + Math.random() * 500000);
+  const totalCount = Math.round(50 + Math.random() * 100);
+  const avgPrice = Math.round(totalSales / totalCount);
+  const lastYearCount = Math.round(totalCount * (0.7 + Math.random() * 0.4));
+  const growth = ((totalCount / lastYearCount - 1) * 100).toFixed(1);
+  
+  // Создаем информационные карточки
+  createInfoCard(infoPanel, 'Общие продажи', formatProfitCompact(totalSales), '', '#3b82f6');
+  createInfoCard(infoPanel, 'Количество', totalCount, 'шт.', '#f87171', growth);
+  createInfoCard(infoPanel, 'Средняя цена', formatProfitCompact(avgPrice), '', '#8b5cf6');
+  createInfoCard(infoPanel, 'Доля рынка', (Math.round(5 + Math.random() * 15)), '%', '#10b981');
+  
+  // Контейнер для графика распределения по регионам
+  const regionsContainer = container.append('div')
+    .style('background', 'rgba(15, 23, 42, 0.6)')
+    .style('border-radius', '12px')
+    .style('padding', '20px')
+    .style('margin-bottom', '20px');
+  
+  regionsContainer.append('h3')
+    .style('font-size', '1.1rem')
+    .style('color', '#f9fafb')
+    .style('margin-bottom', '15px')
+    .text(`Распределение ${modelName} по регионам`);
+  
+  const regionsChartSvg = regionsContainer.append('svg')
+    .attr('width', '100%')
+    .attr('height', '400px');
+  
+  // Генерируем данные о распределении по регионам
+  const regions = [
+    'Ташкент', 'Самарканд', 'Бухара', 'Фергана', 'Андижан', 
+    'Наманган', 'Навои', 'Карши', 'Нукус', 'Ургенч', 'Джизак', 'Термез'
   ];
   
-  // Данные для прошлого года
-  const prevYearData = regionData.map(region => ({
-    name: region.name,
-    sales: Math.round(region.sales * (0.7 + Math.random() * 0.15)),
-    count: Math.round(region.count * (0.7 + Math.random() * 0.15))
-  }));
+  const regionData = regions.map(region => {
+    const currentYearSales = Math.round(5 + Math.random() * 45);
+    const previousYearSales = Math.round(currentYearSales * (0.7 + Math.random() * 0.6));
+    const regionGrowth = ((currentYearSales / previousYearSales - 1) * 100).toFixed(1);
+    
+    return {
+      name: region,
+      currentYear: currentYearSales,
+      previousYear: previousYearSales,
+      growth: parseFloat(regionGrowth)
+    };
+  }).sort((a, b) => b.currentYear - a.currentYear);
   
-  // Сортировка по количеству
-  regionData.sort((a, b) => b.count - a.count);
-  prevYearData.sort((a, b) => b.count - a.count);
+  // Отрисовка горизонтальной столбчатой диаграммы
+  const chartWidth = regionsChartSvg.node().clientWidth;
+  const chartHeight = 400;
+  const chartMargin = { top: 20, right: 120, bottom: 40, left: 150 };
   
-  // Общие показатели
-  const totalSales = regionData.reduce((sum, r) => sum + r.sales, 0);
-  const totalCount = regionData.reduce((sum, r) => sum + r.count, 0);
-  const prevTotalSales = prevYearData.reduce((sum, r) => sum + r.sales, 0);
-  const prevTotalCount = prevYearData.reduce((sum, r) => sum + r.count, 0);
-  
-  // 1. Левый верхний - карта популярности модели в регионах
-  const popularityMapContainer = grid.append('div')
-    .style('grid-column', '1')
-    .style('grid-row', '1')
-    .style('background', 'rgba(17, 24, 39, 0.4)')
-    .style('border-radius', '12px')
-    .style('padding', '15px')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)');
-  
-  popularityMapContainer.append('h3')
-    .style('font-size', '1.1rem')
-    .style('color', '#f9fafb')
-    .style('margin-bottom', '15px')
-    .style('text-align', 'center')
-    .text(`Популярность ${modelName} по регионам`);
-  
-  // Изображение модели
-  const modelImageContainer = popularityMapContainer.append('div')
-    .style('display', 'flex')
-    .style('justify-content', 'center')
-    .style('margin-bottom', '10px');
-    
-  modelImageContainer.append('div')
-    .style('width', '180px')
-    .style('height', '100px')
-    .style('background-image', 'url(https://telegra.ph/file/dbcb8da73115e8e2c466f.png)')
-    .style('background-size', 'cover')
-    .style('background-position', 'center')
-    .style('border-radius', '8px')
-    .style('border', '2px solid rgba(59, 130, 246, 0.3)');
-  
-  // Тепловая карта регионов (визуализация без географической карты)
-  const heatmapContainer = popularityMapContainer.append('div')
-    .style('height', 'calc(100% - 140px)')
-    .style('overflow-y', 'auto');
-  
-  // Общая информация о продажах модели
-  const modelInfoBox = heatmapContainer.append('div')
-    .style('display', 'flex')
-    .style('gap', '20px')
-    .style('justify-content', 'center')
-    .style('margin-bottom', '15px')
-    .style('padding', '10px')
-    .style('background', 'rgba(30, 41, 59, 0.5)')
-    .style('border-radius', '8px');
-    
-  // Общее количество
-  modelInfoBox.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .html(`
-      <span style="color: #9ca3af; font-size: 0.8rem">Всего продано</span>
-      <span style="color: #f9fafb; font-weight: bold; font-size: 1.3rem">${totalCount}</span>
-      <span style="color: #60a5fa; font-size: 0.8rem">автомобилей</span>
-    `);
-    
-  // Средняя цена
-  const avgPrice = totalSales / totalCount;
-  modelInfoBox.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .html(`
-      <span style="color: #9ca3af; font-size: 0.8rem">Средняя цена</span>
-      <span style="color: #f9fafb; font-weight: bold; font-size: 1.3rem">${formatProfitCompact(avgPrice)}</span>
-      <span style="color: #60a5fa; font-size: 0.8rem">UZS</span>
-    `);
-    
-  // Рост к прошлому году
-  const salesGrowth = ((totalSales / prevTotalSales) - 1) * 100;
-  modelInfoBox.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .html(`
-      <span style="color: #9ca3af; font-size: 0.8rem">Рост продаж</span>
-      <span style="color: ${salesGrowth >= 0 ? '#10b981' : '#ef4444'}; font-weight: bold; font-size: 1.3rem">
-        ${salesGrowth >= 0 ? '+' : ''}${salesGrowth.toFixed(1)}%
-      </span>
-      <span style="color: #60a5fa; font-size: 0.8rem">к ${year-1} году</span>
-    `);
-  
-  // Создаем тепловую карту популярности
-  const heatmap = heatmapContainer.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('gap', '10px');
-  
-  // Создаем строки тепловой карты для каждого региона
-  regionData.forEach((region, i) => {
-    const share = (region.count / totalCount) * 100;
-    const prevRegion = prevYearData.find(r => r.name === region.name) || { count: 0 };
-    const growth = ((region.count / Math.max(1, prevRegion.count)) - 1) * 100;
-    
-    const heatmapRow = heatmap.append('div')
-      .style('display', 'flex')
-      .style('align-items', 'center')
-      .style('padding', '10px')
-      .style('background', 'rgba(30, 41, 59, 0.5)')
-      .style('border-radius', '8px')
-      .style('transition', 'transform 0.2s')
-      .style('cursor', 'pointer')
-      .style('opacity', 0)
-      .style('transform', 'translateX(-20px)')
-      .on('mouseover', function() {
-        d3.select(this).style('transform', 'scale(1.02)');
-      })
-      .on('mouseout', function() {
-        d3.select(this).style('transform', 'scale(1)');
-      })
-      .transition()
-      .duration(500)
-      .delay(i * 80)
-      .style('opacity', 1)
-      .style('transform', 'translateX(0)');
-    
-    // Регион и количество
-    heatmapRow.append('div')
-      .style('flex', '1')
-      .style('display', 'flex')
-      .style('flex-direction', 'column')
-      .html(`
-        <span style="color: #f9fafb; font-weight: ${i < 3 ? 'bold' : 'normal'}">${region.name}</span>
-        <span style="color: #9ca3af; font-size: 0.8rem">${region.count} шт.</span>
-      `);
-    
-    // Тепловая полоса
-    const heatBar = heatmapRow.append('div')
-      .style('flex', '2')
-      .style('position', 'relative')
-      .style('height', '10px')
-      .style('background', 'rgba(75, 85, 99, 0.3)')
-      .style('border-radius', '5px')
-      .style('overflow', 'hidden');
-    
-    heatBar.append('div')
-      .style('position', 'absolute')
-      .style('top', '0')
-      .style('left', '0')
-      .style('height', '100%')
-      .style('width', '0%')
-      .style('background', d3.interpolateBlues(0.3 + (share / 100) * 0.7))
-      .style('border-radius', '5px')
-      .transition()
-      .duration(1000)
-      .delay(i * 80 + 300)
-      .style('width', `${share}%`);
-    
-    // Доля и рост
-    heatmapRow.append('div')
-      .style('width', '100px')
-      .style('display', 'flex')
-      .style('flex-direction', 'column')
-      .style('align-items', 'flex-end')
-      .html(`
-        <span style="color: #60a5fa; font-weight: bold">${share.toFixed(1)}%</span>
-        <span style="color: ${growth >= 0 ? '#10b981' : '#ef4444'}; font-size: 0.8rem">
-          ${growth >= 0 ? '▲' : '▼'} ${Math.abs(growth).toFixed(1)}%
-        </span>
-      `);
-  });
-  
-  // 2. Правый верхний - сравнительный график с прошлым годом
-  const compareContainer = grid.append('div')
-    .attr('id', 'model-distribution-comparison')
-    .style('grid-column', '2')
-    .style('grid-row', '1')
-    .style('background', 'rgba(17, 24, 39, 0.4)')
-    .style('border-radius', '12px')
-    .style('padding', '15px')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)');
-  
-  // Функция обновления графика сравнения
-  function updateModelDistributionComparison(modelName, compareYear, currentYear, month, monthName) {
-    const compareContainer = d3.select('#model-distribution-comparison');
-    compareContainer.selectAll('*').remove();
-    
-    // Заголовок
-    compareContainer.append('h3')
-      .style('font-size', '1.1rem')
-      .style('color', '#f9fafb')
-      .style('margin-bottom', '15px')
-      .style('text-align', 'center')
-      .text(`Сравнение c ${compareYear}: топ-5 регионов`);
-    
-    // Симуляция данных для сравниваемого года
-    const compareData = regionData.map(region => {
-      const variationFactor = 0.6 + Math.random() * 0.3; // 60-90% от текущего
-      return {
-        name: region.name,
-        count: Math.round(region.count * variationFactor),
-        sales: Math.round(region.sales * variationFactor)
-      };
-    });
-    
-    // Сортировка
-    compareData.sort((a, b) => b.count - a.count);
-    
-    // Топ-5 регионов для сравнения
-    const topRegions = regionData.slice(0, 5);
-    
-    // Подготовка данных для сравнения
-    const comparisonData = topRegions.map(region => {
-      const compareRegion = compareData.find(r => r.name === region.name) || { count: 0, sales: 0 };
-      return {
-        name: region.name,
-        currentCount: region.count,
-        previousCount: compareRegion.count,
-        growth: ((region.count / Math.max(1, compareRegion.count)) - 1) * 100
-      };
-    });
-    
-    // SVG для сравнительного графика
-    const compareSvg = compareContainer.append('svg')
-      .attr('width', '100%')
-      .attr('height', 'calc(100% - 20px)');
-    
-    const svgWidth = compareSvg.node().clientWidth;
-    const svgHeight = compareSvg.node().clientHeight;
-    const margin = { top: 20, right: 100, bottom: 40, left: 80 };
-    
-    // Шкалы
-    const maxCount = d3.max(comparisonData, d => Math.max(d.currentCount, d.previousCount)) * 1.1;
-    
-    const x = d3.scaleLinear()
-      .domain([0, maxCount])
-      .range([margin.left, svgWidth - margin.right]);
-    
-    const y = d3.scaleBand()
-      .domain(comparisonData.map(d => d.name))
-      .range([margin.top, svgHeight - margin.bottom])
-      .padding(0.3);
-    
-    // Оси
-    compareSvg.append('g')
-      .attr('transform', `translate(0,${svgHeight - margin.bottom})`)
-      .call(d3.axisBottom(x).ticks(5))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('text')
-        .style('fill', '#d1d5db')
-        .style('font-size', '0.7rem'));
-    
-    compareSvg.append('g')
-      .attr('transform', `translate(${margin.left},0)`)
-      .call(d3.axisLeft(y))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('text')
-        .style('fill', '#d1d5db')
-        .style('font-size', '0.8rem'));
-    
-    // Полосы для текущего года
-    compareSvg.selectAll('.current-bar')
-      .data(comparisonData)
-      .join('rect')
-      .attr('class', 'current-bar')
-      .attr('x', margin.left)
-      .attr('y', d => y(d.name))
-      .attr('height', y.bandwidth() / 2 - 2)
-      .attr('fill', '#3b82f6')
-      .attr('rx', 4)
-      .attr('width', 0)
-      .transition()
-      .duration(800)
-      .delay((d, i) => i * 100)
-      .attr('width', d => x(d.currentCount) - margin.left);
-    
-    // Полосы для сравниваемого года
-    compareSvg.selectAll('.compare-bar')
-      .data(comparisonData)
-      .join('rect')
-      .attr('class', 'compare-bar')
-      .attr('x', margin.left)
-      .attr('y', d => y(d.name) + y.bandwidth() / 2 + 2)
-      .attr('height', y.bandwidth() / 2 - 2)
-      .attr('fill', '#94a3b8')
-      .attr('rx', 4)
-      .attr('width', 0)
-      .transition()
-      .duration(800)
-      .delay((d, i) => i * 100 + 400)
-      .attr('width', d => x(d.previousCount) - margin.left);
-    
-    // Подписи для текущего года
-    compareSvg.selectAll('.current-count-label')
-      .data(comparisonData)
-      .join('text')
-      .attr('class', 'current-count-label')
-      .attr('x', d => x(d.currentCount) + 5)
-      .attr('y', d => y(d.name) + y.bandwidth() / 4)
-      .style('font-size', '0.75rem')
-      .style('fill', '#ffffff')
-      .style('opacity', 0)
-      .text(d => d.currentCount)
-      .transition()
-      .duration(500)
-      .delay((d, i) => i * 100 + 800)
-      .style('opacity', 1);
-    
-    // Подписи для сравниваемого года
-    compareSvg.selectAll('.previous-count-label')
-      .data(comparisonData)
-      .join('text')
-      .attr('class', 'previous-count-label')
-      .attr('x', d => x(d.previousCount) + 5)
-      .attr('y', d => y(d.name) + y.bandwidth() * 3/4 + 2)
-      .style('font-size', '0.75rem')
-      .style('fill', '#d1d5db')
-      .style('opacity', 0)
-      .text(d => d.previousCount)
-      .transition()
-      .duration(500)
-      .delay((d, i) => i * 100 + 1000)
-      .style('opacity', 1);
-    
-    // Процент изменения
-    compareSvg.selectAll('.growth-label')
-      .data(comparisonData)
-      .join('text')
-      .attr('class', 'growth-label')
-      .attr('x', svgWidth - margin.right + 5)
-      .attr('y', d => y(d.name) + y.bandwidth() / 2)
-      .attr('dy', '0.35em')
-      .style('font-size', '0.8rem')
-      .style('font-weight', 'bold')
-      .style('fill', d => d.growth >= 0 ? '#10b981' : '#ef4444')
-      .style('opacity', 0)
-      .text(d => `${d.growth >= 0 ? '▲' : '▼'} ${Math.abs(d.growth).toFixed(1)}%`)
-      .transition()
-      .duration(500)
-      .delay((d, i) => i * 100 + 1200)
-      .style('opacity', 1);
-    
-    // Легенда
-    const legend = compareSvg.append('g')
-      .attr('transform', `translate(${margin.left}, 5)`);
-    
-    // Текущий год
-    legend.append('rect')
-      .attr('width', 12)
-      .attr('height', 12)
-      .attr('rx', 2)
-      .attr('fill', '#3b82f6');
-    
-    legend.append('text')
-      .attr('x', 18)
-      .attr('y', 10)
-      .style('font-size', '0.7rem')
-      .style('fill', '#f9fafb')
-      .text(`${currentYear} год`);
-    
-    // Сравниваемый год
-    legend.append('rect')
-      .attr('width', 12)
-      .attr('height', 12)
-      .attr('rx', 2)
-      .attr('fill', '#94a3b8')
-      .attr('transform', 'translate(80, 0)');
-    
-    legend.append('text')
-      .attr('x', 98)
-      .attr('y', 10)
-      .style('font-size', '0.7rem')
-      .style('fill', '#f9fafb')
-      .text(`${compareYear} год`);
-  }
-  
-  // Инициализация графика сравнения
-  updateModelDistributionComparison(modelName, year-1, year, month, monthName);
-  
-  // 3. Нижний левый - динамика по месяцам
-  const monthlyTrendContainer = grid.append('div')
-    .style('grid-column', '1')
-    .style('grid-row', '2')
-    .style('background', 'rgba(17, 24, 39, 0.4)')
-    .style('border-radius', '12px')
-    .style('padding', '15px')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)');
-  
-  monthlyTrendContainer.append('h3')
-    .style('font-size', '1.1rem')
-    .style('color', '#f9fafb')
-    .style('margin-bottom', '15px')
-    .style('text-align', 'center')
-    .text(`Динамика продаж ${modelName} по месяцам`);
-  
-  // Генерируем данные по месяцам
-  const monthlyData = [];
-  const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-  
-  for (let i = 0; i < 12; i++) {
-    // Сезонный фактор: больше продаж летом и в конце года
-    const seasonalFactor = 0.7 + (i >= 5 && i <= 8 ? 0.5 : (i >= 10 ? 0.4 : 0.1)) + Math.random() * 0.2;
-    
-    // Базовое количество продаж
-    const baseCount = 10 + Math.round(seasonalFactor * 15);
-    
-    // Данные текущего и прошлого года
-    monthlyData.push({
-      month: months[i],
-      monthNum: i + 1,
-      count: baseCount,
-      prevCount: Math.round(baseCount * (0.6 + Math.random() * 0.2))
-    });
-  }
-  
-  // SVG для графика динамики по месяцам
-  const trendSvg = monthlyTrendContainer.append('svg')
-    .attr('width', '100%')
-    .attr('height', 'calc(100% - 20px)');
-  
-  const trendWidth = trendSvg.node().clientWidth;
-  const trendHeight = trendSvg.node().clientHeight;
-  const trendMargin = { top: 20, right: 30, bottom: 40, left: 40 };
-  
-  // Шкалы
-  const monthX = d3.scaleBand()
-    .domain(months)
-    .range([trendMargin.left, trendWidth - trendMargin.right])
+  // Создаем шкалы
+  const y = d3.scaleBand()
+    .domain(regionData.map(d => d.name))
+    .range([chartMargin.top, chartHeight - chartMargin.bottom])
     .padding(0.3);
   
-  const monthY = d3.scaleLinear()
-    .domain([0, d3.max(monthlyData, d => Math.max(d.count, d.prevCount)) * 1.1])
+  const x = d3.scaleLinear()
+    .domain([0, d3.max(regionData, d => d.currentYear) * 1.1])
     .nice()
-    .range([trendHeight - trendMargin.bottom, trendMargin.top]);
+    .range([chartMargin.left, chartWidth - chartMargin.right]);
   
-  // Оси
-  trendSvg.append('g')
-    .attr('transform', `translate(0,${trendHeight - trendMargin.bottom})`)
-    .call(d3.axisBottom(monthX))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text')
-      .style('fill', '#d1d5db')
-      .style('font-size', '0.75rem'));
+  // Добавляем оси
+  regionsChartSvg.append('g')
+    .attr('transform', `translate(0,${chartHeight - chartMargin.bottom})`)
+    .call(d3.axisBottom(x).ticks(5))
+    .call(g => g.selectAll('text').style('fill', '#9ca3af'));
   
-  trendSvg.append('g')
-    .attr('transform', `translate(${trendMargin.left},0)`)
-    .call(d3.axisLeft(monthY).ticks(5))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text')
-      .style('fill', '#d1d5db')
-      .style('font-size', '0.75rem'));
+  regionsChartSvg.append('g')
+    .attr('transform', `translate(${chartMargin.left},0)`)
+    .call(d3.axisLeft(y))
+    .call(g => g.selectAll('text').style('fill', '#9ca3af'));
   
-  // Линия текущего года
-  const currentLine = d3.line()
-    .x(d => monthX(d.month) + monthX.bandwidth() / 2)
-    .y(d => monthY(d.count))
-    .curve(d3.curveMonotoneX);
+  // Добавляем полосы для текущего года
+  regionsChartSvg.selectAll('.region-bar')
+    .data(regionData)
+    .join('rect')
+    .attr('class', 'region-bar')
+    .attr('x', chartMargin.left)
+    .attr('y', d => y(d.name))
+    .attr('height', y.bandwidth())
+    .attr('width', d => x(d.currentYear) - chartMargin.left)
+    .attr('fill', '#3b82f6')
+    .attr('rx', 4);
   
-  const currentPath = trendSvg.append('path')
-    .datum(monthlyData)
-    .attr('fill', 'none')
-    .attr('stroke', '#3b82f6')
-    .attr('stroke-width', 3)
-    .attr('d', currentLine);
+  // Добавляем метки значений
+  regionsChartSvg.selectAll('.region-label')
+    .data(regionData)
+    .join('text')
+    .attr('class', 'region-label')
+    .attr('x', d => x(d.currentYear) + 5)
+    .attr('y', d => y(d.name) + y.bandwidth() / 2)
+    .attr('dy', '0.35em')
+    .style('font-size', '0.9rem')
+    .style('fill', '#f9fafb')
+    .text(d => `${d.currentYear} шт. ${d.growth >= 0 ? '+' : ''}${d.growth}%`);
   
-  // Анимация линии текущего года
-  const currentPathLength = currentPath.node().getTotalLength();
-  currentPath
-    .attr('stroke-dasharray', currentPathLength)
-    .attr('stroke-dashoffset', currentPathLength)
-    .transition()
-    .duration(1500)
-    .attr('stroke-dashoffset', 0);
+  // Таблица с данными регионов и изменениями
+  const tableContainer = container.append('div')
+    .style('background', 'rgba(15, 23, 42, 0.6)')
+    .style('border-radius', '12px')
+    .style('padding', '20px');
   
-  // Линия прошлого года
-  const prevLine = d3.line()
-  .x(d => monthX(d.month) + monthX.bandwidth() / 2)
-   .y(d => monthY(d.prevCount))
-   .curve(d3.curveMonotoneX);
- 
- const prevPath = trendSvg.append('path')
-   .datum(monthlyData)
-   .attr('fill', 'none')
-   .attr('stroke', '#94a3b8')
-   .attr('stroke-width', 2)
-   .attr('stroke-dasharray', '5,3')
-   .attr('d', prevLine)
-   .style('opacity', 0);
- 
- // Анимация линии прошлого года
- prevPath
-   .transition()
-   .duration(1000)
-   .delay(1500)
-   .style('opacity', 1);
- 
- // Точки на линии текущего года
- trendSvg.selectAll('.current-point')
-   .data(monthlyData)
-   .join('circle')
-   .attr('class', 'current-point')
-   .attr('cx', d => monthX(d.month) + monthX.bandwidth() / 2)
-   .attr('cy', d => monthY(d.count))
-   .attr('r', 0)
-   .attr('fill', '#3b82f6')
-   .attr('stroke', '#1f2937')
-   .attr('stroke-width', 2)
-   .transition()
-   .duration(300)
-   .delay((_, i) => 1500 + i * 100)
-   .attr('r', 4);
- 
- // Подсветка текущего месяца
- const currentMonthIndex = months.findIndex(m => m === monthName.substring(0, 3));
- if (currentMonthIndex >= 0) {
-   trendSvg.append('rect')
-     .attr('x', monthX(months[currentMonthIndex]) - 5)
-     .attr('y', trendMargin.top)
-     .attr('width', monthX.bandwidth() + 10)
-     .attr('height', trendHeight - trendMargin.top - trendMargin.bottom)
-     .attr('fill', 'rgba(59, 130, 246, 0.1)')
-     .attr('rx', 4)
-     .style('opacity', 0)
-     .transition()
-     .duration(500)
-     .delay(2500)
-     .style('opacity', 1);
-   
-   trendSvg.append('text')
-     .attr('x', monthX(months[currentMonthIndex]) + monthX.bandwidth() / 2)
-     .attr('y', trendMargin.top - 5)
-     .attr('text-anchor', 'middle')
-     .style('font-size', '0.7rem')
-     .style('fill', '#60a5fa')
-     .style('opacity', 0)
-     .text('Текущий месяц')
-     .transition()
-     .duration(500)
-     .delay(2500)
-     .style('opacity', 1);
- }
- 
- // Легенда
- const trendLegend = trendSvg.append('g')
-   .attr('transform', `translate(${trendMargin.left + 10}, ${trendMargin.top + 10})`);
- 
- // Текущий год
- trendLegend.append('line')
-   .attr('x1', 0)
-   .attr('x2', 20)
-   .attr('y1', 0)
-   .attr('y2', 0)
-   .attr('stroke', '#3b82f6')
-   .attr('stroke-width', 3);
- 
- trendLegend.append('text')
-   .attr('x', 25)
-   .attr('y', 4)
-   .style('font-size', '0.75rem')
-   .style('fill', '#f9fafb')
-   .text(`${year}`);
- 
- // Прошлый год
- trendLegend.append('line')
-   .attr('x1', 0)
-   .attr('x2', 20)
-   .attr('y1', 15)
-   .attr('y2', 15)
-   .attr('stroke', '#94a3b8')
-   .attr('stroke-width', 2)
-   .attr('stroke-dasharray', '5,3');
- 
- trendLegend.append('text')
-   .attr('x', 25)
-   .attr('y', 19)
-   .style('font-size', '0.75rem')
-   .style('fill', '#f9fafb')
-   .text(`${year-1}`);
- 
- // 4. Нижний правый - дополнительная информация и статистика
- const statsContainer = grid.append('div')
-   .style('grid-column', '2')
-   .style('grid-row', '2')
-   .style('background', 'rgba(17, 24, 39, 0.4)')
-   .style('border-radius', '12px')
-   .style('padding', '15px')
-   .style('border', '1px solid rgba(59, 130, 246, 0.1)')
-   .style('display', 'flex')
-   .style('flex-direction', 'column')
-   .style('gap', '15px')
-   .style('overflow', 'auto');
- 
- statsContainer.append('h3')
-   .style('font-size', '1.1rem')
-   .style('color', '#f9fafb')
-   .style('margin-bottom', '5px')
-   .style('text-align', 'center')
-   .text('Анализ рынка по модели');
- 
- // Блок характеристик модели
- const modelSpecs = statsContainer.append('div')
-   .style('background', 'rgba(30, 41, 59, 0.5)')
-   .style('border-radius', '8px')
-   .style('padding', '15px');
- 
- modelSpecs.append('h4')
-   .style('font-size', '0.9rem')
-   .style('color', '#60a5fa')
-   .style('margin-bottom', '10px')
-   .text('Характеристики модели');
- 
- // Таблица характеристик
- const specsTable = modelSpecs.append('div')
-   .style('display', 'grid')
-   .style('grid-template-columns', '1fr 1fr')
-   .style('gap', '10px');
- 
- // Добавляем характеристики
- const addSpec = (name, value) => {
-   const row = specsTable.append('div')
-     .style('display', 'flex')
-     .style('justify-content', 'space-between')
-     .style('border-bottom', '1px solid rgba(75, 85, 99, 0.3)')
-     .style('padding-bottom', '5px');
-     
-   row.append('span')
-     .style('color', '#9ca3af')
-     .style('font-size', '0.8rem')
-     .text(name);
-     
-   row.append('span')
-     .style('color', '#f9fafb')
-     .style('font-size', '0.8rem')
-     .style('font-weight', 'bold')
-     .text(value);
- };
- 
- // Спецификации для примера
- addSpec('Тип двигателя', '1.5 турбо');
- addSpec('Мощность', '150 л.с.');
- addSpec('Расход топлива', '7.8 л/100км');
- addSpec('Тип кузова', 'Седан');
- addSpec('Привод', 'Передний');
- addSpec('Трансмиссия', 'АКПП');
- addSpec('Объем багажника', '480 л');
- addSpec('Клиренс', '160 мм');
- 
- // Блок с ценовой аналитикой
- const priceAnalysis = statsContainer.append('div')
-   .style('background', 'rgba(30, 41, 59, 0.5)')
-   .style('border-radius', '8px')
-   .style('padding', '15px');
- 
- priceAnalysis.append('h4')
-   .style('font-size', '0.9rem')
-   .style('color', '#60a5fa')
-   .style('margin-bottom', '10px')
-   .text('Ценовая аналитика');
- 
- // Создаем шкалу ценовых диапазонов
- const priceRanges = [
-   { range: 'Минимальная', price: formatProfitCompact(avgPrice * 0.85) },
-   { range: 'Средняя', price: formatProfitCompact(avgPrice) },
-   { range: 'Максимальная', price: formatProfitCompact(avgPrice * 1.15) }
- ];
- 
- const priceTable = priceAnalysis.append('div')
-   .style('display', 'grid')
-   .style('grid-template-columns', '1fr 1fr')
-   .style('gap', '8px');
- 
- priceRanges.forEach(item => {
-   const row = priceTable.append('div')
-     .style('display', 'flex')
-     .style('justify-content', 'space-between')
-     .style('align-items', 'center')
-     .style('padding', '5px 0')
-     .style('border-bottom', item.range === 'Средняя' ? '2px solid #60a5fa' : '1px solid rgba(75, 85, 99, 0.3)');
-     
-   row.append('span')
-     .style('color', item.range === 'Средняя' ? '#60a5fa' : '#9ca3af')
-     .style('font-size', '0.8rem')
-     .style('font-weight', item.range === 'Средняя' ? 'bold' : 'normal')
-     .text(item.range);
-     
-   row.append('span')
-     .style('color', item.range === 'Средняя' ? '#f9fafb' : '#d1d5db')
-     .style('font-size', '0.8rem')
-     .style('font-weight', item.range === 'Средняя' ? 'bold' : 'normal')
-     .text(item.price);
- });
- 
- // График динамики цен
- priceAnalysis.append('div')
-   .style('font-size', '0.8rem')
-   .style('color', '#10b981')
-   .style('padding', '8px 0')
-   .style('border-top', '1px solid rgba(75, 85, 99, 0.3)')
-   .style('margin-top', '5px')
-   .html(`<i class="fas fa-arrow-trend-up"></i> Рост цены: +${(5 + Math.random() * 3).toFixed(1)}% за последний квартал`);
- 
- // Блок с тенденциями рынка
- const marketTrends = statsContainer.append('div')
-   .style('background', 'rgba(30, 41, 59, 0.5)')
-   .style('border-radius', '8px')
-   .style('padding', '15px');
- 
- marketTrends.append('h4')
-   .style('font-size', '0.9rem')
-   .style('color', '#60a5fa')
-   .style('margin-bottom', '10px')
-   .text('Тенденции рынка');
- 
- // Список тенденций
- const trendsList = marketTrends.append('div')
-   .style('display', 'flex')
-   .style('flex-direction', 'column')
-   .style('gap', '8px');
- 
- const trends = [
-   { text: 'Рост популярности в регионах с высоким уровнем дохода', icon: 'fa-chart-line', color: '#10b981' },
-   { text: 'Сезонный пик продаж ожидается в летний период', icon: 'fa-sun', color: '#f59e0b' },
-   { text: 'Увеличение спроса на комплектации с АКПП', icon: 'fa-gear', color: '#3b82f6' }
- ];
- 
- trends.forEach(trend => {
-   trendsList.append('div')
-     .style('display', 'flex')
-     .style('align-items', 'center')
-     .style('gap', '10px')
-     .html(`
-       <i class="fas ${trend.icon}" style="color: ${trend.color}; font-size: 0.9rem;"></i>
-       <span style="color: #f9fafb; font-size: 0.8rem;">${trend.text}</span>
-     `);
- });
- 
- // Добавляем иконки Font Awesome
- if (!document.querySelector('[href*="font-awesome"]')) {
-   const head = document.head || document.getElementsByTagName('head')[0];
-   const fontAwesome = document.createElement('link');
-   fontAwesome.rel = 'stylesheet';
-   fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css';
-   head.appendChild(fontAwesome);
- }
+  tableContainer.append('h3')
+    .style('font-size', '1.1rem')
+    .style('color', '#f9fafb')
+    .style('margin-bottom', '15px')
+    .text(`Сравнение продаж ${modelName} по регионам: ${year} vs ${year-1}`);
+  
+  const table = tableContainer.append('div')
+    .style('width', '100%')
+    .style('overflow-x', 'auto');
+  
+  // Заголовок таблицы
+  const tableHeader = table.append('div')
+    .style('display', 'grid')
+    .style('grid-template-columns', '30% 20% 20% 15% 15%')
+    .style('padding', '12px')
+    .style('background', 'rgba(30, 41, 59, 0.7)')
+    .style('border-radius', '8px 8px 0 0');
+  
+  tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').text('Регион');
+  tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'center').text(`${year} год`);
+  tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'center').text(`${year-1} год`);
+  tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'center').text('Изменение');
+  tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'center').text('Доля');
+  
+  // Строки таблицы
+  regionData.forEach((region, i) => {
+    const marketShare = ((region.currentYear / regionData.reduce((sum, r) => sum + r.currentYear, 0)) * 100).toFixed(1);
+    
+    const row = table.append('div')
+      .style('display', 'grid')
+      .style('grid-template-columns', '30% 20% 20% 15% 15%')
+      .style('padding', '12px')
+      .style('background', i % 2 === 0 ? 'rgba(30, 41, 59, 0.3)' : 'rgba(30, 41, 59, 0.5)');
+    
+    row.append('div').style('color', '#f9fafb').text(region.name);
+    row.append('div').style('color', '#f9fafb').style('text-align', 'center').text(`${region.currentYear} шт.`);
+    row.append('div').style('color', '#9ca3af').style('text-align', 'center').text(`${region.previousYear} шт.`);
+    row.append('div').style('color', region.growth >= 0 ? '#10b981' : '#ef4444').style('font-weight', 'bold').style('text-align', 'center').text(`${region.growth >= 0 ? '+' : ''}${region.growth}%`);
+    row.append('div').style('color', '#f9fafb').style('text-align', 'center').text(`${marketShare}%`);
+  });
 };
+
+// Функция для создания информационной карточки
+const createInfoCard = (container, title, value, suffix, color, trend) => {
+  const card = container.append('div')
+    .style('background', `rgba(30, 41, 59, 0.5)`)
+    .style('border-radius', '12px')
+    .style('padding', '15px')
+    .style('border-left', `3px solid ${color}`);
+  
+  card.append('div')
+    .style('font-size', '0.8rem')
+    .style('color', '#9ca3af')
+    .text(title);
+  
+  const valueRow = card.append('div')
+    .style('font-size', '1.4rem')
+    .style('font-weight', 'bold')
+    .style('color', '#f9fafb')
+    .style('margin', '5px 0')
+    .text(value + (suffix ? ' ' + suffix : ''));
+  
+  if (trend) {
+    card.append('div')
+      .style('font-size', '0.8rem')
+      .style('color', trend >= 0 ? '#10b981' : '#ef4444')
+      .text(`${trend >= 0 ? '▲' : '▼'} ${Math.abs(trend)}% к прошлому году`);
+  }
+};
+
 
 // Показывает распределение моделей в конкретном регионе
 const showRegionModelDistribution = (regionName, year, month, monthName) => {
@@ -3730,623 +3096,288 @@ const showRegionModelDistribution = (regionName, year, month, monthName) => {
   const container = d3.select(mainChartRef.current)
     .append('div')
     .style('width', '100%')
-    .style('height', '100%')
-    .style('background', 'linear-gradient(135deg, #1f2937 0%, #111827 100%)')
+    .style('background', 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)')
     .style('border-radius', '1rem')
-    .style('padding', '20px')
-    .style('box-shadow', '0 10px 25px -5px rgba(0, 0, 0, 0.3)');
+    .style('padding', '20px');
   
-  // Добавляем заголовок и кнопки навигации
+  // Добавляем заголовок и навигацию
   const header = container.append('div')
     .style('display', 'flex')
     .style('justify-content', 'space-between')
-    .style('align-items', 'center')
-    .style('margin-bottom', '20px');
+    .style('margin-bottom', '20px')
+    .style('border-bottom', '1px solid rgba(59, 130, 246, 0.2)')
+    .style('padding-bottom', '10px');
   
   header.append('h2')
     .style('font-size', '1.4rem')
-    .style('font-weight', 'bold')
     .style('color', '#f9fafb')
-    .html(`<span style="color: #f87171;">${regionName}</span>: структура продаж (${monthName} ${year})`);
+    .html(`<span style="color: #f87171;">${regionName}</span>: модели (${monthName} ${year})`);
   
-  const buttonGroup = header.append('div')
-    .style('display', 'flex')
-    .style('gap', '10px');
+  // Кнопки навигации
+  const buttons = header.append('div').style('display', 'flex').style('gap', '10px');
   
-  // Кнопка возврата к списку регионов
-  buttonGroup.append('button')
-    .style('background', 'rgba(239, 68, 68, 0.2)')
+  buttons.append('button')
+    .style('background', 'rgba(239, 68, 68, 0.1)')
     .style('color', '#f87171')
-    .style('border', 'none')
+    .style('border', '1px solid rgba(239, 68, 68, 0.3)')
     .style('padding', '8px 15px')
     .style('border-radius', '8px')
-    .style('font-size', '0.85rem')
-    .style('cursor', 'pointer')
     .text('← К списку регионов')
     .on('click', () => showRegionDetails(year, month, monthName));
   
-  // Кнопка возврата к общему графику
-  buttonGroup.append('button')
-    .style('background', 'rgba(16, 185, 129, 0.2)')
+  buttons.append('button')
+    .style('background', 'rgba(16, 185, 129, 0.1)')
     .style('color', '#34d399')
-    .style('border', 'none')
+    .style('border', '1px solid rgba(16, 185, 129, 0.3)')
     .style('padding', '8px 15px')
     .style('border-radius', '8px')
-    .style('font-size', '0.85rem')
-    .style('cursor', 'pointer')
-    .text('← К общему графику')
+    .text('← К общему обзору')
     .on('click', renderPeriodComparisonTable);
   
-  // Создаем сетку для графиков
-  const grid = container.append('div')
-    .style('display', 'grid')
-    .style('grid-template-columns', '1fr 1fr')
-    .style('grid-template-rows', 'auto auto')
-    .style('gap', '20px')
-    .style('height', 'calc(100% - 60px)');
+  // Панель сравнения
+  const comparisonPanel = container.append('div')
+    .style('display', 'flex')
+    .style('background', 'rgba(30, 41, 59, 0.5)')
+    .style('border-radius', '10px')
+    .style('padding', '15px')
+    .style('margin-bottom', '20px');
+    
+  comparisonPanel.append('div')
+    .style('font-size', '0.9rem')
+    .style('color', '#f9fafb')
+    .text(`Сравнение с ${monthName} ${year-1}`);
   
-  // Генерируем данные о продажах моделей в выбранном регионе
-  const modelsData = [
-    { name: 'Chevrolet Nexia', sales: Math.round(550000 + Math.random() * 150000), count: Math.round(25 + Math.random() * 15) },
-    { name: 'Chevrolet Cobalt', sales: Math.round(480000 + Math.random() * 120000), count: Math.round(20 + Math.random() * 10) },
-    { name: 'Chevrolet Spark', sales: Math.round(320000 + Math.random() * 90000), count: Math.round(15 + Math.random() * 15) },
-    { name: 'Ravon Gentra', sales: Math.round(410000 + Math.random() * 100000), count: Math.round(12 + Math.random() * 8) },
-    { name: 'Chevrolet Lacetti', sales: Math.round(490000 + Math.random() * 130000), count: Math.round(10 + Math.random() * 8) },
-    { name: 'Chevrolet Malibu', sales: Math.round(720000 + Math.random() * 180000), count: Math.round(8 + Math.random() * 7) },
-    { name: 'Chevrolet Captiva', sales: Math.round(850000 + Math.random() * 200000), count: Math.round(6 + Math.random() * 5) },
-    { name: 'Hyundai Sonata', sales: Math.round(680000 + Math.random() * 170000), count: Math.round(5 + Math.random() * 5) },
-    { name: 'Kia K5', sales: Math.round(750000 + Math.random() * 180000), count: Math.round(4 + Math.random() * 4) },
-    { name: 'Toyota Camry', sales: Math.round(950000 + Math.random() * 220000), count: Math.round(3 + Math.random() * 3) }
+  // Генерируем статистику региона
+  const totalSalesCurrentYear = Math.round(2500000 + Math.random() * 1000000);
+  const totalSalesPrevYear = Math.round(totalSalesCurrentYear * (0.8 + Math.random() * 0.3));
+  const salesGrowth = ((totalSalesCurrentYear / totalSalesPrevYear - 1) * 100).toFixed(1);
+  const totalCountCurrentYear = Math.round(300 + Math.random() * 200);
+  
+  // Основной контейнер для графиков
+  const chartsContainer = container.append('div')
+    .style('display', 'grid')
+    .style('grid-template-columns', 'repeat(auto-fit, minmax(300px, 1fr))')
+    .style('gap', '20px')
+    .style('margin-bottom', '20px');
+  
+  // 1. График сравнения продаж моделей (текущий год vs предыдущий)
+  const comparisonChartContainer = chartsContainer.append('div')
+    .style('grid-column', 'span 2')
+    .style('background', 'rgba(15, 23, 42, 0.6)')
+    .style('border-radius', '12px')
+    .style('padding', '20px');
+    
+  comparisonChartContainer.append('h3')
+    .style('font-size', '1.1rem')
+    .style('color', '#f9fafb')
+    .style('margin-bottom', '15px')
+    .text(`Сравнение продаж моделей: ${monthName} ${year} vs ${monthName} ${year-1}`);
+    
+  const comparisonChartSvg = comparisonChartContainer.append('svg')
+    .attr('width', '100%')
+    .attr('height', '350px');
+    
+  // Генерируем данные о моделях
+  const modelNames = [
+    'Chevrolet Nexia', 'Chevrolet Cobalt', 'Chevrolet Spark', 
+    'Ravon Gentra', 'Chevrolet Lacetti', 'Chevrolet Malibu', 
+    'Chevrolet Captiva', 'Hyundai Sonata', 'Kia K5', 'Toyota Camry'
   ];
   
-  // Сортируем по количеству продаж
-  modelsData.sort((a, b) => b.count - a.count);
-  
-  // Рассчитываем общие показатели
-  const totalSales = modelsData.reduce((sum, d) => sum + d.sales, 0);
-  const totalCount = modelsData.reduce((sum, d) => sum + d.count, 0);
-  
-  // 1. Верхний левый - круговая диаграмма распределения моделей
-  const pieChartContainer = grid.append('div')
-    .style('grid-column', '1')
-    .style('grid-row', '1')
-    .style('background', 'rgba(17, 24, 39, 0.4)')
-    .style('border-radius', '12px')
-    .style('padding', '15px')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)');
-  
-  pieChartContainer.append('h3')
-    .style('font-size', '1.1rem')
-    .style('color', '#f9fafb')
-    .style('margin-bottom', '15px')
-    .style('text-align', 'center')
-    .text(`Структура продаж в регионе ${regionName}`);
-  
-  // Создаем круговую диаграмму
-  const pieSvg = pieChartContainer.append('svg')
-    .attr('width', '100%')
-    .attr('height', 'calc(100% - 30px)');
-  
-  const pieWidth = pieSvg.node().clientWidth;
-  const pieHeight = pieSvg.node().clientHeight;
-  const pieRadius = Math.min(pieWidth, pieHeight) / 2 * 0.75;
-  
-  // Используем топ-6 моделей и объединяем остальные в "Другие"
-  const pieData = [...modelsData.slice(0, 6)];
-  
-  if (modelsData.length > 6) {
-    const otherSales = modelsData.slice(6).reduce((sum, m) => sum + m.sales, 0);
-    const otherCount = modelsData.slice(6).reduce((sum, m) => sum + m.count, 0);
-    pieData.push({ name: 'Другие модели', sales: otherSales, count: otherCount });
-  }
-  
-  // Цветовая схема
-  const pieColor = d3.scaleOrdinal()
-    .domain(pieData.map(d => d.name))
-    .range(d3.quantize(t => d3.interpolateInferno(t * 0.8 + 0.1), pieData.length));
-  
-  const pie = d3.pie()
-    .value(d => d.count)
-    .sort(null);
-  
-  const arc = d3.arc()
-    .innerRadius(pieRadius * 0.4)
-    .outerRadius(pieRadius);
-  
-  const arcHover = d3.arc()
-    .innerRadius(pieRadius * 0.4)
-    .outerRadius(pieRadius * 1.05);
-  
-  // Градиенты для сегментов
-  const pieDefs = pieSvg.append('defs');
-  
-  pieData.forEach((model, i) => {
-    const gradientId = `pie-model-gradient-${i}`;
-    const gradient = pieDefs.append('linearGradient')
-      .attr('id', gradientId)
-      .attr('x1', '0%')
-      .attr('y1', '0%')
-      .attr('x2', '100%')
-      .attr('y2', '100%');
+  const modelsComparisonData = modelNames.map(model => {
+    const currentYearSales = Math.round(50000 + Math.random() * 100000);
+    const previousYearSales = Math.round(currentYearSales * (0.7 + Math.random() * 0.6));
+    const growth = ((currentYearSales / previousYearSales - 1) * 100).toFixed(1);
     
-    gradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', d3.rgb(pieColor(model.name)).brighter(0.5))
-      .attr('stop-opacity', 0.9);
-    
-    gradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', pieColor(model.name))
-      .attr('stop-opacity', 0.7);
-  });
+    return {
+      name: model,
+      currentYear: currentYearSales,
+      previousYear: previousYearSales,
+      growth: parseFloat(growth)
+    };
+  }).sort((a, b) => b.currentYear - a.currentYear);
   
-  // Группа для пончика
-  const pieG = pieSvg.append('g')
-    .attr('transform', `translate(${pieWidth / 2}, ${pieHeight / 2})`);
+  // Отрисовка графика сравнения
+  const compWidth = comparisonChartSvg.node().clientWidth;
+  const compHeight = 350;
+  const compMargin = { top: 30, right: 100, bottom: 60, left: 80 };
   
-  // Сегменты с анимацией и интерактивностью
-  const pieArcs = pieG.selectAll('path')
-    .data(pie(pieData))
-    .join('path')
-    .attr('fill', (d, i) => `url(#pie-model-gradient-${i})`)
-    .attr('stroke', '#111827')
-    .attr('stroke-width', 1)
-    .style('cursor', 'pointer')
-    .on('mouseover', function(event, d) {
-      d3.select(this)
-        .transition()
-        .duration(200)
-        .attr('d', arcHover);
-      
-      // Обновляем текст в центре
-      centerText.text(d.data.name);
-      centerNumber.text(d.data.count + ' шт.');
-      centerPercent.text(`${((d.data.count / totalCount) * 100).toFixed(1)}%`);
-    })
-    .on('mouseout', function() {
-      d3.select(this)
-        .transition()
-        .duration(200)
-        .attr('d', arc);
-      
-      // Восстанавливаем общие данные
-      centerText.text('Всего продано');
-      centerNumber.text(totalCount + ' шт.');
-      centerPercent.text('100%');
-    })
-    .on('click', (event, d) => {
-      // При клике показываем распределение модели по регионам
-      if (d.data.name !== 'Другие модели') {
-        showModelRegionalDistribution(d.data.name, year, month, monthName);
-      }
-    });
+  // Создаем шкалы
+  const compX = d3.scaleBand()
+    .domain(modelsComparisonData.map(d => d.name))
+    .range([compMargin.left, compWidth - compMargin.right])
+    .padding(0.3);
   
-  // Анимация сегментов
-  pieArcs.each(function(d) {
-    const self = this;
-    const i = d.index;
-    
-    d3.select(this)
-      .transition()
-      .duration(500)
-      .delay(i * 100)
-      .attrTween('d', function() {
-        const interpolate = d3.interpolate(
-          { startAngle: d.startAngle, endAngle: d.startAngle },
-          { startAngle: d.startAngle, endAngle: d.endAngle }
-        );
-        return function(t) {
-          return arc(interpolate(t));
-        };
-      });
-  });
-  
-  // Текст в центре пончика
-  const centerText = pieG.append('text')
-    .attr('text-anchor', 'middle')
-    .attr('dy', '-1em')
-    .style('font-size', '0.9rem')
-    .style('fill', '#d1d5db')
-    .text('Всего продано');
-  
-  const centerNumber = pieG.append('text')
-    .attr('text-anchor', 'middle')
-    .attr('dy', '0.5em')
-    .style('font-size', '1.2rem')
-    .style('font-weight', 'bold')
-    .style('fill', '#f9fafb')
-    .text(totalCount + ' шт.');
-  
-  const centerPercent = pieG.append('text')
-    .attr('text-anchor', 'middle')
-    .attr('dy', '2em')
-    .style('font-size', '1rem')
-    .style('fill', '#f87171')
-    .text('100%');
-  
-  // 2. Верхний правый - столбчатая диаграмма количества моделей
-  const barChartContainer = grid.append('div')
-    .style('grid-column', '2')
-    .style('grid-row', '1')
-    .style('background', 'rgba(17, 24, 39, 0.4)')
-    .style('border-radius', '12px')
-    .style('padding', '15px')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)');
-  
-  barChartContainer.append('h3')
-    .style('font-size', '1.1rem')
-    .style('color', '#f9fafb')
-    .style('margin-bottom', '15px')
-    .style('text-align', 'center')
-    .text(`Количество автомобилей по моделям в ${regionName}`);
-  
-  // Создаем столбчатую диаграмму
-  const barSvg = barChartContainer.append('svg')
-    .attr('width', '100%')
-    .attr('height', 'calc(100% - 30px)');
-  
-  const barWidth = barSvg.node().clientWidth;
-  const barHeight = barSvg.node().clientHeight;
-  const barMargin = { top: 20, right: 30, bottom: 80, left: 40 };
-  
-  // Используем топ-8 моделей
-  const topModels = modelsData.slice(0, 8);
-  
-  // Шкалы
-  const x = d3.scaleBand()
-    .domain(topModels.map(d => d.name))
-    .range([barMargin.left, barWidth - barMargin.right])
-    .padding(0.2);
-  
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(topModels, d => d.count) * 1.1])
+  const compY = d3.scaleLinear()
+    .domain([0, d3.max(modelsComparisonData, d => Math.max(d.currentYear, d.previousYear)) * 1.1])
     .nice()
-    .range([barHeight - barMargin.bottom, barMargin.top]);
+    .range([compHeight - compMargin.bottom, compMargin.top]);
   
-  // Градиент для столбцов
-  const barGradient = pieDefs.append('linearGradient')
-    .attr('id', 'region-model-gradient')
-    .attr('x1', '0%')
-    .attr('y1', '0%')
-    .attr('x2', '0%')
-    .attr('y2', '100%');
+  // Внутренняя шкала для группировки
+  const compX1 = d3.scaleBand()
+    .domain(['previousYear', 'currentYear'])
+    .range([0, compX.bandwidth()])
+    .padding(0.1);
   
-  barGradient.append('stop')
-    .attr('offset', '0%')
-    .attr('stop-color', '#f87171')
-    .attr('stop-opacity', 0.9);
+  // Цветовая шкала
+  const compColor = d3.scaleOrdinal()
+    .domain(['previousYear', 'currentYear'])
+    .range(['#94a3b8', '#f87171']);
   
-  barGradient.append('stop')
-    .attr('offset', '100%')
-    .attr('stop-color', '#ef4444')
-    .attr('stop-opacity', 0.7);
-  
-  // Оси
-  barSvg.append('g')
-    .attr('transform', `translate(0,${barHeight - barMargin.bottom})`)
-    .call(d3.axisBottom(x))
-    .call(g => g.select('.domain').remove())
+  // Добавляем оси
+  comparisonChartSvg.append('g')
+    .attr('transform', `translate(0,${compHeight - compMargin.bottom})`)
+    .call(d3.axisBottom(compX))
     .call(g => g.selectAll('text')
-      .style('fill', '#d1d5db')
-      .style('font-size', '0.75rem')
-      .attr('transform', 'rotate(-45)')
+      .style('fill', '#9ca3af')
+      .attr('transform', 'rotate(-30)')
       .attr('text-anchor', 'end')
       .attr('dx', '-0.8em')
       .attr('dy', '0.15em'));
   
-  barSvg.append('g')
-    .attr('transform', `translate(${barMargin.left},0)`)
-    .call(d3.axisLeft(y).ticks(5))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text')
-      .style('fill', '#d1d5db')
-      .style('font-size', '0.75rem'));
+  comparisonChartSvg.append('g')
+    .attr('transform', `translate(${compMargin.left},0)`)
+    .call(d3.axisLeft(compY).ticks(5).tickFormat(d => formatProfitCompact(d)))
+    .call(g => g.selectAll('text').style('fill', '#9ca3af'));
   
-  // Столбцы с анимацией
-  barSvg.selectAll('.region-model-bar')
-    .data(topModels)
-    .join('rect')
-    .attr('class', 'region-model-bar')
-    .attr('x', d => x(d.name))
-    .attr('width', x.bandwidth())
-    .attr('fill', 'url(#region-model-gradient)')
-    .attr('rx', 4)
-    .style('cursor', 'pointer')
-    .on('click', (event, d) => {
-      showModelRegionalDistribution(d.name, year, month, monthName);
-    })
-    // Анимация
-    .attr('y', barHeight - barMargin.bottom)
-    .attr('height', 0)
-    .transition()
-    .duration(800)
-    .delay((d, i) => i * 50)
-    .attr('y', d => y(d.count))
-    .attr('height', d => barHeight - barMargin.bottom - y(d.count));
+  // Добавляем горизонтальные линии сетки
+  comparisonChartSvg.append('g')
+    .selectAll('line')
+    .data(compY.ticks(5))
+    .join('line')
+    .attr('x1', compMargin.left)
+    .attr('x2', compWidth - compMargin.right)
+    .attr('y1', d => compY(d))
+    .attr('y2', d => compY(d))
+    .attr('stroke', 'rgba(148, 163, 184, 0.1)')
+    .attr('stroke-dasharray', '3,3');
   
-  // Подписи со значениями
-  barSvg.selectAll('.region-model-label')
-    .data(topModels)
-    .join('text')
-    .attr('class', 'region-model-label')
-    .attr('x', d => x(d.name) + x.bandwidth() / 2)
-    .attr('y', d => y(d.count) - 5)
+  // Создаем группы для каждой модели
+  const modelGroups = comparisonChartSvg.append('g')
+    .selectAll('g')
+    .data(modelsComparisonData)
+    .join('g')
+    .attr('transform', d => `translate(${compX(d.name)},0)`);
+  
+  // Добавляем столбцы для каждого года
+  const years = ['previousYear', 'currentYear'];
+  
+  years.forEach(yearKey => {
+    modelGroups.append('rect')
+      .attr('x', d => compX1(yearKey))
+      .attr('y', d => compY(d[yearKey]))
+      .attr('width', compX1.bandwidth())
+      .attr('height', d => compHeight - compMargin.bottom - compY(d[yearKey]))
+      .attr('fill', compColor(yearKey))
+      .attr('rx', 4)
+      .style('opacity', yearKey === 'currentYear' ? 0.9 : 0.6);
+  });
+  
+  // Добавляем метки процентного изменения
+  modelGroups.append('text')
+    .attr('x', d => compX1('currentYear') + compX1.bandwidth() / 2)
+    .attr('y', d => compY(d.currentYear) - 10)
     .attr('text-anchor', 'middle')
-    .style('font-size', '0.85rem')
-    .style('fill', '#f9fafb')
-    .style('opacity', 0)
-    .text(d => d.count)
-    .transition()
-    .duration(500)
-    .delay((d, i) => 800 + i * 50)
-    .style('opacity', 1);
+    .style('fill', d => d.growth >= 0 ? '#10b981' : '#ef4444')
+    .style('font-weight', 'bold')
+    .style('font-size', '0.8rem')
+    .text(d => `${d.growth >= 0 ? '+' : ''}${d.growth}%`);
   
-  // 3. Нижний левый - таблица сравнения с другими регионами
-  const comparisonContainer = grid.append('div')
-    .style('grid-column', '1')
-    .style('grid-row', '2')
-    .style('background', 'rgba(17, 24, 39, 0.4)')
+  // Добавляем легенду
+  const compLegend = comparisonChartSvg.append('g')
+    .attr('transform', `translate(${compWidth - compMargin.right + 20}, ${compMargin.top + 10})`);
+  
+  const yearLabels = { 'previousYear': year-1, 'currentYear': year };
+  
+  years.forEach((year, i) => {
+    const legendItem = compLegend.append('g')
+      .attr('transform', `translate(0, ${i * 20})`);
+    
+    legendItem.append('rect')
+      .attr('width', 12)
+      .attr('height', 12)
+      .attr('rx', 2)
+      .attr('fill', compColor(year));
+    
+    legendItem.append('text')
+      .attr('x', 20)
+      .attr('y', 10)
+      .style('fill', '#d1d5db')
+      .style('font-size', '0.8rem')
+      .text(`${monthName} ${yearLabels[year]}`);
+  });
+  
+  // Таблица моделей с изменениями
+  const tableContainer = container.append('div')
+    .style('background', 'rgba(15, 23, 42, 0.6)')
     .style('border-radius', '12px')
-    .style('padding', '15px')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)')
-    .style('overflow', 'hidden');
+    .style('padding', '20px')
+    .style('margin-bottom', '20px');
   
-  comparisonContainer.append('h3')
+  tableContainer.append('h3')
     .style('font-size', '1.1rem')
     .style('color', '#f9fafb')
     .style('margin-bottom', '15px')
-    .style('text-align', 'center')
-    .text(`Сравнение с другими регионами: ${regionName}`);
+    .text(`Сводная таблица моделей в ${regionName}`);
   
-  // Генерируем данные для сравнения
-  const comparisonData = [
-    { category: 'Общий объем продаж', value: totalSales, nationalAvg: totalSales * 0.8, status: 'higher' },
-    { category: 'Количество проданных авто', value: totalCount, nationalAvg: totalCount * 0.85, status: 'higher' },
-    { category: 'Средний чек', value: totalSales / totalCount, nationalAvg: (totalSales / totalCount) * 0.95, status: 'higher' },
-    { category: 'Доля премиум-моделей', value: modelsData.filter(m => m.sales / m.count > 700000).reduce((sum, m) => sum + m.count, 0) / totalCount * 100, nationalAvg: 15, status: 'lower' }
-  ];
-  
-  // Создаем таблицу сравнения
-  const comparisonTable = comparisonContainer.append('div')
+  // Таблица с данными
+  const table = tableContainer.append('div')
     .style('width', '100%')
-    .style('overflow-y', 'auto')
-    .style('height', 'calc(100% - 30px)');
+    .style('overflow-x', 'auto');
   
-  // Заголовки таблицы
-  const comparisonHeader = comparisonTable.append('div')
+  // Заголовок таблицы
+  const tableHeader = table.append('div')
     .style('display', 'grid')
-    .style('grid-template-columns', '40% 25% 25% 10%')
-    .style('padding', '10px')
+    .style('grid-template-columns', '40% 15% 15% 15% 15%')
+    .style('padding', '12px 15px')
     .style('background', 'rgba(30, 41, 59, 0.7)')
     .style('border-radius', '8px 8px 0 0');
   
-  comparisonHeader.append('div')
-    .style('font-size', '0.9rem')
-    .style('font-weight', 'bold')
-    .style('color', '#f9fafb')
-    .text('Показатель');
+  tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').text('Модель');
+  tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'right').text(`${year} г., руб.`);
+  tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'right').text(`${year-1} г., руб.`);
+  tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'right').text('Рост, %');
+  tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'right').text('Доля, %');
   
-  comparisonHeader.append('div')
-    .style('font-size', '0.9rem')
-    .style('font-weight', 'bold')
-    .style('color', '#f9fafb')
-    .style('text-align', 'center')
-    .text(regionName);
-  
-  comparisonHeader.append('div')
-    .style('font-size', '0.9rem')
-    .style('font-weight', 'bold')
-    .style('color', '#f9fafb')
-    .style('text-align', 'center')
-    .text('Ср. по стране');
-  
-  comparisonHeader.append('div')
-    .style('font-size', '0.9rem')
-    .style('font-weight', 'bold')
-    .style('color', '#f9fafb')
-    .style('text-align', 'center')
-    .text('');
-  
-  // Строки таблицы
-  comparisonData.forEach((item, i) => {
-    const row = comparisonTable.append('div')
+  // Строки таблицы с данными
+  modelsComparisonData.forEach((model, i) => {
+    const marketShare = ((model.currentYear / modelsComparisonData.reduce((sum, m) => sum + m.currentYear, 0)) * 100).toFixed(1);
+    
+    const row = table.append('div')
       .style('display', 'grid')
-      .style('grid-template-columns', '40% 25% 25% 10%')
-      .style('padding', '12px 10px')
+      .style('grid-template-columns', '40% 15% 15% 15% 15%')
+      .style('padding', '12px 15px')
       .style('background', i % 2 === 0 ? 'rgba(30, 41, 59, 0.3)' : 'rgba(30, 41, 59, 0.5)')
-      .style('opacity', 0)
-      .style('transform', 'translateY(10px)')
-      .transition()
-      .duration(300)
-      .delay(i * 100)
-      .style('opacity', 1)
-      .style('transform', 'translateY(0)');
+      .style('border-left', i < 3 ? `3px solid ${i === 0 ? '#f87171' : (i === 1 ? '#fb923c' : '#fbbf24')}` : 'none');
     
-    row.append('div')
-      .style('font-size', '0.9rem')
-      .style('color', '#f9fafb')
-      .text(item.category);
-    
-    // Форматируем значение в зависимости от категории
-    let valueText, avgText;
-    if (item.category === 'Общий объем продаж') {
-      valueText = formatProfitCompact(item.value);
-      avgText = formatProfitCompact(item.nationalAvg);
-    } else if (item.category === 'Количество проданных авто') {
-      valueText = item.value.toString();
-      avgText = Math.round(item.nationalAvg).toString();
-    } else if (item.category === 'Средний чек') {
-      valueText = formatProfitCompact(item.value);
-      avgText = formatProfitCompact(item.nationalAvg);
-    } else {
-      valueText = item.value.toFixed(1) + '%';
-      avgText = item.nationalAvg.toFixed(1) + '%';
-    }
-    
-    row.append('div')
-      .style('font-size', '0.9rem')
-      .style('color', '#f9fafb')
-      .style('font-weight', 'bold')
-      .style('text-align', 'center')
-      .text(valueText);
-    
-    row.append('div')
-      .style('font-size', '0.9rem')
-      .style('color', '#9ca3af')
-      .style('text-align', 'center')
-      .text(avgText);
-    
-    // Индикатор сравнения
-    const percentage = (item.value / item.nationalAvg * 100 - 100).toFixed(1);
-    const isPositive = item.status === 'higher';
-    const color = isPositive ? '#10b981' : '#ef4444';
-    const icon = isPositive ? '<i class="fas fa-arrow-up"></i>' : '<i class="fas fa-arrow-down"></i>';
-    
-    row.append('div')
-      .style('font-size', '0.9rem')
-      .style('color', color)
-      .style('text-align', 'center')
-      .style('font-weight', 'bold')
-      .html(icon);
+    // Данные
+    row.append('div').style('color', '#f9fafb').text(model.name);
+    row.append('div').style('color', '#f9fafb').style('text-align', 'right').text(formatProfitCompact(model.currentYear));
+    row.append('div').style('color', '#9ca3af').style('text-align', 'right').text(formatProfitCompact(model.previousYear));
+    row.append('div').style('color', model.growth >= 0 ? '#10b981' : '#ef4444').style('font-weight', 'bold').style('text-align', 'right').text(`${model.growth >= 0 ? '+' : ''}${model.growth}%`);
+    row.append('div').style('color', '#f9fafb').style('text-align', 'right').text(`${marketShare}%`);
   });
   
-  // 4. Нижний правый - ключевые метрики региона
-  const metricsContainer = grid.append('div')
-    .style('grid-column', '2')
-    .style('grid-row', '2')
-    .style('background', 'rgba(17, 24, 39, 0.4)')
-    .style('border-radius', '12px')
-    .style('padding', '15px')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)');
+  // Итоговая строка
+  const totalCurrentYear = modelsComparisonData.reduce((sum, model) => sum + model.currentYear, 0);
+  const totalPreviousYear = modelsComparisonData.reduce((sum, model) => sum + model.previousYear, 0);
+  const totalGrowth = ((totalCurrentYear / totalPreviousYear - 1) * 100).toFixed(1);
   
-  metricsContainer.append('h3')
-    .style('font-size', '1.1rem')
-    .style('color', '#f9fafb')
-    .style('margin-bottom', '15px')
-    .style('text-align', 'center')
-    .text(`Ключевые метрики: ${regionName}`);
-  
-  // Создаем контейнер для метрик
-  const metricsGrid = metricsContainer.append('div')
+  const totalRow = table.append('div')
     .style('display', 'grid')
-    .style('grid-template-columns', '1fr 1fr')
-    .style('grid-gap', '15px')
-    .style('height', 'calc(100% - 30px)');
+    .style('grid-template-columns', '40% 15% 15% 15% 15%')
+    .style('padding', '12px 15px')
+    .style('background', 'rgba(30, 41, 59, 0.8)')
+    .style('border-top', '2px solid rgba(148, 163, 184, 0.2)')
+    .style('font-weight', 'bold');
   
-  // Функция для создания карточки метрики
-  const createMetricCard = (title, value, unit, icon, color, subtitle) => {
-    const card = metricsGrid.append('div')
-      .style('background', 'rgba(30, 41, 59, 0.5)')
-      .style('border-radius', '10px')
-      .style('padding', '15px')
-      .style('display', 'flex')
-      .style('flex-direction', 'column')
-      .style('justify-content', 'center')
-      .style('position', 'relative')
-      .style('overflow', 'hidden');
-    
-    // Градиентный фон
-    card.append('div')
-      .style('position', 'absolute')
-      .style('top', '0')
-      .style('left', '0')
-      .style('width', '100%')
-      .style('height', '100%')
-      .style('background', `linear-gradient(135deg, ${color}15 0%, ${color}05 100%)`)
-      .style('z-index', '0');
-    
-    // Фоновая иконка
-    card.append('div')
-      .style('position', 'absolute')
-      .style('top', '10px')
-      .style('right', '10px')
-      .style('font-size', '2.5rem')
-      .style('color', `${color}25`)
-      .style('z-index', '0')
-      .html(icon);
-    
-    // Содержимое
-    const content = card.append('div')
-      .style('position', 'relative')
-      .style('z-index', '1');
-    
-    content.append('div')
-      .style('font-size', '0.9rem')
-      .style('color', '#9ca3af')
-      .style('margin-bottom', '5px')
-      .text(title);
-    
-    const valueRow = content.append('div')
-      .style('display', 'flex')
-      .style('align-items', 'baseline')
-      .style('margin-bottom', '5px');
-    
-    valueRow.append('span')
-      .style('font-size', '1.6rem')
-      .style('font-weight', 'bold')
-      .style('color', color)
-      .text(value);
-    
-    valueRow.append('span')
-      .style('font-size', '0.9rem')
-      .style('color', '#d1d5db')
-      .style('margin-left', '5px')
-      .text(unit);
-    
-    if (subtitle) {
-      content.append('div')
-        .style('font-size', '0.8rem')
-        .style('color', '#9ca3af')
-        .text(subtitle);
-    }
-  };
-  
-  // Создаем метрики
-  createMetricCard(
-    'Самая популярная модель',
-    modelsData[0].name,
-    '',
-    '<i class="fas fa-trophy"></i>',
-    '#f87171',
-    `${modelsData[0].count} шт. (${((modelsData[0].count / totalCount) * 100).toFixed(1)}% рынка)`
-  );
-  
-  createMetricCard(
-    'Средний чек',
-    formatProfitCompact(totalSales / totalCount),
-    'UZS',
-    '<i class="fas fa-money-bill-wave"></i>',
-    '#f59e0b',
-    `На ${(totalSales / totalCount / 550000 * 100 - 100).toFixed(1)}% выше среднего по стране`
-  );
-  
-  createMetricCard(
-    'Разнообразие моделей',
-    modelsData.length,
-    'моделей',
-    '<i class="fas fa-car-alt"></i>',
-    '#8b5cf6',
-    'Представленных в регионе'
-  );
-  
-  createMetricCard(
-    'Премиум сегмент',
-    ((modelsData.filter(m => m.sales / m.count > 700000).reduce((sum, m) => sum + m.count, 0) / totalCount) * 100).toFixed(1),
-    '%',
-    '<i class="fas fa-crown"></i>',
-    '#10b981',
-    'Доля высокодоходных моделей'
-  );
-  
-  // Добавляем иконки Font Awesome
-  if (!document.querySelector('[href*="font-awesome"]')) {
-    const head = document.head || document.getElementsByTagName('head')[0];
-    const fontAwesome = document.createElement('link');
-    fontAwesome.rel = 'stylesheet';
-    fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css';
-    head.appendChild(fontAwesome);
-  }
+  totalRow.append('div').style('color', '#f9fafb').text('ИТОГО');
+  totalRow.append('div').style('color', '#f9fafb').style('text-align', 'right').text(formatProfitCompact(totalCurrentYear));
+  totalRow.append('div').style('color', '#f9fafb').style('text-align', 'right').text(formatProfitCompact(totalPreviousYear));
+  totalRow.append('div').style('color', totalGrowth >= 0 ? '#10b981' : '#ef4444').style('text-align', 'right').text(`${totalGrowth >= 0 ? '+' : ''}${totalGrowth}%`);
+  totalRow.append('div').style('color', '#f9fafb').style('text-align', 'right').text('100%');
 };
+
 
 const renderGroupedBarChart = (data, options) => {
   const {
