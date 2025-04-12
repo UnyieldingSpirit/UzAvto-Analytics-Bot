@@ -323,44 +323,7 @@ export default function EnhancedFinancialAnalytics() {
       colors: focusCategory === 'all' ? d3.schemeBlues[9].slice(3) : [SALE_TYPES[focusCategory.toUpperCase()].color],
       animated: true
     };
-    const mockData = [
-  // Январь
-  { month: "Январь", year: 2024, value: 210000 },
-  { month: "Январь", year: 2025, value: 245000 },
-  // Февраль  
-  { month: "Февраль", year: 2024, value: 180000 },
-  { month: "Февраль", year: 2025, value: 220000 },
-  // Март
-  { month: "Март", year: 2024, value: 240000 },
-  { month: "Март", year: 2025, value: 290000 },
-  // Апрель
-  { month: "Апрель", year: 2024, value: 260000 },
-  { month: "Апрель", year: 2025, value: 300000 },
-  // Май
-  { month: "Май", year: 2024, value: 290000 },
-  { month: "Май", year: 2025, value: 335000 },
-  // Июнь
-  { month: "Июнь", year: 2024, value: 310000 },
-  { month: "Июнь", year: 2025, value: 360000 },
-  // Июль
-  { month: "Июль", year: 2024, value: 350000 },
-  { month: "Июль", year: 2025, value: 410000 },
-  // Август
-  { month: "Август", year: 2024, value: 340000 },
-  { month: "Август", year: 2025, value: 400000 },
-  // Сентябрь
-  { month: "Сентябрь", year: 2024, value: 300000 },
-  { month: "Сентябрь", year: 2025, value: 360000 },
-  // Октябрь
-  { month: "Октябрь", year: 2024, value: 280000 },
-  { month: "Октябрь", year: 2025, value: 330000 },
-  // Ноябрь
-  { month: "Ноябрь", year: 2024, value: 320000 },
-  { month: "Ноябрь", year: 2025, value: 380000 },
-  // Декабрь
-  { month: "Декабрь", year: 2024, value: 380000 },
-  { month: "Декабрь", year: 2025, value: 450000 }
-];
+    
     // Отрисовка в зависимости от выбранного типа графика
 if (viewType === 'bar') {
   if (displayMode === 'compare') {
@@ -406,7 +369,7 @@ if (viewType === 'bar') {
     };
     
     // Создаем кастомную группированную диаграмму с месяцами и годами
-    renderGroupedBarChart(mockData, chartConfig);
+    renderGroupedBarChart(monthGroups, chartConfig);
   } else {
     D3Visualizer.createBarChart(chartData, chartOptions);
   }
@@ -751,20 +714,20 @@ if (viewType === 'bar') {
     }
   };
   
-function renderGroupedBarChart(data, options) {
+// Добавляем новую функцию для создания сгруппированных столбцов сравнения
+const renderGroupedBarChart = (data, options) => {
   const {
     container,
-    title = 'Сравнение по месяцам',
-    groupKey = 'month',
-    valueKey = 'year',
-    colors = ['#3b82f6', '#8b5cf6']
+    width = container.clientWidth,
+    height = 400,
+    margin = { top: 40, right: 30, bottom: 60, left: 60 },
+    title
   } = options;
   
+  // Очистка контейнера
   container.innerHTML = '';
-  const width = container.clientWidth;
-  const height = 400;
-  const margin = { top: 40, right: 50, bottom: 60, left: 60 };
   
+  // Создаем SVG
   const svg = d3.select(container)
     .append('svg')
     .attr('width', width)
@@ -772,117 +735,180 @@ function renderGroupedBarChart(data, options) {
     .style('background', '#1f2937')
     .style('border-radius', '0.5rem');
   
-  // Заголовок
-  svg.append('text')
-    .attr('x', width / 2)
-    .attr('y', margin.top / 2)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '1.2rem')
-    .style('font-weight', 'bold')
-    .style('fill', '#f9fafb')
-    .text(title);
-  
-  const groups = Array.from(new Set(data.map(d => d[groupKey])));
-  const keys = Array.from(new Set(data.map(d => d[valueKey])));
+  // Добавляем заголовок
+  if (title) {
+    svg.append('text')
+      .attr('x', width / 2)
+      .attr('y', margin.top / 2)
+      .attr('text-anchor', 'middle')
+      .style('font-size', '1.2rem')
+      .style('font-weight', 'bold')
+      .style('fill', '#f9fafb')
+      .text(title);
+  }
   
   // Создаем шкалы
+  // Внешняя шкала для месяцев
   const x0 = d3.scaleBand()
-    .domain(groups)
+    .domain(data.map(d => d.name))
     .range([margin.left, width - margin.right])
     .padding(0.2);
   
+  // Внутренняя шкала для годов в каждом месяце
   const x1 = d3.scaleBand()
-    .domain(keys)
+    .domain(selectedYears)
     .range([0, x0.bandwidth()])
     .padding(0.05);
   
+  // Находим максимальное значение для масштабирования по оси Y
+  const maxValue = d3.max(data, d => 
+    d3.max(Object.values(d.years))
+  );
+  
   const y = d3.scaleLinear()
-    .domain([0, d3.max(data, d => d.value) * 1.1])
+    .domain([0, maxValue * 1.1])
     .nice()
     .range([height - margin.bottom, margin.top]);
   
-  // Создаем цветовую шкалу
+  // Создаем цветовую шкалу для годов
   const colorScale = d3.scaleOrdinal()
-    .domain(keys)
-    .range(colors);
+    .domain(selectedYears)
+    .range(selectedYears.map((_, i) => {
+      if (focusCategory !== 'all') {
+        const baseColor = d3.hsl(SALE_TYPES[focusCategory.toUpperCase()].color);
+        baseColor.l = 0.4 + (i * 0.2);
+        return baseColor.toString();
+      }
+      return d3.schemeCategory10[i % d3.schemeCategory10.length];
+    }));
   
   // Создаем оси
-  svg.append('g')
+  const xAxis = g => g
     .attr('transform', `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x0))
+    .call(d3.axisBottom(x0).tickSizeOuter(0))
+    .call(g => g.select('.domain').remove())
     .call(g => g.selectAll('text')
       .style('fill', '#f9fafb')
       .style('font-size', '0.8rem')
+      .attr('dy', '0.5em')
       .attr('transform', 'rotate(-25)')
-      .attr('text-anchor', 'end')
-      .attr('dy', '0.5em'));
+      .attr('text-anchor', 'end'));
   
-  svg.append('g')
+  const yAxis = g => g
     .attr('transform', `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y).ticks(5))
-    .call(g => g.selectAll('text')
-      .style('fill', '#f9fafb'));
+    .call(d3.axisLeft(y).ticks(5).tickFormat(d => d3.format(',.0f')(d)))
+    .call(g => g.select('.domain').remove())
+    .call(g => g.selectAll('text').style('fill', '#f9fafb'))
+    .call(g => g.selectAll('.tick line')
+      .attr('x2', width - margin.left - margin.right)
+      .attr('stroke-opacity', 0.1));
   
-  // Группируем данные для отображения
-  const groupedData = {};
-  data.forEach(d => {
-    if (!groupedData[d[groupKey]]) {
-      groupedData[d[groupKey]] = {};
-    }
-    groupedData[d[groupKey]][d[valueKey]] = d.value;
-  });
+  // Добавляем оси
+  svg.append('g').call(xAxis);
+  svg.append('g').call(yAxis);
   
-  // Преобразуем в формат для d3
-  const chartData = groups.map(group => {
-    const item = { group };
-    keys.forEach(key => {
-      item[key] = groupedData[group]?.[key] || 0;
-    });
-    return item;
-  });
+  // Создаем tooltip
+  const tooltip = d3.select(container)
+    .append('div')
+    .style('position', 'absolute')
+    .style('background-color', '#27303f')
+    .style('color', '#f9fafb')
+    .style('padding', '8px')
+    .style('border-radius', '4px')
+    .style('font-size', '12px')
+    .style('box-shadow', '0 4px 6px -1px rgba(0, 0, 0, 0.3)')
+    .style('pointer-events', 'none')
+    .style('opacity', 0)
+    .style('z-index', 10);
   
-  // Создаем группы для столбцов
-  const barGroups = svg.append('g')
+  // Добавляем группы для каждого месяца
+  const monthGroups = svg.append('g')
     .selectAll('g')
-    .data(chartData)
+    .data(data)
     .join('g')
-    .attr('transform', d => `translate(${x0(d.group)},0)`);
+    .attr('transform', d => `translate(${x0(d.name)},0)`);
   
-  // Добавляем столбцы
-  keys.forEach(key => {
-    barGroups.append('rect')
-      .attr('x', () => x1(key))
-      .attr('width', x1.bandwidth())
-      .attr('y', d => y(d[key]))
-      .attr('height', d => height - margin.bottom - y(d[key]))
-      .attr('fill', colorScale(key))
-      .attr('rx', 4)
-      .attr('opacity', 0.9);
-  });
+  // Добавляем столбцы для каждого года внутри месяца
+  monthGroups.selectAll('rect')
+    .data(d => selectedYears.map(year => ({
+      year: year,
+      value: d.years[year] || 0,
+      month: d.name
+    })))
+    .join('rect')
+    .attr('x', d => x1(d.year))
+    .attr('y', d => y(d.value))
+    .attr('width', x1.bandwidth())
+    .attr('height', d => height - margin.bottom - y(d.value))
+    .attr('fill', d => colorScale(d.year))
+    .attr('rx', 4)
+    .attr('opacity', 0.9)
+    .on('mouseover', function(event, d) {
+      d3.select(this).attr('opacity', 1);
+      
+      // Показываем подсказку
+      tooltip.style('opacity', 1)
+        .html(`<strong>${d.month} ${d.year}</strong><br>${d3.format(',.0f')(d.value)}`)
+        .style('left', `${event.pageX + 15}px`)
+        .style('top', `${event.pageY - 28}px`);
+    })
+    .on('mouseout', function() {
+      d3.select(this).attr('opacity', 0.9);
+      tooltip.style('opacity', 0);
+    });
+  
+  // Добавляем анимацию
+  monthGroups.selectAll('rect')
+    .attr('y', height - margin.bottom)
+    .attr('height', 0)
+    .transition()
+    .duration(800)
+    .delay((d, i) => i * 50)
+    .attr('y', d => y(d.value))
+    .attr('height', d => height - margin.bottom - y(d.value));
   
   // Добавляем легенду
   const legend = svg.append('g')
-    .attr('transform', `translate(${width - margin.right + 10}, ${margin.top})`);
+    .attr('transform', `translate(${width - margin.right - 120}, ${margin.top})`);
   
-  keys.forEach((key, i) => {
-    const legendRow = legend.append('g')
-      .attr('transform', `translate(0, ${i * 20})`);
+  selectedYears.forEach((year, i) => {
+    const yearLegend = legend.append('g')
+      .attr('transform', `translate(0, ${i * 25})`);
     
-    legendRow.append('rect')
+    yearLegend.append('rect')
       .attr('width', 15)
       .attr('height', 15)
-      .attr('fill', colorScale(key));
+      .attr('rx', 3)
+      .attr('fill', colorScale(year));
     
-    legendRow.append('text')
+    yearLegend.append('text')
       .attr('x', 25)
       .attr('y', 12)
-      .style('font-size', '0.8rem')
+      .style('font-size', '0.9rem')
       .style('fill', '#f9fafb')
-      .text(key);
+      .text(year);
+    
+    // Если это не первый год, добавляем процент изменения
+    if (i > 0) {
+      const prevYear = selectedYears[0]; // Обычно сравниваем с первым годом
+      const yearTotals = data.reduce((acc, month) => {
+        acc[year] = (acc[year] || 0) + (month.years[year] || 0);
+        acc[prevYear] = (acc[prevYear] || 0) + (month.years[prevYear] || 0);
+        return acc;
+      }, {});
+      
+      const growthPercent = yearTotals[prevYear] !== 0 ? 
+        ((yearTotals[year] / yearTotals[prevYear]) - 1) * 100 : 0;
+      
+      yearLegend.append('text')
+        .attr('x', 60)
+        .attr('y', 12)
+        .style('font-size', '0.8rem')
+        .style('fill', growthPercent >= 0 ? '#10b981' : '#ef4444')
+        .text(`${growthPercent >= 0 ? '+' : ''}${growthPercent.toFixed(1)}%`);
+    }
   });
-  
-  return svg.node();
-}
+};
 
   // Мультилинейный график для сравнения по годам
   const renderMultiLineChart = () => {

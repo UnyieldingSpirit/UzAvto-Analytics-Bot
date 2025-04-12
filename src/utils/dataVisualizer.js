@@ -119,8 +119,14 @@ export class D3Visualizer {
 
         // Add bars
         const colorScale = options.colors
-            ? (typeof options.colors === 'function' ? options.colors : d3.scaleOrdinal().domain(data.map(d => d.id.toString())).range(options.colors))
-            : d3.scaleOrdinal().domain(data.map(d => d.id.toString())).range(this.defaultColors);
+            ? (typeof options.colors === 'function'
+                ? options.colors
+                : d3.scaleOrdinal()
+                    .domain(data.map((d, i) => d.id ? d.id.toString() : i.toString()))
+                    .range(options.colors))
+            : d3.scaleOrdinal()
+                .domain(data.map((d, i) => d.id ? d.id.toString() : i.toString()))
+                .range(this.defaultColors);
 
         const bars = svg.append('g')
             .selectAll('rect')
@@ -267,8 +273,14 @@ export class D3Visualizer {
 
         // Create color scale
         const colorScale = options.colors
-            ? (typeof options.colors === 'function' ? options.colors : d3.scaleOrdinal().domain(data.map(d => d.id.toString())).range(options.colors))
-            : d3.scaleOrdinal().domain(data.map(d => d.id.toString())).range(this.defaultColors);
+            ? (typeof options.colors === 'function'
+                ? options.colors
+                : d3.scaleOrdinal()
+                    .domain(data.map((d, i) => d.id ? d.id.toString() : i.toString()))
+                    .range(options.colors))
+            : d3.scaleOrdinal()
+                .domain(data.map((d, i) => d.id ? d.id.toString() : i.toString()))
+                .range(this.defaultColors);
 
         // Create pie chart group
         const g = svg.append('g')
@@ -468,8 +480,14 @@ export class D3Visualizer {
 
         // Create color scale
         const colorScale = options.colors
-            ? (typeof options.colors === 'function' ? options.colors : d3.scaleOrdinal().domain(subgroups).range(options.colors))
-            : d3.scaleOrdinal().domain(subgroups).range(this.defaultColors);
+            ? (typeof options.colors === 'function'
+                ? options.colors
+                : d3.scaleOrdinal()
+                    .domain(data.map((d, i) => d.id ? d.id.toString() : i.toString()))
+                    .range(options.colors))
+            : d3.scaleOrdinal()
+                .domain(data.map((d, i) => d.id ? d.id.toString() : i.toString()))
+                .range(this.defaultColors);
 
         // Create stack generator
         const stack = d3.stack()
@@ -855,8 +873,14 @@ export class D3Visualizer {
         // Create color scale for groups if available
         const groups = Array.from(new Set(data.map(d => d.group || 'default')));
         const colorScale = options.colors
-            ? (typeof options.colors === 'function' ? options.colors : d3.scaleOrdinal().domain(groups).range(options.colors))
-            : d3.scaleOrdinal().domain(groups).range(this.defaultColors);
+            ? (typeof options.colors === 'function'
+                ? options.colors
+                : d3.scaleOrdinal()
+                    .domain(data.map((d, i) => d.id ? d.id.toString() : i.toString()))
+                    .range(options.colors))
+            : d3.scaleOrdinal()
+                .domain(data.map((d, i) => d.id ? d.id.toString() : i.toString()))
+                .range(this.defaultColors);
 
         // Create axes
         const xAxis = (g) => g
