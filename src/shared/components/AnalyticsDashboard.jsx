@@ -597,7 +597,7 @@ export default function ContractsAnalyticsDashboard() {
   };
   
   return (
-    <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 rounded-xl shadow-2xl border border-gray-700/40 w-full max-w-6xl mx-auto overflow-hidden">
+    <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 rounded-xl shadow-2xl border border-gray-700/40 w-full  mx-auto overflow-hidden">
       {isLoading ? (
         <div className="flex flex-col items-center justify-center p-8 min-h-[400px]">
           <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>

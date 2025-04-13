@@ -1028,6 +1028,30 @@ const renderPeriodComparisonTable = () => {
     .attr('y', d => y(d.value))
     .attr('height', d => height - margin.bottom - y(d.value));
   
+  // Добавляем текстовые метки со значениями над столбцами
+  monthGroups.selectAll('.bar-value-label')
+    .data(d => years.map(year => ({
+      year,
+      value: d.years[year] || 0,
+      month: d.month,
+      monthName: d.name
+    })))
+    .join('text')
+    .attr('class', 'bar-value-label')
+    .attr('x', d => x1(d.year) + x1.bandwidth() / 2)
+    .attr('y', d => y(d.value) - 8) // Положение над столбцом
+    .attr('text-anchor', 'middle')
+    .style('font-size', '0.7rem')
+    .style('font-weight', 'bold')
+    .style('fill', '#f9fafb')
+    .style('filter', 'drop-shadow(0 1px 1px rgba(0,0,0,0.7))')
+    .style('opacity', 0) // Начинаем с прозрачного состояния для анимации
+    .text(d => formatProfitCompact(d.value))
+    .transition() // Анимация появления текста
+    .duration(500)
+    .delay((d, i) => 800 + i * 50) // Задержка после анимации столбцов
+    .style('opacity', d => d.value > 0 ? 1 : 0); // Показываем только для ненулевых значений
+  
   // Добавляем красивую легенду в правой части
   const legend = svg.append('g')
     .attr('transform', `translate(${width - margin.right + 30}, ${margin.top + 20})`);
@@ -1055,6 +1079,12 @@ const renderPeriodComparisonTable = () => {
           .filter(d => d.year === year)
           .style('filter', 'url(#glow)')
           .attr('opacity', 1);
+        
+        // Также подсвечиваем метки значений
+        svg.selectAll('.bar-value-label')
+          .filter(d => d.year === year)
+          .style('font-size', '0.8rem')
+          .style('fill', '#ffffff');
       })
       .on('mouseout', function() {
         d3.select(this).select('text').style('font-weight', 'normal');
@@ -1063,6 +1093,12 @@ const renderPeriodComparisonTable = () => {
           .filter(d => d.year === year)
           .style('filter', 'none')
           .attr('opacity', 0.9);
+        
+        // Возвращаем нормальный вид меткам
+        svg.selectAll('.bar-value-label')
+          .filter(d => d.year === year)
+          .style('font-size', '0.7rem')
+          .style('fill', '#f9fafb');
       });
     
     // Цветной индикатор
