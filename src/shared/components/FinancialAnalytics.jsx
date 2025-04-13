@@ -6242,7 +6242,7 @@ const renderProgressChart = () => {
   // Функция для отрисовки распределения по категориям
   const renderCategoryDistribution = () => {
     if (!categoryDistributionRef.current || !filteredData.length) return;
-    
+         
     const container = categoryDistributionRef.current;
     container.innerHTML = '';
     
