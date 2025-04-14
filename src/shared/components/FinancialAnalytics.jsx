@@ -749,22 +749,33 @@ const formatProfitCompact = (number) => {
 };
 
 // Модифицированная функция рендеринга периода
-// Модификация функции renderPeriodComparisonTable для более элегантного дизайна и интерактивности
 const renderPeriodComparisonTable = () => {
   if (!mainChartRef.current || !filteredData.length) return;
   
+  // Используем обычные переменные вместо хуков useState
+  let selectedMonth = null;
+  let selectedDay = null;
+  
+  // Функции для установки значений переменных
+  const setSelectedMonth = (value) => {
+    selectedMonth = value;
+  };
+  
+  const setSelectedDay = (value) => {
+    selectedDay = value;
+  };
+  
   // Очистка контейнера
   mainChartRef.current.innerHTML = '';
-  
-  // Создаем контейнер с заголовком и навигацией
+ 
+  // Добавляем текстуру фона
   const container = d3.select(mainChartRef.current)
     .append('div')
     .style('width', '100%')
     .style('height', '100%')
     .style('position', 'relative')
     .style('overflow', 'hidden');
-  
-  // Добавляем текстуру фона
+
   container.append('div')
     .style('position', 'absolute')
     .style('top', '0')
@@ -774,7 +785,218 @@ const renderPeriodComparisonTable = () => {
     .style('background', 'radial-gradient(circle at 10% 20%, rgba(21, 30, 45, 0.4) 0%, rgba(10, 14, 23, 0.2) 90%)')
     .style('opacity', '0.7')
     .style('z-index', '0');
-  
+ 
+  // Создаем панель фильтрации по дате
+  const filterPanel = container.append('div')
+    .style('position', 'relative')
+    .style('z-index', '1')
+    .style('display', 'flex')
+    .style('flex-wrap', 'wrap')
+    .style('align-items', 'center')
+    .style('gap', '10px')
+    .style('margin-bottom', '15px')
+    .style('padding', '10px 15px')
+    .style('background', 'rgba(30, 41, 59, 0.5)')
+    .style('border-radius', '10px')
+    .style('border', '1px solid rgba(59, 130, 246, 0.15)')
+    .style('box-shadow', '0 4px 6px -1px rgba(0, 0, 0, 0.1)');
+ 
+  // Добавляем иконку календаря
+  filterPanel.append('div')
+    .style('color', '#60a5fa')
+    .style('font-size', '1.1rem')
+    .html('<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>');
+ 
+  // Добавляем селектор месяца
+  const monthSelector = filterPanel.append('div')
+    .style('display', 'flex')
+    .style('align-items', 'center');
+ 
+  monthSelector.append('span')
+    .style('color', '#9ca3af')
+    .style('font-size', '0.85rem')
+    .style('margin-right', '6px')
+    .text('Месяц:');
+ 
+  // Создаем уникальный список месяцев из данных
+  const availableMonths = [...new Set(filteredData.map(item => {
+    return {
+      key: `${item.year}-${item.month}`,
+      label: `${item.name} ${item.year}`
+    };
+  }).map(item => JSON.stringify(item)))].map(item => JSON.parse(item));
+ 
+  // Сортируем месяцы
+  availableMonths.sort((a, b) => {
+    const [yearA, monthA] = a.key.split('-').map(Number);
+    const [yearB, monthB] = b.key.split('-').map(Number);
+    if (yearA !== yearB) return yearA - yearB;
+    return monthA - monthB;
+  });
+ 
+  // Создаем селект месяца с улучшенным стилем
+  const monthSelect = monthSelector.append('select')
+    .style('background', 'rgba(17, 24, 39, 0.8)')
+    .style('color', '#f9fafb')
+    .style('border', '1px solid rgba(75, 85, 99, 0.5)')
+    .style('border-radius', '6px')
+    .style('padding', '4px 8px')
+    .style('font-size', '0.85rem')
+    .style('cursor', 'pointer')
+    .style('transition', 'all 0.2s')
+    .on('mouseover', function() {
+      d3.select(this).style('border-color', 'rgba(59, 130, 246, 0.5)');
+    })
+    .on('mouseout', function() {
+      d3.select(this).style('border-color', 'rgba(75, 85, 99, 0.5)');
+    })
+    .on('change', function() {
+      const selectedValue = this.value;
+      setSelectedMonth(selectedValue);
+      setSelectedDay(null); // Сбрасываем выбранный день при смене месяца
+      
+      // Обновляем опции выбора дня
+      updateDayOptions(selectedValue);
+    });
+ 
+  // Добавляем опцию "Все месяцы"
+  monthSelect.append('option')
+    .attr('value', '')
+    .text('Все месяцы');
+ 
+  // Добавляем опции месяцев
+  availableMonths.forEach(month => {
+    monthSelect.append('option')
+      .attr('value', month.key)
+      .text(month.label);
+  });
+ 
+  // Добавляем селектор дня
+  const daySelector = filterPanel.append('div')
+    .attr('id', 'day-selector')
+    .style('display', 'flex')
+    .style('align-items', 'center')
+    .style('opacity', '0.5'); // Изначально затемнен
+ 
+  daySelector.append('span')
+    .style('color', '#9ca3af')
+    .style('font-size', '0.85rem')
+    .style('margin-right', '6px')
+    .text('День:');
+ 
+  // Создаем селект дня с улучшенным стилем
+  const daySelect = daySelector.append('select')
+    .attr('id', 'day-select')
+    .style('background', 'rgba(17, 24, 39, 0.8)')
+    .style('color', '#f9fafb')
+    .style('border', '1px solid rgba(75, 85, 99, 0.5)')
+    .style('border-radius', '6px')
+    .style('padding', '4px 8px')
+    .style('font-size', '0.85rem')
+    .style('cursor', 'pointer')
+    .style('transition', 'all 0.2s')
+    .property('disabled', true)
+    .on('mouseover', function() {
+      if (!this.disabled) {
+        d3.select(this).style('border-color', 'rgba(59, 130, 246, 0.5)');
+      }
+    })
+    .on('mouseout', function() {
+      d3.select(this).style('border-color', 'rgba(75, 85, 99, 0.5)');
+    })
+    .on('change', function() {
+      setSelectedDay(this.value);
+      updateChartByDay(selectedMonth, this.value);
+    });
+ 
+  // Добавляем опцию "Все дни"
+  daySelect.append('option')
+    .attr('value', '')
+    .text('Все дни');
+ 
+  // Функция для обновления опций выбора дня
+  const updateDayOptions = (monthKey) => {
+    const daySelect = d3.select('#day-select');
+    const daySelector = d3.select('#day-selector');
+    
+    // Очищаем текущие опции, кроме первой "Все дни"
+    daySelect.selectAll('option:not(:first-child)').remove();
+    
+    if (!monthKey) {
+      daySelect.property('disabled', true);
+      daySelector.style('opacity', '0.5');
+      updateChart(); // Показываем все данные
+      return;
+    }
+    
+    // Разбиваем ключ месяца на год и месяц
+    const [year, month] = monthKey.split('-').map(Number);
+    
+    // Определяем количество дней в месяце
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    // Активируем селектор дней
+    daySelect.property('disabled', false);
+    daySelector.style('opacity', '1');
+    
+    // Добавляем опции дней
+    for (let day = 1; day <= daysInMonth; day++) {
+      daySelect.append('option')
+        .attr('value', day)
+        .text(day);
+    }
+    
+    // Обновляем график для выбранного месяца, показываем все дни
+    updateChartByMonth(monthKey);
+  };
+ 
+  // Добавляем индикатор выбранного периода
+  const periodBadge = filterPanel.append('div')
+    .attr('id', 'period-badge')
+    .style('margin-left', 'auto')
+    .style('background', 'rgba(59, 130, 246, 0.15)')
+    .style('color', '#60a5fa')
+    .style('border', '1px solid rgba(59, 130, 246, 0.3)')
+    .style('border-radius', '6px')
+    .style('padding', '4px 10px')
+    .style('font-size', '0.8rem')
+    .style('display', 'none');
+ 
+  // Добавляем кнопку сброса фильтров
+  const resetButton = filterPanel.append('button')
+    .style('background', 'rgba(59, 130, 246, 0.2)')
+    .style('color', '#60a5fa')
+    .style('border', 'none')
+    .style('padding', '4px 10px')
+    .style('border-radius', '6px')
+    .style('font-size', '0.85rem')
+    .style('cursor', 'pointer')
+    .style('transition', 'all 0.2s')
+    .style('display', 'flex')
+    .style('align-items', 'center')
+    .style('gap', '4px')
+    .html('<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h12l4-8-8 12-1-9-2 5h-5z"/></svg> <span>Сбросить</span>')
+    .on('mouseover', function() {
+      d3.select(this).style('background', 'rgba(59, 130, 246, 0.3)');
+    })
+    .on('mouseout', function() {
+      d3.select(this).style('background', 'rgba(59, 130, 246, 0.2)');
+    })
+    .on('click', function() {
+      // Сбрасываем выбранные значения
+      monthSelect.property('value', '');
+      daySelect.property('value', '');
+      daySelect.property('disabled', true);
+      d3.select('#day-selector').style('opacity', '0.5');
+      d3.select('#period-badge').style('display', 'none');
+      
+      setSelectedMonth(null);
+      setSelectedDay(null);
+      
+      // Обновляем график
+      updateChart();
+    });
+ 
   // Создаем основной контейнер для графика
   const chartContainer = container.append('div')
     .style('position', 'relative')
@@ -782,12 +1004,12 @@ const renderPeriodComparisonTable = () => {
     .style('width', '100%')
     .style('height', '90%')
     .style('padding', '15px');
-  
+ 
   // Определяем размеры графика
   const width = chartContainer.node().clientWidth;
   const height = 450;
   const margin = { top: 60, right: 130, bottom: 70, left: 70 };
-  
+ 
   // Создаем SVG с более красивым стилем
   const svg = chartContainer.append('svg')
     .attr('width', width)
@@ -796,12 +1018,12 @@ const renderPeriodComparisonTable = () => {
     .style('border-radius', '1rem')
     .style('box-shadow', '0 10px 25px -5px rgba(0, 0, 0, 0.3)')
     .style('border', '1px solid rgba(59, 130, 246, 0.1)');
-  
+ 
   // Добавляем карточку с заголовком и описанием
   const headerCard = svg.append('g')
     .attr('transform', `translate(${width/2}, 30)`)
     .style('pointer-events', 'none');
-  
+ 
   headerCard.append('rect')
     .attr('x', -200)
     .attr('y', -25)
@@ -811,9 +1033,10 @@ const renderPeriodComparisonTable = () => {
     .attr('fill', 'rgba(30, 58, 138, 0.3)')
     .attr('stroke', 'rgba(59, 130, 246, 0.5)')
     .attr('stroke-width', 1);
-  
+ 
   // Добавляем заголовок с тенью для текста
   headerCard.append('text')
+    .attr('class', 'chart-title')
     .attr('x', 0)
     .attr('y', 7)
     .attr('text-anchor', 'middle')
@@ -822,311 +1045,461 @@ const renderPeriodComparisonTable = () => {
     .style('fill', '#f9fafb')
     .style('filter', 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))')
     .text(`Аналитика продаж автомобилей`);
-  
-  // Группируем данные по месяцам и годам
-  const monthsData = {};
-  filteredData.forEach(item => {
-    const monthKey = item.month;
-    if (!monthsData[monthKey]) {
-      monthsData[monthKey] = {
-        month: monthKey,
-        name: item.name,
-        years: {}
-      };
+ 
+  // Функция для обновления графика по выбранному месяцу (показывает все дни месяца)
+  const updateChartByMonth = (monthKey) => {
+    if (!monthKey) {
+      updateChart(); // Показываем все данные
+      return;
     }
-    const value = focusCategory === 'all' ? item.total : item[focusCategory];
-    monthsData[monthKey].years[item.year] = value;
-  });
+    
+    const [year, month] = monthKey.split('-').map(Number);
+    
+    // Находим данные месяца
+    const monthData = filteredData.find(item => 
+      item.year === year && item.month === month
+    );
+    
+    if (!monthData) return;
+    
+    // Обновляем бейдж периода
+    const periodBadge = d3.select('#period-badge')
+      .style('display', 'block')
+      .html(`Период: ${MONTHS[month-1]} ${year}`);
+    
+    // Обновляем заголовок
+    d3.select('.chart-title')
+      .text(`Аналитика продаж за ${MONTHS[month-1]} ${year}`);
+    
+    // Генерируем данные по дням месяца
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const daysData = [];
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+      // Создаем вариативность данных на основе дня
+      const dayFactor = 0.7 + Math.sin(day / 30 * Math.PI * 2) * 0.3;
+      // Уменьшаем показатели для выходных
+      const date = new Date(year, month - 1, day);
+      const weekendFactor = (date.getDay() === 0 || date.getDay() === 6) ? 0.6 : 1;
+      
+      daysData.push({
+        year: year,
+        month: month,
+        day: day,
+        name: day.toString(), // Используем день как название
+        label: `${day}`,
+        retail: Math.round(monthData.retail / daysInMonth * dayFactor * weekendFactor),
+        wholesale: Math.round(monthData.wholesale / daysInMonth * dayFactor * weekendFactor),
+        promo: Math.round(monthData.promo / daysInMonth * dayFactor * weekendFactor),
+        total: Math.round(monthData.total / daysInMonth * dayFactor * weekendFactor)
+      });
+    }
+    
+    // Обновляем график с данными по дням
+    updateChart(daysData, false, true);
+  };
   
-  const sortedMonths = Object.values(monthsData).sort((a, b) => a.month - b.month);
-  const years = [...new Set(filteredData.map(item => item.year))].sort();
+  // Функция для обновления графика по выбранному дню
+  const updateChartByDay = (monthKey, day) => {
+    if (!monthKey) {
+      updateChart(); // Показываем все данные
+      return;
+    }
+    
+    const [year, month] = monthKey.split('-').map(Number);
+    
+    if (!day) {
+      updateChartByMonth(monthKey); // Показываем данные месяца по дням
+      return;
+    }
+    
+    // Обновляем бейдж периода
+    const periodBadge = d3.select('#period-badge')
+      .style('display', 'block')
+      .html(`Период: ${day} ${MONTHS[month-1]} ${year}`);
+    
+    // Обновляем заголовок
+    d3.select('.chart-title')
+      .text(`Аналитика продаж за ${day} ${MONTHS[month-1]} ${year}`);
+    
+    // Генерируем данные для выбранного дня
+    const dayData = generateDayData(year, month, parseInt(day));
+    
+    // Обновляем график с данными дня
+    updateChart(dayData, true);
+  };
   
-  // Создаем шкалы
-  const x0 = d3.scaleBand()
-    .domain(sortedMonths.map(m => m.name))
-    .range([margin.left, width - margin.right])
-    .padding(0.25);
+  // Функция для генерации синтетических данных по дню
+  const generateDayData = (year, month, day) => {
+    // Находим данные месяца
+    const monthData = filteredData.find(item => 
+      item.year === year && item.month === month
+    );
+    
+    if (!monthData) return [];
+    
+    // Создаем примерное распределение по дням (вариации внутри месяца)
+    const dayFactor = 0.7 + Math.sin(day / 30 * Math.PI * 2) * 0.3; // Фактор колебания по дням
+    const date = new Date(year, month - 1, day);
+    const weekendFactor = (date.getDay() === 0 || date.getDay() === 6) ? 0.6 : 1; // Выходные меньше продаж
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    // Генерируем данные дня на основе данных месяца
+    return [{
+      year: year,
+      month: month,
+      day: day,
+      name: day.toString(),
+      label: `${day} ${MONTHS[month-1]}`,
+      retail: Math.round(monthData.retail / daysInMonth * dayFactor * weekendFactor),
+      wholesale: Math.round(monthData.wholesale / daysInMonth * dayFactor * weekendFactor),
+      promo: Math.round(monthData.promo / daysInMonth * dayFactor * weekendFactor),
+      total: Math.round(monthData.total / daysInMonth * dayFactor * weekendFactor)
+    }];
+  };
   
-  const x1 = d3.scaleBand()
-    .domain(years)
-    .range([0, x0.bandwidth()])
-    .padding(0.08);
-  
-  const maxValue = d3.max(sortedMonths, month => 
-    d3.max(Object.values(month.years), value => value || 0)
-  );
-  
-  const y = d3.scaleLinear()
-    .domain([0, maxValue * 1.1])
-    .nice()
-    .range([height - margin.bottom, margin.top]);
-  
-  // Создаем красивую цветовую схему
-  const colorScale = d3.scaleOrdinal()
-    .domain(years)
-    .range(['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'].slice(0, years.length));
-  
-  // Добавляем сетку на фон
-  svg.append('g')
-    .attr('class', 'grid')
-    .selectAll('line')
-    .data(y.ticks(5))
-    .join('line')
-    .attr('x1', margin.left)
-    .attr('x2', width - margin.right)
-    .attr('y1', d => y(d))
-    .attr('y2', d => y(d))
-    .attr('stroke', 'rgba(107, 114, 128, 0.15)')
-    .attr('stroke-dasharray', '3,3');
-  
-  // Добавляем оси с улучшенным стилем
-  const xAxis = g => g
-    .attr('transform', `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x0).tickSizeOuter(0))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('.tick line').remove())
-    .call(g => g.selectAll('text')
-      .style('fill', '#d1d5db')
+  // Функция обновления графика с новыми данными
+  const updateChart = (data = filteredData, isDay = false, isDaysList = false) => {
+    // Группируем данные по месяцам/дням и годам
+    const groupedData = {};
+    data.forEach(item => {
+      // Определяем ключ для группировки (день или месяц)
+      const groupKey = isDaysList ? item.day : item.month;
+      // Используем соответствующее название 
+      const displayName = isDaysList ? item.day.toString() : item.name;
+      
+      if (!groupedData[groupKey]) {
+        groupedData[groupKey] = {
+          key: groupKey,
+          name: displayName,
+          years: {}
+        };
+      }
+      
+      const value = focusCategory === 'all' ? item.total : item[focusCategory];
+      groupedData[groupKey].years[item.year] = value;
+    });
+    
+    const sortedItems = Object.values(groupedData).sort((a, b) => a.key - b.key);
+    const years = [...new Set(data.map(item => item.year))].sort();
+    
+    // Создаем шкалы
+    const x0 = d3.scaleBand()
+      .domain(sortedItems.map(m => m.name))
+      .range([margin.left, width - margin.right])
+      .padding(0.25);
+    
+    const x1 = d3.scaleBand()
+      .domain(years)
+      .range([0, x0.bandwidth()])
+      .padding(0.08);
+    
+    const maxValue = d3.max(sortedItems, item => 
+      d3.max(Object.values(item.years), value => value || 0)
+    );
+    
+    const y = d3.scaleLinear()
+      .domain([0, maxValue * 1.1])
+      .nice()
+      .range([height - margin.bottom, margin.top]);
+    
+    // Создаем красивую цветовую схему
+    const colorScale = d3.scaleOrdinal()
+      .domain(years)
+      .range(['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'].slice(0, years.length));
+    
+    // Удаляем все существующие элементы, кроме заголовка
+    svg.selectAll("g:not(.chart-title)").remove();
+    
+    // Добавляем сетку на фон
+    svg.append('g')
+      .attr('class', 'grid')
+      .selectAll('line')
+      .data(y.ticks(5))
+      .join('line')
+      .attr('x1', margin.left)
+      .attr('x2', width - margin.right)
+      .attr('y1', d => y(d))
+      .attr('y2', d => y(d))
+      .attr('stroke', 'rgba(107, 114, 128, 0.15)')
+      .attr('stroke-dasharray', '3,3');
+    
+    // Добавляем оси с улучшенным стилем
+    const xAxis = g => g
+      .attr('transform', `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(x0).tickSizeOuter(0))
+      .call(g => g.select('.domain').remove())
+      .call(g => g.selectAll('.tick line').remove())
+      .call(g => g.selectAll('text')
+        .style('fill', '#d1d5db')
+        .style('font-size', isDaysList ? '0.7rem' : '0.85rem') // Размер текста меньше для дней
+        .attr('dy', '0.6em')
+        // Не поворачиваем цифры дней
+        .attr('transform', isDaysList ? '' : 'rotate(-20)')
+        .attr('text-anchor', isDaysList ? 'middle' : 'end'));
+    
+    const yAxis = g => g
+      .attr('transform', `translate(${margin.left},0)`)
+      .call(d3.axisLeft(y).ticks(5).tickFormat(d => formatProfitCompact(d)))
+      .call(g => g.select('.domain').remove())
+      .call(g => g.selectAll('.tick line')
+        .attr('x2', width - margin.left - margin.right)
+        .attr('stroke-opacity', 0.05))
+      .call(g => g.selectAll('text')
+        .style('fill', '#d1d5db')
+        .style('font-size', '0.8rem'));
+    
+    svg.append('g').call(xAxis);
+    svg.append('g').call(yAxis);
+    
+    // Добавляем подпись к оси Y
+    svg.append('text')
+      .attr('transform', 'rotate(-90)')
+      .attr('x', -(height - margin.bottom + margin.top)/2)
+      .attr('y', margin.left/3)
+      .attr('text-anchor', 'middle')
+      .style('fill', '#9ca3af')
       .style('font-size', '0.85rem')
-      .attr('dy', '0.6em')
-      .attr('transform', 'rotate(-20)')
-      .attr('text-anchor', 'end'));
-  
-  const yAxis = g => g
-    .attr('transform', `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y).ticks(5).tickFormat(d => formatProfitCompact(d)))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('.tick line')
-      .attr('x2', width - margin.left - margin.right)
-      .attr('stroke-opacity', 0.05))
-    .call(g => g.selectAll('text')
-      .style('fill', '#d1d5db')
-      .style('font-size', '0.8rem'));
-  
-  svg.append('g').call(xAxis);
-  svg.append('g').call(yAxis);
-  
-  // Добавляем подпись к оси Y
-  svg.append('text')
-    .attr('transform', 'rotate(-90)')
-    .attr('x', -(height - margin.bottom + margin.top)/2)
-    .attr('y', margin.left/3)
-    .attr('text-anchor', 'middle')
-    .style('fill', '#9ca3af')
-    .style('font-size', '0.85rem')
-    .text('Объем продаж (UZS)');
-  
-  // Создаем группы для каждого месяца
-  const monthGroups = svg.append('g')
-    .selectAll('g')
-    .data(sortedMonths)
-    .join('g')
-    .attr('transform', d => `translate(${x0(d.name)},0)`);
-  
-  // Добавляем подписи с данными для всплывающих подсказок
-  const tooltip = d3.select('body').append('div')
-    .attr('class', 'chart-tooltip')
-    .style('position', 'absolute')
-    .style('visibility', 'hidden')
-    .style('background', 'rgba(17, 24, 39, 0.95)')
-    .style('color', '#f9fafb')
-    .style('padding', '10px 15px')
-    .style('border-radius', '5px')
-    .style('font-size', '0.9rem')
-    .style('box-shadow', '0 4px 15px rgba(0, 0, 0, 0.3)')
-    .style('border', '1px solid rgba(59, 130, 246, 0.3)')
-    .style('z-index', 10);
-  
-  // Создаем градиентные заливки для столбцов
-  const defs = svg.append('defs');
-  
-  years.forEach((year, i) => {
-    const gradientId = `gradient-${year}`;
-    const gradient = defs.append('linearGradient')
-      .attr('id', gradientId)
-      .attr('x1', '0%')
-      .attr('y1', '0%')
-      .attr('x2', '0%')
-      .attr('y2', '100%');
+      .text('Объем продаж (UZS)');
     
-    gradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', d3.rgb(colorScale(year)).brighter(0.5))
-      .attr('stop-opacity', 1);
+    // Создаем группы для каждого месяца/дня
+    const itemGroups = svg.append('g')
+      .selectAll('g')
+      .data(sortedItems)
+      .join('g')
+      .attr('transform', d => `translate(${x0(d.name)},0)`);
     
-    gradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', colorScale(year))
-      .attr('stop-opacity', 0.8);
-  });
-  
-  // Создаем эффект свечения для выделения
-  defs.append('filter')
-    .attr('id', 'glow')
-    .append('feGaussianBlur')
-    .attr('stdDeviation', '3')
-    .attr('result', 'coloredBlur');
-  
-  // Для каждой группы месяцев добавляем столбцы по годам с улучшенным стилем и интерактивностью
-  monthGroups.selectAll('rect')
-    .data(d => years.map(year => ({
-      year,
-      value: d.years[year] || 0,
-      month: d.month,
-      monthName: d.name
-    })))
-    .join('rect')
-    .attr('class', 'bar')
-    .attr('x', d => x1(d.year))
-    .attr('y', d => y(d.value))
-    .attr('width', x1.bandwidth())
-    .attr('height', d => height - margin.bottom - y(d.value))
-    .attr('rx', 4)
-    .attr('fill', d => `url(#gradient-${d.year})`)
-    .attr('stroke', d => d3.rgb(colorScale(d.year)).darker(0.5))
-    .attr('stroke-width', 0.5)
-    .attr('opacity', 0.9)
-    .style('cursor', 'pointer')
-    .style('transition', 'filter 0.2s, opacity 0.2s')
-    .on('mouseover', function(event, d) {
-      d3.select(this)
-        .style('filter', 'url(#glow)')
-        .attr('opacity', 1);
+    // Добавляем подписи с данными для всплывающих подсказок
+    const tooltip = d3.select('body').select('.chart-tooltip');
+    
+    if (tooltip.empty()) {
+      d3.select('body').append('div')
+        .attr('class', 'chart-tooltip')
+        .style('position', 'absolute')
+        .style('visibility', 'hidden')
+        .style('background', 'rgba(17, 24, 39, 0.95)')
+        .style('color', '#f9fafb')
+        .style('padding', '10px 15px')
+        .style('border-radius', '5px')
+        .style('font-size', '0.9rem')
+        .style('box-shadow', '0 4px 15px rgba(0, 0, 0, 0.3)')
+        .style('border', '1px solid rgba(59, 130, 246, 0.3)')
+        .style('z-index', 10);
+    }
+    
+    // Создаем градиентные заливки для столбцов
+    const defs = svg.append('defs');
+    
+    years.forEach((year, i) => {
+      const gradientId = `gradient-${year}`;
+      const gradient = defs.append('linearGradient')
+        .attr('id', gradientId)
+        .attr('x1', '0%')
+        .attr('y1', '0%')
+        .attr('x2', '0%')
+        .attr('y2', '100%');
       
-      // Форматируем данные для всплывающей подсказки
-      tooltip.html(`
-        <div style="display: flex; align-items: center; margin-bottom: 8px;">
-          <div style="width: 12px; height: 12px; border-radius: 50%; background: ${colorScale(d.year)}; margin-right: 8px;"></div>
-          <strong>${d.monthName} ${d.year}</strong>
-        </div>
-        <div style="margin-left: 20px;">Продажи: <strong>${formatProfitCompact(d.value)}</strong></div>
-        <div style="font-size: 0.8rem; color: #9ca3af; margin-top: 5px;">
-          Нажмите для просмотра детализации
-        </div>
-      `)
-      .style('visibility', 'visible')
-      .style('left', `${event.pageX + 15}px`)
-      .style('top', `${event.pageY - 20}px`);
-    })
-    .on('mouseout', function() {
-      d3.select(this)
-        .style('filter', 'none')
-        .attr('opacity', 0.9);
+      gradient.append('stop')
+        .attr('offset', '0%')
+        .attr('stop-color', d3.rgb(colorScale(year)).brighter(0.5))
+        .attr('stop-opacity', 1);
       
-      tooltip.style('visibility', 'hidden');
-    })
-    .on('click', (event, d) => {
-      // При клике показываем детализацию с выбором: по моделям или по регионам
-      showSelectionOptions(d.year, d.month, d.monthName);
-    })
-    // Анимация появления
-    .attr('y', height - margin.bottom)
-    .attr('height', 0)
-    .transition()
-    .duration(800)
-    .delay((d, i) => i * 50)
-    .attr('y', d => y(d.value))
-    .attr('height', d => height - margin.bottom - y(d.value));
-  
-  // Добавляем текстовые метки со значениями над столбцами
-  monthGroups.selectAll('.bar-value-label')
-    .data(d => years.map(year => ({
-      year,
-      value: d.years[year] || 0,
-      month: d.month,
-      monthName: d.name
-    })))
-    .join('text')
-    .attr('class', 'bar-value-label')
-    .attr('x', d => x1(d.year) + x1.bandwidth() / 2)
-    .attr('y', d => y(d.value) - 8) // Положение над столбцом
-    .attr('text-anchor', 'middle')
-    .style('font-size', '0.7rem')
-    .style('font-weight', 'bold')
-    .style('fill', '#f9fafb')
-    .style('filter', 'drop-shadow(0 1px 1px rgba(0,0,0,0.7))')
-    .style('opacity', 0) // Начинаем с прозрачного состояния для анимации
-    .text(d => formatProfitCompact(d.value))
-    .transition() // Анимация появления текста
-    .duration(500)
-    .delay((d, i) => 800 + i * 50) // Задержка после анимации столбцов
-    .style('opacity', d => d.value > 0 ? 1 : 0); // Показываем только для ненулевых значений
-  
-  // Добавляем красивую легенду в правой части
-  const legend = svg.append('g')
-    .attr('transform', `translate(${width - margin.right + 30}, ${margin.top + 20})`);
-  
-  // Фон для легенды
-  legend.append('rect')
-    .attr('x', -20)
-    .attr('y', -15)
-    .attr('width', 110)
-    .attr('height', years.length * 30 + 10)
-    .attr('rx', 10)
-    .attr('fill', 'rgba(17, 24, 39, 0.4)')
-    .attr('stroke', 'rgba(59, 130, 246, 0.2)')
-    .attr('stroke-width', 1);
-  
-  // Элементы легенды
-  years.forEach((year, i) => {
-    const legendItem = legend.append('g')
-      .attr('transform', `translate(0, ${i * 30})`)
+      gradient.append('stop')
+        .attr('offset', '100%')
+        .attr('stop-color', colorScale(year))
+        .attr('stop-opacity', 0.8);
+    });
+    
+    // Создаем эффект свечения для выделения
+    defs.append('filter')
+      .attr('id', 'glow')
+      .append('feGaussianBlur')
+      .attr('stdDeviation', '3')
+      .attr('result', 'coloredBlur');
+    
+    // Для каждой группы добавляем столбцы по годам с улучшенным стилем и интерактивностью
+    itemGroups.selectAll('rect')
+      .data(d => years.map(year => ({
+        year,
+        value: d.years[year] || 0,
+        key: d.key,
+        name: d.name,
+        isDay: isDaysList
+      })))
+      .join('rect')
+      .attr('class', 'bar')
+      .attr('x', d => x1(d.year))
+      .attr('y', d => y(d.value))
+      .attr('width', x1.bandwidth())
+      .attr('height', d => height - margin.bottom - y(d.value))
+      .attr('rx', 4)
+      .attr('fill', d => `url(#gradient-${d.year})`)
+      .attr('stroke', d => d3.rgb(colorScale(d.year)).darker(0.5))
+      .attr('stroke-width', 0.5)
+      .attr('opacity', 0.9)
       .style('cursor', 'pointer')
-      .on('mouseover', function() {
-        d3.select(this).select('text').style('font-weight', 'bold');
-        // Подсвечиваем все столбцы соответствующего года
-        svg.selectAll('.bar')
-          .filter(d => d.year === year)
+      .style('transition', 'filter 0.2s, opacity 0.2s')
+      .on('mouseover', function(event, d) {
+        d3.select(this)
           .style('filter', 'url(#glow)')
           .attr('opacity', 1);
         
-        // Также подсвечиваем метки значений
-        svg.selectAll('.bar-value-label')
-          .filter(d => d.year === year)
-          .style('font-size', '0.8rem')
-          .style('fill', '#ffffff');
+        const tooltip = d3.select('body').select('.chart-tooltip');
+        tooltip.html(`
+          <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <div style="width: 12px; height: 12px; border-radius: 50%; background: ${colorScale(d.year)}; margin-right: 8px;"></div>
+            <strong>${isDaysList ? `День ${d.name}` : d.name} ${d.year}</strong>
+          </div>
+          <div style="margin-left: 20px;">Продажи: <strong>${formatProfitCompact(d.value)}</strong></div>
+          <div style="font-size: 0.8rem; color: #9ca3af; margin-top: 5px;">
+            Нажмите для просмотра детализации
+          </div>
+        `)
+        .style('visibility', 'visible')
+        .style('left', `${event.pageX + 15}px`)
+        .style('top', `${event.pageY - 20}px`);
       })
       .on('mouseout', function() {
-        d3.select(this).select('text').style('font-weight', 'normal');
-        // Возвращаем нормальный вид столбцам
-        svg.selectAll('.bar')
-          .filter(d => d.year === year)
+        d3.select(this)
           .style('filter', 'none')
           .attr('opacity', 0.9);
         
-        // Возвращаем нормальный вид меткам
-        svg.selectAll('.bar-value-label')
-          .filter(d => d.year === year)
-          .style('font-size', '0.7rem')
-          .style('fill', '#f9fafb');
-      });
+        d3.select('body').select('.chart-tooltip').style('visibility', 'hidden');
+      })
+  .on('click', (event, d) => {
+        // При клике показываем детализацию с выбором: по моделям или по регионам
+        // Для дня передаем текущий выбранный месяц, для месяца - месяц из данных
+        if (isDaysList) {
+          // Если это день из списка дней, используем выбранный месяц и день для детализации
+          const [year, month] = selectedMonth.split('-').map(Number);
+          showSelectionOptions(d.year, month, `${d.name} ${MONTHS[month-1]} ${d.year}`);
+        } else if (isDay) {
+          // Если это единственный день, просто передаем параметры
+          const [year, month] = selectedMonth.split('-').map(Number);
+          showSelectionOptions(d.year, month, `${d.name} ${MONTHS[month-1]} ${d.year}`);
+        } else {
+          // Для месяца передаем месяц из данных
+          showSelectionOptions(d.year, d.key, `${d.name} ${d.year}`);
+        }
+      })
+      // Анимация появления
+      .attr('y', height - margin.bottom)
+      .attr('height', 0)
+      .transition()
+      .duration(800)
+      .delay((d, i) => i * 50)
+      .attr('y', d => y(d.value))
+      .attr('height', d => height - margin.bottom - y(d.value));
     
-    // Цветной индикатор
-    legendItem.append('rect')
-      .attr('width', 16)
-      .attr('height', 16)
-      .attr('rx', 3)
-      .attr('fill', `url(#gradient-${year})`);
-    
-    // Текст года
-    legendItem.append('text')
-      .attr('x', 25)
-      .attr('y', 12)
-      .style('font-size', '0.9rem')
+    // Добавляем текстовые метки со значениями над столбцами
+    itemGroups.selectAll('.bar-value-label')
+      .data(d => years.map(year => ({
+        year,
+        value: d.years[year] || 0,
+        key: d.key,
+        name: d.name
+      })))
+      .join('text')
+      .attr('class', 'bar-value-label')
+      .attr('x', d => x1(d.year) + x1.bandwidth() / 2)
+      .attr('y', d => y(d.value) - 8) // Положение над столбцом
+      .attr('text-anchor', 'middle')
+      .style('font-size', isDaysList ? '0.6rem' : '0.7rem') // Меньший размер для дней
+      .style('font-weight', 'bold')
       .style('fill', '#f9fafb')
-      .text(year);
-  });
+      .style('filter', 'drop-shadow(0 1px 1px rgba(0,0,0,0.7))')
+      .style('opacity', 0) // Начинаем с прозрачного состояния для анимации
+      .text(d => d.value > 0 ? formatProfitCompact(d.value) : '')
+      .transition() // Анимация появления текста
+      .duration(500)
+      .delay((d, i) => 800 + i * 50) // Задержка после анимации столбцов
+      .style('opacity', d => d.value > (maxValue * 0.05) ? 1 : 0); // Показываем только для значимых значений
+    
+    // Добавляем красивую легенду в правой части
+    const legend = svg.append('g')
+      .attr('transform', `translate(${width - margin.right + 30}, ${margin.top + 20})`);
+    
+    // Фон для легенды
+    legend.append('rect')
+      .attr('x', -20)
+      .attr('y', -15)
+      .attr('width', 110)
+      .attr('height', years.length * 30 + 10)
+      .attr('rx', 10)
+      .attr('fill', 'rgba(17, 24, 39, 0.4)')
+      .attr('stroke', 'rgba(59, 130, 246, 0.2)')
+      .attr('stroke-width', 1);
+    
+    // Элементы легенды
+    years.forEach((year, i) => {
+      const legendItem = legend.append('g')
+        .attr('transform', `translate(0, ${i * 30})`)
+        .style('cursor', 'pointer')
+        .on('mouseover', function() {
+          d3.select(this).select('text').style('font-weight', 'bold');
+          // Подсвечиваем все столбцы соответствующего года
+          svg.selectAll('.bar')
+            .filter(d => d.year === year)
+            .style('filter', 'url(#glow)')
+            .attr('opacity', 1);
+          
+          // Также подсвечиваем метки значений
+          svg.selectAll('.bar-value-label')
+            .filter(d => d.year === year)
+            .style('font-size', isDaysList ? '0.7rem' : '0.8rem')
+            .style('fill', '#ffffff');
+        })
+        .on('mouseout', function() {
+          d3.select(this).select('text').style('font-weight', 'normal');
+          // Возвращаем нормальный вид столбцам
+          svg.selectAll('.bar')
+            .filter(d => d.year === year)
+            .style('filter', 'none')
+            .attr('opacity', 0.9);
+          
+          // Возвращаем нормальный вид меткам
+          svg.selectAll('.bar-value-label')
+            .filter(d => d.year === year)
+            .style('font-size', isDaysList ? '0.6rem' : '0.7rem')
+            .style('fill', '#f9fafb');
+        });
+      
+      // Цветной индикатор
+      legendItem.append('rect')
+        .attr('width', 12)
+        .attr('height', 12)
+        .attr('rx', 2)
+        .attr('fill', colorScale(year));
+      
+      // Текст года
+      legendItem.append('text')
+        .attr('x', 18)
+        .attr('y', 10)
+        .style('font-size', '0.9rem')
+        .style('fill', '#f9fafb')
+        .text(year);
+    });
+    
+    // Добавляем подсказку о возможности клика
+    svg.append('text')
+      .attr('x', width / 2)
+      .attr('y', height - 15)
+      .attr('text-anchor', 'middle')
+      .style('font-size', '0.85rem')
+      .style('fill', '#9ca3af')
+      .style('font-style', 'italic')
+      .text(isDaysList 
+        ? 'Нажмите на столбец для детализации данных по дню' 
+        : isDay 
+          ? 'Детализация данных по выбранному дню' 
+          : 'Нажмите на столбец для детализации данных');
+  };
   
-  // Добавляем подсказку о возможности клика
-  svg.append('text')
-    .attr('x', width / 2)
-    .attr('y', height - 15)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '0.85rem')
-    .style('fill', '#9ca3af')
-    .style('font-style', 'italic')
-    .text('Нажмите на столбец для детализации данных по моделям или регионам');
+  // Инициализация графика с полными данными
+  updateChart();
 };
+          
+       
 
 // Показываем опции выбора детализации (модели или регионы)
 const showSelectionOptions = (year, month, monthName) => {
@@ -6974,84 +7347,95 @@ return (
           </motion.div>
         )}
         
-        {displayMode === 'period' && (
-          <motion.div 
-            key="period"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="bg-gray-700/50 rounded-lg p-4 border border-gray-600/50"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-300 mb-2 text-sm">Начало периода:</p>
-                <div className="flex space-x-3">
-                  <select 
-                    value={startMonth}
-                    onChange={(e) => setStartMonth(parseInt(e.target.value))}
-                    className="bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-white flex-1"
-                  >
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                      <option key={`start-month-${month}`} value={month}>
-                        {new Date(2000, month - 1).toLocaleString('ru', { month: 'long' })}
-                      </option>
-                    ))}
-                  </select>
-                  
-                  <select 
-                    value={startYear}
-                    onChange={(e) => setStartYear(parseInt(e.target.value))}
-                    className="bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-white w-24"
-                  >
-                    {Object.keys(financialData).map(year => (
-                      <option key={`start-year-${year}`} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              <div>
-                <p className="text-gray-300 mb-2 text-sm">Конец периода:</p>
-                <div className="flex space-x-3">
-                  <select 
-                    value={endMonth}
-                    onChange={(e) => setEndMonth(parseInt(e.target.value))}
-                    className="bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-white flex-1"
-                  >
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                      <option key={`end-month-${month}`} value={month}>
-                        {new Date(2000, month - 1).toLocaleString('ru', { month: 'long' })}
-                      </option>
-                    ))}
-                  </select>
-                  
-                  <select 
-                    value={endYear}
-                    onChange={(e) => setEndYear(parseInt(e.target.value))}
-                    className="bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-white w-24"
-                  >
-                    {Object.keys(financialData).map(year => (
-                      <option key={`end-year-${year}`} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
+  {displayMode === 'period' && (
+  <motion.div 
+    key="period"
+    initial={{ opacity: 0, height: 0 }}
+    animate={{ opacity: 1, height: 'auto' }}
+    exit={{ opacity: 0, height: 0 }}
+    className="bg-gradient-to-r from-gray-800/80 to-gray-700/60 backdrop-blur-sm rounded-xl p-3.5 border border-gray-600/30 shadow-lg"
+  >
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center space-x-3">
+        <div className="relative group">
+          <div className="absolute -top-5 left-0 text-xs text-blue-300/70 font-medium opacity-0 group-hover:opacity-100 transition-opacity">От</div>
+          <div className="flex items-center overflow-hidden rounded-lg shadow-sm bg-gray-900/50 border border-blue-500/20 hover:border-blue-500/40 transition-colors">
+            <select 
+              value={startMonth}
+              onChange={(e) => setStartMonth(parseInt(e.target.value))}
+              className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none min-w-24"
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                <option key={`sm-${month}`} value={month}>
+                  {new Date(2000, month - 1).toLocaleString('ru', { month: 'short' })}
+                </option>
+              ))}
+            </select>
             
-            {!isPeriodValid() && (
-              <div className="mt-3 text-red-400 text-sm bg-red-900/20 p-2 rounded-md border border-red-700/30">
-                Ошибка: дата начала периода должна быть раньше даты окончания
-              </div>
-            )}
+            <div className="h-5 w-px bg-blue-500/20"></div>
             
-            {isPeriodValid() && (
-              <div className="mt-3 text-green-400 text-sm">
-                Выбранный период: с {new Date(startYear, startMonth - 1).toLocaleString('ru', { month: 'long', year: 'numeric' })} 
-                &nbsp;по {new Date(endYear, endMonth - 1).toLocaleString('ru', { month: 'long', year: 'numeric' })}
-              </div>
-            )}
-          </motion.div>
-        )}
+            <select 
+              value={startYear}
+              onChange={(e) => setStartYear(parseInt(e.target.value))}
+              className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none w-20"
+            >
+              {Object.keys(financialData).map(year => (
+                <option key={`sy-${year}`} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        
+        <div className="w-8 h-px bg-gradient-to-r from-blue-500/20 to-indigo-500/30"></div>
+        
+        <div className="relative group">
+          <div className="absolute -top-5 left-0 text-xs text-blue-300/70 font-medium opacity-0 group-hover:opacity-100 transition-opacity">До</div>
+          <div className="flex items-center overflow-hidden rounded-lg shadow-sm bg-gray-900/50 border border-indigo-500/20 hover:border-indigo-500/40 transition-colors">
+            <select 
+              value={endMonth}
+              onChange={(e) => setEndMonth(parseInt(e.target.value))}
+              className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none min-w-24"
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                <option key={`em-${month}`} value={month}>
+                  {new Date(2000, month - 1).toLocaleString('ru', { month: 'short' })}
+                </option>
+              ))}
+            </select>
+            
+            <div className="h-5 w-px bg-indigo-500/20"></div>
+            
+            <select 
+              value={endYear}
+              onChange={(e) => setEndYear(parseInt(e.target.value))}
+              className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none w-20"
+            >
+              {Object.keys(financialData).map(year => (
+                <option key={`ey-${year}`} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      {!isPeriodValid() ? (
+        <div className="text-xs font-medium text-red-400 bg-red-900/10 px-3 py-1.5 rounded-lg border border-red-500/30 shadow-inner flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          Некорректный период
+        </div>
+      ) : (
+        <div className="text-xs font-medium text-sky-300 bg-sky-900/10 px-3 py-1.5 rounded-lg border border-sky-500/20 shadow-inner">
+          {new Date(startYear, startMonth - 1).toLocaleString('ru', { month: 'short', year: 'numeric' })} —{' '}
+          {new Date(endYear, endMonth - 1).toLocaleString('ru', { month: 'short', year: 'numeric' })}
+        </div>
+      )}
+    </div>
+  </motion.div>
+)}
       </AnimatePresence>
     </div>
     
