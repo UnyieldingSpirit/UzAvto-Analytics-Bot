@@ -8,7 +8,7 @@ import AutoDashboard from "@/src/shared/components/AutoDashboard";
 import CarContractsAnalytics from "@/src/shared/components/CarContractsAnalytics";
 import WarehouseAnalytics from "@/src/shared/components/WarehouseAnalytics";
 import CarWarehouseAnalytics from "@/src/shared/components/CarWarehouseAnalytics";
-// import WarehouseDashboard from "@/src/shared/components/WarehouseDashboard";
+import WarehouseDashboard from "@/src/shared/components/WarehouseDashboard";
 
 export default function StatisticsPage() {
   return (
@@ -23,7 +23,7 @@ export default function StatisticsPage() {
 <CarContractsAnalytics/>
 <WarehouseAnalytics/>
 <CarWarehouseAnalytics/>
-{/* <WarehouseDashboard/> */}
+<WarehouseDashboard/>
   </>
       )
 }
