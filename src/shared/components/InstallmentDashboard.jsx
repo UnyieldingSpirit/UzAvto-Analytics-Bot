@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 
 const InstallmentDashboard = () => {
@@ -7,6 +7,46 @@ const InstallmentDashboard = () => {
   const modelChartRef = useRef(null);
   const paymentStatusRef = useRef(null);
   const monthlyTrendsRef = useRef(null);
+  const regionChartRef = useRef(null);
+
+  // Добавляем состояние для выбранного региона
+  const [selectedRegion, setSelectedRegion] = useState('Ташкент');
+
+  // Регионы Узбекистана
+  const regions = [
+    'Ташкент',
+    'Самарканд',
+    'Бухара',
+    'Андижан',
+    'Наманган',
+    'Фергана',
+    'Кашкадарья',
+    'Сурхандарья',
+    'Хорезм',
+    'Навои',
+    'Джизак',
+    'Сырдарья',
+    'Ташкентская область',
+    'Каракалпакстан'
+  ];
+
+  // Данные по рассрочке с разбивкой по регионам
+  const regionData = {
+    'Ташкент': { installmentCount: 320, paidPercentage: 78, overduePercentage: 8 },
+    'Самарканд': { installmentCount: 245, paidPercentage: 72, overduePercentage: 12 },
+    'Бухара': { installmentCount: 180, paidPercentage: 76, overduePercentage: 9 },
+    'Андижан': { installmentCount: 210, paidPercentage: 68, overduePercentage: 15 },
+    'Наманган': { installmentCount: 195, paidPercentage: 70, overduePercentage: 14 },
+    'Фергана': { installmentCount: 225, paidPercentage: 69, overduePercentage: 11 },
+    'Кашкадарья': { installmentCount: 165, paidPercentage: 65, overduePercentage: 18 },
+    'Сурхандарья': { installmentCount: 140, paidPercentage: 64, overduePercentage: 17 },
+    'Хорезм': { installmentCount: 135, paidPercentage: 71, overduePercentage: 10 },
+    'Навои': { installmentCount: 120, paidPercentage: 75, overduePercentage: 8 },
+    'Джизак': { installmentCount: 110, paidPercentage: 67, overduePercentage: 16 },
+    'Сырдарья': { installmentCount: 95, paidPercentage: 66, overduePercentage: 15 },
+    'Ташкентская область': { installmentCount: 170, paidPercentage: 74, overduePercentage: 9 },
+    'Каракалпакстан': { installmentCount: 130, paidPercentage: 63, overduePercentage: 19 }
+  };
 
   // Данные рассрочки
   const data = {
@@ -43,7 +83,8 @@ const InstallmentDashboard = () => {
     renderModelChart();
     renderPaymentStatus();
     renderMonthlyTrends();
-  }, []);
+    renderRegionChart();
+  }, [selectedRegion]);
 
   // Форматирование чисел и валюты
   const formatNumber = (num) => {
@@ -237,6 +278,15 @@ const InstallmentDashboard = () => {
       .attr('fill', 'white')
       .attr('font-size', '12px')
       .text(`Остаток к оплате: ${Math.round(remainingPercent)}%`);
+    
+    // Добавляем подпись выбранного региона
+    svg.append('text')
+      .attr('x', width / 2)
+      .attr('y', height - 15)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#94a3b8')
+      .attr('font-size', '12px')
+      .text(`Регион: ${selectedRegion}`);
   };
 
   // Диаграмма по моделям
@@ -314,6 +364,15 @@ const InstallmentDashboard = () => {
         .attr('font-weight', 'bold')
         .text(`${model.percentage}%`);
     });
+    
+    // Добавляем информацию о регионе
+    svg.append('text')
+      .attr('x', width / 2)
+      .attr('y', height - 10)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#94a3b8')
+      .attr('font-size', '12px')
+      .text(`${selectedRegion}`);
   };
 
   // Диаграмма статуса оплаты
@@ -411,6 +470,15 @@ const InstallmentDashboard = () => {
         .attr('font-size', '14px')
         .text(`${item.label}: $${formatNumber(item.value)}`);
     });
+    
+    // Добавляем информацию о регионе
+    svg.append('text')
+      .attr('x', width / 2)
+      .attr('y', height - 10)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#94a3b8')
+      .attr('font-size', '12px')
+      .text(`${selectedRegion}`);
   };
 
   // График месячных трендов
@@ -566,11 +634,289 @@ const InstallmentDashboard = () => {
       .attr('fill', 'white')
       .attr('font-size', '12px')
       .text('Общая сумма');
+    
+    // Добавляем информацию о регионе
+    svg.append('text')
+      .attr('x', width / 2)
+      .attr('y', height - 10)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#94a3b8')
+      .attr('font-size', '12px')
+      .text(`Данные по региону: ${selectedRegion}`);
+  };
+
+  // Новый график - диаграмма по регионам
+  const renderRegionChart = () => {
+    if (!regionChartRef.current) return;
+    const container = regionChartRef.current;
+    const width = container.clientWidth;
+    const height = 350;
+    
+    // Очищаем контейнер
+    d3.select(container).selectAll("*").remove();
+    
+    // Создаем SVG
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height);
+    
+    // Добавляем заголовок
+    svg.append('text')
+      .attr('x', 10)
+      .attr('y', 25)
+      .attr('fill', 'white')
+      .attr('font-size', '18px')
+      .attr('font-weight', 'bold')
+      .text('Статистика рассрочки по регионам');
+    
+    // Создаем шкалы
+    const margin = { top: 50, right: 20, bottom: 60, left: 150 };
+    const chartWidth = width - margin.left - margin.right;
+    const chartHeight = height - margin.top - margin.bottom;
+    
+    // Сортируем регионы по количеству рассрочек
+    const sortedRegions = Object.entries(regionData)
+      .sort((a, b) => b[1].installmentCount - a[1].installmentCount)
+      .map(entry => entry[0]);
+    
+    const y = d3.scaleBand()
+      .domain(sortedRegions)
+      .range([margin.top, margin.top + chartHeight])
+      .padding(0.3);
+    
+    const x = d3.scaleLinear()
+      .domain([0, d3.max(Object.values(regionData), d => d.installmentCount) * 1.1])
+      .range([margin.left, margin.left + chartWidth]);
+    
+    // Добавляем оси
+   // Добавляем оси
+    svg.append('g')
+      .attr('transform', `translate(0, ${margin.top + chartHeight})`)
+      .call(d3.axisBottom(x).ticks(5).tickFormat(d => d))
+      .selectAll('text')
+      .attr('fill', '#94a3b8');
+    
+    svg.append('g')
+      .attr('transform', `translate(${margin.left}, 0)`)
+      .call(d3.axisLeft(y))
+      .selectAll('text')
+      .attr('fill', '#94a3b8')
+      .style('font-size', '12px');
+    
+    // Добавляем горизонтальные бары для регионов
+    const bars = svg.selectAll('.region-bar')
+      .data(sortedRegions)
+      .join('rect')
+      .attr('class', 'region-bar')
+      .attr('x', margin.left)
+      .attr('y', d => y(d))
+      .attr('height', y.bandwidth())
+      .attr('fill', d => d === selectedRegion ? '#3b82f6' : '#64748b')
+      .attr('rx', 4)
+      .attr('cursor', 'pointer')
+      .on('mouseover', function(event, d) {
+        d3.select(this).attr('fill', d === selectedRegion ? '#2563eb' : '#94a3b8');
+      })
+      .on('mouseout', function(event, d) {
+        d3.select(this).attr('fill', d === selectedRegion ? '#3b82f6' : '#64748b');
+      })
+      .on('click', function(event, d) {
+        setSelectedRegion(d);
+      })
+      .attr('width', 0)
+      .transition()
+      .duration(1000)
+      .attr('width', d => x(regionData[d].installmentCount) - margin.left);
+    
+    // Добавляем метки с количеством
+    svg.selectAll('.count-label')
+      .data(sortedRegions)
+      .join('text')
+      .attr('class', 'count-label')
+      .attr('x', d => x(regionData[d].installmentCount) + 5)
+      .attr('y', d => y(d) + y.bandwidth() / 2 + 5)
+      .attr('fill', 'white')
+      .attr('font-size', '12px')
+      .text(d => formatNumber(regionData[d].installmentCount))
+      .style('opacity', 0)
+      .transition()
+      .duration(500)
+      .delay(1000)
+      .style('opacity', 1);
+    
+    // Добавляем иконки статуса для каждого региона
+    svg.selectAll('.status-indicator')
+      .data(sortedRegions)
+      .join('g')
+      .attr('class', 'status-indicator')
+      .attr('transform', d => `translate(${margin.left - 30}, ${y(d) + y.bandwidth() / 2})`)
+      .each(function(d) {
+        const indicator = d3.select(this);
+        const data = regionData[d];
+        
+        // Определяем цвет индикатора на основе процента просрочки
+        let statusColor;
+        if (data.overduePercentage < 10) statusColor = '#22c55e';
+        else if (data.overduePercentage < 15) statusColor = '#eab308';
+        else statusColor = '#ef4444';
+        
+        // Добавляем круглый индикатор
+        indicator.append('circle')
+          .attr('r', 6)
+          .attr('fill', statusColor)
+          .attr('stroke', '#0f172a')
+          .attr('stroke-width', 1);
+      });
+    
+    // Добавляем подсветку выбранного региона
+    svg.append('rect')
+      .attr('x', margin.left - 10)
+      .attr('y', y(selectedRegion) - 5)
+      .attr('width', x(regionData[selectedRegion].installmentCount) - margin.left + 25)
+      .attr('height', y.bandwidth() + 10)
+      .attr('fill', 'none')
+      .attr('stroke', '#3b82f6')
+      .attr('stroke-width', 2)
+      .attr('stroke-dasharray', '5,3')
+      .attr('rx', 6);
+    
+    // Добавляем подписи процентов оплаты для каждого региона
+    svg.selectAll('.payment-percent')
+      .data(sortedRegions)
+      .join('text')
+      .attr('class', 'payment-percent')
+      .attr('x', d => x(regionData[d].installmentCount) + 50)
+      .attr('y', d => y(d) + y.bandwidth() / 2)
+      .attr('fill', d => {
+        const overduePercent = regionData[d].overduePercentage;
+        if (overduePercent < 10) return '#22c55e';
+        else if (overduePercent < 15) return '#eab308';
+        else return '#ef4444';
+      })
+      .attr('font-size', '11px')
+      .attr('font-weight', 'bold')
+      .attr('alignment-baseline', 'middle')
+      .text(d => `${regionData[d].paidPercentage}% оплачено`)
+      .style('opacity', 0)
+      .transition()
+      .duration(500)
+      .delay((_, i) => 1200 + i * 50)
+      .style('opacity', 1);
+    
+    // Добавляем инструкцию
+    svg.append('text')
+      .attr('x', width / 2)
+      .attr('y', height - 15)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#94a3b8')
+      .attr('font-size', '12px')
+      .text('Нажмите на регион для просмотра детальной информации');
+  };
+
+  // Создаем компонент выбора региона
+  const RegionSelector = () => {
+    return (
+      <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700 mb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-bold text-white mb-2">Выбор региона</h3>
+            <p className="text-slate-400 text-sm">
+              Выберите регион для просмотра детальной статистики рассрочки
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap gap-2 max-w-2xl">
+            {regions.map(region => (
+              <button
+                key={region}
+                onClick={() => setSelectedRegion(region)}
+                className={`px-3 py-2 text-sm rounded-lg transition-all ${
+                  selectedRegion === region 
+                    ? 'bg-blue-600 text-white font-medium shadow-md shadow-blue-900/30' 
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                {region}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Добавляем информационные карточки региона
+  const RegionInfoCards = () => {
+    const regionInfo = regionData[selectedRegion];
+    
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Карточка по количеству рассрочек */}
+        <div className="bg-gradient-to-br from-blue-900/40 to-blue-800/20 rounded-xl p-4 shadow-lg border border-blue-800/30">
+          <div className="flex items-center">
+            <div className="w-12 h-12 rounded-full bg-blue-600/30 flex items-center justify-center mr-4">
+              <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-blue-300">Количество рассрочек</h3>
+              <p className="text-2xl font-bold text-white">{formatNumber(regionInfo.installmentCount)}</p>
+              <p className="text-blue-300/70 text-xs mt-1">Активных договоров</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Карточка по проценту оплаты */}
+        <div className="bg-gradient-to-br from-green-900/40 to-green-800/20 rounded-xl p-4 shadow-lg border border-green-800/30">
+          <div className="flex items-center">
+            <div className="w-12 h-12 rounded-full bg-green-600/30 flex items-center justify-center mr-4">
+              <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-green-300">Процент оплаты</h3>
+              <p className="text-2xl font-bold text-white">{regionInfo.paidPercentage}%</p>
+              <p className="text-green-300/70 text-xs mt-1">Оплаченных платежей</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Карточка по проценту просрочки */}
+        <div className="bg-gradient-to-br from-red-900/40 to-red-800/20 rounded-xl p-4 shadow-lg border border-red-800/30">
+          <div className="flex items-center">
+            <div className="w-12 h-12 rounded-full bg-red-600/30 flex items-center justify-center mr-4">
+              <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-red-300">Просрочка платежей</h3>
+              <p className="text-2xl font-bold text-white">{regionInfo.overduePercentage}%</p>
+              <p className="text-red-300/70 text-xs mt-1">Просроченных платежей</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="bg-slate-900 p-4 md:p-6 text-white">
       <h1 className="text-2xl font-bold mb-6 text-center">ТАБЛИЦА РАССРОЧКИ</h1>
+      
+      {/* Селектор региона */}
+      <RegionSelector />
+      
+      {/* Информационные карточки региона */}
+      <RegionInfoCards />
+      
+      {/* График по регионам */}
+      <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700 mb-6">
+        <div ref={regionChartRef} className="w-full h-[350px]"></div>
+      </div>
       
       <div className="grid grid-cols-1 gap-6 mb-6">
         <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
