@@ -1,81 +1,88 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
+import { carModels } from '@/src/shared/mocks/mock-data';
 
 const InstallmentDashboard = () => {
+  // Refs for charts
   const mainChartRef = useRef(null);
   const modelChartRef = useRef(null);
   const paymentStatusRef = useRef(null);
   const monthlyTrendsRef = useRef(null);
   const regionChartRef = useRef(null);
 
-  // Добавляем состояние для выбранного региона
+  // State
   const [selectedRegion, setSelectedRegion] = useState('Ташкент');
+  const [selectedModel, setSelectedModel] = useState(null);
+  const [modelCompareMode, setModelCompareMode] = useState(false);
+  const [viewMode, setViewMode] = useState('region'); // 'region' or 'model'
 
   // Регионы Узбекистана
   const regions = [
-    'Ташкент',
-    'Самарканд',
-    'Бухара',
-    'Андижан',
-    'Наманган',
-    'Фергана',
-    'Кашкадарья',
-    'Сурхандарья',
-    'Хорезм',
-    'Навои',
-    'Джизак',
-    'Сырдарья',
-    'Ташкентская область',
-    'Каракалпакстан'
+    'Ташкент', 'Самарканд', 'Бухара', 'Андижан', 'Наманган', 'Фергана',
+    'Кашкадарья', 'Сурхандарья', 'Хорезм', 'Навои', 'Джизак', 
+    'Сырдарья', 'Ташкентская область', 'Каракалпакстан'
   ];
 
-  // Данные по рассрочке с разбивкой по регионам
-  const regionData = {
-    'Ташкент': { installmentCount: 320, paidPercentage: 78, overduePercentage: 8 },
-    'Самарканд': { installmentCount: 245, paidPercentage: 72, overduePercentage: 12 },
-    'Бухара': { installmentCount: 180, paidPercentage: 76, overduePercentage: 9 },
-    'Андижан': { installmentCount: 210, paidPercentage: 68, overduePercentage: 15 },
-    'Наманган': { installmentCount: 195, paidPercentage: 70, overduePercentage: 14 },
-    'Фергана': { installmentCount: 225, paidPercentage: 69, overduePercentage: 11 },
-    'Кашкадарья': { installmentCount: 165, paidPercentage: 65, overduePercentage: 18 },
-    'Сурхандарья': { installmentCount: 140, paidPercentage: 64, overduePercentage: 17 },
-    'Хорезм': { installmentCount: 135, paidPercentage: 71, overduePercentage: 10 },
-    'Навои': { installmentCount: 120, paidPercentage: 75, overduePercentage: 8 },
-    'Джизак': { installmentCount: 110, paidPercentage: 67, overduePercentage: 16 },
-    'Сырдарья': { installmentCount: 95, paidPercentage: 66, overduePercentage: 15 },
-    'Ташкентская область': { installmentCount: 170, paidPercentage: 74, overduePercentage: 9 },
-    'Каракалпакстан': { installmentCount: 130, paidPercentage: 63, overduePercentage: 19 }
+  // Расширяем данные регионов
+  const regionData = {};
+  
+  // Заполняем данные для регионов
+  regions.forEach(region => {
+    regionData[region] = {
+      installmentCount: Math.floor(Math.random() * 200) + 100,
+      paidPercentage: Math.floor(Math.random() * 30) + 60,
+      overduePercentage: Math.floor(Math.random() * 20) + 5,
+      models: carModels.map(model => ({
+        ...model,
+        installments: Math.floor(Math.random() * 60) + 15,
+        paidPercentage: Math.floor(Math.random() * 30) + 50,
+        overduePercentage: Math.floor(Math.random() * 20) + 5,
+        remainingAmount: Math.floor(Math.random() * 40000) + 20000,
+        paidAmount: Math.floor(Math.random() * 15000) + 5000,
+        monthlyPayments: generateMonthlyData()
+      }))
+    };
+  });
+
+  // Генерация месячных платежей
+  function generateMonthlyData() {
+    const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен'];
+    let cumulativePaid = 0;
+    return months.map(month => {
+      const paid = Math.floor(Math.random() * 1000) + 500;
+      const unpaid = Math.floor(Math.random() * 500) + 100;
+      cumulativePaid += paid;
+      return { month, paid: cumulativePaid, unpaid };
+    });
+  }
+
+  // Обработчик выбора модели
+  const handleModelSelect = (model) => {
+    if (selectedModel?.id === model.id) {
+      setSelectedModel(null);
+      setViewMode('region');
+    } else {
+      setSelectedModel(model);
+      setViewMode('model');
+    }
   };
 
-  // Данные рассрочки
-  const data = {
-    remainingAmount: 68452,    // Оставшаяся сумма
-    paidAmount: 9478,          // Оплачено
-    carPrice: 78600,           // Цена машины
-    overdueDebt: 3652,         // Просроченные платежи
-    accountsReceivable: 5784,  // Дебиторская задолженность
-    
-    // Платежи по месяцам
-    monthlyPayments: [
-      { month: 'Янв', paid: 4200, unpaid: 1800 },
-      { month: 'Фев', paid: 4500, unpaid: 1500 },
-      { month: 'Мар', paid: 5100, unpaid: 1200 },
-      { month: 'Апр', paid: 5400, unpaid: 1800 },
-      { month: 'Май', paid: 6300, unpaid: 2100 },
-      { month: 'Июн', paid: 6900, unpaid: 2700 },
-      { month: 'Июл', paid: 7500, unpaid: 3300 },
-      { month: 'Авг', paid: 8100, unpaid: 3600 },
-      { month: 'Сен', paid: 9478, unpaid: 3652 }
-    ],
-    
-    // Данные по моделям
-    models: [
-      { name: 'Лачетти', percentage: 85 },
-      { name: 'Нексия', percentage: 70 },
-      { name: 'Кобальт', percentage: 55 },
-      { name: 'Дамас', percentage: 40 }
-    ]
+  // Обработчик выбора региона
+  const handleRegionSelect = (region) => {
+    setSelectedRegion(region);
+    if (viewMode === 'model' && selectedModel) {
+      // При выборе региона в режиме просмотра модели, обновляем данные для выбранной модели
+      const modelInRegion = regionData[region].models.find(m => m.id === selectedModel.id);
+      if (modelInRegion) {
+        setSelectedModel(modelInRegion);
+      }
+    }
+  };
+
+  // Переключение режима сравнения моделей
+  const toggleModelCompareMode = () => {
+    setModelCompareMode(!modelCompareMode);
   };
 
   useEffect(() => {
@@ -84,9 +91,9 @@ const InstallmentDashboard = () => {
     renderPaymentStatus();
     renderMonthlyTrends();
     renderRegionChart();
-  }, [selectedRegion]);
+  }, [selectedRegion, selectedModel, viewMode, modelCompareMode]);
 
-  // Форматирование чисел и валюты
+  // Форматирование чисел
   const formatNumber = (num) => {
     return new Intl.NumberFormat('ru-RU').format(num);
   };
@@ -98,14 +105,34 @@ const InstallmentDashboard = () => {
     const width = container.clientWidth;
     const height = 300;
     
-    // Очищаем контейнер
     d3.select(container).selectAll("*").remove();
     
-    // Создаем SVG
     const svg = d3.select(container)
       .append('svg')
       .attr('width', width)
       .attr('height', height);
+    
+    // Получаем данные для текущей модели или общие данные по региону
+    let data = {
+      carPrice: 0,
+      paidAmount: 0,
+      remainingAmount: 0,
+      overdueDebt: 0
+    };
+    
+    if (selectedModel) {
+      const model = regionData[selectedRegion].models.find(m => m.id === selectedModel.id);
+      data.carPrice = model.paidAmount + model.remainingAmount;
+      data.paidAmount = model.paidAmount;
+      data.remainingAmount = model.remainingAmount;
+      data.overdueDebt = Math.round(model.remainingAmount * (model.overduePercentage / 100));
+    } else {
+      const regionModels = regionData[selectedRegion].models;
+      data.carPrice = regionModels.reduce((sum, model) => sum + model.paidAmount + model.remainingAmount, 0);
+      data.paidAmount = regionModels.reduce((sum, model) => sum + model.paidAmount, 0);
+      data.remainingAmount = regionModels.reduce((sum, model) => sum + model.remainingAmount, 0);
+      data.overdueDebt = Math.round(data.remainingAmount * (regionData[selectedRegion].overduePercentage / 100));
+    }
     
     // Рассчитываем проценты
     const paidPercent = (data.paidAmount / data.carPrice) * 100;
@@ -279,14 +306,14 @@ const InstallmentDashboard = () => {
       .attr('font-size', '12px')
       .text(`Остаток к оплате: ${Math.round(remainingPercent)}%`);
     
-    // Добавляем подпись выбранного региона
+    // Добавляем подпись выбранного региона и модели
     svg.append('text')
       .attr('x', width / 2)
       .attr('y', height - 15)
       .attr('text-anchor', 'middle')
       .attr('fill', '#94a3b8')
       .attr('font-size', '12px')
-      .text(`Регион: ${selectedRegion}`);
+      .text(`Регион: ${selectedRegion}${selectedModel ? ` - Модель: ${selectedModel.name}` : ''}`);
   };
 
   // Диаграмма по моделям
@@ -296,14 +323,17 @@ const InstallmentDashboard = () => {
     const width = container.clientWidth;
     const height = 200;
     
-    // Очищаем контейнер
     d3.select(container).selectAll("*").remove();
     
-    // Создаем SVG
     const svg = d3.select(container)
       .append('svg')
       .attr('width', width)
       .attr('height', height);
+    
+    // Получаем модели для текущего региона
+    const models = selectedModel 
+      ? [selectedModel] 
+      : regionData[selectedRegion].models.slice(0, 4); // Ограничиваем 4 моделями для лучшего отображения
     
     // Добавляем заголовок
     svg.append('text')
@@ -323,7 +353,7 @@ const InstallmentDashboard = () => {
     const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
     
     // Добавляем бары для каждой модели
-    data.models.forEach((model, i) => {
+    models.forEach((model, i) => {
       const y = startY + i * (barHeight + barSpacing);
       
       // Название модели
@@ -347,13 +377,13 @@ const InstallmentDashboard = () => {
       svg.append('rect')
         .attr('x', 100)
         .attr('y', y)
-        .attr('width', barWidth * model.percentage / 100)
+        .attr('width', 0)
         .attr('height', barHeight)
-        .attr('fill', colors[i])
+        .attr('fill', colors[i % colors.length])
         .attr('rx', 4)
         .transition()
         .duration(1000)
-        .attr('width', barWidth * model.percentage / 100);
+        .attr('width', barWidth * model.paidPercentage / 100);
       
       // Процент
       svg.append('text')
@@ -362,7 +392,7 @@ const InstallmentDashboard = () => {
         .attr('fill', 'white')
         .attr('font-size', '14px')
         .attr('font-weight', 'bold')
-        .text(`${model.percentage}%`);
+        .text(`${model.paidPercentage}%`);
     });
     
     // Добавляем информацию о регионе
@@ -382,10 +412,8 @@ const InstallmentDashboard = () => {
     const width = container.clientWidth;
     const height = 200;
     
-    // Очищаем контейнер
     d3.select(container).selectAll("*").remove();
     
-    // Создаем SVG
     const svg = d3.select(container)
       .append('svg')
       .attr('width', width)
@@ -401,15 +429,31 @@ const InstallmentDashboard = () => {
       .text('Статус оплаты');
     
     // Получаем данные для диаграммы
-    const total = data.carPrice;
-    const paid = data.paidAmount;
-    const overdue = data.overdueDebt;
-    const remaining = total - paid - overdue;
+    let data = {};
+    
+    if (selectedModel) {
+      const model = regionData[selectedRegion].models.find(m => m.id === selectedModel.id);
+      const total = model.paidAmount + model.remainingAmount;
+      const paid = model.paidAmount;
+      const overdue = Math.round(model.remainingAmount * (model.overduePercentage / 100));
+      const remaining = model.remainingAmount - overdue;
+      
+      data = { total, paid, overdue, remaining };
+    } else {
+      const regionModels = regionData[selectedRegion].models;
+      const total = regionModels.reduce((sum, model) => sum + model.paidAmount + model.remainingAmount, 0);
+      const paid = regionModels.reduce((sum, model) => sum + model.paidAmount, 0);
+      const remainingTotal = regionModels.reduce((sum, model) => sum + model.remainingAmount, 0);
+      const overdue = Math.round(remainingTotal * (regionData[selectedRegion].overduePercentage / 100));
+      const remaining = remainingTotal - overdue;
+      
+      data = { total, paid, overdue, remaining };
+    }
     
     const pieData = [
-      { label: 'Оплачено', value: paid, color: '#16a34a' },
-      { label: 'Просрочено', value: overdue, color: '#dc2626' },
-      { label: 'Остаток', value: remaining, color: '#334155' }
+      { label: 'Оплачено', value: data.paid, color: '#16a34a' },
+      { label: 'Просрочено', value: data.overdue, color: '#dc2626' },
+      { label: 'Остаток', value: data.remaining, color: '#334155' }
     ];
     
     // Создаем пирог
@@ -424,14 +468,29 @@ const InstallmentDashboard = () => {
     const pieGroup = svg.append('g')
       .attr('transform', `translate(${width/3}, ${height/2})`);
     
-    // Добавляем сегменты
+    // Добавляем сегменты с анимацией
     pieGroup.selectAll('path')
       .data(arcData)
       .join('path')
-      .attr('d', arcGenerator)
+      .attr('d', d => {
+        // Начальное положение - все сегменты имеют начальный и конечный углы равные 0
+        const startArc = { ...d, startAngle: d.endAngle, endAngle: d.endAngle };
+        return arcGenerator(startArc);
+      })
       .attr('fill', d => d.data.color)
       .attr('stroke', '#1e293b')
-      .attr('stroke-width', 1);
+      .attr('stroke-width', 1)
+      .transition()
+      .duration(800)
+      .attrTween('d', function(d) {
+        const interpolate = d3.interpolate(
+          { startAngle: d.endAngle, endAngle: d.endAngle },
+          { startAngle: d.startAngle, endAngle: d.endAngle }
+        );
+        return function(t) {
+          return arcGenerator(interpolate(t));
+        };
+      });
     
     // Добавляем текст в центр
     pieGroup.append('text')
@@ -447,7 +506,7 @@ const InstallmentDashboard = () => {
       .attr('fill', 'white')
       .attr('font-size', '18px')
       .attr('font-weight', 'bold')
-      .text(`$${formatNumber(total)}`);
+      .text(`$${formatNumber(data.total)}`);
     
     // Добавляем легенду
     const legend = svg.append('g')
@@ -470,15 +529,6 @@ const InstallmentDashboard = () => {
         .attr('font-size', '14px')
         .text(`${item.label}: $${formatNumber(item.value)}`);
     });
-    
-    // Добавляем информацию о регионе
-    svg.append('text')
-      .attr('x', width / 2)
-      .attr('y', height - 10)
-      .attr('text-anchor', 'middle')
-      .attr('fill', '#94a3b8')
-      .attr('font-size', '12px')
-      .text(`${selectedRegion}`);
   };
 
   // График месячных трендов
@@ -489,10 +539,8 @@ const InstallmentDashboard = () => {
     const height = 250;
     const margin = { top: 30, right: 30, bottom: 40, left: 60 };
     
-    // Очищаем контейнер
     d3.select(container).selectAll("*").remove();
     
-    // Создаем SVG
     const svg = d3.select(container)
       .append('svg')
       .attr('width', width)
@@ -507,14 +555,33 @@ const InstallmentDashboard = () => {
       .attr('font-weight', 'bold')
       .text('Динамика платежей по месяцам');
     
+    // Получаем данные для графика
+    let monthlyPayments = [];
+    
+    if (selectedModel) {
+      const model = regionData[selectedRegion].models.find(m => m.id === selectedModel.id);
+      monthlyPayments = model.monthlyPayments;
+    } else {
+      // Суммируем данные по всем моделям
+      const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен'];
+      monthlyPayments = months.map((month, i) => {
+        const models = regionData[selectedRegion].models;
+        return {
+          month,
+          paid: models.reduce((sum, model) => sum + model.monthlyPayments[i].paid, 0),
+          unpaid: models.reduce((sum, model) => sum + model.monthlyPayments[i].unpaid, 0)
+        };
+      });
+    }
+    
     // Создаем шкалы
     const x = d3.scaleBand()
-      .domain(data.monthlyPayments.map(d => d.month))
+      .domain(monthlyPayments.map(d => d.month))
       .range([margin.left, width - margin.right])
       .padding(0.3);
     
     const y = d3.scaleLinear()
-      .domain([0, d3.max(data.monthlyPayments, d => d.paid + d.unpaid) * 1.1])
+      .domain([0, d3.max(monthlyPayments, d => d.paid + d.unpaid) * 1.1])
       .nice()
       .range([height - margin.bottom, margin.top]);
     
@@ -533,7 +600,7 @@ const InstallmentDashboard = () => {
     
     // Добавляем столбцы оплаченных сумм
     svg.selectAll('.paid-bar')
-      .data(data.monthlyPayments)
+      .data(monthlyPayments)
       .join('rect')
       .attr('class', 'paid-bar')
       .attr('x', d => x(d.month))
@@ -545,7 +612,7 @@ const InstallmentDashboard = () => {
     
     // Добавляем столбцы просроченных платежей
     svg.selectAll('.unpaid-bar')
-      .data(data.monthlyPayments)
+      .data(monthlyPayments)
       .join('rect')
       .attr('class', 'unpaid-bar')
       .attr('x', d => x(d.month))
@@ -562,7 +629,7 @@ const InstallmentDashboard = () => {
       .curve(d3.curveMonotoneX);
     
     svg.append('path')
-      .datum(data.monthlyPayments)
+      .datum(monthlyPayments)
       .attr('fill', 'none')
       .attr('stroke', '#3b82f6')
       .attr('stroke-width', 2)
@@ -570,7 +637,7 @@ const InstallmentDashboard = () => {
     
     // Добавляем точки
     svg.selectAll('.data-point')
-      .data(data.monthlyPayments)
+      .data(monthlyPayments)
       .join('circle')
       .attr('class', 'data-point')
       .attr('cx', d => x(d.month) + x.bandwidth() / 2)
@@ -635,7 +702,7 @@ const InstallmentDashboard = () => {
       .attr('font-size', '12px')
       .text('Общая сумма');
     
-    // Добавляем информацию о регионе
+    // Информация о регионе
     svg.append('text')
       .attr('x', width / 2)
       .attr('y', height - 10)
@@ -645,208 +712,205 @@ const InstallmentDashboard = () => {
       .text(`Данные по региону: ${selectedRegion}`);
   };
 
-  // Новый график - диаграмма по регионам
+  // Диаграмма по регионам
   const renderRegionChart = () => {
     if (!regionChartRef.current) return;
     const container = regionChartRef.current;
-    const width = container.clientWidth;
-    const height = 350;
-    
-    // Очищаем контейнер
     d3.select(container).selectAll("*").remove();
     
-    // Создаем SVG
+    const width = container.clientWidth;
+    const height = 350; // Reduced height
+    
+    // Get top 8 regions to avoid overcrowding
+    const topRegions = Object.entries(regionData)
+      .sort((a, b) => b[1].installmentCount - a[1].installmentCount)
+      .slice(0, 8)
+      .map(entry => entry[0]);
+    
+    // Create simple SVG
     const svg = d3.select(container)
       .append('svg')
       .attr('width', width)
       .attr('height', height);
     
-    // Добавляем заголовок
-    svg.append('text')
-      .attr('x', 10)
-      .attr('y', 25)
-      .attr('fill', 'white')
-      .attr('font-size', '18px')
-      .attr('font-weight', 'bold')
-      .text('Статистика рассрочки по регионам');
+    // Define clean margins
+    const margin = { top: 40, right: 20, bottom: 20, left: 120 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
     
-    // Создаем шкалы
-    const margin = { top: 50, right: 20, bottom: 60, left: 150 };
-    const chartWidth = width - margin.left - margin.right;
-    const chartHeight = height - margin.top - margin.bottom;
-    
-    // Сортируем регионы по количеству рассрочек
-    const sortedRegions = Object.entries(regionData)
-      .sort((a, b) => b[1].installmentCount - a[1].installmentCount)
-      .map(entry => entry[0]);
-    
-    const y = d3.scaleBand()
-      .domain(sortedRegions)
-      .range([margin.top, margin.top + chartHeight])
-      .padding(0.3);
-    
-    const x = d3.scaleLinear()
-      .domain([0, d3.max(Object.values(regionData), d => d.installmentCount) * 1.1])
-      .range([margin.left, margin.left + chartWidth]);
-    
-    // Добавляем оси
-   // Добавляем оси
-    svg.append('g')
-      .attr('transform', `translate(0, ${margin.top + chartHeight})`)
-      .call(d3.axisBottom(x).ticks(5).tickFormat(d => d))
-      .selectAll('text')
-      .attr('fill', '#94a3b8');
-    
-    svg.append('g')
-      .attr('transform', `translate(${margin.left}, 0)`)
-      .call(d3.axisLeft(y))
-      .selectAll('text')
-      .attr('fill', '#94a3b8')
-      .style('font-size', '12px');
-    
-    // Добавляем горизонтальные бары для регионов
-    const bars = svg.selectAll('.region-bar')
-      .data(sortedRegions)
-      .join('rect')
-      .attr('class', 'region-bar')
-      .attr('x', margin.left)
-      .attr('y', d => y(d))
-      .attr('height', y.bandwidth())
-      .attr('fill', d => d === selectedRegion ? '#3b82f6' : '#64748b')
-      .attr('rx', 4)
-      .attr('cursor', 'pointer')
-      .on('mouseover', function(event, d) {
-        d3.select(this).attr('fill', d === selectedRegion ? '#2563eb' : '#94a3b8');
-      })
-      .on('mouseout', function(event, d) {
-        d3.select(this).attr('fill', d === selectedRegion ? '#3b82f6' : '#64748b');
-      })
-      .on('click', function(event, d) {
-        setSelectedRegion(d);
-      })
-      .attr('width', 0)
-      .transition()
-      .duration(1000)
-      .attr('width', d => x(regionData[d].installmentCount) - margin.left);
-    
-    // Добавляем метки с количеством
-    svg.selectAll('.count-label')
-      .data(sortedRegions)
-      .join('text')
-      .attr('class', 'count-label')
-      .attr('x', d => x(regionData[d].installmentCount) + 5)
-      .attr('y', d => y(d) + y.bandwidth() / 2 + 5)
-      .attr('fill', 'white')
-      .attr('font-size', '12px')
-      .text(d => formatNumber(regionData[d].installmentCount))
-      .style('opacity', 0)
-      .transition()
-      .duration(500)
-      .delay(1000)
-      .style('opacity', 1);
-    
-    // Добавляем иконки статуса для каждого региона
-    svg.selectAll('.status-indicator')
-      .data(sortedRegions)
-      .join('g')
-      .attr('class', 'status-indicator')
-      .attr('transform', d => `translate(${margin.left - 30}, ${y(d) + y.bandwidth() / 2})`)
-      .each(function(d) {
-        const indicator = d3.select(this);
-        const data = regionData[d];
-        
-        // Определяем цвет индикатора на основе процента просрочки
-        let statusColor;
-        if (data.overduePercentage < 10) statusColor = '#22c55e';
-        else if (data.overduePercentage < 15) statusColor = '#eab308';
-        else statusColor = '#ef4444';
-        
-        // Добавляем круглый индикатор
-        indicator.append('circle')
-          .attr('r', 6)
-          .attr('fill', statusColor)
-          .attr('stroke', '#0f172a')
-          .attr('stroke-width', 1);
-      });
-    
-    // Добавляем подсветку выбранного региона
-    svg.append('rect')
-      .attr('x', margin.left - 10)
-      .attr('y', y(selectedRegion) - 5)
-      .attr('width', x(regionData[selectedRegion].installmentCount) - margin.left + 25)
-      .attr('height', y.bandwidth() + 10)
-      .attr('fill', 'none')
-      .attr('stroke', '#3b82f6')
-      .attr('stroke-width', 2)
-      .attr('stroke-dasharray', '5,3')
-      .attr('rx', 6);
-    
-    // Добавляем подписи процентов оплаты для каждого региона
-    svg.selectAll('.payment-percent')
-      .data(sortedRegions)
-      .join('text')
-      .attr('class', 'payment-percent')
-      .attr('x', d => x(regionData[d].installmentCount) + 50)
-      .attr('y', d => y(d) + y.bandwidth() / 2)
-      .attr('fill', d => {
-        const overduePercent = regionData[d].overduePercentage;
-        if (overduePercent < 10) return '#22c55e';
-        else if (overduePercent < 15) return '#eab308';
-        else return '#ef4444';
-      })
-      .attr('font-size', '11px')
-      .attr('font-weight', 'bold')
-      .attr('alignment-baseline', 'middle')
-      .text(d => `${regionData[d].paidPercentage}% оплачено`)
-      .style('opacity', 0)
-      .transition()
-      .duration(500)
-      .delay((_, i) => 1200 + i * 50)
-      .style('opacity', 1);
-    
-    // Добавляем инструкцию
+    // Create title
     svg.append('text')
       .attr('x', width / 2)
-      .attr('y', height - 15)
+      .attr('y', 20)
       .attr('text-anchor', 'middle')
+      .attr('fill', 'white')
+      .attr('font-size', '14px')
+      .attr('font-weight', 'bold')
+      .text('Топ регионов по количеству рассрочек');
+    
+    // Create chart group
+    const g = svg.append('g')
+      .attr('transform', `translate(${margin.left}, ${margin.top})`);
+    
+    // Set up scales
+    const y = d3.scaleBand()
+      .domain(topRegions)
+      .range([0, innerHeight])
+      .padding(0.4);
+      
+    const x = d3.scaleLinear()
+      .domain([0, d3.max(topRegions.map(r => regionData[r].installmentCount))])
+      .range([0, innerWidth - 100]); // Leave space for labels
+    
+    // Draw axes
+    g.append('g')
+      .call(d3.axisLeft(y)
+        .tickSize(0)
+        .tickPadding(10))
+      .call(g => g.select('.domain').remove())
+      .selectAll('text')
+      .attr('fill', d => d === selectedRegion ? '#ffffff' : '#94a3b8')
+      .attr('font-weight', d => d === selectedRegion ? 'bold' : 'normal')
+      .style('cursor', 'pointer')
+      .on('click', (_, d) => handleRegionSelect(d));
+    
+    // Draw background for bars
+    g.selectAll('.bar-bg')
+      .data(topRegions)
+      .join('rect')
+      .attr('class', 'bar-bg')
+      .attr('y', d => y(d) + y.bandwidth() * 0.1)
+      .attr('height', y.bandwidth() * 0.8)
+      .attr('x', 0)
+      .attr('width', innerWidth - 100)
+      .attr('fill', '#1e293b')
+      .attr('rx', 3);
+    
+    // Draw bars
+    g.selectAll('.bar')
+      .data(topRegions)
+      .join('rect')
+      .attr('class', 'bar')
+      .attr('y', d => y(d) + y.bandwidth() * 0.1)
+      .attr('height', y.bandwidth() * 0.8)
+      .attr('x', 0)
+      .attr('fill', d => d === selectedRegion ? '#3b82f6' : '#64748b')
+      .attr('rx', 3)
+      .style('cursor', 'pointer')
+      .on('click', (_, d) => handleRegionSelect(d))
+      .attr('width', 0)
+      .transition()
+      .duration(800)
+      .attr('width', d => x(regionData[d].installmentCount));
+    
+    // Add count labels
+    g.selectAll('.count')
+      .data(topRegions)
+      .join('text')
+      .attr('class', 'count')
+      .attr('y', d => y(d) + y.bandwidth() / 2)
+      .attr('x', d => x(regionData[d].installmentCount) + 5)
+      .attr('dy', '0.35em')
+      .attr('fill', 'white')
+      .attr('font-size', '11px')
+      .text(d => formatNumber(regionData[d].installmentCount));
+    
+    // Add indicators
+    g.selectAll('.indicator')
+      .data(topRegions)
+      .join('g')
+      .attr('class', 'indicator')
+      .attr('transform', d => `translate(${innerWidth - 70}, ${y(d) + y.bandwidth() / 2})`)
+      .each(function(d) {
+        const g = d3.select(this);
+        const info = regionData[d];
+        
+        // Mini progress bar
+        const width = 60;
+        
+        // Background
+        g.append('rect')
+          .attr('x', 0)
+          .attr('y', -4)
+          .attr('width', width)
+          .attr('height', 8)
+          .attr('rx', 4)
+          .attr('fill', '#1e293b');
+        
+        // Paid part
+        g.append('rect')
+          .attr('x', 0)
+          .attr('y', -4)
+          .attr('width', (width * info.paidPercentage) / 100)
+          .attr('height', 8)
+          .attr('rx', 4)
+          .attr('fill', '#16a34a');
+        
+        // Overdue part
+        g.append('rect')
+          .attr('x', (width * info.paidPercentage) / 100)
+          .attr('y', -4)
+          .attr('width', (width * info.overduePercentage) / 100)
+          .attr('height', 8)
+          .attr('fill', '#dc2626');
+        
+        // Status dot
+        const statusColor = info.overduePercentage < 10 ? '#22c55e' : 
+                            info.overduePercentage < 15 ? '#eab308' : '#ef4444';
+        
+        g.append('circle')
+          .attr('cx', -10)
+          .attr('cy', 0)
+          .attr('r', 4)
+          .attr('fill', statusColor);
+      });
+    
+    // Add highlight for selected region
+    if (selectedRegion && topRegions.includes(selectedRegion)) {
+      const selectedY = y(selectedRegion);
+      g.append('rect')
+        .attr('x', -10)
+        .attr('y', selectedY - 2)
+        .attr('width', innerWidth - 80)
+        .attr('height', y.bandwidth() + 4)
+        .attr('fill', 'none')
+        .attr('stroke', '#3b82f6')
+        .attr('stroke-width', 1.5)
+        .attr('stroke-dasharray', '3,2')
+        .attr('rx', 5);
+    }
+    
+    // Add legend
+    const legend = svg.append('g')
+      .attr('transform', `translate(${width - 170}, ${margin.top - 15})`);
+    
+    legend.append('rect')
+      .attr('width', 10)
+      .attr('height', 10)
+      .attr('fill', '#16a34a');
+    
+    legend.append('text')
+      .attr('x', 15)
+      .attr('y', 8)
+      .attr('font-size', '10px')
       .attr('fill', '#94a3b8')
-      .attr('font-size', '12px')
-      .text('Нажмите на регион для просмотра детальной информации');
+      .text('Оплачено');
+    
+    legend.append('rect')
+      .attr('x', 80)
+      .attr('width', 10)
+      .attr('height', 10)
+      .attr('fill', '#dc2626');
+    
+    legend.append('text')
+      .attr('x', 95)
+      .attr('y', 8)
+      .attr('font-size', '10px')
+      .attr('fill', '#94a3b8')
+      .text('Просрочено');
   };
 
-  // Создаем компонент выбора региона
-  const RegionSelector = () => {
-    return (
-      <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700 mb-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h3 className="text-lg font-bold text-white mb-2">Выбор региона</h3>
-            <p className="text-slate-400 text-sm">
-              Выберите регион для просмотра детальной статистики рассрочки
-            </p>
-          </div>
-          
-          <div className="flex flex-wrap gap-2 max-w-2xl">
-            {regions.map(region => (
-              <button
-                key={region}
-                onClick={() => setSelectedRegion(region)}
-                className={`px-3 py-2 text-sm rounded-lg transition-all ${
-                  selectedRegion === region 
-                    ? 'bg-blue-600 text-white font-medium shadow-md shadow-blue-900/30' 
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                {region}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Добавляем информационные карточки региона
+  // Информационные карточки региона
   const RegionInfoCards = () => {
     const regionInfo = regionData[selectedRegion];
     
@@ -907,18 +971,294 @@ const InstallmentDashboard = () => {
     <div className="bg-slate-900 p-4 md:p-6 text-white">
       <h1 className="text-2xl font-bold mb-6 text-center">ТАБЛИЦА РАССРОЧКИ</h1>
       
-      {/* Селектор региона */}
-      <RegionSelector />
-      
-      {/* Информационные карточки региона */}
-      <RegionInfoCards />
-      
-      {/* График по регионам */}
-      <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700 mb-6">
-        <div ref={regionChartRef} className="w-full h-[350px]"></div>
+      {/* Навигационные вкладки */}
+      <div className="flex mb-6 border-b border-slate-700">
+        <button 
+          className={`px-4 py-2 font-medium ${viewMode === 'region' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-400'}`}
+          onClick={() => {
+            setViewMode('region');
+            setModelCompareMode(false);
+          }}
+        >
+          По регионам
+        </button>
+        {selectedModel && (
+          <button 
+            className={`px-4 py-2 font-medium ${viewMode === 'model' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-400'}`}
+            onClick={() => setViewMode('model')}
+          >
+            {selectedModel.name}
+          </button>
+        )}
       </div>
       
-      <div className="grid grid-cols-1 gap-6 mb-6">
+      {/* Выбор региона всегда доступен */}
+      <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700 mb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-bold text-white mb-2">
+              {viewMode === 'region' ? 'Выбор региона' : `${selectedModel?.name} в регионах`}
+            </h3>
+            <p className="text-slate-400 text-sm">
+              {viewMode === 'region' 
+                ? 'Выберите регион для просмотра статистики рассрочки' 
+                : 'Выберите регион для просмотра рассрочки на эту модель'}
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap gap-2 max-w-2xl">
+            {regions.map(region => (
+              <button
+                key={region}
+                onClick={() => handleRegionSelect(region)}
+                className={`px-3 py-2 text-sm rounded-lg transition-all ${
+                  selectedRegion === region 
+                    ? 'bg-blue-600 text-white font-medium shadow-md shadow-blue-900/30' 
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                {region}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      
+      {/* Информационные карточки региона */}
+      {viewMode === 'region' && <RegionInfoCards />}
+      
+      {/* Детальная информация о выбранной модели */}
+      {selectedModel && viewMode === 'model' && (
+        <div className="bg-slate-800 rounded-xl p-5 shadow-lg border border-blue-800/30 mb-6">
+          <div className="flex flex-col md:flex-row gap-6">
+            {/* Изображение автомобиля */}
+            <div className="md:w-1/3 bg-slate-700/50 rounded-xl p-4 flex items-center justify-center">
+              <img 
+                src={selectedModel.img} 
+                alt={selectedModel.name} 
+                className="max-h-60 object-contain" 
+              />
+            </div>
+            
+            {/* Информация о модели в выбранном регионе */}
+            <div className="md:w-2/3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-1">{selectedModel.name}</h2>
+                  <p className="text-slate-400 mb-1">
+                    {selectedModel.category === 'suv' ? 'Внедорожник' : 
+                     selectedModel.category === 'sedan' ? 'Седан' : 'Минивэн'}
+                  </p>
+                  <p className="text-blue-400 text-sm">
+                    Данные по региону: {selectedRegion}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setSelectedModel(null);
+                    setViewMode('region');
+                  }}
+                  className="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg text-slate-300"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 my-6">
+                <div className="bg-slate-700/50 p-3 rounded-lg">
+                  <div className="text-slate-400 text-sm">Всего в рассрочке</div>
+                  <div className="text-white text-xl font-bold">{selectedModel.installments} шт.</div>
+                </div>
+                
+                <div className="bg-slate-700/50 p-3 rounded-lg">
+                  <div className="text-slate-400 text-sm">Оплачено</div>
+                  <div className="text-green-400 text-xl font-bold">{selectedModel.paidPercentage}%</div>
+                </div>
+                
+                <div className="bg-slate-700/50 p-3 rounded-lg">
+                  <div className="text-slate-400 text-sm">Просрочено</div>
+                  <div className="text-red-400 text-xl font-bold">{selectedModel.overduePercentage}%</div>
+                </div>
+                
+                <div className="bg-slate-700/50 p-3 rounded-lg">
+                  <div className="text-slate-400 text-sm">Остаток</div>
+                  <div className="text-white text-xl font-bold">${formatNumber(selectedModel.remainingAmount)}</div>
+                </div>
+                
+                <div className="bg-slate-700/50 p-3 rounded-lg">
+                  <div className="text-slate-400 text-sm">Оплачено</div>
+                  <div className="text-white text-xl font-bold">${formatNumber(selectedModel.paidAmount)}</div>
+                </div>
+                
+                <div className="bg-slate-700/50 p-3 rounded-lg">
+                  <div className="text-slate-400 text-sm">Полная стоимость</div>
+                  <div className="text-white text-xl font-bold">${formatNumber(selectedModel.paidAmount + selectedModel.remainingAmount)}</div>
+                </div>
+              </div>
+              
+              {/* Полоса прогресса оплаты */}
+              <div className="mb-6">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-slate-400">Прогресс оплаты:</span>
+                  <span className="text-white">{selectedModel.paidPercentage}%</span>
+                </div>
+                <div className="w-full h-4 bg-slate-700 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-600 to-green-500" 
+                    style={{ width: `${selectedModel.paidPercentage}%` }}
+                  ></div>
+                </div>
+              </div>
+              
+              {/* Кнопки действий */}
+              <div className="flex flex-wrap gap-3">
+                <button 
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                  onClick={toggleModelCompareMode}
+                >
+                  {modelCompareMode ? 'Скрыть сравнение по регионам' : 'Сравнить по регионам'}
+                </button>
+                <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                  График платежей
+                </button>
+                <button 
+                  className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg"
+                  onClick={() => {
+                    setSelectedModel(null);
+                    setViewMode('region');
+                  }}
+                >
+                  К списку моделей
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Сравнение модели по регионам */}
+      {viewMode === 'model' && modelCompareMode && (
+        <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700 mb-6">
+          <h3 className="text-lg font-bold text-white mb-4">{selectedModel.name} - Сравнение по регионам</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-700/50">
+                  <th className="p-2 text-left">Регион</th>
+                  <th className="p-2 text-right">Количество</th>
+                  <th className="p-2 text-right">Оплачено (%)</th>
+                  <th className="p-2 text-right">Просрочено (%)</th>
+                  <th className="p-2 text-right">Сумма остатка</th>
+                </tr>
+              </thead>
+              <tbody>
+                {regions.map(region => {
+                  const modelInRegion = regionData[region].models.find(m => m.id === selectedModel.id);
+                  return (
+                    <tr 
+                      key={region} 
+                      className={`border-b border-slate-700 hover:bg-slate-700/30 cursor-pointer ${region === selectedRegion ? 'bg-blue-900/20' : ''}`}
+                      onClick={() => handleRegionSelect(region)}
+                    >
+                      <td className="p-2">{region}</td>
+                      <td className="p-2 text-right">{modelInRegion.installments}</td>
+                      <td className="p-2 text-right text-green-400">{modelInRegion.paidPercentage}%</td>
+                      <td className="p-2 text-right text-red-400">{modelInRegion.overduePercentage}%</td>
+                      <td className="p-2 text-right">${formatNumber(modelInRegion.remainingAmount)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      
+      {/* Отображение карточек моделей только в режиме региона */}
+      {viewMode === 'region' && (
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold text-white">Модели автомобилей в рассрочке - {selectedRegion}</h3>
+            <div className="text-sm text-slate-400">
+              Нажмите на модель для подробной информации
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            {regionData[selectedRegion].models.map(model => (
+              <div 
+                key={model.id}
+                className={`bg-slate-800 rounded-xl overflow-hidden shadow-lg transition-all cursor-pointer border ${
+                  selectedModel?.id === model.id ? 'border-blue-500 scale-[1.02]' : 'border-slate-700 hover:scale-[1.01]'
+                }`}
+                onClick={() => handleModelSelect(model)}
+              >
+                <div className="h-44 overflow-hidden bg-slate-700/50 flex items-center justify-center">
+                  <img 
+                    src={model.img} 
+                    alt={model.name} 
+                    className="w-full h-44 object-contain p-2" 
+                  />
+                </div>
+                <div className="p-4">
+                  <h4 className="text-lg font-bold text-white">{model.name}</h4>
+                  <p className="text-slate-400 text-sm mb-2">
+                    {model.category === 'suv' ? 'Внедорожник' : 
+                     model.category === 'sedan' ? 'Седан' : 'Минивэн'}
+                  </p>
+                  
+                  <div className="mt-3">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-slate-400">Рассрочка:</span>
+                      <span className="text-white font-medium">{model.installments} шт.</span>
+                    </div>
+                    <div className="w-full bg-slate-700 rounded-full h-1.5 mb-3">
+                      <div 
+                        className="bg-blue-600 h-1.5 rounded-full" 
+                        style={{ width: `${(model.installments / Math.max(...regionData[selectedRegion].models.map(m => m.installments))) * 100}%` }}
+                      ></div>
+                    </div>
+                    
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-slate-400">Оплачено:</span>
+                      <span className="text-green-400 font-medium">{model.paidPercentage}%</span>
+                    </div>
+                    <div className="w-full bg-slate-700 rounded-full h-1.5 mb-3">
+                      <div 
+                        className="bg-green-500 h-1.5 rounded-full" 
+                        style={{ width: `${model.paidPercentage}%` }}
+                      ></div>
+                    </div>
+                    
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-slate-400">Просрочено:</span>
+                      <span className="text-red-400 font-medium">{model.overduePercentage}%</span>
+                    </div>
+                    <div className="w-full bg-slate-700 rounded-full h-1.5">
+                      <div 
+                        className="bg-red-500 h-1.5 rounded-full" 
+                        style={{ width: `${model.overduePercentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Графики */}
+      <div className="space-y-6">
+        {/* График по регионам показываем только в режиме региона */}
+        {viewMode === 'region' && (
+          <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
+            <div ref={regionChartRef} className="w-full h-[350px]"></div>
+          </div>
+        )}
+        
         <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
           <div ref={mainChartRef} className="w-full h-[300px]"></div>
         </div>
