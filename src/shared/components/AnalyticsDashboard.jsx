@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
-
+import { carModels } from '../mocks/mock-data';
 // Генерация тестовых данных для контрактов
 const generateContractData = () => {
   const data = [];
@@ -93,6 +93,7 @@ const formatNumber = (num) => {
 
 export default function ContractsAnalyticsDashboard() {
   const [yearlyData, setYearlyData] = useState([]);
+  const [selectedModel, setSelectedModel] = useState('all');
   const [selectedMonth, setSelectedMonth] = useState('Ноябрь');
   const [monthlyData, setMonthlyData] = useState({});
   const [chartType, setChartType] = useState('line');
@@ -649,21 +650,23 @@ export default function ContractsAnalyticsDashboard() {
                 </ResponsiveContainer>
               </div>
               
-              <div className="flex flex-wrap mt-4 gap-2 justify-center">
-                {yearlyData.map((item, index) => (
-                  <button
-                    key={`month-${index}`}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                      selectedMonth === item.name ? 
-                      'bg-indigo-600/70 text-white ring-2 ring-indigo-500 ring-offset-2 ring-offset-gray-800' : 
-                      'bg-gray-700/60 text-gray-300 hover:bg-gray-600/60'
-                    }`}
-                    onClick={() => setSelectedMonth(item.name)}
-                  >
-                    {item.name}
-                  </button>
-                ))}
-              </div>
+            <div className="flex flex-wrap mt-4 mb-4 justify-between items-center">
+  <div className="flex flex-wrap gap-2">
+    {yearlyData.map((item, index) => (
+      <button
+        key={`month-${index}`}
+        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+          selectedMonth === item.name ? 
+          'bg-indigo-600/70 text-white ring-2 ring-indigo-500 ring-offset-2 ring-offset-gray-800' : 
+          'bg-gray-700/60 text-gray-300 hover:bg-gray-600/60'
+        }`}
+        onClick={() => setSelectedMonth(item.name)}
+      >
+        {item.name}
+      </button>
+    ))}
+  </div>
+</div>
             </div>
           </div>
           
@@ -680,6 +683,31 @@ export default function ContractsAnalyticsDashboard() {
             </div>
           </div>
           
+            <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-6">
+  <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+    <span className="text-2xl mr-2">🚗</span> 
+    Популярные модели
+  </h3>
+  
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    {carModels.slice(0, 4).map(model => (
+      <div 
+        key={model.id}
+        className="bg-gray-900/90 p-4 rounded-lg border border-gray-700/60 hover:border-indigo-500/40 transition-all duration-300 flex flex-col items-center cursor-pointer"
+        onClick={() => setSelectedModel(model.id)}
+      >
+        <img 
+          src={model.img} 
+          alt={model.name} 
+          className="w-16 h-16 object-contain mb-2"
+        />
+        <p className="font-medium text-gray-200 text-center">{model.name}</p>
+        <p className="text-xs text-gray-400">{model.category}</p>
+      </div>
+    ))}
+  </div>
+</div>
+
           <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
             <h3 className="text-xl font-bold text-white mb-4 flex items-center">
               <span className="text-2xl mr-2">📋</span> 
