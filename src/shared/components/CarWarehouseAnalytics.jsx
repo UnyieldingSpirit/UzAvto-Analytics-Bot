@@ -1,6 +1,6 @@
 // components/CarWarehouseAnalytics.jsx
 'use client';
-
+import { carModels } from '../mocks/mock-data';
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 
@@ -34,77 +34,73 @@ const CarWarehouseAnalytics = () => {
   ];
   
   // Данные по моделям автомобилей
-  const modelData = [
-    { id: 'nexia', name: 'Chevrolet Nexia', category: 'sedan', stock: 76, defective: 5 },
-    { id: 'cobalt', name: 'Chevrolet Cobalt', category: 'sedan', stock: 84, defective: 3 },
-    { id: 'gentra', name: 'Chevrolet Gentra', category: 'sedan', stock: 58, defective: 7 },
-    { id: 'tracker', name: 'Chevrolet Tracker', category: 'suv', stock: 42, defective: 4 },
-    { id: 'tahoe', name: 'Chevrolet Tahoe', category: 'suv', stock: 22, defective: 2 },
-    { id: 'spark', name: 'Chevrolet Spark', category: 'hatchback', stock: 65, defective: 6 },
-    { id: 'damas', name: 'Chevrolet Damas', category: 'minivan', stock: 53, defective: 8 }
-  ];
+ const modelData = carModels.map(model => ({
+  ...model,
+  stock: Math.round(40 + Math.random() * 50),
+  defective: Math.round(2 + Math.random() * 8)
+}));
   
   // Данные по складам и распределению бракованных автомобилей
   const warehouseData = [
-    { 
-      id: 'tashkent', 
-      name: 'Ташкент', 
-      totalCars: 180, 
-      defectiveCars: 12,
-      models: [
-        { model: 'Nexia', defective: 4, total: 45 },
-        { model: 'Cobalt', defective: 2, total: 38 },
-        { model: 'Gentra', defective: 3, total: 32 },
-        { model: 'Spark', defective: 3, total: 65 }
-      ]
-    },
-    { 
-      id: 'samarkand', 
-      name: 'Самарканд', 
-      totalCars: 120, 
-      defectiveCars: 9,
-      models: [
-        { model: 'Nexia', defective: 2, total: 30 },
-        { model: 'Cobalt', defective: 1, total: 25 },
-        { model: 'Gentra', defective: 2, total: 20 },
-        { model: 'Damas', defective: 4, total: 45 }
-      ]
-    },
-    { 
-      id: 'bukhara', 
-      name: 'Бухара', 
-      totalCars: 90, 
-      defectiveCars: 5,
-      models: [
-        { model: 'Nexia', defective: 1, total: 20 },
-        { model: 'Cobalt', defective: 1, total: 15 },
-        { model: 'Tahoe', defective: 1, total: 10 },
-        { model: 'Tracker', defective: 2, total: 45 }
-      ]
-    },
-    { 
-      id: 'andijan', 
-      name: 'Андижан', 
-      totalCars: 65, 
-      defectiveCars: 8,
-      models: [
-        { model: 'Nexia', defective: 2, total: 20 },
-        { model: 'Spark', defective: 3, total: 25 },
-        { model: 'Damas', defective: 3, total: 20 }
-      ]
-    },
-    { 
-      id: 'fergana', 
-      name: 'Фергана', 
-      totalCars: 45, 
-      defectiveCars: 3,
-      models: [
-        { model: 'Cobalt', defective: 1, total: 15 },
-        { model: 'Gentra', defective: 1, total: 10 },
-        { model: 'Tracker', defective: 1, total: 20 }
-      ]
-    }
-  ];
+  { 
+    id: 'tashkent', 
+    name: 'Ташкент', 
+    totalCars: 180, 
+    defectiveCars: 12,
+    models: [
+      { model: 'DAMAS-2', defective: 4, total: 45 },
+      { model: 'TRACKER-2', defective: 2, total: 38 },
+      { model: 'Captiva 5T', defective: 3, total: 32 },
+      { model: 'ONIX', defective: 3, total: 65 }
+    ]
+  },
+  { 
+    id: 'samarkand', 
+    name: 'Самарканд', 
+    totalCars: 120, 
+    defectiveCars: 9,
+    models: [
+      { model: 'DAMAS-2', defective: 2, total: 30 },
+      { model: 'TRACKER-2', defective: 1, total: 25 },
+      { model: 'Captiva 5T', defective: 2, total: 20 },
+      { model: 'ONIX', defective: 4, total: 45 }
+    ]
+  },
+  { 
+    id: 'bukhara', 
+    name: 'Бухара', 
+    totalCars: 90, 
+    defectiveCars: 5,
+    models: [
+      { model: 'DAMAS-2', defective: 1, total: 20 },
+      { model: 'TRACKER-2', defective: 1, total: 15 },
+      { model: 'Captiva 5T', defective: 1, total: 10 },
+      { model: 'ONIX', defective: 2, total: 45 }
+    ]
+  },
+  { 
+    id: 'andijan', 
+    name: 'Андижан', 
+    totalCars: 65, 
+    defectiveCars: 8,
+    models: [
+      { model: 'DAMAS-2', defective: 2, total: 20 },
+      { model: 'TRACKER-2', defective: 3, total: 25 },
+      { model: 'ONIX', defective: 3, total: 20 }
+    ]
+  },
+  { 
+    id: 'fergana', 
+    name: 'Фергана', 
+    totalCars: 45, 
+    defectiveCars: 3,
+    models: [
+      { model: 'DAMAS-2', defective: 1, total: 15 },
+      { model: 'Captiva 5T', defective: 1, total: 10 },
+      { model: 'ONIX', defective: 1, total: 20 }
+    ]
+  }
+];
 
   useEffect(() => {
     renderInventoryChart();
@@ -343,37 +339,6 @@ const CarWarehouseAnalytics = () => {
       .duration(500)
       .delay(1200)
       .style('opacity', d => d.defective > 2 ? 1 : 0);
-      
-    // Добавляем легенду
-    const legend = svg.append('g')
-      .attr('transform', `translate(${width - 220}, ${height - 45})`);
-      
-    legend.append('rect')
-      .attr('width', 15)
-      .attr('height', 15)
-      .attr('fill', '#3b82f6')
-      .attr('rx', 2);
-      
-    legend.append('text')
-      .attr('x', 20)
-      .attr('y', 12)
-      .style('font-size', '12px')
-      .style('fill', '#d1d5db')
-      .text('Исправные автомобили');
-      
-    legend.append('rect')
-      .attr('width', 15)
-      .attr('height', 15)
-      .attr('fill', '#ef4444')
-      .attr('rx', 2)
-      .attr('transform', 'translate(0, 20)');
-      
-    legend.append('text')
-      .attr('x', 20)
-      .attr('y', 32)
-      .style('font-size', '12px')
-      .style('fill', '#d1d5db')
-      .text('Бракованные автомобили');
   };
   
   // Рендер диаграммы бракованных автомобилей по складам
@@ -1016,18 +981,30 @@ const CarWarehouseAnalytics = () => {
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-gray-800 rounded-lg p-4 shadow-lg">
-          <div className="flex justify-between mb-2">
-            <h2 className="text-lg font-semibold">Остаток автомобилей на складе</h2>
-            <div className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full">
-              Обновлено сегодня
-            </div>
-          </div>
-          <div className="text-sm text-gray-400 mb-4">
-            Нажмите на модель, чтобы увидеть подробную информацию
-          </div>
-          <div ref={inventoryChartRef} className="w-full h-[400px]"></div>
-        </div>
+    <div className="bg-gray-800 rounded-lg p-4 shadow-lg">
+  <div className="flex justify-between mb-2">
+    <h2 className="text-lg font-semibold">Остаток автомобилей на складе</h2>
+    <div className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full">
+      Обновлено сегодня
+    </div>
+  </div>
+  <div className="text-sm text-gray-400 mb-2">
+    Нажмите на модель, чтобы увидеть подробную информацию
+  </div>
+  
+  <div className="flex gap-2 mb-3">
+    <div className="flex items-center text-xs bg-gray-700 px-2 py-1 rounded">
+      <div className="w-3 h-3 bg-blue-500 rounded-sm mr-1"></div>
+      <span>Исправные</span>
+    </div>
+    <div className="flex items-center text-xs bg-gray-700 px-2 py-1 rounded">
+      <div className="w-3 h-3 bg-red-500 rounded-sm mr-1"></div>
+      <span>Бракованные</span>
+    </div>
+  </div>
+  
+  <div ref={inventoryChartRef} className="w-full h-[300px]"></div>
+</div>
         
         <div className="bg-gray-800 rounded-lg p-4 shadow-lg">
           <div className="flex justify-between mb-2">
