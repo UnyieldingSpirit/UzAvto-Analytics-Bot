@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { Package, Clock, Check, AlertTriangle, Filter, Truck, MapPin, Archive, ChevronLeft, BarChart3, Users, Activity, ChevronRight, Zap, Calendar, Car } from 'lucide-react';
+import { carModels, regions } from '@/src/shared/mocks/mock-data';
 
 const SalesDashboard = () => {
  const [activeTab, setActiveTab] = useState('месяц');
@@ -9,6 +10,12 @@ const SalesDashboard = () => {
  const [selectedRegion, setSelectedRegion] = useState(null);
  const [selectedDealer, setSelectedDealer] = useState(null);
  const [showSidebar, setShowSidebar] = useState(false);
+
+ // Создаем маппинг моделей для быстрого доступа
+ const carModelMap = carModels.reduce((acc, model) => {
+   acc[model.name] = model;
+   return acc;
+ }, {});
 
  // Стандартные данные
  const contractData = {
@@ -22,85 +29,90 @@ const SalesDashboard = () => {
  const maxSales = Math.max(...salesData);
  const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
 
- // Данные по городам
- const cityData = [
-   { name: 'Ташкент', value: 648 },
-   { name: 'Самарканд', value: 472 },
-   { name: 'Бухара', value: 365 },
-   { name: 'Наманган', value: 275 },
-   { name: 'Андижан', value: 248 }
- ];
+ // Данные по городам - используем регионы из моков
+ const cityData = regions.slice(0, 5).map((region, index) => ({
+   name: region.name,
+   value: 648 - (index * 100)
+ }));
 
  const maxCityValue = Math.max(...cityData.map(city => city.value));
 
- // Таблица автомобилей с просроченными контрактами
+ // Таблица автомобилей с просроченными контрактами - используем модели из моков
  const carData = [
-   { model: 'Chevrolet Nexia', count: 12, days: 8 },
-   { model: 'Chevrolet Cobalt', count: 8, days: 6 },
-   { model: 'Ravon R4', count: 5, days: 5 }
+   { model: carModels[0].name, count: 12, days: 8, img: carModels[0].img },
+   { model: carModels[1].name, count: 8, days: 6, img: carModels[1].img },
+   { model: carModels[2].name, count: 5, days: 5, img: carModels[2].img }
  ];
 
  const totalCars = carData.reduce((sum, car) => sum + car.count, 0);
 
- // Данные последних заказов
+ // Данные последних заказов - используем модели из моков
  const recentOrders = [
-   { id: '78912', client: 'Ахмедов А.', model: 'Chevrolet Malibu', price: 32500000, status: 'Доставлен' },
-   { id: '78911', client: 'Садыков М.', model: 'Chevrolet Captiva', price: 28700000, status: 'В пути' },
-   { id: '78910', client: 'Каримова С.', model: 'Chevrolet Nexia', price: 14200000, status: 'Новый' },
-   { id: '78909', client: 'Рахимов Т.', model: 'Chevrolet Cobalt', price: 15600000, status: 'В пути' },
-   { id: '78908', client: 'Исламов Д.', model: 'Ravon R4', price: 12900000, status: 'Новый' }
+   { id: '78912', client: 'Ахмедов А.', model: carModels[0].name, price: 32500000, status: 'Доставлен', img: carModels[0].img },
+   { id: '78911', client: 'Садыков М.', model: carModels[1].name, price: 28700000, status: 'В пути', img: carModels[1].img },
+   { id: '78910', client: 'Каримова С.', model: carModels[2].name, price: 14200000, status: 'Новый', img: carModels[2].img },
+   { id: '78909', client: 'Рахимов Т.', model: carModels[3].name, price: 15600000, status: 'В пути', img: carModels[3].img },
+   { id: '78908', client: 'Исламов Д.', model: carModels[0].name, price: 12900000, status: 'Новый', img: carModels[0].img }
  ];
 
- // Данные по регионам для каждого статуса
+ // Данные по регионам для каждого статуса - используем регионы из моков
  const regionData = {
-   notShipped: [
-     { name: 'Ташкент', value: 24 },
-     { name: 'Самарканд', value: 18 },
-     { name: 'Бухара', value: 12 },
-     { name: 'Наманган', value: 6 },
-     { name: 'Андижан', value: 4 }
-   ],
-   inTransit: [
-     { name: 'Ташкент', value: 15 },
-     { name: 'Самарканд', value: 14 },
-     { name: 'Бухара', value: 10 },
-     { name: 'Наманган', value: 5 },
-     { name: 'Андижан', value: 4 }
-   ]
+   notShipped: regions.slice(0, 5).map((region, index) => ({
+     name: region.name,
+     value: 24 - (index * 5)
+   })),
+   inTransit: regions.slice(0, 5).map((region, index) => ({
+     name: region.name,
+     value: 15 - (index * 3)
+   }))
+ };
+
+ // Функция для создания случайных моделей из списка
+ const generateRandomModels = (count) => {
+   const result = [];
+   for (let i = 0; i < count; i++) {
+     const randomIndex = Math.floor(Math.random() * carModels.length);
+     result.push({
+       name: carModels[randomIndex].name, 
+       count: Math.floor(Math.random() * 3) + 1,
+       img: carModels[randomIndex].img
+     });
+   }
+   return result;
  };
 
  // Данные по дилерам для каждого региона и статуса
  const dealerData = {
    notShipped: {
-     'Ташкент': [
-       { name: 'Автосалон Центральный', value: 10, models: [{name: "Chevrolet Nexia", count: 4}, {name: "Chevrolet Cobalt", count: 3}, {name: "Chevrolet Malibu", count: 3}] },
-       { name: 'GM Premium', value: 8, models: [{name: "Chevrolet Nexia", count: 3}, {name: "Chevrolet Onix", count: 3}, {name: "Ravon R4", count: 2}] },
-       { name: 'Авто-Максимум', value: 6, models: [{name: "Chevrolet Tracker", count: 2}, {name: "Chevrolet Cobalt", count: 2}, {name: "Ravon R4", count: 2}] },
+     [regions[0].name]: [
+       { name: 'Автосалон Центральный', value: 10, models: generateRandomModels(3) },
+       { name: 'GM Premium', value: 8, models: generateRandomModels(3) },
+       { name: 'Авто-Максимум', value: 6, models: generateRandomModels(3) },
      ],
-     'Самарканд': [
-       { name: 'GM Самарканд', value: 9, models: [{name: "Chevrolet Tracker", count: 3}, {name: "Chevrolet Nexia", count: 3}, {name: "Chevrolet Malibu", count: 3}] },
-       { name: 'Авто-Самарканд', value: 6, models: [{name: "Ravon R4", count: 2}, {name: "Chevrolet Cobalt", count: 2}, {name: "Chevrolet Spark", count: 2}] },
-       { name: 'Самарканд-Моторс', value: 3, models: [{name: "Chevrolet Captiva", count: 1}, {name: "Chevrolet Nexia", count: 1}, {name: "Chevrolet Cobalt", count: 1}] },
+     [regions[1].name]: [
+       { name: 'GM Самарканд', value: 9, models: generateRandomModels(3) },
+       { name: 'Авто-Самарканд', value: 6, models: generateRandomModels(3) },
+       { name: 'Самарканд-Моторс', value: 3, models: generateRandomModels(3) },
      ],
-     'Бухара': [
-       { name: 'Бухара-Авто', value: 7, models: [{name: "Chevrolet Nexia", count: 3}, {name: "Chevrolet Cobalt", count: 2}, {name: "Ravon R4", count: 2}] },
-       { name: 'GM Бухара', value: 5, models: [{name: "Chevrolet Nexia", count: 2}, {name: "Chevrolet Malibu", count: 2}, {name: "Chevrolet Tracker", count: 1}] },
+     [regions[2].name]: [
+       { name: 'Бухара-Авто', value: 7, models: generateRandomModels(3) },
+       { name: 'GM Бухара', value: 5, models: generateRandomModels(3) },
      ],
    },
    inTransit: {
-     'Ташкент': [
-       { name: 'Автосалон Центральный', value: 7, models: [{name: "Chevrolet Nexia", count: 3}, {name: "Chevrolet Cobalt", count: 2}, {name: "Chevrolet Malibu", count: 2}] },
-       { name: 'GM Premium', value: 5, models: [{name: "Chevrolet Nexia", count: 2}, {name: "Ravon R4", count: 2}, {name: "Chevrolet Onix", count: 1}] },
-       { name: 'Авто-Максимум', value: 3, models: [{name: "Chevrolet Tracker", count: 1}, {name: "Chevrolet Cobalt", count: 1}, {name: "Chevrolet Malibu", count: 1}] },
+     [regions[0].name]: [
+       { name: 'Автосалон Центральный', value: 7, models: generateRandomModels(3) },
+       { name: 'GM Premium', value: 5, models: generateRandomModels(3) },
+       { name: 'Авто-Максимум', value: 3, models: generateRandomModels(3) },
      ],
-     'Самарканд': [
-       { name: 'GM Самарканд', value: 6, models: [{name: "Chevrolet Tracker", count: 2}, {name: "Chevrolet Nexia", count: 2}, {name: "Chevrolet Malibu", count: 2}] },
-       { name: 'Авто-Самарканд', value: 5, models: [{name: "Ravon R4", count: 2}, {name: "Chevrolet Cobalt", count: 2}, {name: "Chevrolet Nexia", count: 1}] },
-       { name: 'Самарканд-Моторс', value: 3, models: [{name: "Chevrolet Captiva", count: 1}, {name: "Chevrolet Nexia", count: 1}, {name: "Chevrolet Cobalt", count: 1}] },
+     [regions[1].name]: [
+       { name: 'GM Самарканд', value: 6, models: generateRandomModels(3) },
+       { name: 'Авто-Самарканд', value: 5, models: generateRandomModels(3) },
+       { name: 'Самарканд-Моторс', value: 3, models: generateRandomModels(3) },
      ],
-     'Бухара': [
-       { name: 'Бухара-Авто', value: 6, models: [{name: "Chevrolet Nexia", count: 2}, {name: "Chevrolet Cobalt", count: 2}, {name: "Ravon R4", count: 2}] },
-       { name: 'GM Бухара', value: 4, models: [{name: "Chevrolet Nexia", count: 2}, {name: "Chevrolet Malibu", count: 1}, {name: "Chevrolet Tracker", count: 1}] },
+     [regions[2].name]: [
+       { name: 'Бухара-Авто', value: 6, models: generateRandomModels(3) },
+       { name: 'GM Бухара', value: 4, models: generateRandomModels(3) },
      ],
    }
  };
@@ -305,8 +317,14 @@ const SalesDashboard = () => {
                  return (
                    <div key={idx} className="bg-gray-700/50 rounded-lg p-2 border border-gray-600/50">
                      <div className="flex justify-between items-center mb-1">
-                       <div className="flex items-center gap-1.5">
-                         <Car size={14} className="text-gray-400" />
+                       <div className="flex items-center gap-2">
+                         <div className="w-8 h-8 rounded-md overflow-hidden bg-gray-600/30">
+                           <img 
+                             src={model.img} 
+                             alt={model.name} 
+                             className="w-full h-full object-cover"
+                           />
+                         </div>
                          <span className="text-white">{model.name}</span>
                        </div>
                        <span className={`text-xs px-2 py-1 rounded-full bg-${statusColor}-900/40 text-${statusColor}-300`}>
@@ -506,7 +524,7 @@ const SalesDashboard = () => {
            <div className="p-4">
              <div className="relative h-48">
                <div className="absolute inset-0 flex items-end justify-between p-1">
-   {salesData.map((value, index) => (
+               {salesData.map((value, index) => (
                  <div key={index} className="group relative flex flex-col items-center">
                    <div className="absolute bottom-full mb-1 opacity-0 group-hover:opacity-100 bg-purple-800 text-white py-1 px-2 rounded text-xs whitespace-nowrap transition-opacity shadow-lg">
                      {value} заказов в {months[index]}
@@ -526,7 +544,7 @@ const SalesDashboard = () => {
                <div className="absolute inset-0 grid grid-rows-4 pointer-events-none">
                  {[0, 1, 2, 3].map((i) => (
                    <div key={i} className="border-t border-gray-700/50 flex items-center">
-                     <span className="text-xs text-gray-500 w-8">{Math.round(maxSales - (i * (maxSales / 4)))}</span>
+                    <span className="text-xs text-gray-500 w-8">{Math.round(maxSales - (i * (maxSales / 4)))}</span>
                    </div>
                  ))}
                </div>
@@ -595,9 +613,17 @@ const SalesDashboard = () => {
                  <tbody className="divide-y divide-gray-700">
                    {carData.map((car, index) => (
                      <tr key={index} className={index % 2 === 0 ? 'bg-gray-800/60' : 'bg-gray-850/70'}>
-                       <td className="px-3 py-2 font-medium text-white flex items-center gap-1.5">
-                         <Car size={14} className="text-gray-400" />
-                         {car.model}
+                       <td className="px-3 py-2 font-medium text-white">
+                         <div className="flex items-center gap-2">
+                           <div className="w-8 h-8 rounded-md overflow-hidden bg-gray-600/30">
+                             <img 
+                               src={car.img} 
+                               alt={car.model} 
+                               className="w-full h-full object-contain"
+                             />
+                           </div>
+                           <span>{car.model}</span>
+                         </div>
                        </td>
                        <td className="px-3 py-2 text-center text-gray-300">{car.count}</td>
                        <td className="px-3 py-2 text-center">
@@ -670,9 +696,17 @@ const SalesDashboard = () => {
                      <tr key={index} className={index % 2 === 0 ? 'bg-gray-800/60' : 'bg-gray-850/70'}>
                        <td className="px-3 py-2 font-medium text-white">{order.id}</td>
                        <td className="px-3 py-2 text-gray-300">{order.client}</td>
-                       <td className="px-3 py-2 text-gray-300 flex items-center gap-1.5">
-                         <Car size={14} className="text-gray-400" />
-                         {order.model}
+                       <td className="px-3 py-2 text-gray-300">
+                         <div className="flex items-center gap-2">
+                           <div className="w-8 h-8 rounded-md overflow-hidden bg-gray-600/30">
+                             <img 
+                               src={order.img} 
+                               alt={order.model} 
+                               className="w-full h-full object-contain"
+                             />
+                           </div>
+                           <span>{order.model}</span>
+                         </div>
                        </td>
                        <td className="px-3 py-2 text-right text-gray-300 font-medium">{order.price.toLocaleString()}</td>
                        <td className="px-3 py-2 text-center">
@@ -744,6 +778,58 @@ const SalesDashboard = () => {
                </div>
                <div className="text-xs text-gray-400">Обновлено: сегодня в 14:30</div>
              </div>
+           </div>
+         </div>
+       </div>
+
+       {/* Панель моделей автомобилей (добавленный блок) */}
+       <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden mt-5">
+         <div className="flex justify-between items-center p-3 border-b border-gray-700">
+           <h3 className="text-base font-medium text-white flex items-center gap-2">
+             <Car size={18} className="text-green-400" />
+             Популярные модели
+           </h3>
+         </div>
+         
+         <div className="p-4">
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+             {carModels.map((car, index) => (
+               <div key={index} className="bg-gray-700/40 rounded-lg p-3 border border-gray-600/50 hover:bg-gray-700/60 transition-colors">
+                 <div className="h-32 flex items-center justify-center mb-3 bg-gradient-to-b from-gray-800/50 to-gray-900/50 rounded-lg">
+                   <img 
+                     src={car.img} 
+                     alt={car.name} 
+                     className="h-full object-contain p-2"
+                   />
+                 </div>
+                 <div className="text-center">
+                   <h4 className="text-white font-medium mb-1">{car.name}</h4>
+                   <div className="text-xs text-gray-400 mb-2">
+                     {car.category === 'suv' && 'Внедорожник'}
+                     {car.category === 'sedan' && 'Седан'}
+                     {car.category === 'minivan' && 'Минивэн'}
+                     {car.category === 'hatchback' && 'Хэтчбек'}
+                   </div>
+                   <div className="flex justify-between items-center">
+                     <span className="text-xs text-gray-400">Продано:</span>
+                     <span className="text-sm text-white font-medium">{Math.floor(Math.random() * 200) + 100}</span>
+                   </div>
+                   <div className="mt-1 w-full bg-gray-800 rounded-full h-1.5">
+                     <div 
+                       className="h-1.5 rounded-full bg-green-600"
+                       style={{ width: `${Math.random() * 60 + 40}%` }}
+                     ></div>
+                   </div>
+                 </div>
+               </div>
+             ))}
+           </div>
+           
+           <div className="mt-4 flex justify-center">
+             <button className="flex items-center gap-1.5 px-4 py-2 bg-gray-700 rounded-md text-sm text-white hover:bg-gray-600 transition-colors">
+               <span>Показать все модели</span>
+               <ChevronRight size={16} />
+             </button>
            </div>
          </div>
        </div>

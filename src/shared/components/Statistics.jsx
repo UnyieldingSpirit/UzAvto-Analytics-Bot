@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { D3Visualizer } from '@/src/utils/dataVisualizer';
 import * as d3 from 'd3';
+import { carModels } from '@/src/shared/mocks/mock-data';
 
 export default function Statistics() {
   // State variables
@@ -11,6 +12,7 @@ export default function Statistics() {
   const [selectedModel, setSelectedModel] = useState(null);
   const [selectedDealer, setSelectedDealer] = useState(null);
   const [chartType, setChartType] = useState('bar');
+  const [animateCards, setAnimateCards] = useState(true);
   const [data, setData] = useState({
     modelData: [],
     dealerData: [],
@@ -42,14 +44,17 @@ export default function Statistics() {
   const handleModelClick = (model) => {
     setSelectedModel(model);
     setView('dealers');
+    setAnimateCards(true);
   };
 
   const handleDealerClick = (dealer) => {
     setSelectedDealer(dealer);
     setView('salespeople');
+    setAnimateCards(true);
   };
 
   const handleBackClick = () => {
+    setAnimateCards(true);
     if (view === 'salespeople') {
       setView('dealers');
       setSelectedDealer(null);
@@ -61,31 +66,35 @@ export default function Statistics() {
 
   // Generate demo data
   const generateDemoData = () => {
-    const models = [
-      { id: 1, name: 'Model S', color: '#3b82f6' },
-      { id: 2, name: 'Model 3', color: '#8b5cf6' },
-      { id: 3, name: 'Model X', color: '#ec4899' },
-      { id: 4, name: 'Model Y', color: '#10b981' },
-      { id: 5, name: 'Cybertruck', color: '#f59e0b' },
-    ];
+    // Используем данные из mock-data.js
+    const models = carModels.map((car, index) => {
+      const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'];
+      return {
+        id: car.id,
+        name: car.name,
+        color: colors[index % colors.length],
+        img: car.img,
+        category: car.category
+      };
+    });
 
     const dealers = [
-      { id: 1, name: 'Premium Motors' },
+      { id: 1, name: 'Премиум Моторс' },
       { id: 2, name: 'Luxury Auto' },
       { id: 3, name: 'Elite Cars' },
       { id: 4, name: 'City Dealership' },
     ];
 
     const salespeople = [
-      { id: 1, name: 'Alex Johnson', dealerId: 1 },
-      { id: 2, name: 'Sam Williams', dealerId: 1 },
-      { id: 3, name: 'Jordan Smith', dealerId: 1 },
-      { id: 4, name: 'Taylor Brown', dealerId: 2 },
-      { id: 5, name: 'Casey Davis', dealerId: 2 },
-      { id: 6, name: 'Morgan Wilson', dealerId: 3 },
-      { id: 7, name: 'Riley Miller', dealerId: 3 },
-      { id: 8, name: 'Jamie Garcia', dealerId: 4 },
-      { id: 9, name: 'Quinn Thomas', dealerId: 4 },
+      { id: 1, name: 'Алексей Иванов', dealerId: 1 },
+      { id: 2, name: 'Сергей Петров', dealerId: 1 },
+      { id: 3, name: 'Максим Сидоров', dealerId: 1 },
+      { id: 4, name: 'Дмитрий Соколов', dealerId: 2 },
+      { id: 5, name: 'Екатерина Морозова', dealerId: 2 },
+      { id: 6, name: 'Мария Волкова', dealerId: 3 },
+      { id: 7, name: 'Анна Смирнова', dealerId: 3 },
+      { id: 8, name: 'Артём Козлов', dealerId: 4 },
+      { id: 9, name: 'Николай Новиков', dealerId: 4 },
     ];
 
     const modelData = models.map(model => {
@@ -93,6 +102,8 @@ export default function Statistics() {
         id: model.id,
         name: model.name,
         color: model.color,
+        img: model.img,
+        category: model.category,
         totalSales: Math.floor(Math.random() * 1000) + 200,
       };
     });
@@ -451,283 +462,579 @@ export default function Statistics() {
         .attr('x2', width - margin.left - margin.right)
         .attr('stroke-opacity', 0.1));
         
-  // Add lines
-   Object.entries(monthlyByPerson).forEach(([name, values], i) => {
-     const pathData = monthlyData.filter(d => d.group === name);
-     
-     // Add path
-     svg.append('path')
-       .datum(pathData)
-       .attr('fill', 'none')
-       .attr('stroke', colorScale(name))
-       .attr('stroke-width', 3)
-       .attr('d', line)
-       .attr('opacity', 0)
-       .transition()
-       .duration(1000)
-       .delay(i * 300)
-       .attr('opacity', 0.8);
+    // Add lines
+    Object.entries(monthlyByPerson).forEach(([name, values], i) => {
+      const pathData = monthlyData.filter(d => d.group === name);
+      
+      // Add path
+      svg.append('path')
+        .datum(pathData)
+        .attr('fill', 'none')
+        .attr('stroke', colorScale(name))
+        .attr('stroke-width', 3)
+        .attr('d', line)
+        .attr('opacity', 0)
+        .transition()
+        .duration(1000)
+        .delay(i * 300)
+        .attr('opacity', 0.8);
 
-     // Add points
-     svg.selectAll(`.point-${i}`)
-       .data(pathData)
-       .join('circle')
-       .attr('class', `point-${i}`)
-       .attr('cx', d => x(new Date(d.x)))
-       .attr('cy', d => y(d.y))
-       .attr('r', 0)
-       .attr('fill', colorScale(name))
-       .attr('stroke', '#1f2937')
-       .attr('stroke-width', 2)
-       .transition()
-       .duration(500)
-       .delay((d, j) => i * 300 + j * 100 + 1000)
-       .attr('r', 6);
-   });
-   
-   // Add legend
-   const legend = svg.append('g')
-     .attr('transform', `translate(${width - margin.right + 20}, ${margin.top + 20})`);
-     
-   Object.keys(monthlyByPerson).forEach((name, i) => {
-     const legendRow = legend.append('g')
-       .attr('transform', `translate(0, ${i * 25})`);
-       
-     legendRow.append('rect')
-       .attr('width', 15)
-       .attr('height', 3)
-       .attr('fill', colorScale(name));
-       
-     legendRow.append('text')
-       .attr('x', 25)
-       .attr('y', 5)
-       .text(name)
-       .style('font-size', '0.8rem')
-       .style('fill', '#f9fafb');
-   });
- };
+      // Add points
+      svg.selectAll(`.point-${i}`)
+        .data(pathData)
+        .join('circle')
+        .attr('class', `point-${i}`)
+        .attr('cx', d => x(new Date(d.x)))
+        .attr('cy', d => y(d.y))
+        .attr('r', 0)
+        .attr('fill', colorScale(name))
+        .attr('stroke', '#1f2937')
+        .attr('stroke-width', 2)
+        .transition()
+        .duration(500)
+        .delay((d, j) => i * 300 + j * 100 + 1000)
+        .attr('r', 6);
+    });
+    
+    // Add legend
+    const legend = svg.append('g')
+      .attr('transform', `translate(${width - margin.right + 20}, ${margin.top + 20})`);
+      
+    Object.keys(monthlyByPerson).forEach((name, i) => {
+      const legendRow = legend.append('g')
+        .attr('transform', `translate(0, ${i * 25})`);
+        
+      legendRow.append('rect')
+        .attr('width', 15)
+        .attr('height', 3)
+        .attr('fill', colorScale(name));
+        
+      legendRow.append('text')
+        .attr('x', 25)
+        .attr('y', 5)
+        .text(name)
+        .style('font-size', '0.8rem')
+        .style('fill', '#f9fafb');
+    });
+  };
 
- // Initialize on mount and update charts when view changes
- useEffect(() => {
-   setData(generateDemoData());
- }, []);
+  // Initialize on mount and update charts when view changes
+  useEffect(() => {
+    setData(generateDemoData());
+  }, []);
 
- useEffect(() => {
-   if (view === 'models') {
-     renderModelCharts();
-   } else if (view === 'dealers' && selectedModel) {
-     renderDealerCharts();
-   } else if (view === 'salespeople' && selectedModel && selectedDealer) {
-     renderSalespersonCharts();
-   }
- }, [view, selectedModel, selectedDealer, data, chartType]);
+  useEffect(() => {
+    if (view === 'models') {
+      renderModelCharts();
+    } else if (view === 'dealers' && selectedModel) {
+      renderDealerCharts();
+    } else if (view === 'salespeople' && selectedModel && selectedDealer) {
+      renderSalespersonCharts();
+    }
+  }, [view, selectedModel, selectedDealer, data, chartType]);
 
- return (
-   <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-8">
-     <header className="mb-8">
-       <motion.h1 
-         initial={{ opacity: 0, y: -20 }}
-         animate={{ opacity: 1, y: 0 }}
-         className="text-3xl md:text-4xl font-bold text-white bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text"
-       >
-         Интерактивная панель продаж автомобилей
-       </motion.h1>
-       <motion.p 
-         initial={{ opacity: 0 }}
-         animate={{ opacity: 1 }}
-         transition={{ delay: 0.2 }}
-         className="text-gray-400 mt-2"
-       >
-         Исследуйте данные о продажах от моделей до отдельных продавцов
-       </motion.p>
-     </header>
-     
-     <div className="bg-gray-900/60 rounded-xl p-4 md:p-6 border border-gray-700/50 shadow-xl">
-       {/* Инструменты */}
-       <div className="flex flex-wrap justify-between items-center mb-6">
-         <div className="flex items-center space-x-2 mb-2">
-           <motion.div 
-             whileHover={{ scale: 1.05 }} 
-             whileTap={{ scale: 0.95 }}
-             className={`h-3 w-3 rounded-full cursor-pointer ${view === 'models' ? 'bg-green-500' : 'bg-gray-500'}`}
-             onClick={() => setView('models')}
-           />
-           <div className="h-0.5 w-8 bg-gray-600"></div>
-           <motion.div 
-             whileHover={{ scale: 1.05 }} 
-             whileTap={{ scale: 0.95 }}
-             className={`h-3 w-3 rounded-full cursor-pointer ${view === 'dealers' ? 'bg-green-500' : 'bg-gray-500'}`}
-             onClick={() => selectedModel && setView('dealers')}
-           />
-           <div className="h-0.5 w-8 bg-gray-600"></div>
-           <motion.div 
-             whileHover={{ scale: 1.05 }} 
-             whileTap={{ scale: 0.95 }}
-             className={`h-3 w-3 rounded-full cursor-pointer ${view === 'salespeople' ? 'bg-green-500' : 'bg-gray-500'}`}
-             onClick={() => selectedDealer && setView('salespeople')}
-           />
-         </div>
+  // Prepare model card data
+  const modelCards = view === 'models' ? data.modelData : [];
 
-         <div className="flex flex-wrap space-x-2">
-           <motion.button
-             whileHover={{ scale: 1.05 }}
-             whileTap={{ scale: 0.95 }}
-             onClick={() => setChartType('bar')}
-             className={`px-3 py-1.5 rounded-md text-sm ${chartType === 'bar' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
-           >
-             Столбцы
-           </motion.button>
-           <motion.button
-             whileHover={{ scale: 1.05 }}
-             whileTap={{ scale: 0.95 }}
-             onClick={() => setChartType('pie')}
-             className={`px-3 py-1.5 rounded-md text-sm ${chartType === 'pie' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
-           >
-             Круговая
-           </motion.button>
-           <motion.button
-             whileHover={{ scale: 1.05 }}
-             whileTap={{ scale: 0.95 }}
-             onClick={() => setChartType('stacked')}
-             className={`px-3 py-1.5 rounded-md text-sm ${chartType === 'stacked' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
-           >
-             Составная
-           </motion.button>
-         </div>
-       </div>
-       
-       {/* Навигационный путь */}
-       {(selectedModel || selectedDealer) && (
-         <div className="mb-6 bg-gray-800/80 p-3 rounded-lg flex items-center flex-wrap">
-           <motion.button
-             whileHover={{ scale: 1.05 }}
-             whileTap={{ scale: 0.95 }}
-             onClick={() => {
-               setSelectedModel(null);
-               setSelectedDealer(null);
-               setView('models');
-             }}
-             className="text-blue-400 hover:text-blue-300 transition-colors"
-           >
-             Все модели
-           </motion.button>
-           
-           {selectedModel && (
-             <>
-               <span className="mx-2 text-gray-500">/</span>
-               <motion.button
-                 whileHover={{ scale: 1.05 }}
-                 whileTap={{ scale: 0.95 }}
-                 onClick={() => {
-                   setSelectedDealer(null);
-                   setView('dealers');
-                 }}
-                 className="text-blue-400 hover:text-blue-300 transition-colors"
-                 style={{ color: selectedModel.color }}
-               >
-                 {selectedModel.name}
-               </motion.button>
-             </>
-           )}
-           
-           {selectedDealer && (
-             <>
-               <span className="mx-2 text-gray-500">/</span>
-               <span className="text-gray-300">{selectedDealer.dealerName}</span>
-             </>
-           )}
-         </div>
-       )}
-       
-       {/* Уровень моделей */}
-       {view === 'models' && (
-         <motion.div 
-           initial={{ opacity: 0 }}
-           animate={{ opacity: 1 }}
-           className="mb-8"
-         >
-           <h2 className="text-2xl font-bold mb-6 text-white">Общие продажи по моделям</h2>
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-             {/* Основной график */}
-             <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-               <div ref={modelChartRef} className="w-full h-full"></div>
-               <p className="text-center text-gray-400 mt-2">Нажмите на элемент для просмотра продаж по дилерам</p>
-             </div>
-             
-             {/* Дополнительный график */}
-             <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-               <div ref={modelSecondaryChartRef} className="w-full h-full"></div>
-             </div>
-           </div>
-           
-           {/* Тренд */}
-           <div className="mt-6 bg-gray-800 p-4 rounded-lg shadow-md">
-             <div ref={trendChartRef} className="w-full h-full"></div>
-           </div>
-         </motion.div>
-       )}
-       
-       {/* Уровень дилеров */}
-       {view === 'dealers' && (
-         <motion.div 
-           initial={{ opacity: 0 }}
-           animate={{ opacity: 1 }}
-           className="mb-8"
-         >
-           <h2 className="text-2xl font-bold mb-6 text-white" style={{ color: selectedModel?.color }}>
-             {selectedModel ? `${selectedModel.name} - Продажи по дилерам` : ''}
-           </h2>
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-             {/* Основной график */}
-             <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-               <div ref={dealerChartRef} className="w-full h-full"></div>
-               <p className="text-center text-gray-400 mt-2">Нажмите на элемент для просмотра продаж по продавцам</p>
-             </div>
-             
-             {/* Дополнительный график */}
-             <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-               <div ref={dealerSecondaryChartRef} className="w-full h-full"></div>
-             </div>
-           </div>
-         </motion.div>
-       )}
-       
-       {/* Уровень продавцов */}
-       {view === 'salespeople' && (
-         <motion.div 
-           initial={{ opacity: 0 }}
-           animate={{ opacity: 1 }}
-           className="mb-8"
-         >
-           <h2 className="text-2xl font-bold mb-6 text-white" style={{ color: selectedModel?.color }}>
-             {selectedModel && selectedDealer ? 
-               `${selectedModel.name} - Продажи в ${selectedDealer.dealerName}` : ''}
-           </h2>
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-             {/* Основной график */}
-             <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-               <div ref={salespersonChartRef} className="w-full h-full"></div>
-             </div>
-             
-             {/* Дополнительный график */}
-             <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-               <div ref={salespersonSecondaryChartRef} className="w-full h-full"></div>
-             </div>
-           </div>
-         </motion.div>
-       )}
-     </div>
-     
-     <style jsx>{`
-       .bg-clip-text {
-         -webkit-background-clip: text;
-         background-clip: text;
-       }
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-8">
+      <header className="mb-8">
+        <motion.h1 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-3xl md:text-4xl font-bold text-transparent bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text"
+        >
+          Интерактивная панель продаж автомобилей
+        </motion.h1>
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-gray-400 mt-2"
+        >
+          Исследуйте данные о продажах от моделей до отдельных продавцов
+        </motion.p>
+      </header>
+      
+      <div className="bg-gray-900/60 rounded-xl p-4 md:p-6 border border-gray-700/50 shadow-xl">
+        {/* Инструменты */}
+        <div className="flex flex-wrap justify-between items-center mb-6">
+          <div className="flex items-center space-x-2 mb-2">
+            <motion.div 
+              whileHover={{ scale: 1.05 }} 
+              whileTap={{ scale: 0.95 }}
+              className={`h-3 w-3 rounded-full cursor-pointer ${view === 'models' ? 'bg-green-500' : 'bg-gray-500'}`}
+              onClick={() => setView('models')}
+            />
+            <div className="h-0.5 w-8 bg-gray-600"></div>
+            <motion.div 
+              whileHover={{ scale: 1.05 }} 
+              whileTap={{ scale: 0.95 }}
+              className={`h-3 w-3 rounded-full cursor-pointer ${view === 'dealers' ? 'bg-green-500' : 'bg-gray-500'}`}
+              onClick={() => selectedModel && setView('dealers')}
+            />
+            <div className="h-0.5 w-8 bg-gray-600"></div>
+            <motion.div 
+              whileHover={{ scale: 1.05 }} 
+              whileTap={{ scale: 0.95 }}
+              className={`h-3 w-3 rounded-full cursor-pointer ${view === 'salespeople' ? 'bg-green-500' : 'bg-gray-500'}`}
+              onClick={() => selectedDealer && setView('salespeople')}
+            />
+          </div>
 
-       .text-transparent {
-         color: transparent;
-       }
-     `}</style>
-   </div>
- );
+          <div className="flex flex-wrap space-x-2">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setChartType('bar')}
+              className={`px-3 py-1.5 rounded-md text-sm ${chartType === 'bar' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
+            >
+              Столбцы
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setChartType('pie')}
+              className={`px-3 py-1.5 rounded-md text-sm ${chartType === 'pie' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
+            >
+              Круговая
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setChartType('stacked')}
+              className={`px-3 py-1.5 rounded-md text-sm ${chartType === 'stacked' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
+            >
+              Составная
+            </motion.button>
+          </div>
+        </div>
+        
+        {/* Навигационный путь */}
+        {(selectedModel || selectedDealer) && (
+          <div className="mb-6 bg-gray-800/80 p-3 rounded-lg flex items-center flex-wrap">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                setSelectedModel(null);
+                setSelectedDealer(null);
+                setView('models');
+              }}
+              className="text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              Все модели
+            </motion.button>
+            
+            {selectedModel && (
+              <>
+                <span className="mx-2 text-gray-500">/</span>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setSelectedDealer(null);
+                    setView('dealers');
+                  }}
+                  className="text-blue-400 hover:text-blue-300 transition-colors"
+                  style={{ color: selectedModel.color }}
+                >
+                  {selectedModel.name}
+                </motion.button>
+              </>
+            )}
+            
+            {selectedDealer && (
+              <>
+                <span className="mx-2 text-gray-500">/</span>
+                <span className="text-gray-300">{selectedDealer.dealerName}</span>
+              </>
+            )}
+          </div>
+        )}
+        
+        {/* Уровень моделей - с карточками автомобилей */}
+        {view === 'models' && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-8"
+          >
+            <h2 className="text-2xl font-bold mb-6 text-white">Каталог моделей автомобилей</h2>
+            
+            {/* Карточки моделей автомобилей */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              {modelCards.map((model, index) => (
+                <motion.div
+                  key={model.id}
+                  initial={animateCards ? { opacity: 0, y: 20 } : false}
+                  animate={animateCards ? { opacity: 1, y: 0 } : false}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ scale: 1.03, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2)' }}
+                  className="bg-gray-800 rounded-lg overflow-hidden shadow-lg cursor-pointer"
+                  onClick={() => handleModelClick(model)}
+                  onAnimationComplete={() => index === modelCards.length - 1 && setAnimateCards(false)}
+                >
+                  <div className="relative h-40 bg-gradient-to-br from-gray-700 to-gray-900 overflow-hidden">
+                    {model.img && (
+                      <img 
+                        src={model.img} 
+                        alt={model.name} 
+                        className="w-full h-full object-contain p-2"
+                      />
+                    )}
+                    <div className="absolute top-2 right-2 bg-gray-900/70 rounded-full px-2 py-1 text-xs">
+                      {model.category === 'suv' && 'Внедорожник'}
+                      {model.category === 'sedan' && 'Седан'}
+                      {model.category === 'minivan' && 'Минивэн'}
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-lg font-bold" style={{ color: model.color }}>{model.name}</h3>
+                    <div className="flex justify-between items-center mt-2">
+                      <div className="text-gray-400 text-sm">Продажи</div>
+                      <div className="text-white font-bold">{model.totalSales.toLocaleString()}</div>
+                    </div>
+                    <div className="mt-3 w-full bg-gray-700 rounded-full h-1.5">
+                   <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(model.totalSales / Math.max(...data.modelData.map(m => m.totalSales))) * 100}%` }}
+                        transition={{ duration: 1, delay: index * 0.1 + 0.5 }}
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: model.color }}
+                      />
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gray-900/50 border-t border-gray-700 flex justify-between items-center">
+                    <button className="text-xs text-gray-400 hover:text-white transition-colors">
+                      Подробнее
+                    </button>
+                    <span className="text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300">
+                      Рейтинг: {Math.floor(model.totalSales / 100)}
+                    </span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            
+            <h2 className="text-2xl font-bold mb-6 text-white">Общие продажи по моделям</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Основной график */}
+              <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+                <div ref={modelChartRef} className="w-full h-full"></div>
+                <p className="text-center text-gray-400 mt-2">Нажмите на элемент для просмотра продаж по дилерам</p>
+              </div>
+              
+              {/* Дополнительный график */}
+              <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+                <div ref={modelSecondaryChartRef} className="w-full h-full"></div>
+              </div>
+            </div>
+            
+            {/* Тренд */}
+            <div className="mt-6 bg-gray-800 p-4 rounded-lg shadow-md">
+              <div ref={trendChartRef} className="w-full h-full"></div>
+            </div>
+          </motion.div>
+        )}
+        
+        {/* Уровень дилеров */}
+        {view === 'dealers' && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-8"
+          >
+            <div className="flex flex-col md:flex-row gap-6 mb-8">
+              {/* Информация о модели */}
+              <motion.div 
+                initial={animateCards ? { opacity: 0, x: -20 } : false}
+                animate={animateCards ? { opacity: 1, x: 0 } : false}
+                transition={{ duration: 0.5 }}
+                onAnimationComplete={() => setAnimateCards(false)}
+                className="bg-gray-800 p-4 rounded-lg shadow-md md:w-1/3"
+              >
+                <div className="relative h-40 bg-gradient-to-br from-gray-700 to-gray-900 rounded-md overflow-hidden mb-4">
+                  {selectedModel && selectedModel.img && (
+                    <img 
+                      src={selectedModel.img} 
+                      alt={selectedModel.name} 
+                      className="w-full h-full object-contain p-2"
+                    />
+                  )}
+                </div>
+                
+                <h2 className="text-2xl font-bold mb-4" style={{ color: selectedModel?.color }}>
+                  {selectedModel ? selectedModel.name : ''}
+                </h2>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Всего продаж</span>
+                    <span className="text-white font-bold">
+                      {selectedModel ? selectedModel.totalSales.toLocaleString() : 0}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Категория</span>
+                    <span className="text-white">
+                      {selectedModel?.category === 'suv' && 'Внедорожник'}
+                      {selectedModel?.category === 'sedan' && 'Седан'}
+                      {selectedModel?.category === 'minivan' && 'Минивэн'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Дилеров</span>
+                    <span className="text-white">{filteredDealerData.length}</span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Средние продажи на дилера</span>
+                    <span className="text-white">
+                      {filteredDealerData.length > 0 
+                        ? Math.round(filteredDealerData.reduce((sum, d) => sum + d.sales, 0) / filteredDealerData.length).toLocaleString()
+                        : 0}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="mt-4">
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleBackClick}
+                    className="w-full py-2 rounded-md bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
+                  >
+                    Вернуться к моделям
+                  </motion.button>
+                </div>
+              </motion.div>
+              
+              {/* Дилеры в виде карточек */}
+              <div className="md:w-2/3 space-y-4">
+                <h3 className="text-xl font-bold text-white mb-4">Дилеры {selectedModel?.name}</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {filteredDealerData.map((dealer, index) => (
+                    <motion.div
+                      key={dealer.dealerId}
+                      initial={animateCards ? { opacity: 0, y: 20 } : false}
+                      animate={animateCards ? { opacity: 1, y: 0 } : false}
+                      transition={{ delay: index * 0.1 }}
+                      whileHover={{ scale: 1.03, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2)' }}
+                      className="bg-gray-800 rounded-lg overflow-hidden shadow-lg cursor-pointer"
+                      onClick={() => handleDealerClick(dealer)}
+                      onAnimationComplete={() => index === filteredDealerData.length - 1 && setAnimateCards(false)}
+                    >
+                      <div className="p-4 border-l-4" style={{ borderColor: selectedModel?.color }}>
+                        <h3 className="text-lg font-bold text-white">{dealer.dealerName}</h3>
+                        <div className="flex justify-between items-center mt-2">
+                          <div className="text-gray-400 text-sm">Продажи</div>
+                          <div className="text-white font-bold">{dealer.sales.toLocaleString()}</div>
+                        </div>
+                        <div className="mt-3 w-full bg-gray-700 rounded-full h-1.5">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(dealer.sales / Math.max(...filteredDealerData.map(d => d.sales))) * 100}%` }}
+                            transition={{ duration: 1, delay: index * 0.1 + 0.3 }}
+                            className="h-full rounded-full"
+                            style={{ backgroundColor: selectedModel?.color }}
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Основной график */}
+              <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+                <div ref={dealerChartRef} className="w-full h-full"></div>
+                <p className="text-center text-gray-400 mt-2">Нажмите на элемент для просмотра продаж по продавцам</p>
+              </div>
+              
+              {/* Дополнительный график */}
+              <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+                <div ref={dealerSecondaryChartRef} className="w-full h-full"></div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+        
+        {/* Уровень продавцов */}
+        {view === 'salespeople' && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-8"
+          >
+            <div className="flex flex-col md:flex-row gap-6 mb-8">
+              {/* Инфо о дилере и модели */}
+              <motion.div 
+                initial={animateCards ? { opacity: 0, x: -20 } : false}
+                animate={animateCards ? { opacity: 1, x: 0 } : false}
+                transition={{ duration: 0.5 }}
+                onAnimationComplete={() => setAnimateCards(false)}
+                className="bg-gray-800 p-4 rounded-lg shadow-md md:w-1/3"
+              >
+                <div className="relative h-32 bg-gradient-to-br from-gray-700 to-gray-900 rounded-md overflow-hidden mb-4">
+                  {selectedModel && selectedModel.img && (
+                    <img 
+                      src={selectedModel.img} 
+                      alt={selectedModel.name} 
+                      className="w-full h-full object-contain p-2"
+                    />
+                  )}
+                </div>
+                
+                <h3 className="text-xl font-bold mb-1" style={{ color: selectedModel?.color }}>
+                  {selectedModel ? selectedModel.name : ''}
+                </h3>
+                
+                <h2 className="text-2xl font-bold mb-4 text-white">
+                  {selectedDealer ? selectedDealer.dealerName : ''}
+                </h2>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Продажи модели</span>
+                    <span className="text-white font-bold">
+                      {selectedDealer ? selectedDealer.sales.toLocaleString() : 0}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Продавцов</span>
+                    <span className="text-white">{filteredSalespersonData.length}</span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Средние продажи на продавца</span>
+                    <span className="text-white">
+                      {filteredSalespersonData.length > 0 
+                        ? Math.round(filteredSalespersonData.reduce((sum, d) => sum + d.sales, 0) / filteredSalespersonData.length).toLocaleString()
+                        : 0}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="mt-4 space-y-2">
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleBackClick}
+                    className="w-full py-2 rounded-md bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
+                  >
+                    Вернуться к дилерам
+                  </motion.button>
+                  
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      setSelectedModel(null);
+                      setSelectedDealer(null);
+                      setView('models');
+                    }}
+                    className="w-full py-2 rounded-md bg-gray-700/50 text-gray-400 hover:bg-gray-700 transition-colors"
+                  >
+                    К списку моделей
+                  </motion.button>
+                </div>
+              </motion.div>
+              
+              {/* Список продавцов в виде карточек */}
+              <div className="md:w-2/3">
+                <h3 className="text-xl font-bold text-white mb-4">Продавцы {selectedDealer?.dealerName}</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {filteredSalespersonData.map((salesperson, index) => (
+                    <motion.div
+                      key={salesperson.salespersonId}
+                      initial={animateCards ? { opacity: 0, y: 20 } : false}
+                      animate={animateCards ? { opacity: 1, y: 0 } : false}
+                      transition={{ delay: index * 0.1 }}
+                      whileHover={{ scale: 1.03 }}
+                      className="bg-gray-800 rounded-lg overflow-hidden shadow-lg p-4"
+                      onAnimationComplete={() => index === filteredSalespersonData.length - 1 && setAnimateCards(false)}
+                    >
+                      <div className="flex items-center mb-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center font-bold mr-3" 
+                             style={{ backgroundColor: `${selectedModel?.color}20` }}>
+                          {salesperson.salespersonName.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-white">{salesperson.salespersonName}</h4>
+                          <p className="text-sm text-gray-400">Менеджер по продажам</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center mt-2">
+                        <div className="text-gray-400 text-sm">Продажи {selectedModel?.name}</div>
+                        <div className="text-white font-bold">{salesperson.sales.toLocaleString()}</div>
+                      </div>
+                      
+                      <div className="mt-3 w-full bg-gray-700 rounded-full h-1.5">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(salesperson.sales / Math.max(...filteredSalespersonData.map(d => d.sales))) * 100}%` }}
+                          transition={{ duration: 1, delay: index * 0.1 + 0.3 }}
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: selectedModel?.color }}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-4">
+                        <span className="px-2 py-1 rounded-full text-xs" 
+                              style={{ backgroundColor: `${selectedModel?.color}20`, color: selectedModel?.color }}>
+                          {salesperson.sales > 100 ? 'Топ продавец' : 'Стандарт'}
+                        </span>
+                        
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="text-sm text-gray-400 hover:text-white transition-colors"
+                        >
+                          Подробнее
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            <h2 className="text-2xl font-bold mb-6 text-white" style={{ color: selectedModel?.color }}>
+              {selectedModel && selectedDealer ? 
+                `${selectedModel.name} - Продажи в ${selectedDealer.dealerName}` : ''}
+            </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Основной график */}
+              <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+                <div ref={salespersonChartRef} className="w-full h-full"></div>
+              </div>
+              
+              {/* Дополнительный график */}
+              <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+                <div ref={salespersonSecondaryChartRef} className="w-full h-full"></div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </div>
+      
+      <style jsx>{`
+        .bg-clip-text {
+          -webkit-background-clip: text;
+          background-clip: text;
+        }
+
+        .text-transparent {
+          color: transparent;
+        }
+      `}</style>
+    </div>
+  );
 }
