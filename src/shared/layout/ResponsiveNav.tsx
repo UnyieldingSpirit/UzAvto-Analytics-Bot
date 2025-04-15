@@ -241,10 +241,10 @@ export default function ResponsiveNav() {
        >
          <motion.div 
            className="icon-wrapper"
-           whileTap={() => ({
-             boxShadow: "0 0 0 8px rgba(59, 130, 246, 0.3)",
-             transition: { duration: 0.2 }
-           })}
+          //  whileTap={() => ({
+          //    boxShadow: "0 0 0 8px rgba(59, 130, 246, 0.3)",
+          //    transition: { duration: 0.2 }
+          //  })}
          >
            {item.icon}
            {item.notification && (
