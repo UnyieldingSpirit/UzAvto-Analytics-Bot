@@ -388,7 +388,7 @@ const SalesDashboard = () => {
      )}
      
      {/* Главная панель - обновленный дизайн */}
-     <div className="container mx-auto">
+     <div className="">
        {/* Шапка с индикатором пути */}
        <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg p-3 mb-5 border border-gray-700/50 shadow-md flex justify-between items-center">
          <div className="flex items-center gap-2">
