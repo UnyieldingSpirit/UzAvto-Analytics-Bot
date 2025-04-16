@@ -1,1676 +1,1498 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
+import { carModels, regions } from '../mocks/mock-data';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const AutoAnalytics = () => {
- const [activeMonth, setActiveMonth] = useState('март');
- const [activeSection, setActiveSection] = useState('sales');
- const [activeType, setActiveType] = useState('regions');
- const [selectedItem, setSelectedItem] = useState(null);
- const chartRef = useRef(null);
- 
- // Здесь будут находиться моковые данные analyticsData
- const analyticsData = {
-   'январь': {
-     stats: { 
-       newVisitors: { count: 65127, change: '+16.5%', revenue: '55.21 млн' },
-       oldVisitors: { count: 984246, change: '-24.9%', revenue: '267.35 млн' },
-       accounts: { count: 58400, change: '+14%' },
-       bounceRate: { value: '36.7%', change: '+17%' }
-     },
-     
-     sales: {
-       regions: [
-         { name: "Ташкент", value: 1245, percent: 28.5 },
-         { name: "Самарканд", value: 876, percent: 20.1 },
-         { name: "Бухара", value: 645, percent: 14.8 },
-         { name: "Андижан", value: 567, percent: 13.0 },
-         { name: "Фергана", value: 432, percent: 9.9 },
-         { name: "Кашкадарья", value: 321, percent: 7.4 },
-         { name: "Наманган", value: 285, percent: 6.3 }
-       ],
-       models: [
-         { name: "Chevrolet Nexia", value: 876, change: "+12.3%" },
-         { name: "Chevrolet Damas", value: 743, change: "+8.6%" },
-         { name: "Chevrolet Cobalt", value: 612, change: "-4.2%" },
-         { name: "Ravon R2", value: 534, change: "+15.7%" },
-         { name: "UzAuto Spark", value: 423, change: "+10.5%" },
-         { name: "Chevrolet Lacetti", value: 398, change: "+5.3%" }
-       ],
-       modelDetails: {
-         "Chevrolet Nexia": {
-           "Ташкент": 310,
-           "Самарканд": 175,
-           "Бухара": 102,
-           "Андижан": 88,
-           "Фергана": 75,
-           "Кашкадарья": 66,
-           "Наманган": 60
-         },
-         "Chevrolet Damas": {
-           "Ташкент": 221,
-           "Самарканд": 143,
-           "Бухара": 105,
-           "Андижан": 97,
-           "Фергана": 65,
-           "Кашкадарья": 65,
-           "Наманган": 47
-         },
-         "Chevrolet Cobalt": {
-           "Ташкент": 195,
-           "Самарканд": 121,
-           "Бухара": 87,
-           "Андижан": 76,
-           "Фергана": 58,
-           "Кашкадарья": 43,
-           "Наманган": 32
-         },
-         "Ravon R2": {
-           "Ташкент": 189,
-           "Самарканд": 112,
-           "Бухара": 78,
-           "Андижан": 65,
-           "Фергана": 45,
-           "Кашкадарья": 28,
-           "Наманган": 17
-         },
-         "UzAuto Spark": {
-           "Ташкент": 176,
-           "Самарканд": 95,
-           "Бухара": 58,
-           "Андижан": 47,
-           "Фергана": 26,
-           "Кашкадарья": 14,
-           "Наманган": 7
-         },
-         "Chevrolet Lacetti": {
-           "Ташкент": 154,
-           "Самарканд": 85,
-           "Бухара": 52,
-           "Андижан": 41,
-           "Фергана": 32,
-           "Кашкадарья": 22,
-           "Наманган": 12
-         }
-       },
-       regionDetails: {
-         "Ташкент": {
-           "Chevrolet Nexia": 310,
-           "Chevrolet Damas": 221,
-           "Chevrolet Cobalt": 195,
-           "Ravon R2": 189,
-           "UzAuto Spark": 176,
-           "Chevrolet Lacetti": 154
-         },
-         "Самарканд": {
-           "Chevrolet Nexia": 175,
-           "Chevrolet Damas": 143,
-           "Chevrolet Cobalt": 121,
-           "Ravon R2": 112,
-           "UzAuto Spark": 95,
-           "Chevrolet Lacetti": 85
-         },
-         "Бухара": {
-           "Chevrolet Nexia": 102,
-           "Chevrolet Damas": 105,
-           "Chevrolet Cobalt": 87,
-           "Ravon R2": 78,
-           "UzAuto Spark": 58,
-           "Chevrolet Lacetti": 52
-         },
-         "Андижан": {
-           "Chevrolet Nexia": 88,
-           "Chevrolet Damas": 97,
-           "Chevrolet Cobalt": 76,
-           "Ravon R2": 65,
-           "UzAuto Spark": 47,
-           "Chevrolet Lacetti": 41
-         },
-         "Фергана": {
-           "Chevrolet Nexia": 75,
-           "Chevrolet Damas": 65,
-           "Chevrolet Cobalt": 58,
-           "Ravon R2": 45,
-           "UzAuto Spark": 26,
-           "Chevrolet Lacetti": 32
-         },
-         "Кашкадарья": {
-           "Chevrolet Nexia": 66,
-           "Chevrolet Damas": 65,
-           "Chevrolet Cobalt": 43,
-           "Ravon R2": 28,
-           "UzAuto Spark": 14,
-           "Chevrolet Lacetti": 22
-         },
-         "Наманган": {
-           "Chevrolet Nexia": 60,
-           "Chevrolet Damas": 47,
-           "Chevrolet Cobalt": 32,
-           "Ravon R2": 17,
-           "UzAuto Spark": 7,
-           "Chevrolet Lacetti": 12
-         }
-       }
-     },
-     
-     export: {
-       regions: [
-         { name: "Казахстан", value: 875, percent: 35.2 },
-         { name: "Кыргызстан", value: 645, percent: 26.0 },
-         { name: "Таджикистан", value: 421, percent: 17.0 },
-         { name: "Россия", value: 320, percent: 12.9 },
-         { name: "Афганистан", value: 165, percent: 6.6 },
-         { name: "Другие", value: 58, percent: 2.3 }
-       ],
-       models: [
-         { name: "Chevrolet Nexia", value: 456, change: "+18.5%" },
-         { name: "Chevrolet Cobalt", value: 387, change: "+22.3%" },
-         { name: "Chevrolet Malibu", value: 234, change: "+9.7%" },
-         { name: "Ravon R2", value: 210, change: "+5.2%" },
-         { name: "Chevrolet Damas", value: 187, change: "+12.1%" },
-         { name: "UzAuto Spark", value: 135, change: "+7.8%" }
-       ],
-       modelDetails: {
-         "Chevrolet Nexia": {
-           "Казахстан": 172,
-           "Кыргызстан": 135,
-           "Таджикистан": 65,
-           "Россия": 43,
-           "Афганистан": 32,
-           "Другие": 9
-         },
-         "Chevrolet Cobalt": {
-           "Казахстан": 158,
-           "Кыргызстан": 97,
-           "Таджикистан": 53,
-           "Россия": 38,
-           "Афганистан": 29,
-           "Другие": 12
-         },
-         "Chevrolet Malibu": {
-           "Казахстан": 98,
-           "Кыргызстан": 57,
-           "Таджикистан": 31,
-           "Россия": 26,
-           "Афганистан": 15,
-           "Другие": 7
-         },
-         "Ravon R2": {
-           "Казахстан": 86,
-           "Кыргызстан": 51,
-           "Таджикистан": 28,
-           "Россия": 22,
-           "Афганистан": 17,
-           "Другие": 6
-         },
-         "Chevrolet Damas": {
-           "Казахстан": 78,
-           "Кыргызстан": 42,
-           "Таджикистан": 25,
-           "Россия": 20,
-           "Афганистан": 16,
-           "Другие": 6
-         },
-         "UzAuto Spark": {
-           "Казахстан": 56,
-           "Кыргызстан": 32,
-           "Таджикистан": 18,
-           "Россия": 15,
-           "Афганистан": 10,
-           "Другие": 4
-         }
-       },
-       regionDetails: {
-         "Казахстан": {
-           "Chevrolet Nexia": 172,
-           "Chevrolet Cobalt": 158,
-           "Chevrolet Malibu": 98,
-           "Ravon R2": 86,
-           "Chevrolet Damas": 78,
-           "UzAuto Spark": 56
-         },
-         "Кыргызстан": {
-           "Chevrolet Nexia": 135,
-           "Chevrolet Cobalt": 97,
-           "Chevrolet Malibu": 57,
-           "Ravon R2": 51,
-           "Chevrolet Damas": 42,
-           "UzAuto Spark": 32
-         },
-         "Таджикистан": {
-           "Chevrolet Nexia": 65,
-           "Chevrolet Cobalt": 53,
-           "Chevrolet Malibu": 31,
-           "Ravon R2": 28,
-           "Chevrolet Damas": 25,
-           "UzAuto Spark": 18
-         },
-         "Россия": {
-           "Chevrolet Nexia": 43,
-           "Chevrolet Cobalt": 38,
-           "Chevrolet Malibu": 26,
-           "Ravon R2": 22,
-           "Chevrolet Damas": 20,
-           "UzAuto Spark": 15
-         },
-         "Афганистан": {
-           "Chevrolet Nexia": 32,
-           "Chevrolet Cobalt": 29,
-           "Chevrolet Malibu": 15,
-           "Ravon R2": 17,
-           "Chevrolet Damas": 16,
-           "UzAuto Spark": 10
-         },
-         "Другие": {
-           "Chevrolet Nexia": 9,
-           "Chevrolet Cobalt": 12,
-           "Chevrolet Malibu": 7,
-           "Ravon R2": 6,
-           "Chevrolet Damas": 6,
-           "UzAuto Spark": 4
-         }
-       }
-     },
-     
-     import: {
-       regions: [
-         { name: "Корея", value: 940, percent: 38.5 },
-         { name: "Россия", value: 645, percent: 26.4 },
-         { name: "Китай", value: 432, percent: 17.7 },
-         { name: "Германия", value: 240, percent: 9.8 },
-         { name: "Турция", value: 102, percent: 4.2 },
-         { name: "Другие", value: 84, percent: 3.4 }
-       ],
-       models: [
-         { name: "Запчасти", value: 985, change: "+7.6%" },
-         { name: "Комплектующие", value: 754, change: "+12.8%" },
-         { name: "Аккумуляторы", value: 423, change: "+3.2%" },
-         { name: "Двигатели", value: 325, change: "+9.1%" },
-         { name: "Электроника", value: 289, change: "+15.3%" },
-         { name: "Материалы", value: 237, change: "+5.7%" }
-       ],
-       modelDetails: {
-         "Запчасти": {
-           "Корея": 348,
-           "Россия": 195,
-           "Китай": 178,
-           "Германия": 98,
-           "Турция": 42,
-           "Другие": 24
-         },
-         "Комплектующие": {
-           "Корея": 246,
-           "Россия": 168,
-           "Китай": 124,
-           "Германия": 65,
-           "Турция": 26,
-           "Другие": 25
-         },
-         "Аккумуляторы": {
-           "Корея": 112,
-           "Россия": 85,
-           "Китай": 63,
-           "Германия": 32,
-           "Турция": 15,
-           "Другие": 16
-         },
-         "Двигатели": {
-           "Корея": 98,
-           "Россия": 72,
-           "Китай": 58,
-           "Германия": 42,
-           "Турция": 9,
-           "Другие": 8
-         },
-         "Электроника": {
-           "Корея": 87,
-           "Россия": 65,
-           "Китай": 52,
-           "Германия": 36,
-           "Турция": 6,
-           "Другие": 7
-         },
-         "Материалы": {
-           "Корея": 49,
-           "Россия": 60,
-           "Китай": 41,
-           "Германия": 39,
-           "Турция": 4,
-           "Другие": 4
-         }
-       },
-       regionDetails: {
-         "Корея": {
-           "Запчасти": 348,
-           "Комплектующие": 246,
-           "Аккумуляторы": 112,
-           "Двигатели": 98,
-           "Электроника": 87,
-           "Материалы": 49
-         },
-         "Россия": {
-           "Запчасти": 195,
-           "Комплектующие": 168,
-           "Аккумуляторы": 85,
-           "Двигатели": 72,
-           "Электроника": 65,
-           "Материалы": 60
-         },
-         "Китай": {
-           "Запчасти": 178,
-           "Комплектующие": 124,
-           "Аккумуляторы": 63,
-           "Двигатели": 58,
-           "Электроника": 52,
-           "Материалы": 41
-         },
-         "Германия": {
-           "Запчасти": 98,
-           "Комплектующие": 65,
-           "Аккумуляторы": 32,
-           "Двигатели": 42,
-           "Электроника": 36,
-           "Материалы": 39
-         },
-         "Турция": {
-           "Запчасти": 42,
-           "Комплектующие": 26,
-           "Аккумуляторы": 15,
-           "Двигатели": 9,
-           "Электроника": 6,
-           "Материалы": 4
-         },
-         "Другие": {
-           "Запчасти": 24,
-           "Комплектующие": 25,
-           "Аккумуляторы": 16,
-           "Двигатели": 8,
-           "Электроника": 7,
-           "Материалы": 4
-         }
-       }
-     }
-   },
-   
-   'февраль': {
-     stats: { 
-       newVisitors: { count: 72340, change: '+11.1%', revenue: '61.45 млн' },
-       oldVisitors: { count: 892450, change: '-9.3%', revenue: '243.76 млн' },
-       accounts: { count: 62850, change: '+7.6%' },
-       bounceRate: { value: '34.2%', change: '-6.8%' }
-     },
-     
-     sales: {
-       regions: [
-         { name: "Ташкент", value: 1365, percent: 29.8 },
-         { name: "Самарканд", value: 912, percent: 19.9 },
-         { name: "Бухара", value: 684, percent: 14.9 },
-         { name: "Андижан", value: 592, percent: 12.9 },
-         { name: "Фергана", value: 458, percent: 10.0 },
-         { name: "Кашкадарья", value: 342, percent: 7.5 },
-         { name: "Наманган", value: 302, percent: 6.6 }
-       ],
-       models: [
-         { name: "Chevrolet Nexia", value: 920, change: "+15.3%" },
-         { name: "Chevrolet Damas", value: 788, change: "+11.9%" },
-         { name: "Chevrolet Cobalt", value: 648, change: "+8.4%" },
-         { name: "Ravon R2", value: 564, change: "+17.8%" },
-         { name: "UzAuto Spark", value: 445, change: "+12.1%" },
-         { name: "Chevrolet Lacetti", value: 412, change: "+6.7%" }
-       ],
-       modelDetails: {
-         "Chevrolet Nexia": {
-           "Ташкент": 325,
-           "Самарканд": 184,
-           "Бухара": 110,
-           "Андижан": 94,
-           "Фергана": 81,
-           "Кашкадарья": 72,
-           "Наманган": 64
-         },
-         "Chevrolet Damas": {
-           "Ташкент": 234,
-           "Самарканд": 152,
-           "Бухара": 113,
-           "Андижан": 105,
-           "Фергана": 71,
-           "Кашкадарья": 69,
-           "Наманган": 51
-         },
-         "Chevrolet Cobalt": {
-           "Ташкент": 210,
-           "Самарканд": 132,
-           "Бухара": 95,
-           "Андижан": 84,
-           "Фергана": 65,
-           "Кашкадарья": 47,
-           "Наманган": 37
-         },
-         "Ravon R2": {
-           "Ташкент": 204,
-           "Самарканд": 122,
-           "Бухара": 86,
-           "Андижан": 70,
-           "Фергана": 48,
-           "Кашкадарья": 31,
-           "Наманган": 20
-         },
-         "UzAuto Spark": {
-           "Ташкент": 190,
-           "Самарканд": 105,
-           "Бухара": 64,
-           "Андижан": 52,
-           "Фергана": 29,
-           "Кашкадарья": 16,
-           "Наманган": 9
-         },
-         "Chevrolet Lacetti": {
-           "Ташкент": 168,
-           "Самарканд": 95,
-           "Бухара": 58,
-           "Андижан": 46,
-           "Фергана": 36,
-           "Кашкадарья": 25,
-           "Наманган": 14
-         }
-       },
-       regionDetails: {
-         "Ташкент": {
-           "Chevrolet Nexia": 325,
-           "Chevrolet Damas": 234,
-           "Chevrolet Cobalt": 210,
-           "Ravon R2": 204,
-           "UzAuto Spark": 190,
-           "Chevrolet Lacetti": 168
-         },
-         "Самарканд": {
-           "Chevrolet Nexia": 184,
-           "Chevrolet Damas": 152,
-           "Chevrolet Cobalt": 132,
-           "Ravon R2": 122,
-           "UzAuto Spark": 105,
-           "Chevrolet Lacetti": 95
-         },
-         "Бухара": {
-           "Chevrolet Nexia": 110,
-           "Chevrolet Damas": 113,
-           "Chevrolet Cobalt": 95,
-           "Ravon R2": 86,
-           "UzAuto Spark": 64,
-           "Chevrolet Lacetti": 58
-         },
-         "Андижан": {
-           "Chevrolet Nexia": 94,
-           "Chevrolet Damas": 105,
-           "Chevrolet Cobalt": 84,
-           "Ravon R2": 70,
-           "UzAuto Spark": 52,
-           "Chevrolet Lacetti": 46
-         },
-         "Фергана": {
-           "Chevrolet Nexia": 81,
-           "Chevrolet Damas": 71,
-           "Chevrolet Cobalt": 65,
-           "Ravon R2": 48,
-           "UzAuto Spark": 29,
-           "Chevrolet Lacetti": 36
-         },
-         "Кашкадарья": {
-           "Chevrolet Nexia": 72,
-           "Chevrolet Damas": 69,
-           "Chevrolet Cobalt": 47,
-           "Ravon R2": 31,
-           "UzAuto Spark": 16,
-           "Chevrolet Lacetti": 25
-         },
-         "Наманган": {
-           "Chevrolet Nexia": 64,
-           "Chevrolet Damas": 51,
-           "Chevrolet Cobalt": 37,
-           "Ravon R2": 20,
-           "UzAuto Spark": 9,
-           "Chevrolet Lacetti": 14
-         }
-       }
-     },
-     
-     export: {
-       regions: [
-         { name: "Казахстан", value: 946, percent: 35.5 },
-         { name: "Кыргызстан", value: 678, percent: 25.5 },
-         { name: "Таджикистан", value: 458, percent: 17.2 },
-         { name: "Россия", value: 354, percent: 13.3 },
-         { name: "Афганистан", value: 174, percent: 6.5 },
-         { name: "Другие", value: 62, percent: 2.3 }
-       ],
-       models: [
-         { name: "Chevrolet Nexia", value: 487, change: "+18.5%" },
-         { name: "Chevrolet Cobalt", value: 414, change: "+22.3%" },
-         { name: "Chevrolet Malibu", value: 250, change: "+9.7%" },
-         { name: "Ravon R2", value: 224, change: "+5.2%" },
-         { name: "Chevrolet Damas", value: 200, change: "+12.1%" },
-         { name: "UzAuto Spark", value: 144, change: "+7.8%" }
-       ],
-       modelDetails: {
-         "Chevrolet Nexia": {
-           "Казахстан": 184,
-           "Кыргызстан": 145,
-           "Таджикистан": 71,
-           "Россия": 47,
-           "Афганистан": 34,
-           "Другие": 10
-         },
-         "Chevrolet Cobalt": {
-           "Казахстан": 170,
-           "Кыргызстан": 106,
-           "Таджикистан": 58,
-           "Россия": 41,
-           "Афганистан": 32,
-           "Другие": 13
-         },
-         "Chevrolet Malibu": {
-           "Казахстан": 106,
-           "Кыргызстан": 63,
-           "Таджикистан": 34,
-           "Россия": 28,
-           "Афганистан": 16,
-           "Другие": 8
-         },
-         "Ravon R2": {
-           "Казахстан": 94,
-           "Кыргызстан": 57,
-           "Таджикистан": 31,
-           "Россия": 24,
-           "Афганистан": 18,
-           "Другие": 7
-         },
-         "Chevrolet Damas": {
-           "Казахстан": 84,
-           "Кыргызстан": 46,
-           "Таджикистан": 28,
-           "Россия": 22,
-           "Афганистан": 17,
-           "Другие": 7
-         },
-         "UzAuto Spark": {
-           "Казахстан": 61,
-           "Кыргызстан": 36,
-           "Таджикистан": 20,
-           "Россия": 17,
-           "Афганистан": 11,
-           "Другие": 5
-         }
-       },
-       regionDetails: {
-         "Казахстан": {
-           "Chevrolet Nexia": 184,
-           "Chevrolet Cobalt": 170,
-           "Chevrolet Malibu": 106,
-           "Ravon R2": 94,
-           "Chevrolet Damas": 84,
-           "UzAuto Spark": 61
-         },
-         "Кыргызстан": {
-           "Chevrolet Nexia": 145,
-           "Chevrolet Cobalt": 106,
-           "Chevrolet Malibu": 63,
-           "Ravon R2": 57,
-           "Chevrolet Damas": 46,
-           "UzAuto Spark": 36
-         },
-         "Таджикистан": {
-           "Chevrolet Nexia": 71,
-           "Chevrolet Cobalt": 58,
-           "Chevrolet Malibu": 34,
-           "Ravon R2": 31,
-           "Chevrolet Damas": 28,
-           "UzAuto Spark": 20
-         },
-         "Россия": {
-           "Chevrolet Nexia": 47,
-           "Chevrolet Cobalt": 41,
-           "Chevrolet Malibu": 28,
-           "Ravon R2": 24,
-           "Chevrolet Damas": 22,
-           "UzAuto Spark": 17
-         },
-         "Афганистан": {
-           "Chevrolet Nexia": 34,
-           "Chevrolet Cobalt": 32,
-           "Chevrolet Malibu": 16,
-           "Ravon R2": 18,
-           "Chevrolet Damas": 17,
-           "UzAuto Spark": 11
-         },
-         "Другие": {
-           "Chevrolet Nexia": 10,
-           "Chevrolet Cobalt": 13,
-           "Chevrolet Malibu": 8,
-           "Ravon R2": 7,
-           "Chevrolet Damas": 7,
-           "UzAuto Spark": 5
-         }
-       }
-     },
-     
-     import: {
-       regions: [
-         { name: "Корея", value: 1012, percent: 38.4 },
-         { name: "Россия", value: 697, percent: 26.5 },
-         { name: "Китай", value: 468, percent: 17.8 },
-         { name: "Германия", value: 254, percent: 9.6 },
-         { name: "Турция", value: 112, percent: 4.3 },
-         { name: "Другие", value: 90, percent: 3.4 }
-       ],
-       models: [
-         { name: "Запчасти", value: 1044, change: "+7.6%" },
-         { name: "Комплектующие", value: 799, change: "+12.8%" },
-         { name: "Аккумуляторы", value: 448, change: "+3.2%" },
-         { name: "Двигатели", value: 344, change: "+9.1%" },
-         { name: "Электроника", value: 306, change: "+15.3%" },
-         { name: "Материалы", value: 251, change: "+5.7%" }
-       ],
-       modelDetails: {
-         "Запчасти": {
-           "Корея": 372,
-           "Россия": 210,
-           "Китай": 192,
-           "Германия": 104,
-           "Турция": 46,
-           "Другие": 26
-         },
-         "Комплектующие": {
-           "Корея": 264,
-           "Россия": 182,
-           "Китай": 134,
-           "Германия": 69,
-           "Турция": 28,
-           "Другие": 27
-         },
-         "Аккумуляторы": {
-           "Корея": 120,
-           "Россия": 92,
-           "Китай": 68,
-           "Германия": 34,
-           "Турция": 16,
-           "Другие": 18
-         },
-         "Двигатели": {
-           "Корея": 106,
-           "Россия": 78,
-           "Китай": 62,
-           "Германия": 44,
-           "Турция": 10,
-           "Другие": 9
-         },
-         "Электроника": {
-           "Корея": 94,
-           "Россия": 70,
-           "Китай": 56,
-           "Германия": 38,
-           "Турция": 8,
-           "Другие": 8
-         },
-         "Материалы": {
-           "Корея": 56,
-           "Россия": 65,
-           "Китай": 46,
-           "Германия": 42,
-           "Турция": 4,
-           "Другие": 5
-         }
-       },
-       regionDetails: {
-         "Корея": {
-           "Запчасти": 372,
-           "Комплектующие": 264,
-           "Аккумуляторы": 120,
-           "Двигатели": 106,
-           "Электроника": 94,
-           "Материалы": 56
-         },
-         "Россия": {
-           "Запчасти": 210,
-           "Комплектующие": 182,
-           "Аккумуляторы": 92,
-           "Двигатели": 78,
-           "Электроника": 70,
-           "Материалы": 65
-         },
-         "Китай": {
-           "Запчасти": 192,
-           "Комплектующие": 134,
-           "Аккумуляторы": 68,
-           "Двигатели": 62,
-           "Электроника": 56,
-           "Материалы": 46
-         },
-         "Германия": {
-           "Запчасти": 104,
-           "Комплектующие": 69,
-           "Аккумуляторы": 34,
-           "Двигатели": 44,
-           "Электроника": 38,
-           "Материалы": 42
-         },
-         "Турция": {
-           "Запчасти": 46,
-           "Комплектующие": 28,
-           "Аккумуляторы": 16,
-           "Двигатели": 10,
-           "Электроника": 8,
-           "Материалы": 4
-         },
-         "Другие": {
-           "Запчасти": 26,
-           "Комплектующие": 27,
-           "Аккумуляторы": 18,
-           "Двигатели": 9,
-           "Электроника": 8,
-           "Материалы": 5
-         }
-       }
-     }
-   },
-   
-   'март': {
-     stats: { 
-       newVisitors: { count: 81240, change: '+28.3%', revenue: '68.72 млн' },
-       oldVisitors: { count: 862540, change: '-12.7%', revenue: '235.89 млн' },
-       accounts: { count: 67400, change: '+12.5%' },
-       bounceRate: { value: '32.8%', change: '-9.4%' }
-     },
-     
-     sales: {
-       regions: [
-         { name: "Ташкент", value: 1475, percent: 30.8 },
-         { name: "Самарканд", value: 945, percent: 19.7 },
-         { name: "Бухара", value: 720, percent: 15.0 },
-         { name: "Андижан", value: 615, percent: 12.8 },
-         { name: "Фергана", value: 480, percent: 10.0 },
-         { name: "Кашкадарья", value: 365, percent: 7.6 },
-         { name: "Наманган", value: 325, percent: 6.8 }
-       ],
-       models: [
-         { name: "Chevrolet Nexia", value: 965, change: "+18.2%" },
-         { name: "Chevrolet Damas", value: 832, change: "+15.8%" },
-         { name: "Chevrolet Cobalt", value: 680, change: "+12.4%" },
-         { name: "Ravon R2", value: 590, change: "+19.3%" },
-         { name: "UzAuto Spark", value: 465, change: "+13.5%" },
-         { name: "Chevrolet Lacetti", value: 430, change: "+8.2%" }
-       ],
-       modelDetails: {
-         "Chevrolet Nexia": {
-           "Ташкент": 342,
-           "Самарканд": 195,
-           "Бухара": 118,
-           "Андижан": 103,
-           "Фергана": 89,
-           "Кашкадарья": 76,
-           "Наманган": 68
-         },
-         "Chevrolet Damas": {
-           "Ташкент": 248,
-           "Самарканд": 162,
-           "Бухара": 124,
-           "Андижан": 112,
-           "Фергана": 76,
-           "Кашкадарья": 72,
-           "Наманган": 54
-         },
-         "Chevrolet Cobalt": {
-           "Ташкент": 228,
-           "Самарканд": 143,
-           "Бухара": 102,
-           "Андижан": 92,
-           "Фергана": 72,
-           "Кашкадарья": 52,
-           "Наманган": 42
-         },
-         "Ravon R2": {
-           "Ташкент": 218,
-           "Самарканд": 132,
-           "Бухара": 92,
-           "Андижан": 75,
-           "Фергана": 52,
-           "Кашкадарья": 36,
-           "Наманган": 25
-         },
-         "UzAuto Spark": {
-           "Ташкент": 204,
-           "Самарканд": 115,
-           "Бухара": 70,
-           "Андижан": 58,
-           "Фергана": 32,
-           "Кашкадарья": 18,
-           "Наманган": 12
-         },
-         "Chevrolet Lacetti": {
-           "Ташкент": 185,
-           "Самарканд": 103,
-           "Бухара": 64,
-           "Андижан": 52,
-           "Фергана": 42,
-           "Кашкадарья": 28,
-           "Наманган": 16
-         }
-       },
-       regionDetails: {
-         "Ташкент": {
-           "Chevrolet Nexia": 342,
-           "Chevrolet Damas": 248,
-           "Chevrolet Cobalt": 228,
-           "Ravon R2": 218,
-           "UzAuto Spark": 204,
-           "Chevrolet Lacetti": 185
-         },
-         "Самарканд": {
-           "Chevrolet Nexia": 195,
-           "Chevrolet Damas": 162,
-           "Chevrolet Cobalt": 143,
-           "Ravon R2": 132,
-           "UzAuto Spark": 115,
-           "Chevrolet Lacetti": 103
-         },
-         "Бухара": {
-           "Chevrolet Nexia": 118,
-           "Chevrolet Damas": 124,
-           "Chevrolet Cobalt": 102,
-           "Ravon R2": 92,
-           "UzAuto Spark": 70,
-           "Chevrolet Lacetti": 64
-         },
-         "Андижан": {
-           "Chevrolet Nexia": 103,
-           "Chevrolet Damas": 112,
-           "Chevrolet Cobalt": 92,
-           "Ravon R2": 75,
-           "UzAuto Spark": 58,
-           "Chevrolet Lacetti": 52
-         },
-         "Фергана": {
-           "Chevrolet Nexia": 89,
-           "Chevrolet Damas": 76,
-           "Chevrolet Cobalt": 72,
-           "Ravon R2": 52,
-           "UzAuto Spark": 32,
-           "Chevrolet Lacetti": 42
-         },
-         "Кашкадарья": {
-           "Chevrolet Nexia": 76,
-           "Chevrolet Damas": 72,
-           "Chevrolet Cobalt": 52,
-           "Ravon R2": 36,
-           "UzAuto Spark": 18,
-           "Chevrolet Lacetti": 28
-         },
-         "Наманган": {
-           "Chevrolet Nexia": 68,
-           "Chevrolet Damas": 54,
-           "Chevrolet Cobalt": 42,
-           "Ravon R2": 25,
-           "UzAuto Spark": 12,
-           "Chevrolet Lacetti": 16
-         }
-       }
-     },
-     
-     export: {
-       regions: [
-         { name: "Казахстан", value: 1012, percent: 35.8 },
-         { name: "Кыргызстан", value: 724, percent: 25.6 },
-         { name: "Таджикистан", value: 486, percent: 17.2 },
-         { name: "Россия", value: 382, percent: 13.5 },
-         { name: "Афганистан", value: 185, percent: 6.5 },
-         { name: "Другие", value: 68, percent: 2.4 }
-       ],
-       models: [
-         { name: "Chevrolet Nexia", value: 524, change: "+18.5%" },
-         { name: "Chevrolet Cobalt", value: 445, change: "+22.3%" },
-         { name: "Chevrolet Malibu", value: 269, change: "+9.7%" },
-         { name: "Ravon R2", value: 241, change: "+5.2%" },
-         { name: "Chevrolet Damas", value: 215, change: "+12.1%" },
-         { name: "UzAuto Spark", value: 155, change: "+7.8%" }
-       ],
-       modelDetails: {
-         "Chevrolet Nexia": {
-           "Казахстан": 198,
-           "Кыргызстан": 156,
-           "Таджикистан": 76,
-           "Россия": 52,
-           "Афганистан": 36,
-           "Другие": 12
-         },
-         "Chevrolet Cobalt": {
-           "Казахстан": 184,
-           "Кыргызстан": 114,
-           "Таджикистан": 62,
-           "Россия": 46,
-           "Афганистан": 35,
-           "Другие": 14
-         },
-         "Chevrolet Malibu": {
-           "Казахстан": 114,
-           "Кыргызстан": 68,
-           "Таджикистан": 36,
-           "Россия": 30,
-           "Афганистан": 18,
-           "Другие": 9
-         },
-         "Ravon R2": {
-           "Казахстан": 102,
-           "Кыргызстан": 62,
-           "Таджикистан": 33,
-           "Россия": 26,
-           "Афганистан": 20,
-           "Другие": 8
-         },
-         "Chevrolet Damas": {
-           "Казахстан": 92,
-           "Кыргызстан": 50,
-           "Таджикистан": 30,
-           "Россия": 24,
-           "Афганистан": 18,
-           "Другие": 8
-         },
-         "UzAuto Spark": {
-           "Казахстан": 68,
-           "Кыргызстан": 40,
-           "Таджикистан": 22,
-           "Россия": 18,
-           "Афганистан": 12,
-           "Другие": 6
-         }
-       },
-       regionDetails: {
-         "Казахстан": {
-           "Chevrolet Nexia": 198,
-           "Chevrolet Cobalt": 184,
-           "Chevrolet Malibu": 114,
-           "Ravon R2": 102,
-           "Chevrolet Damas": 92,
-           "UzAuto Spark": 68
-         },
-         "Кыргызстан": {
-           "Chevrolet Nexia": 156,
-           "Chevrolet Cobalt": 114,
-           "Chevrolet Malibu": 68,
-           "Ravon R2": 62,
-           "Chevrolet Damas": 50,
-           "UzAuto Spark": 40
-         },
-         "Таджикистан": {
-           "Chevrolet Nexia": 76,
-           "Chevrolet Cobalt": 62,
-           "Chevrolet Malibu": 36,
-           "Ravon R2": 33,
-           "Chevrolet Damas": 30,
-           "UzAuto Spark": 22
-         },
-         "Россия": {
-           "Chevrolet Nexia": 52,
-           "Chevrolet Cobalt": 46,
-           "Chevrolet Malibu": 30,
-           "Ravon R2": 26,
-           "Chevrolet Damas": 24,
-           "UzAuto Spark": 18
-         },
-         "Афганистан": {
-           "Chevrolet Nexia": 36,
-           "Chevrolet Cobalt": 35,
-           "Chevrolet Malibu": 18,
-           "Ravon R2": 20,
-           "Chevrolet Damas": 18,
-           "UzAuto Spark": 12
-         },
-         "Другие": {
-           "Chevrolet Nexia": 12,
-           "Chevrolet Cobalt": 14,
-           "Chevrolet Malibu": 9,
-           "Ravon R2": 8,
-           "Chevrolet Damas": 8,
-           "UzAuto Spark": 6
-         }
-       }
-     },
-     
-     import: {
-       regions: [
-         { name: "Корея", value: 1085, percent: 38.5 },
-         { name: "Россия", value: 745, percent: 26.4 },
-         { name: "Китай", value: 496, percent: 17.6 },
-         { name: "Германия", value: 272, percent: 9.6 },
-         { name: "Турция", value: 122, percent: 4.3 },
-         { name: "Другие", value: 96, percent: 3.4 }
-       ],
-       models: [
-         { name: "Запчасти", value: 1083, change: "+7.6%" },
-         { name: "Комплектующие", value: 829, change: "+12.8%" },
-         { name: "Аккумуляторы", value: 465, change: "+3.2%" },
-         { name: "Двигатели", value: 357, change: "+9.1%" },
-         { name: "Электроника", value: 317, change: "+15.3%" },
-         { name: "Материалы", value: 260, change: "+5.7%" }
-       ],
-       modelDetails: {
-         "Запчасти": {
-           "Корея": 398,
-           "Россия": 226,
-           "Китай": 204,
-           "Германия": 110,
-           "Турция": 48,
-           "Другие": 28
-         },
-         "Комплектующие": {
-           "Корея": 284,
-           "Россия": 194,
-           "Китай": 142,
-           "Германия": 72,
-           "Турция": 30,
-           "Другие": 28
-         },
-         "Аккумуляторы": {
-           "Корея": 128,
-           "Россия": 98,
-           "Китай": 72,
-           "Германия": 36,
-           "Турция": 18,
-           "Другие": 20
-         },
-         "Двигатели": {
-           "Корея": 112,
-           "Россия": 82,
-           "Китай": 66,
-           "Германия": 46,
-           "Турция": 12,
-           "Другие": 10
-         },
-         "Электроника": {
-           "Корея": 100,
-           "Россия": 74,
-           "Китай": 60,
-           "Германия": 40,
-           "Турция": 9,
-           "Другие": 8
-         },
-         "Материалы": {
-           "Корея": 63,
-           "Россия": 71,
-           "Китай": 52,
-           "Германия": 46,
-           "Турция": 5,
-           "Другие": 6
-         }
-       },
-       regionDetails: {
-         "Корея": {
-           "Запчасти": 398,
-           "Комплектующие": 284,
-           "Аккумуляторы": 128,
-           "Двигатели": 112,
-           "Электроника": 100,
-           "Материалы": 63
-         },
-         "Россия": {
-           "Запчасти": 226,
-           "Комплектующие": 194,
-           "Аккумуляторы": 98,
-           "Двигатели": 82,
-           "Электроника": 74,
-           "Материалы": 71
-         },
-         "Китай": {
-           "Запчасти": 204,
-           "Комплектующие": 142,
-           "Аккумуляторы": 72,
-           "Двигатели": 66,
-           "Электроника": 60,
-           "Материалы": 52
-         },
-         "Германия": {
-           "Запчасти": 110,
-           "Комплектующие": 72,
-           "Аккумуляторы": 36,
-           "Двигатели": 46,
-           "Электроника": 40,
-           "Материалы": 46
-         },
-         "Турция": {
-           "Запчасти": 48,
-           "Комплектующие": 30,
-           "Аккумуляторы": 18,
-           "Двигатели": 12,
-           "Электроника": 9,
-           "Материалы": 5
-         },
-         "Другие": {
-           "Запчасти": 28,
-           "Комплектующие": 28,
-           "Аккумуляторы": 20,
-           "Двигатели": 10,
-           "Электроника": 8,
-           "Материалы": 6
-         }
-       }
-     }
-   }
- };
-
- useEffect(() => {
-   renderChart();
- }, [activeMonth, activeSection, activeType, selectedItem]);
- 
- const renderChart = () => {
-   if (!chartRef.current) return;
-   
-   let currentData = [];
-   
-   // Если выбран конкретный элемент, показываем его детали
-   if (selectedItem) {
-     if (activeType === 'regions') {
-       // Показываем модели для выбранного региона
-       const regionDetails = analyticsData[activeMonth][activeSection].regionDetails[selectedItem];
-       if (regionDetails) {
-         currentData = Object.entries(regionDetails).map(([model, value]) => ({
-           name: model,
-           value: value,
-           percent: ((value / (analyticsData[activeMonth][activeSection].regions.find(r => r.name === selectedItem)?.value || 1)) * 100).toFixed(1)
-         }));
-       }
-     } else {
-       // Показываем регионы для выбранной модели
-       const modelDetails = analyticsData[activeMonth][activeSection].modelDetails[selectedItem];
-       if (modelDetails) {
-         currentData = Object.entries(modelDetails).map(([region, value]) => ({
-           name: region,
-           value: value,
-           percent: ((value / (analyticsData[activeMonth][activeSection].models.find(m => m.name === selectedItem)?.value || 1)) * 100).toFixed(1)
-         }));
-       }
-     }
-   } else {
-     // Стандартный режим - показываем выбранный тип данных
-     currentData = analyticsData[activeMonth][activeSection][activeType] || [];
-   }
-   
-   // Проверка, есть ли данные для отображения
-   if (!currentData || currentData.length === 0) {
-     d3.select(chartRef.current).selectAll("*").remove();
-     
-     // Добавляем сообщение об отсутствии данных
-     d3.select(chartRef.current)
-       .append("div")
-       .style("width", "100%")
-       .style("height", "100%")
-       .style("display", "flex")
-       .style("align-items", "center")
-       .style("justify-content", "center")
-       .style("color", "#6b7280")
-       .style("font-size", "1rem")
-       .text("Нет данных для отображения");
-     
-     return;
-   }
-   
-   d3.select(chartRef.current).selectAll("*").remove();
-   
-   const width = chartRef.current.clientWidth;
-   const height = 350;
-   const margin = { top: 20, right: 130, bottom: 30, left: 120 };
-   
-   const svg = d3.select(chartRef.current)
-     .append("svg")
-     .attr("width", width)
-     .attr("height", height)
-     .attr("viewBox", `0 0 ${width} ${height}`)
-     .style("overflow", "visible");
-   
-   // Сортируем данные
-   currentData.sort((a, b) => b.value - a.value);
-   
-   // Шкалы
-   const x = d3.scaleLinear()
-     .domain([0, d3.max(currentData, d => d.value) * 1.1])
-     .range([margin.left, width - margin.right]);
-   
-   const y = d3.scaleBand()
-     .domain(currentData.map(d => d.name))
-     .range([margin.top, height - margin.bottom])
-     .padding(0.3);
-   
-   // Цвета для разделов
-   const gradientColors = {
-     sales: {start: "#3b82f6", end: "#1d4ed8", accent: "#60a5fa"},
-     export: {start: "#10b981", end: "#047857", accent: "#34d399"},
-     import: {start: "#f59e0b", end: "#b45309", accent: "#fbbf24"}
-   };
-   
-   // Градиент для полос
-   const gradient = svg.append("defs")
-     .append("linearGradient")
-     .attr("id", "bar-gradient")
-     .attr("x1", "0%")
-     .attr("y1", "0%")
-     .attr("x2", "100%")
-     .attr("y2", "0%");
-   
-   gradient.append("stop")
-     .attr("offset", "0%")
-     .attr("stop-color", gradientColors[activeSection].start)
-     .attr("stop-opacity", 0.9);
-   
-   gradient.append("stop")
-     .attr("offset", "100%")
-     .attr("stop-color", gradientColors[activeSection].end)
-     .attr("stop-opacity", 0.7);
-   
-   // Эффект свечения
-   svg.append("defs")
-     .append("filter")
-     .attr("id", "glow")
-     .append("feGaussianBlur")
-     .attr("stdDeviation", "3.5")
-     .attr("result", "coloredBlur");
-   
-   const feMerge = svg.select("filter")
-     .append("feMerge");
-     
-   feMerge.append("feMergeNode")
-     .attr("in", "coloredBlur");
-   feMerge.append("feMergeNode")
-     .attr("in", "SourceGraphic");
-   
-   // Оси
-   svg.append("g")
-     .attr("transform", `translate(${margin.left},0)`)
-     .call(d3.axisLeft(y).tickSize(0))
-     .call(g => g.select(".domain").remove())
-     .call(g => g.selectAll(".tick text")
-       .attr("fill", "#e5e7eb")
-       .style("font-size", "0.8rem")
-       .style("font-weight", "500"));
-   
-   // Линии сетки
-   svg.selectAll(".grid-line")
-     .data(currentData)
-     .enter()
-     .append("line")
-     .attr("class", "grid-line")
-     .attr("x1", margin.left)
-     .attr("x2", width - margin.right)
-     .attr("y1", d => y(d.name) + y.bandwidth() / 2)
-     .attr("y2", d => y(d.name) + y.bandwidth() / 2)
-     .attr("stroke", "#374151")
-     .attr("stroke-width", 0.5)
-     .attr("stroke-dasharray", "3,3");
-   
-   // Полосы
-   const bars = svg.selectAll(".bar")
-     .data(currentData)
-     .enter()
-     .append("rect")
-     .attr("class", "bar")
-     .attr("x", margin.left)
-     .attr("y", d => y(d.name))
-     .attr("width", 0)
-     .attr("height", y.bandwidth())
-     .attr("rx", 4)
-     .attr("fill", "url(#bar-gradient)")
-     .attr("opacity", 0.9)
-     .style("cursor", "pointer")
-     .on("mouseover", function(event, d) {
-       d3.select(this)
-         .attr("opacity", 1)
-         .style("filter", "url(#glow)");
-         
-       const tooltip = d3.select(chartRef.current).append("div")
-         .attr("class", "tooltip")
-         .style("position", "absolute")
-         .style("left", `${event.pageX - chartRef.current.getBoundingClientRect().left + 10}px`)
-         .style("top", `${event.pageY - chartRef.current.getBoundingClientRect().top - 30}px`)
-         .style("background", "rgba(0, 0, 0, 0.85)")
-         .style("color", "#fff")
-         .style("padding", "8px 12px")
-         .style("border-radius", "6px")
-         .style("font-size", "0.8rem")
-         .style("pointer-events", "none")
-         .style("z-index", "100")
-         .style("box-shadow", "0 4px 12px rgba(0, 0, 0, 0.5)")
-         .style("border", `1px solid ${gradientColors[activeSection].accent}`)
-         .style("opacity", 0)
-         .html(`
-           <div style="font-weight: bold;">${d.name}</div>
-           <div style="margin-top: 4px;">Объем: <strong>${d.value.toLocaleString()}</strong></div>
-           ${d.percent ? `<div>Доля: <strong>${d.percent}%</strong></div>` : ''}
-           ${d.change ? `<div>Динамика: <strong style="color: ${d.change.includes('+') ? '#34d399' : '#f87171'}">${d.change}</strong></div>` : ''}
-           <div style="font-size: 0.7rem; margin-top: 5px; opacity: 0.8;">Нажмите для детализации</div>
-         `);
-       
-       tooltip.transition()
-         .duration(200)
-         .style("opacity", 1);
-     })
-     .on("mouseout", function() {
-       d3.select(this)
-         .attr("opacity", 0.9)
-         .style("filter", "none");
-         
-       d3.select(chartRef.current).selectAll(".tooltip").remove();
-     })
-     .on("click", function(event, d) {
-       // Переключаем детализацию при клике
-       if (selectedItem === d.name) {
-         setSelectedItem(null); // Если тот же элемент - отключаем детализацию
-       } else {
-         setSelectedItem(d.name); // Включаем детализацию для выбранного элемента
-       }
-     });
-   
-   // Анимация полос
-   bars.transition()
-     .duration(800)
-     .delay((d, i) => i * 50)
-     .attr("width", d => x(d.value) - margin.left)
-     .ease(d3.easeCubicOut);
-   
-   // Подписи значений
-   svg.selectAll(".value-label")
-     .data(currentData)
-     .enter()
-     .append("text")
-     .attr("class", "value-label")
-     .attr("x", d => x(d.value) + 10)
-     .attr("y", d => y(d.name) + y.bandwidth() / 2)
-     .attr("dy", "0.35em")
-     .style("font-size", "0.8rem")
-     .style("fill", "#f9fafb")
-     .style("font-weight", "bold")
-     .style("opacity", 0)
-     .text(d => d.value.toLocaleString())
-     .transition()
-     .duration(500)
-     .delay((d, i) => i * 50 + 500)
-     .style("opacity", 1);
-   
-   // Проценты или изменения
-   svg.selectAll(".percent-label")
-     .data(currentData)
-     .enter()
-     .append("text")
-     .attr("class", "percent-label")
-     .attr("x", d => x(d.value) + 80)
-     .attr("y", d => y(d.name) + y.bandwidth() / 2)
-     .attr("dy", "0.35em")
-     .style("font-size", "0.8rem")
-     .style("fill", d => d.change 
-       ? (d.change.includes('+') ? "#34d399" : "#f87171") 
-       : gradientColors[activeSection].accent)
-     .style("font-weight", d => d.change ? "bold" : "normal")
-     .style("opacity", 0)
-     .text(d => d.percent ? `${d.percent}%` : d.change)
-     .transition()
-     .duration(500)
-     .delay((d, i) => i * 50 + 800)
-     .style("opacity", 1);
- };
- 
- const getChangeColorClass = (change) => {
-   return change.startsWith('+') ? 'text-green-400' : 'text-red-400';
- };
- 
- const getTitle = () => {
-   if (selectedItem) {
-     if (activeType === 'regions') {
-       // Если выбран регион, показываем детализацию по моделям для этого региона
-       return `${activeSection === 'sales' ? 'Продажи' : activeSection === 'export' ? 'Экспорт' : 'Импорт'} в регионе "${selectedItem}"`;
-     } else {
-       // Если выбрана модель, показываем детализацию по регионам для этой модели
-       return `${activeSection === 'sales' ? 'Продажи' : activeSection === 'export' ? 'Экспорт' : 'Импорт'} ${selectedItem} по регионам`;
-     }
-   }
-   
-   const sectionNames = {
-     sales: 'Продажи', 
-     export: 'Экспорт', 
-     import: 'Импорт'
-   };
-   
-   const typeNames = {
-     regions: 'по регионам',
-     models: activeSection === 'import' ? 'по категориям' : 'по моделям'
-   };
-   
-   return `${sectionNames[activeSection]} ${typeNames[activeType]}`;
- };
- 
- return (
-   <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white p-5 rounded-lg shadow-xl border border-gray-700">
-     <h1 className="text-2xl font-bold mb-5 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">АВТОМОБИЛЬНАЯ АНАЛИТИКА УЗБЕКИСТАНА</h1>
-     
-     {/* Переключатель месяцев */}
-     <div className="flex mb-5 bg-gray-800 p-1 rounded-lg inline-block">
-       {Object.keys(analyticsData).map(month => (
-         <button
-           key={month}
-           className={`px-5 py-2 rounded-md text-sm font-medium transition-all duration-300 ${
-             activeMonth === month 
-               ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' 
-               : 'text-gray-300 hover:text-white hover:bg-gray-700'
-           }`}
-           onClick={() => {
-             setActiveMonth(month);
-             setSelectedItem(null); // Сбрасываем выбранный элемент при смене месяца
-           }}
-         >
-           {month.toUpperCase()}
-         </button>
-       ))}
-     </div>
-     
-     {/* Карточки с ключевыми метриками */}
-     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-       <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 rounded-lg shadow-lg border border-blue-500/20 transform hover:scale-105 transition-transform duration-300">
-         <div className="flex items-center mb-2">
-           <div className="w-12 h-12 rounded-full bg-blue-500 bg-opacity-20 flex items-center justify-center mr-3">
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-             </svg>
-           </div>
-           <div>
-             <p className="text-gray-400 text-xs">Новые клиенты</p>
-             <p className="text-xl font-bold">{analyticsData[activeMonth].stats.newVisitors.count.toLocaleString()}</p>
-             <div className="flex items-center text-xs gap-1">
-               <span className={getChangeColorClass(analyticsData[activeMonth].stats.newVisitors.change)}>
-                 {analyticsData[activeMonth].stats.newVisitors.change}
-               </span>
-               <span className="text-gray-400">{analyticsData[activeMonth].stats.newVisitors.revenue}</span>
-             </div>
-           </div>
-         </div>
-         <div className="h-1 w-full bg-blue-900 rounded-full overflow-hidden">
-           <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full animate-pulse" style={{width: `65%`}}></div>
-         </div>
-       </div>
-       
-       <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 rounded-lg shadow-lg border border-yellow-500/20 transform hover:scale-105 transition-transform duration-300">
-         <div className="flex items-center mb-2">
-           <div className="w-12 h-12 rounded-full bg-yellow-500 bg-opacity-20 flex items-center justify-center mr-3">
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-             </svg>
-           </div>
-           <div>
-             <p className="text-gray-400 text-xs">Постоянные клиенты</p>
-             <p className="text-xl font-bold">{analyticsData[activeMonth].stats.oldVisitors.count.toLocaleString()}</p>
-             <div className="flex items-center text-xs gap-1">
-               <span className={getChangeColorClass(analyticsData[activeMonth].stats.oldVisitors.change)}>
-                 {analyticsData[activeMonth].stats.oldVisitors.change}
-               </span>
-               <span className="text-gray-400">{analyticsData[activeMonth].stats.oldVisitors.revenue}</span>
-             </div>
-           </div>
-         </div>
-         <div className="h-1 w-full bg-yellow-900 rounded-full overflow-hidden">
-           <div className="h-1 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full animate-pulse" style={{width: `75%`}}></div>
-         </div>
-       </div>
-       
-       <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 rounded-lg shadow-lg border border-purple-500/20 transform hover:scale-105 transition-transform duration-300">
-         <div className="flex items-center mb-2">
-           <div className="w-12 h-12 rounded-full bg-purple-500 bg-opacity-20 flex items-center justify-center mr-3">
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-             </svg>
-           </div>
-           <div>
-             <p className="text-gray-400 text-xs">Всего аккаунтов</p>
-             <p className="text-xl font-bold">{analyticsData[activeMonth].stats.accounts.count.toLocaleString()}</p>
-             <div className="text-xs">
-               <span className={getChangeColorClass(analyticsData[activeMonth].stats.accounts.change)}>
-                 {analyticsData[activeMonth].stats.accounts.change} с прошлого месяца
-               </span>
-             </div>
-           </div>
-         </div>
-         <div className="h-1 w-full bg-purple-900 rounded-full overflow-hidden">
-           <div className="h-1 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full animate-pulse" style={{width: `60%`}}></div>
-         </div>
-       </div>
-       
-       <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 rounded-lg shadow-lg border border-red-500/20 transform hover:scale-105 transition-transform duration-300">
-         <div className="flex items-center mb-2">
-           <div className="w-12 h-12 rounded-full bg-red-500 bg-opacity-20 flex items-center justify-center mr-3">
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-             </svg>
-           </div>
-           <div>
-             <p className="text-gray-400 text-xs">Показатель отказов</p>
-             <p className="text-xl font-bold">{analyticsData[activeMonth].stats.bounceRate.value}</p>
-             <div className="text-xs">
-               <span className={getChangeColorClass(analyticsData[activeMonth].stats.bounceRate.change)}>
-                 {analyticsData[activeMonth].stats.bounceRate.change} с прошлого месяца
-               </span>
-             </div>
-           </div>
-         </div>
-         <div className="h-1 w-full bg-red-900 rounded-full overflow-hidden">
-           <div className="h-1 bg-gradient-to-r from-red-400 to-red-600 rounded-full animate-pulse" style={{width: `35%`}}></div>
-         </div>
-       </div>
-     </div>
-     
-     {/* Заголовок и секции данных */}
-     <h2 className="text-lg font-bold mb-4">Производство, экспорт, импорт - статистика продаж автомобилей</h2>
-     
-     {/* Переключатель разделов */}
-     <div className="flex space-x-2 mb-4">
-       <button
-         className={`px-4 py-2 rounded transition-all duration-300 ${activeSection === 'sales' 
-           ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' 
-           : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-         onClick={() => {
-           setActiveSection('sales');
-           setSelectedItem(null);
-         }}
-       >
-         Продажи
-       </button>
-       <button
-         className={`px-4 py-2 rounded transition-all duration-300 ${activeSection === 'export' 
-           ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg' 
-           : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-         onClick={() => {
-           setActiveSection('export');
-           setSelectedItem(null);
-         }}
-       >
-         Экспорт
-       </button>
-       <button
-         className={`px-4 py-2 rounded transition-all duration-300 ${activeSection === 'import' 
-           ? 'bg-gradient-to-r from-yellow-600 to-amber-600 text-white shadow-lg' 
-           : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-         onClick={() => {
-           setActiveSection('import');
-           setSelectedItem(null);
-         }}
-       >
-         Импорт
-       </button>
-     </div>
-     
-     Если не выбран конкретный элемент, показываем переключатель типов
-     {!selectedItem && (
-       <div className="flex space-x-2 mb-4">
-         <button
-           className={`px-3 py-1 text-sm rounded-full transition-all duration-300 ${activeType === 'regions' 
-             ? 'bg-white text-gray-900 font-medium shadow-lg' 
-             : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-           onClick={() => setActiveType('regions')}
-         >
-           По регионам
-         </button>
-         <button
-           className={`px-3 py-1 text-sm rounded-full transition-all duration-300 ${activeType === 'models' 
-             ? 'bg-white text-gray-900 font-medium shadow-lg' 
-             : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-           onClick={() => setActiveType('models')}
-         >
-           {activeSection === 'import' ? 'По категориям' : 'По моделям'}
-         </button>
-       </div>
-     )}
-     
-     {/* Если есть выбранный элемент, показываем кнопку возврата */}
-     {selectedItem && (
-       <div className="flex mb-4">
-         <button
-           className="px-3 py-1 text-sm rounded-full bg-gray-700 text-gray-300 hover:bg-gray-600 flex items-center"
-           onClick={() => setSelectedItem(null)}
-         >
-           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-           </svg>
-           Назад к общему списку
-         </button>
-       </div>
-     )}
-     
-     {/* Основной график */}
-     <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-xl shadow-xl border border-gray-700 overflow-hidden">
-       <div className="mb-4 flex justify-between items-center">
-         <h3 className="text-lg font-bold">{getTitle()}</h3>
-         
-         {/* Индикатор интерактивности */}
-         <div className="text-xs flex items-center text-gray-400">
-           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-           </svg>
-           Нажмите на элемент для детализации
-         </div>
-       </div>
-       <div ref={chartRef} className="w-full" style={{ height: '350px' }}></div>
-     </div>
-     
-     {/* Дополнительная информация внизу */}
-     {/* <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-       <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 rounded-lg">
-         <h4 className="font-medium text-blue-400 mb-2">Производство автомобилей</h4>
-         <p className="text-sm text-gray-300">В Узбекистане производится более 250,000 автомобилей ежегодно, в том числе популярные модели Chevrolet Nexia, Spark, Cobalt, Damas.</p>
-       </div>
-       
-       <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 rounded-lg">
-         <h4 className="font-medium text-green-400 mb-2">Экспортные рынки</h4>
-         <p className="text-sm text-gray-300">Основными рынками экспорта автомобилей являются Казахстан, Кыргызстан, Таджикистан и Россия.</p>
-       </div>
-       
-       <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 rounded-lg">
-         <h4 className="font-medium text-yellow-400 mb-2">Прогноз роста</h4>
-         <p className="text-sm text-gray-300">Ожидается увеличение объемов производства и экспорта авто на 15-20% в течение ближайших двух лет.</p>
-       </div>
-     </div> */}
-   </div>
- );
+// Генерация тестовых данных (сохраняем ту же логику, но добавляем больше деталей)
+const generateMockTimeData = () => {
+  // Генерируем данные за последние 12 месяцев
+  const data = {};
+  const now = new Date();
+  
+  for (let i = 0; i < 12; i++) {
+    const date = new Date(now);
+    date.setMonth(now.getMonth() - i);
+    
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    
+    const monthKey = `${year}-${month + 1}`;
+    
+    // Базовые значения для каждой модели с небольшой случайностью
+    data[monthKey] = {
+      date: new Date(year, month, 1),
+      sales: {},
+      export: {},
+      import: {}
+    };
+    
+    // Данные продаж по моделям
+    carModels.forEach((model, idx) => {
+      // Базовое значение + случайность + сезонность
+      const baseValue = 500 + idx * 100;
+      const randomFactor = 0.8 + Math.random() * 0.4; // 0.8-1.2
+      const seasonality = 1 + 0.2 * Math.sin((month / 12) * Math.PI * 2); // Сезонный фактор
+      
+      const value = Math.round(baseValue * randomFactor * seasonality);
+      
+      data[monthKey].sales[model.id] = {
+        value,
+        model: model.name,
+        img: model.img,
+        // Распределение по регионам
+        regions: regions.reduce((acc, region) => {
+          acc[region.id] = Math.round(value * (0.05 + Math.random() * 0.3));
+          return acc;
+        }, {})
+      };
+      
+      // Экспорт (примерно 30-50% от продаж)
+      const exportValue = Math.round(value * (0.3 + Math.random() * 0.2));
+      data[monthKey].export[model.id] = {
+        value: exportValue,
+        model: model.name,
+        img: model.img,
+        // Распределение по странам экспорта
+        regions: {
+          'kz': Math.round(exportValue * 0.35),
+          'kg': Math.round(exportValue * 0.25),
+          'tj': Math.round(exportValue * 0.15),
+          'ru': Math.round(exportValue * 0.15),
+          'af': Math.round(exportValue * 0.07),
+          'other': Math.round(exportValue * 0.03)
+        }
+      };
+    });
+    
+    // Данные импорта (запчасти, комплектующие и т.д.)
+    const importCategories = [
+      { id: 'parts', name: 'Запчасти' },
+      { id: 'components', name: 'Комплектующие' },
+      { id: 'batteries', name: 'Аккумуляторы' },
+      { id: 'engines', name: 'Двигатели' },
+      { id: 'electronics', name: 'Электроника' },
+      { id: 'materials', name: 'Материалы' }
+    ];
+    
+    importCategories.forEach((category, idx) => {
+      const baseValue = 600 + idx * 80;
+      const randomFactor = 0.85 + Math.random() * 0.3;
+      const seasonality = 1 + 0.15 * Math.sin((month / 12) * Math.PI * 2);
+      
+      const value = Math.round(baseValue * randomFactor * seasonality);
+      
+      data[monthKey].import[category.id] = {
+        value,
+        name: category.name,
+        // Распределение по странам импорта
+        regions: {
+          'kr': Math.round(value * 0.38),
+          'ru': Math.round(value * 0.26),
+          'cn': Math.round(value * 0.18),
+          'de': Math.round(value * 0.10),
+          'tr': Math.round(value * 0.05),
+          'other': Math.round(value * 0.03)
+        }
+      };
+    });
+  }
+  
+  return data;
 };
 
-export default AutoAnalytics;
+const timeData = generateMockTimeData();
+
+const AutoDashboard = () => {
+  // Основное состояние
+  const [timeRange, setTimeRange] = useState({
+    startDate: d3.timeMonth.offset(new Date(), -3),
+    endDate: new Date(),
+    preset: 'last3Months'
+  });
+  
+  const [comparisonRange, setComparisonRange] = useState({
+    startDate: d3.timeMonth.offset(d3.timeMonth.offset(new Date(), -3), -3),
+    endDate: d3.timeMonth.offset(new Date(), -3),
+    preset: 'prevPeriod'
+  });
+  
+  const [showComparison, setShowComparison] = useState(false);
+  const [activeSection, setActiveSection] = useState('sales');
+  const [visualizationType, setVisualizationType] = useState('barChart');
+  
+  // Фильтры
+  const [filters, setFilters] = useState({
+    models: [], // Пустой массив = все модели
+    regions: [] // Пустой массив = все регионы
+  });
+  
+  // Состояние UI
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [activeDrilldown, setActiveDrilldown] = useState(null);
+  
+  // Refs для графиков
+  const mainChartRef = useRef(null);
+  const trendChartRef = useRef(null);
+  const distributionChartRef = useRef(null);
+  
+  // Пресеты выбора времени
+  const timePresets = [
+    { id: 'thisMonth', label: 'Этот месяц', getRange: () => ({
+      startDate: d3.timeMonth.floor(new Date()),
+      endDate: new Date()
+    })},
+    { id: 'lastMonth', label: 'Прошлый месяц', getRange: () => ({
+      startDate: d3.timeMonth.offset(d3.timeMonth.floor(new Date()), -1),
+      endDate: d3.timeMonth.offset(d3.timeMonth.floor(new Date()), 0)
+    })},
+    { id: 'last3Months', label: '3 месяца', getRange: () => ({
+      startDate: d3.timeMonth.offset(new Date(), -3),
+      endDate: new Date()
+    })},
+    { id: 'last6Months', label: '6 месяцев', getRange: () => ({
+      startDate: d3.timeMonth.offset(new Date(), -6),
+      endDate: new Date()
+    })},
+    { id: 'thisYear', label: 'Этот год', getRange: () => ({
+      startDate: d3.timeYear.floor(new Date()),
+      endDate: new Date()
+    })},
+    { id: 'lastYear', label: 'Прошлый год', getRange: () => ({
+      startDate: d3.timeYear.offset(d3.timeYear.floor(new Date()), -1),
+      endDate: d3.timeYear.floor(new Date())
+    })},
+    { id: 'custom', label: 'Свой период', getRange: () => ({
+      startDate: timeRange.startDate,
+      endDate: timeRange.endDate
+    })}
+  ];
+  
+  const comparisonPresets = [
+    { id: 'prevPeriod', label: 'Пред. период', getRange: () => {
+      const currentRange = timeRange.endDate - timeRange.startDate;
+      return {
+        startDate: new Date(timeRange.startDate - currentRange),
+        endDate: new Date(timeRange.endDate - currentRange)
+      };
+    }},
+    { id: 'prevYear', label: 'Пред. год', getRange: () => ({
+      startDate: d3.timeYear.offset(timeRange.startDate, -1),
+      endDate: d3.timeYear.offset(timeRange.endDate, -1)
+    })},
+    { id: 'custom', label: 'Свой период', getRange: () => ({
+      startDate: comparisonRange.startDate,
+      endDate: comparisonRange.endDate
+    })}
+  ];
+  
+  // Применение выбранного пресета времени
+  const applyTimePreset = (presetId) => {
+    const preset = timePresets.find(p => p.id === presetId);
+    if (preset) {
+      const range = preset.getRange();
+      setTimeRange({
+        ...range,
+        preset: presetId
+      });
+    }
+  };
+  
+  // Применение выбранного пресета сравнения
+  const applyComparisonPreset = (presetId) => {
+    const preset = comparisonPresets.find(p => p.id === presetId);
+    if (preset) {
+      const range = preset.getRange();
+      setComparisonRange({
+        ...range,
+        preset: presetId
+      });
+    }
+  };
+  
+  // Обновление интервалов сравнения при изменении основного интервала
+  useEffect(() => {
+    if (comparisonRange.preset !== 'custom') {
+      applyComparisonPreset(comparisonRange.preset);
+    }
+  }, [timeRange]);
+  
+  // Получение отфильтрованных данных
+  const getFilteredData = (range) => {
+    // Получаем данные в интервале
+    const dataInRange = Object.values(timeData).filter(d => {
+      const date = new Date(d.date);
+      return date >= range.startDate && date <= range.endDate;
+    });
+    
+    // Применяем фильтры
+    return dataInRange;
+  };
+  
+  // Мемоизируем основные наборы данных
+  const primaryData = useMemo(() => getFilteredData(timeRange), [timeRange, filters]);
+  const comparisonData = useMemo(() => showComparison ? getFilteredData(comparisonRange) : [], 
+    [showComparison, comparisonRange, filters]);
+  
+  // Расчет агрегированных показателей
+  const aggregateData = (dataPoints, section) => {
+    if (!dataPoints || dataPoints.length === 0) return [];
+    
+    // Здесь логика агрегации данных из выбранного раздела
+    const aggregated = {};
+    
+    // Собираем все значения для каждой модели/категории
+    dataPoints.forEach(dataPoint => {
+      const sectionData = dataPoint[section];
+      
+      Object.keys(sectionData).forEach(itemId => {
+        const item = sectionData[itemId];
+        
+        if (!aggregated[itemId]) {
+          aggregated[itemId] = {
+            id: itemId,
+            name: item.model || item.name,
+            value: 0,
+            img: item.img,
+            regionData: {}
+          };
+        }
+        
+        // Суммирование значений
+        aggregated[itemId].value += item.value;
+        
+        // Суммирование по регионам
+        Object.keys(item.regions).forEach(regionId => {
+          if (!aggregated[itemId].regionData[regionId]) {
+            aggregated[itemId].regionData[regionId] = 0;
+          }
+          aggregated[itemId].regionData[regionId] += item.regions[regionId];
+        });
+      });
+    });
+    
+    // Преобразование в массив и добавление процентов
+    const result = Object.values(aggregated);
+    const total = result.reduce((sum, item) => sum + item.value, 0);
+    
+    result.forEach(item => {
+      item.percent = parseFloat((item.value / total * 100).toFixed(1));
+    });
+    
+    return result.sort((a, b) => b.value - a.value);
+  };
+  
+  // Расчет итоговых показателей
+  const calculateSummaryStats = (primaryAggregated, comparisonAggregated) => {
+    if (!primaryAggregated || primaryAggregated.length === 0) {
+      return { total: 0, change: 0, percentChange: 0, topItem: null };
+    }
+    
+    const total = primaryAggregated.reduce((sum, item) => sum + item.value, 0);
+    const topItem = [...primaryAggregated].sort((a, b) => b.value - a.value)[0];
+    
+    let change = 0;
+    let percentChange = 0;
+    
+    if (showComparison && comparisonAggregated && comparisonAggregated.length > 0) {
+      const comparisonTotal = comparisonAggregated.reduce((sum, item) => sum + item.value, 0);
+      change = total - comparisonTotal;
+      percentChange = comparisonTotal !== 0 
+        ? parseFloat(((total - comparisonTotal) / comparisonTotal * 100).toFixed(1))
+        : 0;
+    }
+    
+    return { total, change, percentChange, topItem };
+  };
+  
+  // Мемоизированные агрегированные данные
+  const primaryAggregated = useMemo(() => 
+    aggregateData(primaryData, activeSection), [primaryData, activeSection]);
+  
+  const comparisonAggregated = useMemo(() => 
+    showComparison ? aggregateData(comparisonData, activeSection) : [], 
+    [showComparison, comparisonData, activeSection]);
+  
+  // Итоговые статистические показатели
+  const summaryStats = useMemo(() =>
+    calculateSummaryStats(primaryAggregated, comparisonAggregated),
+    [primaryAggregated, comparisonAggregated, showComparison]);
+  
+  // Форматирование дат в удобной форме
+  const formatDateRange = (range) => {
+    const formatDate = d3.timeFormat("%d.%m.%Y");
+    return `${formatDate(range.startDate)} - ${formatDate(range.endDate)}`;
+  };
+  
+  // Отрисовка графиков при изменении данных
+  useEffect(() => {
+    if (mainChartRef.current) renderMainChart();
+    if (trendChartRef.current) renderTrendChart();
+    if (distributionChartRef.current) renderDistributionChart();
+  }, [primaryAggregated, comparisonAggregated, showComparison, visualizationType]);
+  
+  // Рендеринг основного графика
+  const renderMainChart = () => {
+    const container = mainChartRef.current;
+    d3.select(container).selectAll("*").remove();
+    
+    if (!primaryAggregated || primaryAggregated.length === 0) {
+      d3.select(container)
+        .append("div")
+        .attr("class", "flex items-center justify-center h-full text-gray-400")
+        .text("Нет данных для отображения");
+      return;
+    }
+    
+    const width = container.clientWidth;
+    const height = container.clientHeight || 400;
+    const margin = { top: 30, right: 30, bottom: 50, left: 70 };
+    
+    // Ограничиваем количество элементов для отображения
+    const displayData = primaryAggregated.slice(0, 10);
+    
+    const svg = d3.select(container)
+      .append("svg")
+      .attr("width", width)
+      .attr("height", height)
+      .attr("viewBox", `0 0 ${width} ${height}`)
+      .attr("class", "overflow-visible");
+    
+    // Выбор типа визуализации
+    if (visualizationType === 'barChart') {
+      // Горизонтальная столбчатая диаграмма
+      // Шкалы
+      const x = d3.scaleLinear()
+        .domain([0, d3.max(displayData, d => Math.max(d.value, showComparison ? (d.compareValue || 0) : 0)) * 1.1])
+        .range([margin.left, width - margin.right]);
+      
+      const y = d3.scaleBand()
+        .domain(displayData.map(d => d.name))
+        .range([margin.top, height - margin.bottom])
+        .padding(0.3);
+      
+      // Градиенты для элементов
+      const gradientColors = {
+        sales: {primary: "#3b82f6", secondary: "#1d4ed8"},
+        export: {primary: "#10b981", secondary: "#047857"},
+        import: {primary: "#f59e0b", secondary: "#b45309"}
+      };
+      
+      // Основной градиент
+      const defs = svg.append("defs");
+      
+      const gradient = defs
+        .append("linearGradient")
+        .attr("id", "bar-gradient")
+        .attr("x1", "0%")
+        .attr("y1", "0%")
+        .attr("x2", "100%")
+        .attr("y2", "0%");
+      
+      gradient.append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", gradientColors[activeSection].primary)
+        .attr("stop-opacity", 0.9);
+      
+      gradient.append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", gradientColors[activeSection].secondary)
+        .attr("stop-opacity", 0.7);
+      
+      // Градиент для данных сравнения
+      if (showComparison) {
+        const compareGradient = defs
+          .append("linearGradient")
+          .attr("id", "compare-gradient")
+          .attr("x1", "0%")
+          .attr("y1", "0%")
+          .attr("x2", "100%")
+          .attr("y2", "0%");
+        
+        compareGradient.append("stop")
+          .attr("offset", "0%")
+          .attr("stop-color", "#6b7280")
+          .attr("stop-opacity", 0.7);
+        
+        compareGradient.append("stop")
+          .attr("offset", "100%")
+          .attr("stop-color", "#374151")
+          .attr("stop-opacity", 0.6);
+      }
+      
+      // Добавляем эффекты
+      defs.append("filter")
+        .attr("id", "dropShadow")
+        .append("feDropShadow")
+        .attr("stdDeviation", 3)
+        .attr("flood-opacity", 0.3);
+      
+      defs.append("filter")
+        .attr("id", "glow")
+        .append("feGaussianBlur")
+        .attr("stdDeviation", 2.5)
+        .attr("result", "coloredBlur");
+      
+      // Оси
+      svg.append("g")
+        .attr("transform", `translate(${margin.left},0)`)
+        .attr("class", "axis")
+        .call(d3.axisLeft(y).tickSize(0))
+        .call(g => g.select(".domain").remove())
+        .call(g => g.selectAll(".tick text")
+          .attr("fill", "#e5e7eb")
+          .style("font-size", "0.85rem")
+          .style("font-weight", "500"));
+      
+      // Линии сетки
+      svg.append("g")
+        .attr("class", "grid")
+        .selectAll("line")
+        .data(x.ticks(5))
+        .enter()
+        .append("line")
+        .attr("x1", d => x(d))
+        .attr("x2", d => x(d))
+        .attr("y1", margin.top)
+        .attr("y2", height - margin.bottom)
+        .attr("stroke", "#374151")
+        .attr("stroke-width", 0.5)
+        .attr("stroke-dasharray", "3,3");
+      
+      // Полосы для данных сравнения (если включено)
+      if (showComparison) {
+        // Объединяем данные для корректного сравнения
+        const combinedData = [...displayData];
+        
+        // Для каждого элемента сравнения находим соответствующий элемент в основных данных
+        comparisonAggregated.forEach(compItem => {
+          const primaryIndex = combinedData.findIndex(p => p.id === compItem.id);
+          if (primaryIndex !== -1) {
+            combinedData[primaryIndex].compareValue = compItem.value;
+          } else {
+            // Если элемент отсутствует в основных данных, добавляем его
+            combinedData.push({
+              ...compItem,
+              compareValue: compItem.value,
+              value: 0
+            });
+          }
+        });
+        
+        // Сортируем и ограничиваем количество элементов
+        const displayCombined = combinedData
+          .sort((a, b) => Math.max(b.value, b.compareValue || 0) - Math.max(a.value, a.compareValue || 0))
+          .slice(0, 10);
+        
+        // Сравнительные полосы (немного тоньше основных)
+        svg.selectAll(".compare-bar")
+          .data(displayCombined)
+          .enter()
+          .append("rect")
+          .attr("class", "compare-bar")
+          .attr("x", margin.left)
+          .attr("y", d => y(d.name) + y.bandwidth() * 0.65)
+          .attr("height", y.bandwidth() * 0.35)
+          .attr("rx", 2)
+          .attr("fill", "url(#compare-gradient)")
+          .attr("opacity", 0.8)
+          .attr("width", 0) // Начальная ширина для анимации
+          .transition()
+          .duration(900)
+          .delay((d, i) => i * 50)
+          .attr("width", d => x(d.compareValue || 0) - margin.left);
+      }
+      
+      // Основные полосы
+      const bars = svg.selectAll(".bar")
+        .data(displayData)
+        .enter()
+        .append("rect")
+        .attr("class", "bar")
+        .attr("x", margin.left)
+        .attr("y", d => showComparison ? y(d.name) : y(d.name))
+        .attr("height", showComparison ? y.bandwidth() * 0.65 : y.bandwidth())
+        .attr("rx", 4)
+        .attr("fill", "url(#bar-gradient)")
+        .style("filter", "url(#dropShadow)")
+        .attr("width", 0) // Начальная ширина для анимации
+        .on("mouseover", function(event, d) {
+          d3.select(this)
+            .style("filter", "url(#glow)")
+            .attr("opacity", 1);
+          
+          // Создаем всплывающую подсказку
+          const tooltip = d3.select(container)
+            .append("div")
+            .attr("class", "absolute z-10 p-3 rounded-lg shadow-xl bg-gray-800 border border-gray-700 text-white text-sm")
+            .style("left", `${event.pageX - container.getBoundingClientRect().left + 10}px`)
+            .style("top", `${event.pageY - container.getBoundingClientRect().top - 80}px`)
+            .style("opacity", 0);
+          
+          // Содержимое подсказки
+          tooltip.html(`
+            <div class="font-medium text-base mb-1">${d.name}</div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+              <span class="text-gray-300">Значение:</span>
+              <span class="font-medium text-white">${d.value.toLocaleString()}</span>
+              <span class="text-gray-300">Доля:</span>
+              <span class="font-medium text-white">${d.percent}%</span>
+              ${showComparison ? `
+                <span class="text-gray-300">Сравнение:</span>
+                <span class="font-medium text-white">${(d.compareValue || 0).toLocaleString()}</span>
+                <span class="text-gray-300">Изменение:</span>
+                <span class="font-medium ${d.value > (d.compareValue || 0) ? 'text-green-400' : 'text-red-400'}">
+                  ${(((d.value - (d.compareValue || 0)) / (d.compareValue || 1) * 100).toFixed(1))}%
+                </span>
+              ` : ''}
+            </div>
+          `);
+          
+          // Анимация появления подсказки
+          tooltip.transition()
+            .duration(200)
+            .style("opacity", 1);
+        })
+        .on("mouseout", function() {
+          d3.select(this)
+            .style("filter", "url(#dropShadow)")
+            .attr("opacity", 0.9);
+          
+          d3.select(container).selectAll(".absolute").remove();
+        })
+        .on("click", function(event, d) {
+          // Действие при клике - например, переход к детальному анализу модели/региона
+          setActiveDrilldown(d.id);
+        });
+      
+      // Анимация полос
+      bars.transition()
+        .duration(1000)
+        .delay((d, i) => i * 50)
+        .attr("width", d => x(d.value) - margin.left)
+        .ease(d3.easeCubicOut);
+      
+      // Подписи значений
+      svg.selectAll(".value-label")
+        .data(displayData)
+        .enter()
+        .append("text")
+        .attr("class", "value-label")
+        .attr("x", d => x(d.value) + 10)
+        .attr("y", d => showComparison ? y(d.name) + y.bandwidth() * 0.3 : y(d.name) + y.bandwidth() / 2)
+        .attr("dy", "0.35em")
+        .attr("fill", "#f9fafb")
+        .style("font-size", "0.85rem")
+        .style("font-weight", "bold")
+        .style("opacity", 0)
+        .text(d => d.value.toLocaleString())
+        .transition()
+        .duration(800)
+        .delay((d, i) => i * 50 + 500)
+        .style("opacity", 1);
+      
+      // Если включено сравнение, добавляем метки изменения
+      if (showComparison) {
+        svg.selectAll(".percent-change")
+          .data(displayData)
+          .enter()
+          .append("text")
+          .attr("class", "percent-change")
+          .attr("x", d => Math.max(x(d.value), x(d.compareValue || 0)) + 60)
+          .attr("y", d => y(d.name) + y.bandwidth() / 2)
+          .attr("dy", "0.35em")
+          .attr("fill", d => {
+            const change = d.value - (d.compareValue || 0);
+            return change >= 0 ? "#34d399" : "#f87171";
+          })
+          .style("font-size", "0.8rem")
+          .style("font-weight", "medium")
+          .style("opacity", 0)
+          .text(d => {
+            const change = d.value - (d.compareValue || 0);
+            const percentChange = (d.compareValue || 1) !== 0 
+              ? (change / (d.compareValue || 1) * 100).toFixed(1)
+              : "100";
+            return `${change >= 0 ? "+" : ""}${percentChange}%`;
+          })
+          .transition()
+          .duration(800)
+          .delay((d, i) => i * 50 + 800)
+          .style("opacity", 1);
+      }
+      
+    } else if (visualizationType === 'pieChart') {
+      // Круговая диаграмма для отображения долей
+      
+      // Ограничиваем количество секторов (Top 6 + "Другие")
+      let pieData = [...displayData];
+      if (pieData.length > 6) {
+        const topItems = pieData.slice(0, 6);
+        const otherItems = pieData.slice(6);
+        const otherValue = otherItems.reduce((sum, item) => sum + item.value, 0);
+        const otherPercent = otherItems.reduce((sum, item) => sum + item.percent, 0);
+        
+        pieData = [
+          ...topItems,
+          {
+            id: 'others',
+            name: 'Другие',
+            value: otherValue,
+            percent: otherPercent
+          }
+        ];
+      }
+      
+      const radius = Math.min(width, height) / 2 - 40;
+      
+      // Цветовая схема
+      const colorScale = d3.scaleOrdinal()
+        .domain(pieData.map(d => d.id))
+        .range([
+          "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", 
+          "#ec4899", "#ef4444", "#6366f1", "#14b8a6"
+        ]);
+      
+      const pie = d3.pie()
+        .value(d => d.value)
+        .sort(null);
+      
+      const arc = d3.arc()
+        .innerRadius(radius * 0.5) // Делаем "пончик" вместо круга
+        .outerRadius(radius);
+      
+      const hoverArc = d3.arc()
+        .innerRadius(radius * 0.5)
+        .outerRadius(radius * 1.05);
+      
+      // Центрируем диаграмму
+      const g = svg.append("g")
+        .attr("transform", `translate(${width / 2}, ${height / 2})`);
+      
+      // Добавляем градиенты для секторов
+      const defs = svg.append("defs");
+      
+      pieData.forEach((d, i) => {
+        const gradientId = `pie-gradient-${i}`;
+        const gradient = defs.append("linearGradient")
+          .attr("id", gradientId)
+          .attr("x1", "0%")
+          .attr("y1", "0%")
+          .attr("x2", "100%")
+          .attr("y2", "100%");
+        
+        gradient.append("stop")
+          .attr("offset", "0%")
+          .attr("stop-color", d3.color(colorScale(d.id)).brighter(0.5));
+        
+        gradient.append("stop")
+          .attr("offset", "100%")
+          .attr("stop-color", d3.color(colorScale(d.id)).darker(0.5));
+      });
+      
+      // Эффект тени
+      defs.append("filter")
+        .attr("id", "drop-shadow")
+        .append("feDropShadow")
+        .attr("stdDeviation", 3)
+        .attr("flood-opacity", 0.3);
+      
+      // Добавляем секторы
+      const path = g.selectAll("path")
+        .data(pie(pieData))
+        .enter()
+        .append("path")
+        .attr("fill", (d, i) => `url(#pie-gradient-${i})`)
+        .attr("stroke", "#1f2937")
+        .attr("stroke-width", 2)
+        .attr("d", arc)
+        .style("filter", "url(#drop-shadow)")
+        .style("cursor", "pointer")
+        .on("mouseover", function(event, d) {
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr("d", hoverArc);
+          
+          // Всплывающая подсказка
+          const tooltip = d3.select(container)
+            .append("div")
+            .attr("class", "absolute z-10 p-3 rounded-lg shadow-xl bg-gray-800 border border-gray-700 text-white text-sm")
+            .style("left", `${event.pageX - container.getBoundingClientRect().left + 10}px`)
+            .style("top", `${event.pageY - container.getBoundingClientRect().top - 80}px`)
+            .style("opacity", 0);
+          
+          tooltip.html(`
+            <div class="font-medium text-base mb-1">${d.data.name}</div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+              <span class="text-gray-300">Значение:</span>
+              <span class="font-medium text-white">${d.data.value.toLocaleString()}</span>
+              <span class="text-gray-300">Доля:</span>
+              <span class="font-medium text-white">${d.data.percent}%</span>
+            </div>
+          `);
+          
+          tooltip.transition()
+            .duration(200)
+            .style("opacity", 1);
+        })
+        .on("mouseout", function() {
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr("d", arc);
+          
+          d3.select(container).selectAll(".absolute").remove();
+        })
+        .on("click", function(event, d) {
+          // Действие при клике (если нужно)
+        });
+      
+      // Анимация появления
+      path.transition()
+        .duration(1000)
+        .attrTween("d", function(d) {
+          const i = d3.interpolate({ startAngle: d.startAngle, endAngle: d.startAngle }, d);
+          return function(t) {
+            return arc(i(t));
+          };
+        });
+      
+      // Центральная информация
+      g.append("text")
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "central")
+        .attr("fill", "#f9fafb")
+        .style("font-size", "1.75rem")
+        .style("font-weight", "bold")
+        .text(summaryStats.total.toLocaleString());
+      
+      g.append("text")
+       .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "central")
+        .attr("y", 25)
+        .attr("fill", "#d1d5db")
+        .style("font-size", "0.85rem")
+        .text("ВСЕГО");
+      
+      // Легенда
+      const legend = svg.append("g")
+        .attr("transform", `translate(${width - 150}, ${height / 2 - pieData.length * 15})`);
+      
+      pieData.forEach((d, i) => {
+        const lg = legend.append("g")
+          .attr("transform", `translate(0, ${i * 30})`)
+          .style("cursor", "pointer")
+          .on("mouseover", function() {
+            // Подсвечиваем соответствующий сектор
+            const sector = path.filter((path, j) => j === i);
+            sector.transition()
+              .duration(200)
+              .attr("d", hoverArc);
+          })
+          .on("mouseout", function() {
+            // Возвращаем сектор к нормальному состоянию
+            const sector = path.filter((path, j) => j === i);
+            sector.transition()
+              .duration(200)
+              .attr("d", arc);
+          });
+        
+        // Цветной квадрат
+        lg.append("rect")
+          .attr("width", 12)
+          .attr("height", 12)
+          .attr("rx", 2)
+          .attr("fill", colorScale(d.id));
+        
+        // Название
+        lg.append("text")
+          .attr("x", 20)
+          .attr("y", 10)
+          .text(d.name.length > 15 ? d.name.substring(0, 15) + "..." : d.name)
+          .attr("fill", "#f9fafb")
+          .style("font-size", "0.8rem");
+      });
+    } else if (visualizationType === 'heatmap') {
+      // Тепловая карта для распределения по моделям и регионам
+      
+      // Получаем данные о распределении по регионам
+      const regionDistribution = {};
+      const modelNames = {};
+      
+      // Собираем данные распределения по регионам
+      displayData.forEach(model => {
+        modelNames[model.id] = model.name;
+        Object.entries(model.regionData).forEach(([regionId, value]) => {
+          if (!regionDistribution[regionId]) {
+            regionDistribution[regionId] = {};
+          }
+          regionDistribution[regionId][model.id] = value;
+        });
+      });
+      
+      // Преобразуем в формат для тепловой карты
+      const heatmapData = [];
+      Object.entries(regionDistribution).forEach(([regionId, models]) => {
+        Object.entries(models).forEach(([modelId, value]) => {
+          // Находим соответствующее название региона
+          const regionName = regions.find(r => r.id === regionId)?.name || regionId;
+          
+          heatmapData.push({
+            region: regionName,
+            model: modelNames[modelId],
+            value: value
+          });
+        });
+      });
+      
+      // Получаем уникальные значения для осей
+      const regionNames = [...new Set(heatmapData.map(d => d.region))];
+      const modelList = [...new Set(heatmapData.map(d => d.model))];
+      
+      // Размеры ячеек
+      const cellSize = Math.min(
+        (width - margin.left - margin.right) / modelList.length,
+        (height - margin.top - margin.bottom) / regionNames.length
+      );
+      
+      // Масштабы
+      const x = d3.scaleBand()
+        .domain(modelList)
+        .range([margin.left, margin.left + cellSize * modelList.length]);
+      
+      const y = d3.scaleBand()
+        .domain(regionNames)
+        .range([margin.top, margin.top + cellSize * regionNames.length]);
+      
+      // Цветовая шкала
+      const colorScale = d3.scaleSequential(d3.interpolateBlues)
+        .domain([0, d3.max(heatmapData, d => d.value)]);
+      
+      // Оси
+      svg.append("g")
+        .attr("transform", `translate(0,${margin.top})`)
+        .call(d3.axisTop(x).tickSize(0))
+        .call(g => g.select(".domain").remove())
+        .call(g => g.selectAll("text")
+          .attr("transform", "rotate(-45)")
+          .style("text-anchor", "start")
+          .attr("dx", ".8em")
+          .attr("dy", ".15em")
+          .attr("fill", "#e5e7eb")
+          .style("font-size", "0.7rem"));
+      
+      svg.append("g")
+        .attr("transform", `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y).tickSize(0))
+        .call(g => g.select(".domain").remove())
+        .call(g => g.selectAll("text")
+          .attr("fill", "#e5e7eb")
+          .style("font-size", "0.7rem"));
+      
+      // Ячейки тепловой карты
+      const cells = svg.selectAll("rect")
+        .data(heatmapData)
+        .enter()
+        .append("rect")
+        .attr("x", d => x(d.model))
+        .attr("y", d => y(d.region))
+        .attr("width", x.bandwidth())
+        .attr("height", y.bandwidth())
+        .attr("rx", 2)
+        .attr("fill", d => colorScale(d.value))
+        .attr("stroke", "#1f2937")
+        .attr("stroke-width", 1)
+        .attr("opacity", 0)
+        .on("mouseover", function(event, d) {
+          d3.select(this)
+            .attr("stroke", "#f9fafb")
+            .attr("stroke-width", 2);
+          
+          // Всплывающая подсказка
+          const tooltip = d3.select(container)
+            .append("div")
+            .attr("class", "absolute z-10 p-3 rounded-lg shadow-xl bg-gray-800 border border-gray-700 text-white text-sm")
+            .style("left", `${event.pageX - container.getBoundingClientRect().left + 10}px`)
+            .style("top", `${event.pageY - container.getBoundingClientRect().top - 60}px`)
+            .style("opacity", 0);
+          
+          tooltip.html(`
+            <div class="font-medium mb-1">${d.model}</div>
+            <div class="text-gray-300">${d.region}</div>
+            <div class="font-bold mt-1">${d.value.toLocaleString()}</div>
+          `);
+          
+          tooltip.transition()
+            .duration(200)
+            .style("opacity", 1);
+        })
+        .on("mouseout", function() {
+          d3.select(this)
+            .attr("stroke", "#1f2937")
+            .attr("stroke-width", 1);
+          
+          d3.select(container).selectAll(".absolute").remove();
+        });
+      
+      // Анимация появления
+      cells.transition()
+        .duration(500)
+        .delay((d, i) => i * 10)
+        .attr("opacity", 1);
+      
+      // Подписи значений внутри ячеек
+      svg.selectAll("text.cell-value")
+        .data(heatmapData)
+        .enter()
+        .append("text")
+        .attr("class", "cell-value")
+        .attr("x", d => x(d.model) + x.bandwidth() / 2)
+        .attr("y", d => y(d.region) + y.bandwidth() / 2)
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "central")
+        .attr("fill", d => d.value > d3.max(heatmapData, d => d.value) / 2 ? "#fff" : "#333")
+        .style("font-size", "0.7rem")
+        .style("font-weight", "medium")
+        .style("opacity", 0)
+        .text(d => d.value > 0 ? d.value.toLocaleString() : "")
+        .transition()
+        .duration(500)
+        .delay((d, i) => i * 10 + 300)
+        .style("opacity", 1);
+    }
+  };
+  
+  // Рендеринг графика тренда
+  const renderTrendChart = () => {
+    const container = trendChartRef.current;
+    d3.select(container).selectAll("*").remove();
+    
+    // Здесь будет логика отрисовки графика тренда (линейный график по периодам)
+    // Для простоты этот метод оставим без реализации в данном примере
+  };
+  
+  // Рендеринг графика распределения
+  const renderDistributionChart = () => {
+    const container = distributionChartRef.current;
+    d3.select(container).selectAll("*").remove();
+    
+    // Здесь будет логика отрисовки графика распределения (круговая диаграмма)
+    // Для простоты этот метод оставим без реализации в данном примере
+  };
+  
+  // Функция для форматирования числа с разделителями и единицами измерения
+  const formatNumber = (num, compact = false) => {
+    if (num === 0) return '0';
+    
+    if (compact) {
+      if (num >= 1000000) {
+        return (num / 1000000).toFixed(1).replace(/\.0$/, '') + ' млн';
+      }
+      if (num >= 1000) {
+        return (num / 1000).toFixed(1).replace(/\.0$/, '') + ' тыс';
+      }
+    }
+    
+    return num.toLocaleString('ru-RU');
+  };
+  
+  // Основной интерфейс компонента
+  return (
+    <div className="bg-gray-900 text-white p-1 sm:p-5 rounded-lg shadow-xl">
+      {/* Заголовок и основные элементы управления */}
+      <div className="mb-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+          <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500 mb-3 sm:mb-0">
+            АВТОМОБИЛЬНАЯ АНАЛИТИКА
+          </h1>
+          
+          <div className="flex items-center space-x-2">
+            <button 
+              className={`px-3 py-1.5 rounded text-sm font-medium transition ${
+                !isFiltersOpen ? 'bg-gray-700 hover:bg-gray-600' : 'bg-blue-600'
+              }`}
+              onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+            >
+              <div className="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                Фильтры
+              </div>
+            </button>
+            
+            <button 
+              className={`px-3 py-1.5 rounded text-sm font-medium transition ${
+                !showComparison ? 'bg-gray-700 hover:bg-gray-600' : 'bg-blue-600'
+              }`}
+              onClick={() => setShowComparison(!showComparison)}
+            >
+              <div className="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Сравнение
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      {/* Панель фильтров и периодов */}
+      <AnimatePresence>
+        {isFiltersOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-gray-800 rounded-lg p-4 mb-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Выбор основного периода */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-300 mb-2">Период анализа</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {timePresets.map(preset => (
+                      <button
+                        key={preset.id}
+                        className={`px-3 py-1.5 text-sm rounded-md transition ${
+                          timeRange.preset === preset.id 
+                            ? 'bg-blue-600 text-white font-medium' 
+                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        }`}
+                        onClick={() => applyTimePreset(preset.id)}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {timeRange.preset === 'custom' && (
+                    <div className="grid grid-cols-2 gap-3 mt-3">
+                      <div>
+                        <label className="text-xs text-gray-400 mb-1 block">От</label>
+                        <input 
+                          type="date" 
+                          className="w-full rounded bg-gray-700 border border-gray-600 px-3 py-1.5 text-sm"
+                          value={timeRange.startDate.toISOString().split('T')[0]}
+                          onChange={(e) => setTimeRange({
+                            ...timeRange,
+                            startDate: new Date(e.target.value)
+                          })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-400 mb-1 block">До</label>
+                        <input 
+                          type="date" 
+                          className="w-full rounded bg-gray-700 border border-gray-600 px-3 py-1.5 text-sm"
+                          value={timeRange.endDate.toISOString().split('T')[0]}
+                          onChange={(e) => setTimeRange({
+                            ...timeRange,
+                            endDate: new Date(e.target.value)
+                          })}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Выбор периода сравнения */}
+                {showComparison && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-300 mb-2">Сравнить с периодом</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {comparisonPresets.map(preset => (
+                        <button
+                          key={preset.id}
+                          className={`px-3 py-1.5 text-sm rounded-md transition ${
+                            comparisonRange.preset === preset.id 
+                              ? 'bg-indigo-600 text-white font-medium' 
+                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          }`}
+                          onClick={() => applyComparisonPreset(preset.id)}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    {comparisonRange.preset === 'custom' && (
+                      <div className="grid grid-cols-2 gap-3 mt-3">
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block">От</label>
+                          <input 
+                            type="date" 
+                            className="w-full rounded bg-gray-700 border border-gray-600 px-3 py-1.5 text-sm"
+                            value={comparisonRange.startDate.toISOString().split('T')[0]}
+                            onChange={(e) => setComparisonRange({
+                              ...comparisonRange,
+                              startDate: new Date(e.target.value)
+                            })}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block">До</label>
+                          <input 
+                            type="date" 
+                            className="w-full rounded bg-gray-700 border border-gray-600 px-3 py-1.5 text-sm"
+                            value={comparisonRange.endDate.toISOString().split('T')[0]}
+                            onChange={(e) => setComparisonRange({
+                              ...comparisonRange,
+                              endDate: new Date(e.target.value)
+                            })}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Дополнительные фильтры */}
+                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Модели</label>
+                    <select 
+                      multiple 
+                      className="w-full rounded bg-gray-700 border border-gray-600 px-3 py-1.5 text-sm"
+                      value={filters.models}
+                      onChange={(e) => {
+                        const selected = Array.from(e.target.selectedOptions, option => option.value);
+                        setFilters({...filters, models: selected});
+                      }}
+                    >
+                      {carModels.map(model => (
+                        <option key={model.id} value={model.id}>
+                          {model.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Регионы</label>
+                    <select 
+                      multiple 
+                      className="w-full rounded bg-gray-700 border border-gray-600 px-3 py-1.5 text-sm"
+                      value={filters.regions}
+                      onChange={(e) => {
+                        const selected = Array.from(e.target.selectedOptions, option => option.value);
+                        setFilters({...filters, regions: selected});
+                      }}
+                    >
+                      {regions.map(region => (
+                        <option key={region.id} value={region.id}>
+                          {region.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Ключевые метрики */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 shadow-md border border-gray-700 transform hover:scale-102 transition-transform">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-gray-400 text-xs mb-1">Всего {activeSection === 'sales' ? 'продаж' : activeSection === 'export' ? 'экспорт' : 'импорт'}</p>
+              <p className="text-2xl font-bold">{formatNumber(summaryStats.total)}</p>
+              {showComparison && (
+                <p className={`text-xs flex items-center mt-1 ${summaryStats.percentChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className="mr-1">
+                    {summaryStats.percentChange >= 0 ? '↑' : '↓'}
+                  </span>
+                  {summaryStats.percentChange >= 0 ? '+' : ''}{summaryStats.percentChange}%
+                </p>
+              )}
+            </div>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-500 bg-opacity-20">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+          </div>
+          <div className="h-1.5 bg-blue-900 rounded-full mt-3 overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full animate-pulse w-3/4"></div>
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 shadow-md border border-gray-700 transform hover:scale-102 transition-transform">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-gray-400 text-xs mb-1">Период анализа</p>
+              <p className="text-lg font-bold truncate">{formatDateRange(timeRange)}</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {Math.round((timeRange.endDate - timeRange.startDate) / (1000 * 60 * 60 * 24))} дней
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-indigo-500 bg-opacity-20">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+          <div className="h-1.5 bg-indigo-900 rounded-full mt-3 overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-indigo-400 to-indigo-600 rounded-full animate-pulse w-1/2"></div>
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 shadow-md border border-gray-700 transform hover:scale-102 transition-transform">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-gray-400 text-xs mb-1">{activeSection === 'import' ? 'Популярная категория' : 'Популярная модель'}</p>
+              <p className="text-lg font-bold truncate">{summaryStats.topItem?.name || 'Нет данных'}</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Доля рынка: {summaryStats.topItem?.percent || 0}%
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-green-500 bg-opacity-20">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+              </svg>
+            </div>
+          </div>
+          <div className="h-1.5 bg-green-900 rounded-full mt-3 overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full animate-pulse w-2/3"></div>
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 shadow-md border border-gray-700 transform hover:scale-102 transition-transform">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-gray-400 text-xs mb-1">Всего моделей</p>
+              <p className="text-2xl font-bold">{primaryAggregated.length}</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Анализ {activeSection === 'sales' ? 'продаж' : activeSection === 'export' ? 'экспорта' : 'импорта'}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-purple-500 bg-opacity-20">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14v6m-3-3h6M6 10h2a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2zm10 0h2a2 2 0 002-2V6a2 2 0 00-2-2h-2a2 2 0 00-2 2v2a2 2 0 002 2zM6 20h2a2 2 0 002-2v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+          <div className="h-1.5 bg-purple-900 rounded-full mt-3 overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full animate-pulse w-4/5"></div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Секции анализа */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button
+          className={`px-4 py-2 rounded transition-all ${activeSection === 'sales' 
+            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' 
+            : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
+          onClick={() => setActiveSection('sales')}
+        >
+          Продажи
+        </button>
+        <button
+          className={`px-4 py-2 rounded transition-all ${activeSection === 'export' 
+            ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg' 
+            : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
+    onClick={() => setActiveSection('export')}
+        >
+          Экспорт
+        </button>
+        <button
+          className={`px-4 py-2 rounded transition-all ${activeSection === 'import' 
+            ? 'bg-gradient-to-r from-yellow-600 to-amber-600 text-white shadow-lg' 
+            : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
+          onClick={() => setActiveSection('import')}
+        >
+          Импорт
+        </button>
+      </div>
+      
+      {/* Режим визуализации */}
+      <div className="flex space-x-1 mb-6 bg-gray-800 inline-flex p-1 rounded-lg">
+        <button
+          className={`px-3 py-1.5 text-sm rounded ${
+            visualizationType === 'barChart' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'
+          }`}
+          onClick={() => setVisualizationType('barChart')}
+        >
+          <div className="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Столбцы
+          </div>
+        </button>
+        <button
+          className={`px-3 py-1.5 text-sm rounded ${
+            visualizationType === 'pieChart' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'
+          }`}
+          onClick={() => setVisualizationType('pieChart')}
+        >
+          <div className="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+            </svg>
+            Круговая
+          </div>
+        </button>
+        <button
+          className={`px-3 py-1.5 text-sm rounded ${
+            visualizationType === 'heatmap' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'
+          }`}
+          onClick={() => setVisualizationType('heatmap')}
+        >
+          <div className="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+            </svg>
+            Тепловая
+          </div>
+        </button>
+      </div>
+      
+      {/* Основной график */}
+      <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 mb-6 shadow-xl border border-gray-700">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-bold">
+            {activeSection === 'sales' ? 'Продажи автомобилей' : 
+             activeSection === 'export' ? 'Экспорт автомобилей' : 'Импорт автокомпонентов'}
+            <span className="text-sm font-normal text-gray-400 ml-2">
+              {formatDateRange(timeRange)}
+              {showComparison ? ` vs ${formatDateRange(comparisonRange)}` : ''}
+            </span>
+          </h2>
+          
+          <div className="text-sm text-gray-400 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Интерактивный график</span>
+          </div>
+        </div>
+        
+        <div ref={mainChartRef} className="w-full" style={{ height: '400px' }}></div>
+      </div>
+      
+      {/* Дополнительный анализ и визуализации */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {/* Модельный ряд с фотографиями */}
+        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-5 shadow-lg border border-gray-700">
+          <h3 className="text-base font-medium mb-4">Модельный ряд</h3>
+          
+          <div className="grid grid-cols-2 gap-4">
+            {carModels.slice(0, 4).map((model) => {
+              // Находим данные для этой модели
+              const modelData = primaryAggregated.find(m => m.id === model.id);
+              const value = modelData ? modelData.value : 0;
+              const percent = modelData ? modelData.percent : 0;
+              
+              return (
+                <div 
+                  key={model.id}
+                  className="p-3 bg-gray-900 rounded-lg border border-gray-800 hover:border-blue-500 transition-colors cursor-pointer"
+                >
+                  <div className="aspect-video overflow-hidden rounded-md mb-3">
+                    <img 
+                      src={model.img} 
+                      alt={model.name} 
+                      className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                  
+                  <h4 className="font-medium mb-2">{model.name}</h4>
+                  
+                  <div className="flex justify-between items-center text-sm">
+                    <div>
+                      <p className="text-gray-400 text-xs">Продажи</p>
+                      <p className="font-bold">{formatNumber(value)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-gray-400 text-xs">Доля</p>
+                      <p className="font-bold">{percent}%</p>
+                    </div>
+                  </div>
+                  
+                  {/* Индикатор заполнения */}
+                  <div className="h-1 bg-gray-800 rounded-full mt-2 overflow-hidden">
+                    <div 
+                      className="h-full bg-blue-600 rounded-full" 
+                      style={{ width: `${percent}%` }}
+                    ></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        
+        {/* Динамика изменений */}
+        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-5 shadow-lg border border-gray-700">
+          <h3 className="text-base font-medium mb-4">Динамика по месяцам</h3>
+          
+          <div ref={trendChartRef} className="w-full" style={{ height: '220px' }}></div>
+        </div>
+      </div>
+      
+      {/* Нижняя часть - Распределение и топ */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Распределение по регионам */}
+        <div className="lg:col-span-2 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-5 shadow-lg border border-gray-700">
+          <h3 className="text-base font-medium mb-4">Региональное распределение</h3>
+          
+          <div ref={distributionChartRef} className="w-full" style={{ height: '300px' }}></div>
+        </div>
+        
+        {/* Топ список */}
+        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-5 shadow-lg border border-gray-700">
+          <h3 className="text-base font-medium mb-4">Топ {activeSection === 'import' ? 'категории' : 'модели'}</h3>
+          
+          <div className="space-y-3">
+            {primaryAggregated.slice(0, 5).map((item, idx) => (
+              <div key={item.id} className="flex items-center">
+                <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-xs font-medium mr-3">
+                  {idx + 1}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{item.name}</p>
+                  
+                  <div className="flex justify-between items-center text-sm mt-1">
+                    <span className="text-gray-400">{formatNumber(item.value)}</span>
+                    <span className="text-gray-400">{item.percent}%</span>
+                  </div>
+                  
+                  <div className="h-1 bg-gray-700 rounded-full mt-1 overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${item.percent}%` }}
+                      transition={{ duration: 1, delay: idx * 0.1 }}
+                      className="h-full rounded-full"
+                      style={{ 
+                        background: idx === 0 
+                          ? 'linear-gradient(to right, #3b82f6, #1d4ed8)'
+                          : idx === 1
+                            ? 'linear-gradient(to right, #10b981, #047857)'
+                            : idx === 2
+                              ? 'linear-gradient(to right, #f59e0b, #b45309)'
+                              : 'linear-gradient(to right, #8b5cf6, #6d28d9)'
+                      }}
+                    ></motion.div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AutoDashboard;

@@ -126,7 +126,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/auto-market',
-    label: 'Авторынок',
+    label: 'Производство',
     category: 'analytics',
     icon: <CarFront size={22} strokeWidth={1.5} color={categoryColors.analytics} />
   },

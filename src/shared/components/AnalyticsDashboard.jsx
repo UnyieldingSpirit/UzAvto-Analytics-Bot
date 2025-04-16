@@ -3,17 +3,45 @@ import { useState, useEffect, useRef } from 'react';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 import { carModels, regions } from '../mocks/mock-data';
 
-// Генерация тестовых данных для контрактов с учетом выбранной модели
-const generateContractData = (selectedModelId = 'all') => {
+// Генерация тестовых данных для контрактов с учетом выбранной модели и периода
+const generateContractData = (selectedModelId = 'all', period = 'year') => {
   const data = [];
-  const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь'];
+  
+  let timeLabels = [];
+  const currentYear = new Date().getFullYear();
+  
+  // Определяем метки времени в зависимости от выбранного периода
+  switch (period) {
+    case 'year':
+      timeLabels = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+      break;
+    case 'quarter':
+      timeLabels = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь'];
+      break;
+    case 'month':
+      // Генерируем последние 30 дней
+      timeLabels = Array.from({ length: 30 }, (_, i) => `${i + 1}`);
+      break;
+    case 'week':
+      // Дни недели
+      timeLabels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+      break;
+    default:
+      timeLabels = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+  }
   
   // Создаем объект с базовыми значениями для каждой модели
   const modelBaseValues = {};
   carModels.forEach(model => {
-    const baseContractRate = 80 + Math.random() * 120; // Базовый показатель контрактов для модели
-    const realizationRate = 0.7 + Math.random() * 0.2; // % реализации от контрактов (70-90%)
-    const cancellationRate = 0.05 + Math.random() * 0.15; // % отмен от контрактов (5-20%)
+    // Базовые значения зависят от периода
+    const multiplier = period === 'year' ? 1 : 
+                       period === 'quarter' ? 1.2 : 
+                       period === 'month' ? 0.15 : 
+                       period === 'week' ? 0.05 : 1;
+                       
+    const baseContractRate = (80 + Math.random() * 120) * multiplier; 
+    const realizationRate = 0.7 + Math.random() * 0.2; 
+    const cancellationRate = 0.05 + Math.random() * 0.15; 
     
     modelBaseValues[model.id] = {
       baseContractRate,
@@ -27,16 +55,18 @@ const generateContractData = (selectedModelId = 'all') => {
     ? carModels.map(m => m.id) 
     : [selectedModelId];
   
-  months.forEach((month, monthIndex) => {
-    const monthData = {
-      name: month,
+  timeLabels.forEach((label, index) => {
+    const periodData = {
+      name: label,
       contracts: 0,
       realization: 0,
       cancellation: 0
     };
     
     // Сезонный фактор общий для всех моделей
-    const seasonalFactor = 1 + Math.sin(monthIndex / 3) * 0.2;
+    const seasonalFactor = period === 'year' || period === 'quarter' 
+      ? 1 + Math.sin(index / (period === 'year' ? 3 : 1.5)) * 0.2
+      : 1 + Math.sin(index / (period === 'month' ? 10 : 3.5)) * 0.3;
     
     // Для каждой релевантной модели добавляем её вклад в общие показатели
     relevantModels.forEach(modelId => {
@@ -48,28 +78,46 @@ const generateContractData = (selectedModelId = 'all') => {
       const cancellationRandom = 0.7 + Math.random() * 0.6;
       
       // Расчет значений для модели с учетом тренда и случайности
-      const contractValue = Math.max(30, Math.min(200, baseContractRate * seasonalFactor * contractRandom));
+      let minValue = period === 'year' ? 30 : period === 'quarter' ? 20 : period === 'month' ? 2 : 1;
+      let maxValue = period === 'year' ? 200 : period === 'quarter' ? 240 : period === 'month' ? 30 : 10;
+      
+      const contractValue = Math.max(minValue, Math.min(maxValue, baseContractRate * seasonalFactor * contractRandom));
       const realizationValue = contractValue * realizationRate * realizationRandom;
       const cancellationValue = contractValue * cancellationRate * cancellationRandom;
       
-      // Добавляем вклад модели в общие показатели месяца
-      monthData.contracts += Math.round(contractValue);
-      monthData.realization += Math.round(realizationValue);
-      monthData.cancellation += Math.round(cancellationValue);
+      // Добавляем вклад модели в общие показатели
+      periodData.contracts += Math.round(contractValue);
+      periodData.realization += Math.round(realizationValue);
+      periodData.cancellation += Math.round(cancellationValue);
     });
     
-    data.push(monthData);
+    data.push(periodData);
   });
   
   return data;
 };
 
-// Генерация данных для "последнего месяца" с учетом выбранной модели
-const generateMonthlyData = (selectedMonth = 'Ноябрь', selectedModelId = 'all') => {
+// Генерация данных для "последнего месяца/недели" с учетом выбранной модели и периода
+const generateDetailedData = (selectedLabel = 'Ноябрь', selectedModelId = 'all', period = 'year') => {
+  // Определяем количество дней для детализации
+  let daysCount = 30; // По умолчанию для месяца
+  
+  if (period === 'week') {
+    daysCount = 7;
+  } else if (period === 'quarter' || period === 'year') {
+    daysCount = 30; // Для квартала или года показываем дни последнего месяца
+  }
+  
   // Объект с базовыми значениями для каждой модели
   const modelBaseValues = {};
   carModels.forEach(model => {
-    const baseContractRate = 4 + Math.random() * 6; // Базовый дневной показатель
+    // Базовые значения зависят от периода
+    const multiplier = period === 'year' ? 1 : 
+                       period === 'quarter' ? 1.2 : 
+                       period === 'month' ? 0.15 : 
+                       period === 'week' ? 0.05 : 1;
+                       
+    const baseContractRate = (4 + Math.random() * 6) * multiplier;
     const realizationRate = 0.7 + Math.random() * 0.2;
     const cancellationRate = 0.05 + Math.random() * 0.15;
     
@@ -85,8 +133,6 @@ const generateMonthlyData = (selectedMonth = 'Ноябрь', selectedModelId = '
     ? carModels.map(m => m.id) 
     : [selectedModelId];
   
-  // Количество дней в месяце (упрощенно)
-  const daysInMonth = 30;
   const data = [];
   
   // Сумматоры для расчета средних показателей
@@ -94,8 +140,8 @@ const generateMonthlyData = (selectedMonth = 'Ноябрь', selectedModelId = '
   let totalRealization = 0;
   let totalCancellation = 0;
   
-  // Генерируем данные по дням месяца
-  for (let day = 1; day <= daysInMonth; day++) {
+  // Генерируем данные по дням
+  for (let day = 1; day <= daysCount; day++) {
     const dayData = {
       day: day,
       contracts: 0,
@@ -139,12 +185,12 @@ const generateMonthlyData = (selectedMonth = 'Ноябрь', selectedModelId = '
   const getRandomChange = () => Math.round((Math.random() * 40) - 15);
   
   return {
-    month: selectedMonth,
+    label: selectedLabel,
     data: data,
     totals: {
-      contracts: Math.round(totalContracts / daysInMonth),
-      realization: Math.round(totalRealization / daysInMonth),
-      cancellation: Math.round(totalCancellation / daysInMonth)
+      contracts: Math.round(totalContracts / daysCount),
+      realization: Math.round(totalRealization / daysCount),
+      cancellation: Math.round(totalCancellation / daysCount)
     },
     changes: {
       contracts: getRandomChange(),
@@ -154,12 +200,30 @@ const generateMonthlyData = (selectedMonth = 'Ноябрь', selectedModelId = '
   };
 };
 
-// Генерация тепловой карты с учетом выбранной модели
-const generateHeatmapData = (selectedModelId = 'all') => {
+// Генерация тепловой карты с учетом выбранной модели и периода
+const generateHeatmapData = (selectedModelId = 'all', period = 'year') => {
   const heatmap = [];
-  const baseValue = selectedModelId === 'all' ? 80 : 40; // Меньше значения для одной модели
   
-  for (let week = 0; week < 4; week++) {
+  // Базовое значение зависит от модели и периода
+  let baseValue = selectedModelId === 'all' ? 80 : 40; // Меньше значения для одной модели
+  
+  // Корректируем базовое значение в зависимости от периода
+  switch (period) {
+    case 'quarter':
+      baseValue *= 1.2;
+      break;
+    case 'month':
+      baseValue *= 0.5;
+      break;
+    case 'week':
+      baseValue *= 0.2;
+      break;
+  }
+  
+  // Количество недель для отображения
+  const weeksCount = period === 'week' ? 1 : 4;
+  
+  for (let week = 0; week < weeksCount; week++) {
     const weekData = { week: `Неделя ${week + 1}` };
     
     for (let day = 1; day <= 7; day++) {
@@ -187,20 +251,136 @@ const formatNumber = (num) => {
   return num;
 };
 
+// Получаем названия периодов
+// Добавьте новый кейс в функцию getPeriodLabel:
+const getPeriodLabel = (period) => {
+  switch (period) {
+    case 'year':
+      return 'За год';
+    case 'quarter':
+      return 'За полгода';
+    case 'month':
+      return 'За месяц';
+    case 'week':
+      return 'За неделю';
+    case 'custom':
+      return 'За выбранный период';
+    default:
+      return 'За год';
+  }
+};
+
+// И также в функцию getPeriodDescription:
+
+// Добавьте эту функцию рядом с другими функциями генерации данных
+const generateCustomPeriodData = (selectedModelId = 'all', startDate, endDate) => {
+  const data = [];
+  
+  // Рассчитываем разницу в днях между датами
+  const diffTime = Math.abs(endDate - startDate);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  
+  // Если период большой, группируем по неделям
+  const isLargePeriod = diffDays > 31;
+  
+  if (isLargePeriod) {
+    // Группируем по неделям
+    const startWeek = new Date(startDate);
+    let currentWeek = new Date(startWeek);
+    let weekCount = 1;
+    
+    while (currentWeek <= endDate) {
+      const weekEndDate = new Date(currentWeek);
+      weekEndDate.setDate(weekEndDate.getDate() + 6);
+      
+      const periodData = {
+        name: `Неделя ${weekCount}`,
+        week: weekCount,
+        startDate: new Date(currentWeek),
+        endDate: new Date(weekEndDate > endDate ? endDate : weekEndDate),
+        contracts: Math.round(50 + Math.random() * 150),
+        realization: Math.round(30 + Math.random() * 100),
+        cancellation: Math.round(5 + Math.random() * 30)
+      };
+      
+      data.push(periodData);
+      
+      currentWeek.setDate(currentWeek.getDate() + 7);
+      weekCount++;
+    }
+  } else {
+    // Показываем данные по дням
+    const currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+      const periodData = {
+        name: currentDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+        date: new Date(currentDate),
+        contracts: Math.round(5 + Math.random() * 20),
+        realization: Math.round(3 + Math.random() * 15),
+        cancellation: Math.round(1 + Math.random() * 5)
+      };
+      
+      data.push(periodData);
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+  }
+  
+  return data;
+};
 export default function ContractsAnalyticsDashboard() {
-  const [yearlyData, setYearlyData] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState('year');
+  const [periodData, setPeriodData] = useState([]);
   const [selectedModel, setSelectedModel] = useState('all');
-  const [selectedMonth, setSelectedMonth] = useState('Ноябрь');
-  const [monthlyData, setMonthlyData] = useState({});
+  const [selectedDetailLabel, setSelectedDetailLabel] = useState('');
+  const [detailedData, setDetailedData] = useState({});
   const [chartType, setChartType] = useState('line');
   const [activeMetric, setActiveMetric] = useState('contracts');
   const [isLoading, setIsLoading] = useState(true);
   const [heatmapData, setHeatmapData] = useState([]);
   const [modelPerformance, setModelPerformance] = useState({});
-  
+const [isCustomPeriod, setIsCustomPeriod] = useState(false);
+const [customStartDate, setCustomStartDate] = useState(new Date(new Date().setMonth(new Date().getMonth() - 1)));
+const [customEndDate, setCustomEndDate] = useState(new Date());
+const [showDatePicker, setShowDatePicker] = useState(false);
   // Расширяем данные моделей дополнительной информацией
   const [enhancedModels, setEnhancedModels] = useState([]);
+const getPeriodDescription = (period) => {
+  switch (period) {
+    case 'year':
+      return 'годовой отчет';
+    case 'quarter':
+      return 'отчет за полгода';
+    case 'month':
+      return 'отчет за последний месяц';
+    case 'week':
+      return 'отчет за последнюю неделю';
+    case 'custom':
+      return `отчет за период ${customStartDate?.toLocaleDateString('ru-RU')} — ${customEndDate.toLocaleDateString('ru-RU')}`;
+    default:
+      return 'годовой отчет';
+  }
+};
+const handleCustomPeriodSelect = () => {
+  setIsLoading(true);
+  setIsCustomPeriod(true);
+  setSelectedPeriod('custom');
   
+  setTimeout(() => {
+    // Сгенерируйте данные для кастомного периода
+    const newPeriodData = generateCustomPeriodData(selectedModel, customStartDate, customEndDate);
+    setPeriodData(newPeriodData);
+    
+    // Устанавливаем выбранный детальный период на основе первого элемента из данных периода
+    const firstLabel = newPeriodData.length > 0 ? newPeriodData[0].name : 'День 1';
+    setSelectedDetailLabel(firstLabel);
+    
+    setDetailedData(generateDetailedData(firstLabel, selectedModel, 'custom'));
+    setHeatmapData(generateHeatmapData(selectedModel, 'custom'));
+    setIsLoading(false);
+  }, 500);
+};
   // Анимация для чисел
   const valueRefs = {
     contracts: useRef(null),
@@ -230,19 +410,30 @@ export default function ContractsAnalyticsDashboard() {
     
     // Симулируем загрузку данных
     setTimeout(() => {
-      const newYearlyData = generateContractData(selectedModel);
-      setYearlyData(newYearlyData);
-      setMonthlyData(generateMonthlyData(selectedMonth, selectedModel));
-      setHeatmapData(generateHeatmapData(selectedModel));
+      const newPeriodData = generateContractData(selectedModel, selectedPeriod);
+      setPeriodData(newPeriodData);
+      
+      // Устанавливаем выбранный детальный период на основе первого элемента из данных периода
+      const firstLabel = newPeriodData.length > 0 ? newPeriodData[0].name : 'Январь';
+      setSelectedDetailLabel(firstLabel);
+      
+      setDetailedData(generateDetailedData(firstLabel, selectedModel, selectedPeriod));
+      setHeatmapData(generateHeatmapData(selectedModel, selectedPeriod));
       
       // Генерируем сравнительную статистику по моделям
       const perfData = {};
       carModels.forEach(model => {
+        // Масштабируем данные в зависимости от периода
+        const periodMultiplier = 
+          selectedPeriod === 'year' ? 1 : 
+          selectedPeriod === 'quarter' ? 0.6 : 
+          selectedPeriod === 'month' ? 0.2 : 0.05;
+          
         perfData[model.id] = {
-          contracts: Math.round(200 + Math.random() * 800),
-          realization: Math.round(150 + Math.random() * 600),
-          cancellation: Math.round(20 + Math.random() * 100),
-          conversion: Math.round(60 + Math.random() * 30) // % конверсии
+          contracts: Math.round((200 + Math.random() * 800) * periodMultiplier),
+          realization: Math.round((150 + Math.random() * 600) * periodMultiplier),
+          cancellation: Math.round((20 + Math.random() * 100) * periodMultiplier),
+          conversion: Math.round(60 + Math.random() * 30) // % конверсии (не зависит от периода)
         };
       });
       setModelPerformance(perfData);
@@ -251,34 +442,82 @@ export default function ContractsAnalyticsDashboard() {
     }, 800);
   }, []);
   
+  // Обновление данных при изменении выбранного периода
+useEffect(() => {
+  if (!isLoading) {
+    setIsLoading(true);
+    
+    setTimeout(() => {
+      let newPeriodData;
+      
+      // Если период кастомный, используем специальную функцию генерации
+      if (selectedPeriod === 'custom') {
+        newPeriodData = generateCustomPeriodData(selectedModel, customStartDate, customEndDate);
+      } else {
+        newPeriodData = generateContractData(selectedModel, selectedPeriod);
+      }
+      
+      setPeriodData(newPeriodData);
+      
+      // Если период поменялся, сбрасываем выбранный детальный период на первый элемент
+      const firstLabel = newPeriodData.length > 0 ? newPeriodData[0].name : 'Январь';
+      setSelectedDetailLabel(firstLabel);
+      
+      setDetailedData(generateDetailedData(firstLabel, selectedModel, selectedPeriod));
+      setHeatmapData(generateHeatmapData(selectedModel, selectedPeriod));
+      
+      // Обновляем сравнительную статистику по моделям с учетом периода
+      const perfData = {};
+      carModels.forEach(model => {
+        const periodMultiplier = 
+          selectedPeriod === 'year' ? 1 : 
+          selectedPeriod === 'quarter' ? 0.6 : 
+          selectedPeriod === 'month' ? 0.2 : 
+          selectedPeriod === 'custom' ? 0.5 :
+          0.05;
+          
+        perfData[model.id] = {
+          contracts: Math.round((200 + Math.random() * 800) * periodMultiplier),
+          realization: Math.round((150 + Math.random() * 600) * periodMultiplier),
+          cancellation: Math.round((20 + Math.random() * 100) * periodMultiplier),
+          conversion: Math.round(60 + Math.random() * 30) // % конверсии (не зависит от периода)
+        };
+      });
+      setModelPerformance(perfData);
+      
+      setIsLoading(false);
+    }, 500);
+  }
+}, [selectedPeriod, isCustomPeriod, customStartDate, customEndDate]); // Добавьте зависимости
+  
   // Обновление данных при изменении выбранной модели
   useEffect(() => {
     if (!isLoading) {
       setIsLoading(true);
       
       setTimeout(() => {
-        const newYearlyData = generateContractData(selectedModel);
-        setYearlyData(newYearlyData);
-        setMonthlyData(generateMonthlyData(selectedMonth, selectedModel));
-        setHeatmapData(generateHeatmapData(selectedModel));
+        const newPeriodData = generateContractData(selectedModel, selectedPeriod);
+        setPeriodData(newPeriodData);
+        setDetailedData(generateDetailedData(selectedDetailLabel, selectedModel, selectedPeriod));
+        setHeatmapData(generateHeatmapData(selectedModel, selectedPeriod));
         setIsLoading(false);
       }, 500);
     }
   }, [selectedModel]);
   
-  // Обновление данных при выборе месяца
+  // Обновление данных при выборе детального периода
   useEffect(() => {
-    if (yearlyData.length > 0 && !isLoading) {
-      setMonthlyData(generateMonthlyData(selectedMonth, selectedModel));
+    if (periodData.length > 0 && !isLoading && selectedDetailLabel) {
+      setDetailedData(generateDetailedData(selectedDetailLabel, selectedModel, selectedPeriod));
     }
-  }, [selectedMonth, yearlyData, isLoading]);
+  }, [selectedDetailLabel, periodData, isLoading]);
   
   // Анимация для чисел
   useEffect(() => {
     // Анимация для чисел
     Object.keys(valueRefs).forEach(key => {
-      if (valueRefs[key].current && monthlyData.totals) {
-        const target = monthlyData.totals[key];
+      if (valueRefs[key].current && detailedData.totals) {
+        const target = detailedData.totals[key];
         const duration = 1500;
         const start = Date.now();
         const startValue = parseInt(valueRefs[key].current.textContent.replace(/[^0-9.-]/g, '')) || 0;
@@ -301,7 +540,7 @@ export default function ContractsAnalyticsDashboard() {
         animate();
       }
     });
-  }, [monthlyData]);
+  }, [detailedData]);
   
   // Получение цвета активной метрики
   const getMetricColor = (metric) => {
@@ -353,7 +592,7 @@ export default function ContractsAnalyticsDashboard() {
     switch (chartType) {
       case 'line':
         return (
-          <LineChart data={yearlyData}>
+          <LineChart data={periodData}>
             <defs>
               <linearGradient id="colorContractsGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
@@ -368,7 +607,15 @@ export default function ContractsAnalyticsDashboard() {
                 <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2}/>
               </linearGradient>
             </defs>
-            <XAxis dataKey="name" stroke="#9ca3af"/>
+            <XAxis 
+              dataKey="name" 
+              stroke="#9ca3af"
+              // Если много данных, показываем не все тики
+              interval={selectedPeriod === 'month' ? 4 : 'preserveEnd'}
+              angle={selectedPeriod === 'month' ? -45 : 0}
+              textAnchor={selectedPeriod === 'month' ? 'end' : 'middle'}
+              height={selectedPeriod === 'month' ? 60 : 30}
+            />
             <YAxis stroke="#9ca3af" tickFormatter={formatNumber}/>
             <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
             <Tooltip content={renderCustomTooltip} />
@@ -412,7 +659,7 @@ export default function ContractsAnalyticsDashboard() {
         );
       case 'area':
         return (
-          <AreaChart data={yearlyData}>
+          <AreaChart data={periodData}>
             <defs>
               <linearGradient id="colorContractsGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
@@ -427,7 +674,14 @@ export default function ContractsAnalyticsDashboard() {
                 <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
               </linearGradient>
             </defs>
-            <XAxis dataKey="name" stroke="#9ca3af"/>
+            <XAxis 
+              dataKey="name" 
+              stroke="#9ca3af"
+              interval={selectedPeriod === 'month' ? 4 : 'preserveEnd'}
+              angle={selectedPeriod === 'month' ? -45 : 0}
+              textAnchor={selectedPeriod === 'month' ? 'end' : 'middle'}
+              height={selectedPeriod === 'month' ? 60 : 30}
+            />
             <YAxis stroke="#9ca3af" tickFormatter={formatNumber}/>
             <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
             <Tooltip content={renderCustomTooltip} />
@@ -471,8 +725,15 @@ export default function ContractsAnalyticsDashboard() {
         );
       case 'bar':
         return (
-          <BarChart data={yearlyData}>
-            <XAxis dataKey="name" stroke="#9ca3af"/>
+          <BarChart data={periodData}>
+            <XAxis 
+              dataKey="name" 
+              stroke="#9ca3af"
+              interval={selectedPeriod === 'month' ? 4 : 'preserveEnd'}
+              angle={selectedPeriod === 'month' ? -45 : 0}
+              textAnchor={selectedPeriod === 'month' ? 'end' : 'middle'}
+              height={selectedPeriod === 'month' ? 60 : 30}
+            />
             <YAxis stroke="#9ca3af" tickFormatter={formatNumber}/>
             <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
             <Tooltip content={renderCustomTooltip} />
@@ -521,7 +782,7 @@ export default function ContractsAnalyticsDashboard() {
         );
       default:
         return (
-          <LineChart data={yearlyData}>
+          <LineChart data={periodData}>
             <XAxis dataKey="name" />
             <YAxis />
             <Tooltip />
@@ -545,12 +806,12 @@ export default function ContractsAnalyticsDashboard() {
     }
   };
   
-  // График для детализации по дням выбранного месяца
-  const renderMonthlyChart = () => {
-    if (!monthlyData.data) return null;
+  // График для детализации по дням выбранного периода
+  const renderDetailedChart = () => {
+    if (!detailedData.data) return null;
     
     return (
-      <LineChart data={monthlyData.data}>
+      <LineChart data={detailedData.data}>
         <defs>
           <linearGradient id="colorContractsMonth" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
@@ -569,7 +830,10 @@ export default function ContractsAnalyticsDashboard() {
           dataKey="day" 
           stroke="#9ca3af"
           tick={{ fontSize: 12 }}
-          ticks={[1, 5, 10, 15, 20, 25, 30]}
+          // Корректируем показ тиков в зависимости от количества дней
+          ticks={detailedData.data.length <= 7 
+            ? detailedData.data.map(d => d.day)
+            : [1, 5, 10, 15, 20, 25, 30].filter(d => d <= detailedData.data.length)}
         />
         <YAxis stroke="#9ca3af" tickFormatter={formatNumber}/>
         <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
@@ -605,8 +869,27 @@ export default function ContractsAnalyticsDashboard() {
   // Тепловая карта для визуализации интенсивности контрактов
   const renderHeatmap = () => {
     const colorScale = (value) => {
-      const minVal = 20;
-      const maxVal = 140;
+      // Адаптируем шкалу под периоды
+      let minVal, maxVal;
+      switch (selectedPeriod) {
+        case 'year':
+        case 'quarter':
+          minVal = 20;
+          maxVal = 140;
+          break;
+        case 'month':
+          minVal = 10;
+          maxVal = 70;
+          break;
+        case 'week':
+          minVal = 2;
+          maxVal = 20;
+          break;
+        default:
+          minVal = 20;
+          maxVal = 140;
+      }
+      
       const normalizedVal = Math.min(1, Math.max(0, (value - minVal) / (maxVal - minVal)));
       
       // Градиент от синего (холодный) к красному (горячий)
@@ -620,6 +903,36 @@ export default function ContractsAnalyticsDashboard() {
         return `rgba(239, 68, 68, ${0.3 + normalizedVal * 0.7})`;
       }
     };
+    
+    // Адаптируем отображение тепловой карты для недельного вида
+    if (selectedPeriod === 'week' && heatmapData.length === 1) {
+      return (
+        <div className="grid grid-cols-8 gap-1 w-full">
+          <div className="col-span-1"></div>
+          <div className="font-medium text-gray-400 text-center text-sm">Пн</div>
+          <div className="font-medium text-gray-400 text-center text-sm">Вт</div>
+          <div className="font-medium text-gray-400 text-center text-sm">Ср</div>
+          <div className="font-medium text-gray-400 text-center text-sm">Чт</div>
+          <div className="font-medium text-gray-400 text-center text-sm">Пт</div>
+          <div className="font-medium text-gray-400 text-center text-sm">Сб</div>
+          <div className="font-medium text-gray-400 text-center text-sm">Вс</div>
+          
+          <div className="font-medium text-gray-400 text-sm flex items-center">
+            Неделя
+          </div>
+          {[1,2,3,4,5,6,7].map(day => (
+            <div 
+              key={`cell-week-${day}`}
+              className="aspect-square rounded-md flex items-center justify-center text-xs font-medium text-white relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer group"
+              style={{ backgroundColor: colorScale(heatmapData[0][`day${day}`]) }}
+            >
+              <span className="relative z-10">{heatmapData[0][`day${day}`]}</span>
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300"></div>
+            </div>
+          ))}
+        </div>
+      );
+    }
     
     return (
       <div className="grid grid-cols-8 gap-1 w-full">
@@ -638,7 +951,7 @@ export default function ContractsAnalyticsDashboard() {
               {week.week}
             </div>
             {[1,2,3,4,5,6,7].map(day => (
-           <div 
+              <div 
                 key={`cell-${weekIndex}-${day}`}
                 className="aspect-square rounded-md flex items-center justify-center text-xs font-medium text-white relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer group"
                 style={{ backgroundColor: colorScale(week[`day${day}`]) }}
@@ -687,10 +1000,10 @@ export default function ContractsAnalyticsDashboard() {
             <h3 className="text-sm text-gray-400 font-semibold">{title}</h3>
             <div className="flex items-baseline">
               <span ref={valueRefs[value.toLowerCase()]} className="text-2xl font-bold text-white">
-                {monthlyData.totals ? formatNumber(monthlyData.totals[value.toLowerCase()]) : '—'}
+                {detailedData.totals ? formatNumber(detailedData.totals[value.toLowerCase()]) : '—'}
               </span>
-              <span className={`ml-2 text-sm font-medium ${getChangeColor(monthlyData.changes?.[value.toLowerCase()])}`}>
-                {getChangeIcon(monthlyData.changes?.[value.toLowerCase()])} {Math.abs(monthlyData.changes?.[value.toLowerCase()] || 0)}%
+              <span className={`ml-2 text-sm font-medium ${getChangeColor(detailedData.changes?.[value.toLowerCase()])}`}>
+                {getChangeIcon(detailedData.changes?.[value.toLowerCase()])} {Math.abs(detailedData.changes?.[value.toLowerCase()] || 0)}%
               </span>
             </div>
           </div>
@@ -699,13 +1012,223 @@ export default function ContractsAnalyticsDashboard() {
     );
   };
   
+const DateRangePicker = () => {
+  // Локальные состояния для хранения временных значений дат
+  const [tempStartDate, setTempStartDate] = useState(
+    customStartDate || new Date(new Date().setMonth(new Date().getMonth() - 1))
+  );
+  const [tempEndDate, setTempEndDate] = useState(
+    customEndDate || new Date()
+  );
+  
+  // Функция для форматирования даты в формате "15 апр. 2023"
+  const formatDate = (date) => {
+    return date.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  // Функция для применения выбранного периода
+  const applyCustomPeriod = () => {
+    if (tempStartDate > tempEndDate) {
+      // Если начальная дата позже конечной, меняем их местами
+      const temp = tempStartDate;
+      setTempStartDate(tempEndDate);
+      setTempEndDate(temp);
+      
+      setCustomStartDate(tempEndDate);
+      setCustomEndDate(temp);
+    } else {
+      setCustomStartDate(tempStartDate);
+      setCustomEndDate(tempEndDate);
+    }
+    
+    handleCustomPeriodSelect();
+  };
+
+  // Функция сброса кастомного периода
+  const resetCustomPeriod = () => {
+    setIsCustomPeriod(false);
+    setSelectedPeriod('year'); // Возвращаемся к годовому периоду
+  };
+  
+  // Предустановленные периоды для быстрого выбора
+  const presetPeriods = [
+    { 
+      name: 'Неделя', 
+      icon: '📅',
+      getDateRange: () => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - 7);
+        return { start, end };
+      }
+    },
+    { 
+      name: 'Месяц', 
+      icon: '📆',
+      getDateRange: () => {
+        const end = new Date();
+        const start = new Date();
+        start.setMonth(end.getMonth() - 1);
+        return { start, end };
+      }
+    },
+    { 
+      name: 'Квартал', 
+      icon: '🗓️',
+      getDateRange: () => {
+        const end = new Date();
+        const start = new Date();
+        start.setMonth(end.getMonth() - 3);
+        return { start, end };
+      }
+    },
+    { 
+      name: 'Полгода', 
+      icon: '📊',
+      getDateRange: () => {
+        const end = new Date();
+        const start = new Date();
+        start.setMonth(end.getMonth() - 6);
+        return { start, end };
+      }
+    },
+    { 
+      name: 'Год', 
+      icon: '📈',
+      getDateRange: () => {
+        const end = new Date();
+        const start = new Date();
+        start.setFullYear(end.getFullYear() - 1);
+        return { start, end };
+      }
+    }
+  ];
+
+  return (
+    <div className="mt-5 bg-gradient-to-b from-gray-800/60 to-gray-900/60 border border-gray-700/60 rounded-xl p-5 shadow-lg transition-all duration-300 hover:shadow-indigo-900/20 hover:shadow-xl">
+      <div className="flex flex-col gap-4">
+        <h4 className="text-lg text-white font-medium flex items-center">
+          <span className="mr-2 text-2xl bg-indigo-500/20 w-10 h-10 rounded-full flex items-center justify-center shadow-inner shadow-indigo-500/10">🔍</span>
+          Выбрать произвольный период
+        </h4>
+        
+        {/* Предустановленные периоды */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          {presetPeriods.map((period, index) => (
+            <button 
+              key={`preset-${index}`}
+              className="bg-gray-800/60 hover:bg-indigo-900/40 border border-gray-700/60 hover:border-indigo-500/40 rounded-lg p-3 transition-all duration-300 group"
+              onClick={() => {
+                const { start, end } = period.getDateRange();
+                setTempStartDate(start);
+                setTempEndDate(end);
+              }}
+            >
+              <div className="flex flex-col items-center">
+                <span className="text-2xl mb-1">{period.icon}</span>
+                <span className="text-gray-300 group-hover:text-indigo-300 text-sm font-medium transition-all">
+                  {period.name}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+        
+        {/* Кастомный выбор */}
+        <div className="bg-gray-800/40 backdrop-blur-sm rounded-lg p-4 border border-gray-700/60">
+          <div className="flex flex-col md:flex-row md:items-end gap-4">
+            <div className="flex-1">
+              <label className="text-gray-400 text-sm block mb-2">Начальная дата</label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-indigo-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <input
+                  type="date"
+                  className="pl-10 w-full bg-gray-900/80 border border-gray-700 focus:border-indigo-500 rounded-lg py-2.5 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                  value={tempStartDate.toISOString().split('T')[0]}
+                  onChange={(e) => setTempStartDate(new Date(e.target.value))}
+                />
+              </div>
+            </div>
+            
+            <div className="flex-1">
+              <label className="text-gray-400 text-sm block mb-2">Конечная дата</label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-indigo-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <input
+                  type="date"
+                  className="pl-10 w-full bg-gray-900/80 border border-gray-700 focus:border-indigo-500 rounded-lg py-2.5 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                  value={tempEndDate.toISOString().split('T')[0]}
+                  onChange={(e) => setTempEndDate(new Date(e.target.value))}
+                />
+              </div>
+            </div>
+            
+            <button
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium py-2.5 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 flex items-center"
+              onClick={applyCustomPeriod}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              Применить
+            </button>
+          </div>
+        </div>
+        
+        {/* Индикатор активного кастомного периода */}
+        {isCustomPeriod && (
+          <div className="flex items-center justify-between bg-indigo-900/30 py-3 px-4 rounded-lg border border-indigo-600/30 shadow-inner shadow-indigo-500/5">
+            <div className="flex items-center">
+              <span className="text-lg mr-2">🔎</span>
+              <div>
+                <span className="text-gray-300 text-sm">Активен период:</span>
+                <p className="text-indigo-300 font-medium">
+                  {formatDate(customStartDate)} — {formatDate(customEndDate)}
+                </p>
+              </div>
+            </div>
+            <button 
+              className="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white py-1.5 px-4 rounded-lg text-sm transition-all duration-300 flex items-center"
+              onClick={resetCustomPeriod}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Сбросить
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+  
   // Компонент карты показателей за месяц
-  const MonthlyStatsCards = () => {
+  const StatsCards = () => {
     return (
       <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg mb-6 hover:shadow-xl transition-all duration-300">
         <h3 className="text-xl font-bold text-white mb-6 flex items-center">
           <span className="text-2xl mr-2">📊</span> 
-          Статистика за {selectedMonth}
+          Статистика {selectedPeriod === 'month' ? 'за месяц' : 
+                       selectedPeriod === 'week' ? 'за неделю' : 
+                       selectedPeriod === 'quarter' ? 'за полгода' : 'за год'}
+          {selectedDetailLabel && (
+            <span className="ml-2 text-indigo-400">
+              ({selectedDetailLabel})
+            </span>
+          )}
           {selectedModel !== 'all' && (
             <span className="ml-2 text-indigo-400">
               ({carModels.find(m => m.id === selectedModel)?.name})
@@ -718,7 +1241,7 @@ export default function ContractsAnalyticsDashboard() {
             title="Контракты" 
             icon="📝"
             value="contracts"
-            change={monthlyData.changes?.contracts}
+            change={detailedData.changes?.contracts}
             color="indigo"
             isActive={activeMetric === 'contracts'}
             onClick={() => setActiveMetric('contracts')}
@@ -727,7 +1250,7 @@ export default function ContractsAnalyticsDashboard() {
             title="Реализация" 
             icon="✅"
             value="realization"
-            change={monthlyData.changes?.realization}
+            change={detailedData.changes?.realization}
             color="emerald"
             isActive={activeMetric === 'realization'}
             onClick={() => setActiveMetric('realization')}
@@ -736,7 +1259,7 @@ export default function ContractsAnalyticsDashboard() {
             title="Отмена" 
             icon="❌"
             value="cancellation"
-            change={monthlyData.changes?.cancellation}
+            change={detailedData.changes?.cancellation}
             color="red"
             isActive={activeMetric === 'cancellation'}
             onClick={() => setActiveMetric('cancellation')}
@@ -824,7 +1347,7 @@ export default function ContractsAnalyticsDashboard() {
       <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-6">
         <h3 className="text-xl font-bold text-white mb-4 flex items-center">
           <span className="text-2xl mr-2">📊</span> 
-          Сравнительный анализ моделей
+          Сравнительный анализ моделей {getPeriodLabel(selectedPeriod).toLowerCase()}
         </h3>
         
         <div className="w-full h-72">
@@ -895,7 +1418,7 @@ export default function ContractsAnalyticsDashboard() {
       <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-6">
         <h3 className="text-xl font-bold text-white mb-4 flex items-center">
           <span className="text-2xl mr-2">🔍</span> 
-          Детальная информация: {model.name}
+          Детальная информация: {model.name} {getPeriodLabel(selectedPeriod).toLowerCase()}
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1013,7 +1536,7 @@ export default function ContractsAnalyticsDashboard() {
         <>
           <div className="mb-6">
             <h2 className="text-3xl font-bold text-white mb-2 bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-              Анализ контрактов
+              Анализ контрактов {getPeriodLabel(selectedPeriod).toLowerCase()}
               {selectedModel !== 'all' && (
                 <span className="ml-2 font-medium text-indigo-400 text-2xl">
                   — {carModels.find(m => m.id === selectedModel)?.name}
@@ -1022,17 +1545,20 @@ export default function ContractsAnalyticsDashboard() {
             </h2>
             <p className="text-gray-400">
               {selectedModel === 'all' 
-                ? 'Годовой отчет по контрактам, реализации и отменам для всех моделей'
-                : `Детальная статистика по модели ${carModels.find(m => m.id === selectedModel)?.name}`
+                ? `${getPeriodDescription(selectedPeriod)} по контрактам, реализации и отменам для всех моделей`
+                : `Детальная статистика ${selectedPeriod === 'year' ? 'за год' : selectedPeriod === 'quarter' ? 'за полгода' : selectedPeriod === 'month' ? 'за месяц' : 'за неделю'} по модели ${carModels.find(m => m.id === selectedModel)?.name}`
               }
             </p>
           </div>
           
+          {/* Селектор периода */}
+          <DateRangePicker />
+          
           {/* Селектор моделей с фото */}
           <ModelSelector />
           
-          {/* Показатели за месяц */}
-          <MonthlyStatsCards />
+          {/* Показатели за выбранный период */}
+          <StatsCards />
           
           {/* Детали выбранной модели */}
           <SelectedModelDetails />
@@ -1043,7 +1569,7 @@ export default function ContractsAnalyticsDashboard() {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <h3 className="text-xl font-bold text-white flex items-center">
                   <span className="text-2xl mr-2">📈</span> 
-                  Динамика показателей
+                  Динамика показателей {getPeriodLabel(selectedPeriod).toLowerCase()}
                   {selectedModel !== 'all' && (
                     <span className="ml-2 text-indigo-400 text-base">
                       ({carModels.find(m => m.id === selectedModel)?.name})
@@ -1077,24 +1603,6 @@ export default function ContractsAnalyticsDashboard() {
                   {renderChart()}
                 </ResponsiveContainer>
               </div>
-              
-              <div className="flex flex-wrap mt-4 mb-4 justify-between items-center">
-                <div className="flex flex-wrap gap-2">
-                  {yearlyData.map((item, index) => (
-                    <button
-                      key={`month-${index}`}
-                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                        selectedMonth === item.name ? 
-                        'bg-indigo-600/70 text-white ring-2 ring-indigo-500 ring-offset-2 ring-offset-gray-800' : 
-                        'bg-gray-700/60 text-gray-300 hover:bg-gray-600/60'
-                      }`}
-                      onClick={() => setSelectedMonth(item.name)}
-                    >
-                      {item.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
             
             {/* Тепловая карта */}
@@ -1125,16 +1633,20 @@ export default function ContractsAnalyticsDashboard() {
             </div>
           </div>
           
-          {/* График по дням месяца */}
+          {/* График по дням детализации */}
           <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-6">
             <h3 className="text-xl font-bold text-white mb-4 flex items-center">
               <span className="text-2xl mr-2">📅</span> 
-              Детализация по дням: {selectedMonth}
+              Детализация {
+                selectedPeriod === 'week' ? 'по дням недели' : 
+                selectedPeriod === 'month' ? 'по дням месяца' : 
+                `для ${selectedDetailLabel}`
+              }
             </h3>
             
             <div className="w-full h-64">
               <ResponsiveContainer width="100%" height="100%">
-                {renderMonthlyChart()}
+                {renderDetailedChart()}
               </ResponsiveContainer>
             </div>
           </div>
