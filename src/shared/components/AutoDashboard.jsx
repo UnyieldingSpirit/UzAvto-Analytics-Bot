@@ -332,636 +332,870 @@ const AutoDashboard = () => {
   }, [primaryAggregated, comparisonAggregated, showComparison, visualizationType]);
   
   // Рендеринг основного графика
-  const renderMainChart = () => {
-    const container = mainChartRef.current;
-    d3.select(container).selectAll("*").remove();
+ // Рендеринг основного графика
+const renderMainChart = () => {
+  const container = mainChartRef.current;
+  d3.select(container).selectAll("*").remove();
+  
+  if (!primaryAggregated || primaryAggregated.length === 0) {
+    d3.select(container)
+      .append("div")
+      .attr("class", "flex items-center justify-center h-full text-gray-400")
+      .text("Нет данных для отображения");
+    return;
+  }
+  
+  const width = container.clientWidth;
+  const height = container.clientHeight || 400;
+  const margin = { top: 30, right: 30, bottom: 50, left: 70 };
+  
+  // Ограничиваем количество элементов для отображения
+  const displayData = primaryAggregated.slice(0, 10);
+  
+  const svg = d3.select(container)
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("viewBox", `0 0 ${width} ${height}`)
+    .attr("class", "overflow-visible");
+  
+  // Выбор типа визуализации и раздела
+  if (activeSection === 'inventory' && visualizationType === 'barChart') {
+    // Остатки по складам - вертикальные столбцы
     
-    if (!primaryAggregated || primaryAggregated.length === 0) {
-      d3.select(container)
-        .append("div")
-        .attr("class", "flex items-center justify-center h-full text-gray-400")
-        .text("Нет данных для отображения");
-      return;
-    }
+    // Получаем уникальные склады и формируем данные
+    const warehouses = [
+      { id: 'tashkent_main', name: 'Ташкент Центральный' },
+      { id: 'tashkent_south', name: 'Ташкент Южный' },
+      { id: 'samarkand', name: 'Самарканд' },
+      { id: 'andijan', name: 'Андижан' },
+      { id: 'bukhara', name: 'Бухара' },
+      { id: 'namangan', name: 'Наманган' },
+      { id: 'fergana', name: 'Фергана' }
+    ];
     
-    const width = container.clientWidth;
-    const height = container.clientHeight || 400;
-    const margin = { top: 30, right: 30, bottom: 50, left: 70 };
+    // Преобразуем данные складов в формат для отображения
+    const warehouseData = [];
     
-    // Ограничиваем количество элементов для отображения
-    const displayData = primaryAggregated.slice(0, 10);
+    // Получаем уникальные склады
+    const allWarehouses = {};
+    primaryAggregated.forEach(model => {
+      Object.keys(model.regionData).forEach(warehouseId => {
+        if (!allWarehouses[warehouseId]) {
+          const warehouse = warehouses.find(w => w.id === warehouseId);
+          allWarehouses[warehouseId] = warehouse ? warehouse.name : warehouseId;
+        }
+      });
+    });
     
-    const svg = d3.select(container)
-      .append("svg")
-      .attr("width", width)
-      .attr("height", height)
-      .attr("viewBox", `0 0 ${width} ${height}`)
-      .attr("class", "overflow-visible");
-    
-    // Выбор типа визуализации
-    if (visualizationType === 'barChart') {
-      // Горизонтальная столбчатая диаграмма
-      // Шкалы
-      const x = d3.scaleLinear()
-        .domain([0, d3.max(displayData, d => Math.max(d.value, showComparison ? (d.compareValue || 0) : 0)) * 1.1])
-        .range([margin.left, width - margin.right]);
+    // Формируем данные для отображения
+    Object.entries(allWarehouses).forEach(([warehouseId, warehouseName]) => {
+      // Суммируем количество всех моделей на этом складе
+      const totalInventory = primaryAggregated.reduce((sum, model) => {
+        return sum + (model.regionData[warehouseId] || 0);
+      }, 0);
       
-      const y = d3.scaleBand()
-        .domain(displayData.map(d => d.name))
-        .range([margin.top, height - margin.bottom])
-        .padding(0.3);
+      warehouseData.push({
+        id: warehouseId,
+        name: warehouseName,
+        value: totalInventory
+      });
+    });
+    
+    // Сортируем по количеству (от большего к меньшему)
+    warehouseData.sort((a, b) => b.value - a.value);
+    
+    // Склады по оси X, количество по оси Y
+    const x = d3.scaleBand()
+      .domain(warehouseData.map(d => d.name))
+      .range([margin.left, width - margin.right])
+      .padding(0.3);
+    
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(warehouseData, d => d.value) * 1.1])
+      .nice()
+      .range([height - margin.bottom, margin.top]);
+    
+    // Градиент для столбцов
+    const defs = svg.append("defs");
+    const gradient = defs
+      .append("linearGradient")
+      .attr("id", "warehouse-gradient")
+      .attr("x1", "0%")
+      .attr("y1", "0%")
+      .attr("x2", "0%")
+      .attr("y2", "100%");
+    
+    gradient.append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", "#8b5cf6")
+      .attr("stop-opacity", 0.9);
+    
+    gradient.append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", "#6d28d9")
+      .attr("stop-opacity", 0.7);
+    
+    // Эффект тени
+    defs.append("filter")
+      .attr("id", "dropShadow")
+      .append("feDropShadow")
+      .attr("stdDeviation", 3)
+      .attr("flood-opacity", 0.3);
+    
+    defs.append("filter")
+      .attr("id", "glow")
+      .append("feGaussianBlur")
+      .attr("stdDeviation", 2.5)
+      .attr("result", "coloredBlur");
+    
+    // Оси
+    svg.append("g")
+      .attr("transform", `translate(0,${height - margin.bottom})`)
+      .attr("class", "axis")
+      .call(d3.axisBottom(x).tickSize(0))
+      .call(g => g.select(".domain").remove())
+      .call(g => g.selectAll(".tick text")
+        .attr("fill", "#e5e7eb")
+        .style("font-size", "0.85rem")
+        .style("font-weight", "500")
+        .attr("transform", "rotate(-25)")
+        .attr("text-anchor", "end")
+        .attr("dy", "0.5em")
+        .attr("dx", "-0.5em"));
+    
+    svg.append("g")
+      .attr("transform", `translate(${margin.left},0)`)
+      .attr("class", "axis")
+      .call(d3.axisLeft(y).ticks(5))
+      .call(g => g.select(".domain").remove())
+      .call(g => g.selectAll(".tick text")
+        .attr("fill", "#e5e7eb")
+        .style("font-size", "0.85rem"));
+    
+    // Линии сетки
+    svg.append("g")
+      .attr("class", "grid")
+      .attr("transform", `translate(${margin.left},0)`)
+      .selectAll("line")
+      .data(y.ticks(5))
+      .enter()
+      .append("line")
+      .attr("x1", 0)
+      .attr("x2", width - margin.left - margin.right)
+      .attr("y1", d => y(d))
+      .attr("y2", d => y(d))
+      .attr("stroke", "#374151")
+      .attr("stroke-width", 0.5)
+      .attr("stroke-dasharray", "3,3");
+    
+    // Основные столбцы
+    const bars = svg.selectAll(".bar")
+      .data(warehouseData)
+      .enter()
+      .append("rect")
+      .attr("class", "bar")
+      .attr("x", d => x(d.name))
+      .attr("y", height - margin.bottom)  // Начальная позиция для анимации
+      .attr("width", x.bandwidth())
+      .attr("height", 0)  // Начальная высота для анимации
+      .attr("rx", 4)
+      .attr("fill", "url(#warehouse-gradient)")
+      .style("filter", "url(#dropShadow)")
+      .on("mouseover", function(event, d) {
+        d3.select(this)
+          .style("filter", "url(#glow)")
+          .attr("opacity", 1);
+        
+        // Создаем всплывающую подсказку
+        const tooltip = d3.select(container)
+          .append("div")
+          .attr("class", "absolute z-10 p-3 rounded-lg shadow-xl bg-gray-800 border border-gray-700 text-white text-sm")
+          .style("left", `${event.pageX - container.getBoundingClientRect().left + 10}px`)
+          .style("top", `${event.pageY - container.getBoundingClientRect().top - 80}px`)
+          .style("opacity", 0);
+        
+        // Содержимое подсказки
+        tooltip.html(`
+          <div class="font-medium text-base mb-1">${d.name}</div>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+            <span class="text-gray-300">Количество:</span>
+            <span class="font-medium text-white">${d.value.toLocaleString()}</span>
+          </div>
+        `);
+        
+        // Анимация появления подсказки
+        tooltip.transition()
+          .duration(200)
+          .style("opacity", 1);
+      })
+      .on("mouseout", function() {
+        d3.select(this)
+          .style("filter", "url(#dropShadow)")
+          .attr("opacity", 0.9);
+        
+        d3.select(container).selectAll(".absolute").remove();
+      });
+    
+    // Анимация столбцов
+    bars.transition()
+      .duration(1000)
+      .delay((d, i) => i * 50)
+      .attr("y", d => y(d.value))
+      .attr("height", d => height - margin.bottom - y(d.value))
+      .ease(d3.easeCubicOut);
+    
+    // Подписи значений над столбцами
+    svg.selectAll(".value-label")
+      .data(warehouseData)
+      .enter()
+      .append("text")
+      .attr("class", "value-label")
+      .attr("x", d => x(d.name) + x.bandwidth() / 2)
+      .attr("y", d => y(d.value) - 10)
+      .attr("text-anchor", "middle")
+      .attr("fill", "#f9fafb")
+      .style("font-size", "0.85rem")
+      .style("font-weight", "bold")
+      .style("opacity", 0)
+      .text(d => d.value.toLocaleString())
+      .transition()
+      .duration(800)
+      .delay((d, i) => i * 50 + 500)
+      .style("opacity", 1);
+    
+    // Добавляем название осей
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", height - 5)
+      .attr("text-anchor", "middle")
+      .attr("fill", "#9ca3af")
+      .style("font-size", "0.8rem")
+      .text("Склады");
+    
+    svg.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("x", -height / 2)
+      .attr("y", margin.left / 3)
+      .attr("text-anchor", "middle")
+      .attr("fill", "#9ca3af")
+      .style("font-size", "0.8rem")
+      .text("Количество");
+    
+    // Заголовок графика
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", margin.top / 2)
+      .attr("text-anchor", "middle")
+      .attr("fill", "#f9fafb")
+      .style("font-size", "1.2rem")
+      .style("font-weight", "bold")
+      .text("Остатки по складам");
       
-      // Градиенты для элементов
-      const gradientColors = {
-        sales: {primary: "#3b82f6", secondary: "#1d4ed8"},
-        export: {primary: "#10b981", secondary: "#047857"},
-        import: {primary: "#f59e0b", secondary: "#b45309"}
-      };
-      
-      // Основной градиент
-      const defs = svg.append("defs");
-      
-      const gradient = defs
+  } else if (visualizationType === 'barChart') {
+    // Горизонтальная столбчатая диаграмма для других разделов
+    // Шкалы
+    const x = d3.scaleLinear()
+      .domain([0, d3.max(displayData, d => Math.max(d.value, showComparison ? (d.compareValue || 0) : 0)) * 1.1])
+      .range([margin.left, width - margin.right]);
+    
+    const y = d3.scaleBand()
+      .domain(displayData.map(d => d.name))
+      .range([margin.top, height - margin.bottom])
+      .padding(0.3);
+    
+    // Градиенты для элементов
+    const gradientColors = {
+      sales: {primary: "#3b82f6", secondary: "#1d4ed8"},
+      export: {primary: "#10b981", secondary: "#047857"},
+      import: {primary: "#f59e0b", secondary: "#b45309"}
+    };
+    
+    // Основной градиент
+    const defs = svg.append("defs");
+    
+    const gradient = defs
+      .append("linearGradient")
+      .attr("id", "bar-gradient")
+      .attr("x1", "0%")
+      .attr("y1", "0%")
+      .attr("x2", "100%")
+      .attr("y2", "0%");
+    
+    gradient.append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", gradientColors[activeSection].primary)
+      .attr("stop-opacity", 0.9);
+    
+    gradient.append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", gradientColors[activeSection].secondary)
+      .attr("stop-opacity", 0.7);
+    
+    // Градиент для данных сравнения
+    if (showComparison) {
+      const compareGradient = defs
         .append("linearGradient")
-        .attr("id", "bar-gradient")
+        .attr("id", "compare-gradient")
         .attr("x1", "0%")
         .attr("y1", "0%")
         .attr("x2", "100%")
         .attr("y2", "0%");
       
+      compareGradient.append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", "#6b7280")
+        .attr("stop-opacity", 0.7);
+      
+      compareGradient.append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", "#374151")
+        .attr("stop-opacity", 0.6);
+    }
+    
+    // Добавляем эффекты
+    defs.append("filter")
+      .attr("id", "dropShadow")
+      .append("feDropShadow")
+      .attr("stdDeviation", 3)
+      .attr("flood-opacity", 0.3);
+    
+    defs.append("filter")
+      .attr("id", "glow")
+      .append("feGaussianBlur")
+      .attr("stdDeviation", 2.5)
+      .attr("result", "coloredBlur");
+    
+    // Оси
+    svg.append("g")
+      .attr("transform", `translate(${margin.left},0)`)
+      .attr("class", "axis")
+      .call(d3.axisLeft(y).tickSize(0))
+      .call(g => g.select(".domain").remove())
+      .call(g => g.selectAll(".tick text")
+        .attr("fill", "#e5e7eb")
+        .style("font-size", "0.85rem")
+        .style("font-weight", "500"));
+    
+    // Линии сетки
+    svg.append("g")
+      .attr("class", "grid")
+      .selectAll("line")
+      .data(x.ticks(5))
+      .enter()
+      .append("line")
+      .attr("x1", d => x(d))
+      .attr("x2", d => x(d))
+      .attr("y1", margin.top)
+      .attr("y2", height - margin.bottom)
+      .attr("stroke", "#374151")
+      .attr("stroke-width", 0.5)
+      .attr("stroke-dasharray", "3,3");
+    
+    // Полосы для данных сравнения (если включено)
+    if (showComparison) {
+      // Объединяем данные для корректного сравнения
+      const combinedData = [...displayData];
+      
+      // Для каждого элемента сравнения находим соответствующий элемент в основных данных
+      comparisonAggregated.forEach(compItem => {
+        const primaryIndex = combinedData.findIndex(p => p.id === compItem.id);
+        if (primaryIndex !== -1) {
+          combinedData[primaryIndex].compareValue = compItem.value;
+        } else {
+          // Если элемент отсутствует в основных данных, добавляем его
+          combinedData.push({
+            ...compItem,
+            compareValue: compItem.value,
+            value: 0
+          });
+        }
+      });
+      
+      // Сортируем и ограничиваем количество элементов
+      const displayCombined = combinedData
+        .sort((a, b) => Math.max(b.value, b.compareValue || 0) - Math.max(a.value, a.compareValue || 0))
+        .slice(0, 10);
+      
+      // Сравнительные полосы (немного тоньше основных)
+      svg.selectAll(".compare-bar")
+        .data(displayCombined)
+        .enter()
+        .append("rect")
+        .attr("class", "compare-bar")
+        .attr("x", margin.left)
+        .attr("y", d => y(d.name) + y.bandwidth() * 0.65)
+        .attr("height", y.bandwidth() * 0.35)
+        .attr("rx", 2)
+        .attr("fill", "url(#compare-gradient)")
+        .attr("opacity", 0.8)
+        .attr("width", 0) // Начальная ширина для анимации
+        .transition()
+        .duration(900)
+        .delay((d, i) => i * 50)
+        .attr("width", d => x(d.compareValue || 0) - margin.left);
+    }
+    
+    // Основные полосы
+    const bars = svg.selectAll(".bar")
+      .data(displayData)
+      .enter()
+      .append("rect")
+      .attr("class", "bar")
+      .attr("x", margin.left)
+      .attr("y", d => showComparison ? y(d.name) : y(d.name))
+      .attr("height", showComparison ? y.bandwidth() * 0.65 : y.bandwidth())
+      .attr("rx", 4)
+      .attr("fill", "url(#bar-gradient)")
+      .style("filter", "url(#dropShadow)")
+      .attr("width", 0) // Начальная ширина для анимации
+      .on("mouseover", function(event, d) {
+        d3.select(this)
+          .style("filter", "url(#glow)")
+          .attr("opacity", 1);
+        
+        // Создаем всплывающую подсказку
+        const tooltip = d3.select(container)
+          .append("div")
+          .attr("class", "absolute z-10 p-3 rounded-lg shadow-xl bg-gray-800 border border-gray-700 text-white text-sm")
+          .style("left", `${event.pageX - container.getBoundingClientRect().left + 10}px`)
+          .style("top", `${event.pageY - container.getBoundingClientRect().top - 80}px`)
+          .style("opacity", 0);
+        
+        // Содержимое подсказки
+        tooltip.html(`
+          <div class="font-medium text-base mb-1">${d.name}</div>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+            <span class="text-gray-300">Значение:</span>
+            <span class="font-medium text-white">${d.value.toLocaleString()}</span>
+            <span class="text-gray-300">Доля:</span>
+            <span class="font-medium text-white">${d.percent}%</span>
+            ${showComparison ? `
+              <span class="text-gray-300">Сравнение:</span>
+              <span class="font-medium text-white">${(d.compareValue || 0).toLocaleString()}</span>
+              <span class="text-gray-300">Изменение:</span>
+              <span class="font-medium ${d.value > (d.compareValue || 0) ? 'text-green-400' : 'text-red-400'}">
+                ${(((d.value - (d.compareValue || 0)) / (d.compareValue || 1) * 100).toFixed(1))}%
+              </span>
+            ` : ''}
+          </div>
+        `);
+        
+        // Анимация появления подсказки
+        tooltip.transition()
+          .duration(200)
+          .style("opacity", 1);
+      })
+      .on("mouseout", function() {
+        d3.select(this)
+          .style("filter", "url(#dropShadow)")
+          .attr("opacity", 0.9);
+        
+        d3.select(container).selectAll(".absolute").remove();
+      })
+      .on("click", function(event, d) {
+        // Действие при клике - например, переход к детальному анализу модели/региона
+        setActiveDrilldown(d.id);
+      });
+    
+    // Анимация полос
+    bars.transition()
+      .duration(1000)
+      .delay((d, i) => i * 50)
+      .attr("width", d => x(d.value) - margin.left)
+      .ease(d3.easeCubicOut);
+    
+    // Подписи значений
+    svg.selectAll(".value-label")
+      .data(displayData)
+      .enter()
+      .append("text")
+      .attr("class", "value-label")
+      .attr("x", d => x(d.value) + 10)
+      .attr("y", d => showComparison ? y(d.name) + y.bandwidth() * 0.3 : y(d.name) + y.bandwidth() / 2)
+      .attr("dy", "0.35em")
+      .attr("fill", "#f9fafb")
+      .style("font-size", "0.85rem")
+      .style("font-weight", "bold")
+      .style("opacity", 0)
+      .text(d => d.value.toLocaleString())
+      .transition()
+      .duration(800)
+      .delay((d, i) => i * 50 + 500)
+      .style("opacity", 1);
+    
+    // Если включено сравнение, добавляем метки изменения
+    if (showComparison) {
+      svg.selectAll(".percent-change")
+        .data(displayData)
+        .enter()
+        .append("text")
+        .attr("class", "percent-change")
+        .attr("x", d => Math.max(x(d.value), x(d.compareValue || 0)) + 60)
+        .attr("y", d => y(d.name) + y.bandwidth() / 2)
+        .attr("dy", "0.35em")
+        .attr("fill", d => {
+          const change = d.value - (d.compareValue || 0);
+          return change >= 0 ? "#34d399" : "#f87171";
+        })
+        .style("font-size", "0.8rem")
+        .style("font-weight", "medium")
+        .style("opacity", 0)
+        .text(d => {
+          const change = d.value - (d.compareValue || 0);
+          const percentChange = (d.compareValue || 1) !== 0 
+            ? (change / (d.compareValue || 1) * 100).toFixed(1)
+            : "100";
+          return `${change >= 0 ? "+" : ""}${percentChange}%`;
+        })
+        .transition()
+        .duration(800)
+        .delay((d, i) => i * 50 + 800)
+        .style("opacity", 1);
+    }
+    
+  } else if (visualizationType === 'pieChart') {
+    // Круговая диаграмма для отображения долей
+    
+    // Ограничиваем количество секторов (Top 6 + "Другие")
+    let pieData = [...displayData];
+    if (pieData.length > 6) {
+      const topItems = pieData.slice(0, 6);
+      const otherItems = pieData.slice(6);
+      const otherValue = otherItems.reduce((sum, item) => sum + item.value, 0);
+      const otherPercent = otherItems.reduce((sum, item) => sum + item.percent, 0);
+      
+      pieData = [
+        ...topItems,
+        {
+          id: 'others',
+          name: 'Другие',
+          value: otherValue,
+          percent: otherPercent
+        }
+      ];
+    }
+    
+    const radius = Math.min(width, height) / 2 - 40;
+    
+    // Цветовая схема
+    const colorScale = d3.scaleOrdinal()
+      .domain(pieData.map(d => d.id))
+      .range([
+        "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", 
+        "#ec4899", "#ef4444", "#6366f1", "#14b8a6"
+      ]);
+    
+    const pie = d3.pie()
+      .value(d => d.value)
+      .sort(null);
+    
+    const arc = d3.arc()
+      .innerRadius(radius * 0.5) // Делаем "пончик" вместо круга
+      .outerRadius(radius);
+    
+    const hoverArc = d3.arc()
+      .innerRadius(radius * 0.5)
+      .outerRadius(radius * 1.05);
+    
+    // Центрируем диаграмму
+    const g = svg.append("g")
+      .attr("transform", `translate(${width / 2}, ${height / 2})`);
+    
+    // Добавляем градиенты для секторов
+    const defs = svg.append("defs");
+    
+    pieData.forEach((d, i) => {
+      const gradientId = `pie-gradient-${i}`;
+      const gradient = defs.append("linearGradient")
+        .attr("id", gradientId)
+        .attr("x1", "0%")
+        .attr("y1", "0%")
+        .attr("x2", "100%")
+        .attr("y2", "100%");
+      
       gradient.append("stop")
         .attr("offset", "0%")
-        .attr("stop-color", gradientColors[activeSection].primary)
-        .attr("stop-opacity", 0.9);
+        .attr("stop-color", d3.color(colorScale(d.id)).brighter(0.5));
       
       gradient.append("stop")
         .attr("offset", "100%")
-        .attr("stop-color", gradientColors[activeSection].secondary)
-        .attr("stop-opacity", 0.7);
-      
-      // Градиент для данных сравнения
-      if (showComparison) {
-        const compareGradient = defs
-          .append("linearGradient")
-          .attr("id", "compare-gradient")
-          .attr("x1", "0%")
-          .attr("y1", "0%")
-          .attr("x2", "100%")
-          .attr("y2", "0%");
-        
-        compareGradient.append("stop")
-          .attr("offset", "0%")
-          .attr("stop-color", "#6b7280")
-          .attr("stop-opacity", 0.7);
-        
-        compareGradient.append("stop")
-          .attr("offset", "100%")
-          .attr("stop-color", "#374151")
-          .attr("stop-opacity", 0.6);
-      }
-      
-      // Добавляем эффекты
-      defs.append("filter")
-        .attr("id", "dropShadow")
-        .append("feDropShadow")
-        .attr("stdDeviation", 3)
-        .attr("flood-opacity", 0.3);
-      
-      defs.append("filter")
-        .attr("id", "glow")
-        .append("feGaussianBlur")
-        .attr("stdDeviation", 2.5)
-        .attr("result", "coloredBlur");
-      
-      // Оси
-      svg.append("g")
-        .attr("transform", `translate(${margin.left},0)`)
-        .attr("class", "axis")
-        .call(d3.axisLeft(y).tickSize(0))
-        .call(g => g.select(".domain").remove())
-        .call(g => g.selectAll(".tick text")
-          .attr("fill", "#e5e7eb")
-          .style("font-size", "0.85rem")
-          .style("font-weight", "500"));
-      
-      // Линии сетки
-      svg.append("g")
-        .attr("class", "grid")
-        .selectAll("line")
-        .data(x.ticks(5))
-        .enter()
-        .append("line")
-        .attr("x1", d => x(d))
-        .attr("x2", d => x(d))
-        .attr("y1", margin.top)
-        .attr("y2", height - margin.bottom)
-        .attr("stroke", "#374151")
-        .attr("stroke-width", 0.5)
-        .attr("stroke-dasharray", "3,3");
-      
-      // Полосы для данных сравнения (если включено)
-      if (showComparison) {
-        // Объединяем данные для корректного сравнения
-        const combinedData = [...displayData];
-        
-        // Для каждого элемента сравнения находим соответствующий элемент в основных данных
-        comparisonAggregated.forEach(compItem => {
-          const primaryIndex = combinedData.findIndex(p => p.id === compItem.id);
-          if (primaryIndex !== -1) {
-            combinedData[primaryIndex].compareValue = compItem.value;
-          } else {
-            // Если элемент отсутствует в основных данных, добавляем его
-            combinedData.push({
-              ...compItem,
-              compareValue: compItem.value,
-              value: 0
-            });
-          }
-        });
-        
-        // Сортируем и ограничиваем количество элементов
-        const displayCombined = combinedData
-          .sort((a, b) => Math.max(b.value, b.compareValue || 0) - Math.max(a.value, a.compareValue || 0))
-          .slice(0, 10);
-        
-        // Сравнительные полосы (немного тоньше основных)
-        svg.selectAll(".compare-bar")
-          .data(displayCombined)
-          .enter()
-          .append("rect")
-          .attr("class", "compare-bar")
-          .attr("x", margin.left)
-          .attr("y", d => y(d.name) + y.bandwidth() * 0.65)
-          .attr("height", y.bandwidth() * 0.35)
-          .attr("rx", 2)
-          .attr("fill", "url(#compare-gradient)")
-          .attr("opacity", 0.8)
-          .attr("width", 0) // Начальная ширина для анимации
+        .attr("stop-color", d3.color(colorScale(d.id)).darker(0.5));
+    });
+    
+    // Эффект тени
+    defs.append("filter")
+      .attr("id", "drop-shadow")
+      .append("feDropShadow")
+      .attr("stdDeviation", 3)
+      .attr("flood-opacity", 0.3);
+    
+    // Добавляем секторы
+    const path = g.selectAll("path")
+      .data(pie(pieData))
+      .enter()
+      .append("path")
+      .attr("fill", (d, i) => `url(#pie-gradient-${i})`)
+      .attr("stroke", "#1f2937")
+      .attr("stroke-width", 2)
+      .attr("d", arc)
+      .style("filter", "url(#drop-shadow)")
+      .style("cursor", "pointer")
+      .on("mouseover", function(event, d) {
+        d3.select(this)
           .transition()
-          .duration(900)
-          .delay((d, i) => i * 50)
-          .attr("width", d => x(d.compareValue || 0) - margin.left);
-      }
-      
-      // Основные полосы
-      const bars = svg.selectAll(".bar")
-        .data(displayData)
-        .enter()
-        .append("rect")
-        .attr("class", "bar")
-        .attr("x", margin.left)
-        .attr("y", d => showComparison ? y(d.name) : y(d.name))
-        .attr("height", showComparison ? y.bandwidth() * 0.65 : y.bandwidth())
-        .attr("rx", 4)
-        .attr("fill", "url(#bar-gradient)")
-        .style("filter", "url(#dropShadow)")
-        .attr("width", 0) // Начальная ширина для анимации
-        .on("mouseover", function(event, d) {
-          d3.select(this)
-            .style("filter", "url(#glow)")
-            .attr("opacity", 1);
-          
-          // Создаем всплывающую подсказку
-          const tooltip = d3.select(container)
-            .append("div")
-            .attr("class", "absolute z-10 p-3 rounded-lg shadow-xl bg-gray-800 border border-gray-700 text-white text-sm")
-            .style("left", `${event.pageX - container.getBoundingClientRect().left + 10}px`)
-            .style("top", `${event.pageY - container.getBoundingClientRect().top - 80}px`)
-            .style("opacity", 0);
-          
-          // Содержимое подсказки
-          tooltip.html(`
-            <div class="font-medium text-base mb-1">${d.name}</div>
-            <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-              <span class="text-gray-300">Значение:</span>
-              <span class="font-medium text-white">${d.value.toLocaleString()}</span>
-              <span class="text-gray-300">Доля:</span>
-              <span class="font-medium text-white">${d.percent}%</span>
-              ${showComparison ? `
-                <span class="text-gray-300">Сравнение:</span>
-                <span class="font-medium text-white">${(d.compareValue || 0).toLocaleString()}</span>
-                <span class="text-gray-300">Изменение:</span>
-                <span class="font-medium ${d.value > (d.compareValue || 0) ? 'text-green-400' : 'text-red-400'}">
-                  ${(((d.value - (d.compareValue || 0)) / (d.compareValue || 1) * 100).toFixed(1))}%
-                </span>
-              ` : ''}
-            </div>
-          `);
-          
-          // Анимация появления подсказки
-          tooltip.transition()
-            .duration(200)
-            .style("opacity", 1);
-        })
-        .on("mouseout", function() {
-          d3.select(this)
-            .style("filter", "url(#dropShadow)")
-            .attr("opacity", 0.9);
-          
-          d3.select(container).selectAll(".absolute").remove();
-        })
-        .on("click", function(event, d) {
-          // Действие при клике - например, переход к детальному анализу модели/региона
-          setActiveDrilldown(d.id);
-        });
-      
-      // Анимация полос
-      bars.transition()
-        .duration(1000)
-        .delay((d, i) => i * 50)
-        .attr("width", d => x(d.value) - margin.left)
-        .ease(d3.easeCubicOut);
-      
-      // Подписи значений
-      svg.selectAll(".value-label")
-        .data(displayData)
-        .enter()
-        .append("text")
-        .attr("class", "value-label")
-        .attr("x", d => x(d.value) + 10)
-        .attr("y", d => showComparison ? y(d.name) + y.bandwidth() * 0.3 : y(d.name) + y.bandwidth() / 2)
-        .attr("dy", "0.35em")
-        .attr("fill", "#f9fafb")
-        .style("font-size", "0.85rem")
-        .style("font-weight", "bold")
-        .style("opacity", 0)
-        .text(d => d.value.toLocaleString())
-        .transition()
-        .duration(800)
-        .delay((d, i) => i * 50 + 500)
-        .style("opacity", 1);
-      
-      // Если включено сравнение, добавляем метки изменения
-      if (showComparison) {
-        svg.selectAll(".percent-change")
-          .data(displayData)
-          .enter()
-          .append("text")
-          .attr("class", "percent-change")
-          .attr("x", d => Math.max(x(d.value), x(d.compareValue || 0)) + 60)
-          .attr("y", d => y(d.name) + y.bandwidth() / 2)
-          .attr("dy", "0.35em")
-          .attr("fill", d => {
-            const change = d.value - (d.compareValue || 0);
-            return change >= 0 ? "#34d399" : "#f87171";
-          })
-          .style("font-size", "0.8rem")
-          .style("font-weight", "medium")
-          .style("opacity", 0)
-          .text(d => {
-            const change = d.value - (d.compareValue || 0);
-            const percentChange = (d.compareValue || 1) !== 0 
-              ? (change / (d.compareValue || 1) * 100).toFixed(1)
-              : "100";
-            return `${change >= 0 ? "+" : ""}${percentChange}%`;
-          })
-          .transition()
-          .duration(800)
-          .delay((d, i) => i * 50 + 800)
+          .duration(200)
+          .attr("d", hoverArc);
+        
+        // Всплывающая подсказка
+        const tooltip = d3.select(container)
+          .append("div")
+          .attr("class", "absolute z-10 p-3 rounded-lg shadow-xl bg-gray-800 border border-gray-700 text-white text-sm")
+          .style("left", `${event.pageX - container.getBoundingClientRect().left + 10}px`)
+          .style("top", `${event.pageY - container.getBoundingClientRect().top - 80}px`)
+          .style("opacity", 0);
+        
+        tooltip.html(`
+          <div class="font-medium text-base mb-1">${d.data.name}</div>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+            <span class="text-gray-300">Значение:</span>
+            <span class="font-medium text-white">${d.data.value.toLocaleString()}</span>
+            <span class="text-gray-300">Доля:</span>
+            <span class="font-medium text-white">${d.data.percent}%</span>
+          </div>
+        `);
+        
+        tooltip.transition()
+          .duration(200)
           .style("opacity", 1);
-      }
-      
-    } else if (visualizationType === 'pieChart') {
-      // Круговая диаграмма для отображения долей
-      
-      // Ограничиваем количество секторов (Top 6 + "Другие")
-      let pieData = [...displayData];
-      if (pieData.length > 6) {
-        const topItems = pieData.slice(0, 6);
-        const otherItems = pieData.slice(6);
-        const otherValue = otherItems.reduce((sum, item) => sum + item.value, 0);
-        const otherPercent = otherItems.reduce((sum, item) => sum + item.percent, 0);
+      })
+      .on("mouseout", function() {
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .attr("d", arc);
         
-        pieData = [
-          ...topItems,
-          {
-            id: 'others',
-            name: 'Другие',
-            value: otherValue,
-            percent: otherPercent
-          }
-        ];
-      }
-      
-      const radius = Math.min(width, height) / 2 - 40;
-      
-      // Цветовая схема
-      const colorScale = d3.scaleOrdinal()
-        .domain(pieData.map(d => d.id))
-        .range([
-          "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", 
-          "#ec4899", "#ef4444", "#6366f1", "#14b8a6"
-        ]);
-      
-      const pie = d3.pie()
-        .value(d => d.value)
-        .sort(null);
-      
-      const arc = d3.arc()
-        .innerRadius(radius * 0.5) // Делаем "пончик" вместо круга
-        .outerRadius(radius);
-      
-      const hoverArc = d3.arc()
-        .innerRadius(radius * 0.5)
-        .outerRadius(radius * 1.05);
-      
-      // Центрируем диаграмму
-      const g = svg.append("g")
-        .attr("transform", `translate(${width / 2}, ${height / 2})`);
-      
-      // Добавляем градиенты для секторов
-      const defs = svg.append("defs");
-      
-      pieData.forEach((d, i) => {
-        const gradientId = `pie-gradient-${i}`;
-        const gradient = defs.append("linearGradient")
-          .attr("id", gradientId)
-          .attr("x1", "0%")
-          .attr("y1", "0%")
-          .attr("x2", "100%")
-          .attr("y2", "100%");
-        
-        gradient.append("stop")
-          .attr("offset", "0%")
-          .attr("stop-color", d3.color(colorScale(d.id)).brighter(0.5));
-        
-        gradient.append("stop")
-          .attr("offset", "100%")
-          .attr("stop-color", d3.color(colorScale(d.id)).darker(0.5));
+        d3.select(container).selectAll(".absolute").remove();
+      })
+      .on("click", function(event, d) {
+        // Действие при клике (если нужно)
       });
-      
-      // Эффект тени
-      defs.append("filter")
-        .attr("id", "drop-shadow")
-        .append("feDropShadow")
-        .attr("stdDeviation", 3)
-        .attr("flood-opacity", 0.3);
-      
-      // Добавляем секторы
-      const path = g.selectAll("path")
-        .data(pie(pieData))
-        .enter()
-        .append("path")
-        .attr("fill", (d, i) => `url(#pie-gradient-${i})`)
-        .attr("stroke", "#1f2937")
-        .attr("stroke-width", 2)
-        .attr("d", arc)
-        .style("filter", "url(#drop-shadow)")
+    
+    // Анимация появления
+    path.transition()
+      .duration(1000)
+      .attrTween("d", function(d) {
+        const i = d3.interpolate({ startAngle: d.startAngle, endAngle: d.startAngle }, d);
+        return function(t) {
+          return arc(i(t));
+        };
+      });
+    
+    // Центральная информация
+    g.append("text")
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "central")
+      .attr("fill", "#f9fafb")
+      .style("font-size", "1.75rem")
+      .style("font-weight", "bold")
+      .text(summaryStats.total.toLocaleString());
+    
+    g.append("text")
+     .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "central")
+      .attr("y", 25)
+      .attr("fill", "#d1d5db")
+      .style("font-size", "0.85rem")
+      .text("ВСЕГО");
+    
+    // Легенда
+    const legend = svg.append("g")
+      .attr("transform", `translate(${width - 150}, ${height / 2 - pieData.length * 15})`);
+    
+    pieData.forEach((d, i) => {
+      const lg = legend.append("g")
+        .attr("transform", `translate(0, ${i * 30})`)
         .style("cursor", "pointer")
-        .on("mouseover", function(event, d) {
-          d3.select(this)
-            .transition()
+        .on("mouseover", function() {
+         // Подсвечиваем соответствующий сектор
+          const sector = path.filter((path, j) => j === i);
+          sector.transition()
             .duration(200)
             .attr("d", hoverArc);
-          
-          // Всплывающая подсказка
-          const tooltip = d3.select(container)
-            .append("div")
-            .attr("class", "absolute z-10 p-3 rounded-lg shadow-xl bg-gray-800 border border-gray-700 text-white text-sm")
-            .style("left", `${event.pageX - container.getBoundingClientRect().left + 10}px`)
-            .style("top", `${event.pageY - container.getBoundingClientRect().top - 80}px`)
-            .style("opacity", 0);
-          
-          tooltip.html(`
-            <div class="font-medium text-base mb-1">${d.data.name}</div>
-            <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-              <span class="text-gray-300">Значение:</span>
-              <span class="font-medium text-white">${d.data.value.toLocaleString()}</span>
-              <span class="text-gray-300">Доля:</span>
-              <span class="font-medium text-white">${d.data.percent}%</span>
-            </div>
-          `);
-          
-          tooltip.transition()
-            .duration(200)
-            .style("opacity", 1);
         })
         .on("mouseout", function() {
-          d3.select(this)
-            .transition()
+          // Возвращаем сектор к нормальному состоянию
+          const sector = path.filter((path, j) => j === i);
+          sector.transition()
             .duration(200)
             .attr("d", arc);
-          
-          d3.select(container).selectAll(".absolute").remove();
-        })
-        .on("click", function(event, d) {
-          // Действие при клике (если нужно)
         });
       
-      // Анимация появления
-      path.transition()
-        .duration(1000)
-        .attrTween("d", function(d) {
-          const i = d3.interpolate({ startAngle: d.startAngle, endAngle: d.startAngle }, d);
-          return function(t) {
-            return arc(i(t));
-          };
-        });
-      
-      // Центральная информация
-      g.append("text")
-        .attr("text-anchor", "middle")
-        .attr("dominant-baseline", "central")
-        .attr("fill", "#f9fafb")
-        .style("font-size", "1.75rem")
-        .style("font-weight", "bold")
-        .text(summaryStats.total.toLocaleString());
-      
-      g.append("text")
-       .attr("text-anchor", "middle")
-        .attr("dominant-baseline", "central")
-        .attr("y", 25)
-        .attr("fill", "#d1d5db")
-        .style("font-size", "0.85rem")
-        .text("ВСЕГО");
-      
-      // Легенда
-      const legend = svg.append("g")
-        .attr("transform", `translate(${width - 150}, ${height / 2 - pieData.length * 15})`);
-      
-      pieData.forEach((d, i) => {
-        const lg = legend.append("g")
-          .attr("transform", `translate(0, ${i * 30})`)
-          .style("cursor", "pointer")
-          .on("mouseover", function() {
-            // Подсвечиваем соответствующий сектор
-            const sector = path.filter((path, j) => j === i);
-            sector.transition()
-              .duration(200)
-              .attr("d", hoverArc);
-          })
-          .on("mouseout", function() {
-            // Возвращаем сектор к нормальному состоянию
-            const sector = path.filter((path, j) => j === i);
-            sector.transition()
-              .duration(200)
-              .attr("d", arc);
-          });
-        
-        // Цветной квадрат
-        lg.append("rect")
-          .attr("width", 12)
-          .attr("height", 12)
-          .attr("rx", 2)
-          .attr("fill", colorScale(d.id));
-        
-        // Название
-        lg.append("text")
-          .attr("x", 20)
-          .attr("y", 10)
-          .text(d.name.length > 15 ? d.name.substring(0, 15) + "..." : d.name)
-          .attr("fill", "#f9fafb")
-          .style("font-size", "0.8rem");
-      });
-    } else if (visualizationType === 'heatmap') {
-      // Тепловая карта для распределения по моделям и регионам
-      
-      // Получаем данные о распределении по регионам
-      const regionDistribution = {};
-      const modelNames = {};
-      
-      // Собираем данные распределения по регионам
-      displayData.forEach(model => {
-        modelNames[model.id] = model.name;
-        Object.entries(model.regionData).forEach(([regionId, value]) => {
-          if (!regionDistribution[regionId]) {
-            regionDistribution[regionId] = {};
-          }
-          regionDistribution[regionId][model.id] = value;
-        });
-      });
-      
-      // Преобразуем в формат для тепловой карты
-      const heatmapData = [];
-      Object.entries(regionDistribution).forEach(([regionId, models]) => {
-        Object.entries(models).forEach(([modelId, value]) => {
-          // Находим соответствующее название региона
-          const regionName = regions.find(r => r.id === regionId)?.name || regionId;
-          
-          heatmapData.push({
-            region: regionName,
-            model: modelNames[modelId],
-            value: value
-          });
-        });
-      });
-      
-      // Получаем уникальные значения для осей
-      const regionNames = [...new Set(heatmapData.map(d => d.region))];
-      const modelList = [...new Set(heatmapData.map(d => d.model))];
-      
-      // Размеры ячеек
-      const cellSize = Math.min(
-        (width - margin.left - margin.right) / modelList.length,
-        (height - margin.top - margin.bottom) / regionNames.length
-      );
-      
-      // Масштабы
-      const x = d3.scaleBand()
-        .domain(modelList)
-        .range([margin.left, margin.left + cellSize * modelList.length]);
-      
-      const y = d3.scaleBand()
-        .domain(regionNames)
-        .range([margin.top, margin.top + cellSize * regionNames.length]);
-      
-      // Цветовая шкала
-      const colorScale = d3.scaleSequential(d3.interpolateBlues)
-        .domain([0, d3.max(heatmapData, d => d.value)]);
-      
-      // Оси
-      svg.append("g")
-        .attr("transform", `translate(0,${margin.top})`)
-        .call(d3.axisTop(x).tickSize(0))
-        .call(g => g.select(".domain").remove())
-        .call(g => g.selectAll("text")
-          .attr("transform", "rotate(-45)")
-          .style("text-anchor", "start")
-          .attr("dx", ".8em")
-          .attr("dy", ".15em")
-          .attr("fill", "#e5e7eb")
-          .style("font-size", "0.7rem"));
-      
-      svg.append("g")
-        .attr("transform", `translate(${margin.left},0)`)
-        .call(d3.axisLeft(y).tickSize(0))
-        .call(g => g.select(".domain").remove())
-        .call(g => g.selectAll("text")
-          .attr("fill", "#e5e7eb")
-          .style("font-size", "0.7rem"));
-      
-      // Ячейки тепловой карты
-      const cells = svg.selectAll("rect")
-        .data(heatmapData)
-        .enter()
-        .append("rect")
-        .attr("x", d => x(d.model))
-        .attr("y", d => y(d.region))
-        .attr("width", x.bandwidth())
-        .attr("height", y.bandwidth())
+      // Цветной квадрат
+      lg.append("rect")
+        .attr("width", 12)
+        .attr("height", 12)
         .attr("rx", 2)
-        .attr("fill", d => colorScale(d.value))
-        .attr("stroke", "#1f2937")
-        .attr("stroke-width", 1)
-        .attr("opacity", 0)
-        .on("mouseover", function(event, d) {
-          d3.select(this)
-            .attr("stroke", "#f9fafb")
-            .attr("stroke-width", 2);
-          
-          // Всплывающая подсказка
-          const tooltip = d3.select(container)
-            .append("div")
-            .attr("class", "absolute z-10 p-3 rounded-lg shadow-xl bg-gray-800 border border-gray-700 text-white text-sm")
-            .style("left", `${event.pageX - container.getBoundingClientRect().left + 10}px`)
-            .style("top", `${event.pageY - container.getBoundingClientRect().top - 60}px`)
-            .style("opacity", 0);
-          
-          tooltip.html(`
-            <div class="font-medium mb-1">${d.model}</div>
-            <div class="text-gray-300">${d.region}</div>
-            <div class="font-bold mt-1">${d.value.toLocaleString()}</div>
-          `);
-          
-          tooltip.transition()
-            .duration(200)
-            .style("opacity", 1);
-        })
-        .on("mouseout", function() {
-          d3.select(this)
-            .attr("stroke", "#1f2937")
-            .attr("stroke-width", 1);
-          
-          d3.select(container).selectAll(".absolute").remove();
+        .attr("fill", colorScale(d.id));
+      
+      // Название
+      lg.append("text")
+        .attr("x", 20)
+        .attr("y", 10)
+        .text(d.name.length > 15 ? d.name.substring(0, 15) + "..." : d.name)
+        .attr("fill", "#f9fafb")
+        .style("font-size", "0.8rem");
+    });
+  } else if (visualizationType === 'heatmap') {
+    // Тепловая карта для распределения по моделям и регионам
+    
+    // Получаем данные о распределении по регионам
+    const regionDistribution = {};
+    const modelNames = {};
+    
+    // Собираем данные распределения по регионам
+    displayData.forEach(model => {
+      modelNames[model.id] = model.name;
+      Object.entries(model.regionData).forEach(([regionId, value]) => {
+        if (!regionDistribution[regionId]) {
+          regionDistribution[regionId] = {};
+        }
+        regionDistribution[regionId][model.id] = value;
+      });
+    });
+    
+    // Преобразуем в формат для тепловой карты
+    const heatmapData = [];
+    Object.entries(regionDistribution).forEach(([regionId, models]) => {
+      Object.entries(models).forEach(([modelId, value]) => {
+        // Находим соответствующее название региона
+        const regionName = regions.find(r => r.id === regionId)?.name || regionId;
+        
+        heatmapData.push({
+          region: regionName,
+          model: modelNames[modelId],
+          value: value
         });
-      
-      // Анимация появления
-      cells.transition()
-        .duration(500)
-        .delay((d, i) => i * 10)
-        .attr("opacity", 1);
-      
-      // Подписи значений внутри ячеек
-      svg.selectAll("text.cell-value")
-        .data(heatmapData)
-        .enter()
-        .append("text")
-        .attr("class", "cell-value")
-        .attr("x", d => x(d.model) + x.bandwidth() / 2)
-        .attr("y", d => y(d.region) + y.bandwidth() / 2)
-        .attr("text-anchor", "middle")
-        .attr("dominant-baseline", "central")
-        .attr("fill", d => d.value > d3.max(heatmapData, d => d.value) / 2 ? "#fff" : "#333")
-        .style("font-size", "0.7rem")
-        .style("font-weight", "medium")
-        .style("opacity", 0)
-        .text(d => d.value > 0 ? d.value.toLocaleString() : "")
-        .transition()
-        .duration(500)
-        .delay((d, i) => i * 10 + 300)
-        .style("opacity", 1);
-    }
-  };
+      });
+    });
+    
+    // Получаем уникальные значения для осей
+    const regionNames = [...new Set(heatmapData.map(d => d.region))];
+    const modelList = [...new Set(heatmapData.map(d => d.model))];
+    
+    // Размеры ячеек
+    const cellSize = Math.min(
+      (width - margin.left - margin.right) / modelList.length,
+      (height - margin.top - margin.bottom) / regionNames.length
+    );
+    
+    // Масштабы
+    const x = d3.scaleBand()
+      .domain(modelList)
+      .range([margin.left, margin.left + cellSize * modelList.length]);
+    
+    const y = d3.scaleBand()
+      .domain(regionNames)
+      .range([margin.top, margin.top + cellSize * regionNames.length]);
+    
+    // Цветовая шкала
+    const colorScale = d3.scaleSequential(d3.interpolateBlues)
+      .domain([0, d3.max(heatmapData, d => d.value)]);
+    
+    // Оси
+    svg.append("g")
+      .attr("transform", `translate(0,${margin.top})`)
+      .call(d3.axisTop(x).tickSize(0))
+      .call(g => g.select(".domain").remove())
+      .call(g => g.selectAll("text")
+        .attr("transform", "rotate(-45)")
+        .style("text-anchor", "start")
+        .attr("dx", ".8em")
+        .attr("dy", ".15em")
+        .attr("fill", "#e5e7eb")
+        .style("font-size", "0.7rem"));
+    
+    svg.append("g")
+      .attr("transform", `translate(${margin.left},0)`)
+      .call(d3.axisLeft(y).tickSize(0))
+      .call(g => g.select(".domain").remove())
+      .call(g => g.selectAll("text")
+        .attr("fill", "#e5e7eb")
+        .style("font-size", "0.7rem"));
+    
+    // Ячейки тепловой карты
+    const cells = svg.selectAll("rect")
+      .data(heatmapData)
+      .enter()
+      .append("rect")
+      .attr("x", d => x(d.model))
+      .attr("y", d => y(d.region))
+      .attr("width", x.bandwidth())
+      .attr("height", y.bandwidth())
+      .attr("rx", 2)
+      .attr("fill", d => colorScale(d.value))
+      .attr("stroke", "#1f2937")
+      .attr("stroke-width", 1)
+      .attr("opacity", 0)
+      .on("mouseover", function(event, d) {
+        d3.select(this)
+          .attr("stroke", "#f9fafb")
+          .attr("stroke-width", 2);
+        
+        // Всплывающая подсказка
+        const tooltip = d3.select(container)
+          .append("div")
+          .attr("class", "absolute z-10 p-3 rounded-lg shadow-xl bg-gray-800 border border-gray-700 text-white text-sm")
+          .style("left", `${event.pageX - container.getBoundingClientRect().left + 10}px`)
+          .style("top", `${event.pageY - container.getBoundingClientRect().top - 60}px`)
+          .style("opacity", 0);
+        
+        tooltip.html(`
+          <div class="font-medium mb-1">${d.model}</div>
+          <div class="text-gray-300">${d.region}</div>
+          <div class="font-bold mt-1">${d.value.toLocaleString()}</div>
+        `);
+        
+        tooltip.transition()
+          .duration(200)
+          .style("opacity", 1);
+      })
+      .on("mouseout", function() {
+        d3.select(this)
+          .attr("stroke", "#1f2937")
+          .attr("stroke-width", 1);
+        
+        d3.select(container).selectAll(".absolute").remove();
+      });
+    
+    // Анимация появления
+    cells.transition()
+      .duration(500)
+      .delay((d, i) => i * 10)
+      .attr("opacity", 1);
+    
+    // Подписи значений внутри ячеек
+    svg.selectAll("text.cell-value")
+      .data(heatmapData)
+      .enter()
+      .append("text")
+      .attr("class", "cell-value")
+      .attr("x", d => x(d.model) + x.bandwidth() / 2)
+      .attr("y", d => y(d.region) + y.bandwidth() / 2)
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "central")
+      .attr("fill", d => d.value > d3.max(heatmapData, d => d.value) / 2 ? "#fff" : "#333")
+      .style("font-size", "0.7rem")
+      .style("font-weight", "medium")
+      .style("opacity", 0)
+      .text(d => d.value > 0 ? d.value.toLocaleString() : "")
+      .transition()
+      .duration(500)
+      .delay((d, i) => i * 10 + 300)
+      .style("opacity", 1);
+  }
+};
+
   
   // Рендеринг графика тренда
   const renderTrendChart = () => {
@@ -1198,92 +1432,108 @@ const AutoDashboard = () => {
       </AnimatePresence>
       
       {/* Ключевые метрики */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 shadow-md border border-gray-700 transform hover:scale-102 transition-transform">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-gray-400 text-xs mb-1">Всего {activeSection === 'sales' ? 'продаж' : activeSection === 'export' ? 'экспорт' : 'импорт'}</p>
-              <p className="text-2xl font-bold">{formatNumber(summaryStats.total)}</p>
-              {showComparison && (
-                <p className={`text-xs flex items-center mt-1 ${summaryStats.percentChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  <span className="mr-1">
-                    {summaryStats.percentChange >= 0 ? '↑' : '↓'}
-                  </span>
-                  {summaryStats.percentChange >= 0 ? '+' : ''}{summaryStats.percentChange}%
-                </p>
-              )}
-            </div>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-500 bg-opacity-20">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-          </div>
-          <div className="h-1.5 bg-blue-900 rounded-full mt-3 overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full animate-pulse w-3/4"></div>
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 shadow-md border border-gray-700 transform hover:scale-102 transition-transform">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-gray-400 text-xs mb-1">Период анализа</p>
-              <p className="text-lg font-bold truncate">{formatDateRange(timeRange)}</p>
-              <p className="text-xs text-gray-400 mt-1">
-                {Math.round((timeRange.endDate - timeRange.startDate) / (1000 * 60 * 60 * 24))} дней
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-indigo-500 bg-opacity-20">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-          </div>
-          <div className="h-1.5 bg-indigo-900 rounded-full mt-3 overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-indigo-400 to-indigo-600 rounded-full animate-pulse w-1/2"></div>
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 shadow-md border border-gray-700 transform hover:scale-102 transition-transform">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-gray-400 text-xs mb-1">{activeSection === 'import' ? 'Популярная категория' : 'Популярная модель'}</p>
-              <p className="text-lg font-bold truncate">{summaryStats.topItem?.name || 'Нет данных'}</p>
-              <p className="text-xs text-gray-400 mt-1">
-                Доля рынка: {summaryStats.topItem?.percent || 0}%
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-green-500 bg-opacity-20">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-              </svg>
-            </div>
-          </div>
-          <div className="h-1.5 bg-green-900 rounded-full mt-3 overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full animate-pulse w-2/3"></div>
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 shadow-md border border-gray-700 transform hover:scale-102 transition-transform">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-gray-400 text-xs mb-1">Всего моделей</p>
-              <p className="text-2xl font-bold">{primaryAggregated.length}</p>
-              <p className="text-xs text-gray-400 mt-1">
-                Анализ {activeSection === 'sales' ? 'продаж' : activeSection === 'export' ? 'экспорта' : 'импорта'}
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-purple-500 bg-opacity-20">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14v6m-3-3h6M6 10h2a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2zm10 0h2a2 2 0 002-2V6a2 2 0 00-2-2h-2a2 2 0 00-2 2v2a2 2 0 002 2zM6 20h2a2 2 0 002-2v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2z" />
-              </svg>
-            </div>
-          </div>
-          <div className="h-1.5 bg-purple-900 rounded-full mt-3 overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full animate-pulse w-4/5"></div>
-          </div>
-        </div>
+     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 shadow-md border border-gray-700 transform hover:scale-102 transition-transform">
+    <div className="flex items-start justify-between">
+      <div>
+        <p className="text-gray-400 text-xs mb-1">
+          Всего {activeSection === 'sales' ? 'продаж' : 
+                activeSection === 'export' ? 'экспорт' : 
+                activeSection === 'import' ? 'импорт' : 
+                'на складах'}
+        </p>
+        <p className="text-2xl font-bold">{formatNumber(summaryStats.total)}</p>
+        {showComparison && (
+          <p className={`text-xs flex items-center mt-1 ${summaryStats.percentChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <span className="mr-1">
+              {summaryStats.percentChange >= 0 ? '↑' : '↓'}
+            </span>
+            {summaryStats.percentChange >= 0 ? '+' : ''}{summaryStats.percentChange}%
+          </p>
+        )}
       </div>
+      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-500 bg-opacity-20">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      </div>
+    </div>
+    <div className="h-1.5 bg-blue-900 rounded-full mt-3 overflow-hidden">
+      <div className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full animate-pulse w-3/4"></div>
+    </div>
+  </div>
+  
+  <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 shadow-md border border-gray-700 transform hover:scale-102 transition-transform">
+    <div className="flex items-start justify-between">
+      <div>
+        <p className="text-gray-400 text-xs mb-1">Период анализа</p>
+        <p className="text-lg font-bold truncate">{formatDateRange(timeRange)}</p>
+        <p className="text-xs text-gray-400 mt-1">
+          {Math.round((timeRange.endDate - timeRange.startDate) / (1000 * 60 * 60 * 24))} дней
+        </p>
+      </div>
+      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-indigo-500 bg-opacity-20">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </div>
+    </div>
+    <div className="h-1.5 bg-indigo-900 rounded-full mt-3 overflow-hidden">
+      <div className="h-full bg-gradient-to-r from-indigo-400 to-indigo-600 rounded-full animate-pulse w-1/2"></div>
+    </div>
+  </div>
+  
+  <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 shadow-md border border-gray-700 transform hover:scale-102 transition-transform">
+    <div className="flex items-start justify-between">
+      <div>
+        <p className="text-gray-400 text-xs mb-1">
+          {activeSection === 'import' ? 'Популярная категория' : 
+           activeSection === 'inventory' ? 'Крупнейший склад' : 
+           'Популярная модель'}
+        </p>
+        <p className="text-lg font-bold truncate">{summaryStats.topItem?.name || 'Нет данных'}</p>
+        <p className="text-xs text-gray-400 mt-1">
+          {activeSection === 'inventory' ? 'Количество: ' : 'Доля рынка: '}
+          {summaryStats.topItem?.percent || 0}
+          {activeSection === 'inventory' ? '' : '%'}
+        </p>
+      </div>
+      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-green-500 bg-opacity-20">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+        </svg>
+      </div>
+    </div>
+    <div className="h-1.5 bg-green-900 rounded-full mt-3 overflow-hidden">
+      <div className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full animate-pulse w-2/3"></div>
+    </div>
+  </div>
+  
+  <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 shadow-md border border-gray-700 transform hover:scale-102 transition-transform">
+    <div className="flex items-start justify-between">
+      <div>
+        <p className="text-gray-400 text-xs mb-1">
+          {activeSection === 'inventory' ? 'Всего складов' : 'Всего моделей'}
+        </p>
+        <p className="text-2xl font-bold">{primaryAggregated.length}</p>
+        <p className="text-xs text-gray-400 mt-1">
+          Анализ {activeSection === 'sales' ? 'продаж' : 
+                 activeSection === 'export' ? 'экспорта' : 
+                 activeSection === 'import' ? 'импорта' : 
+                 'остатков'}
+        </p>
+      </div>
+      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-purple-500 bg-opacity-20">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14v6m-3-3h6M6 10h2a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2zm10 0h2a2 2 0 002-2V6a2 2 0 00-2-2h-2a2 2 0 00-2 2v2a2 2 0 002 2zM6 20h2a2 2 0 002-2v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2z" />
+        </svg>
+      </div>
+    </div>
+    <div className="h-1.5 bg-purple-900 rounded-full mt-3 overflow-hidden">
+      <div className="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full animate-pulse w-4/5"></div>
+    </div>
+  </div>
+</div>
       
       {/* Секции анализа */}
       <div className="flex flex-wrap gap-2 mb-4">
@@ -1380,15 +1630,12 @@ const AutoDashboard = () => {
         <div ref={mainChartRef} className="w-full" style={{ height: '400px' }}></div>
       </div>
       
-      {/* Дополнительный анализ и визуализации */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Модельный ряд с фотографиями */}
+      {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-5 shadow-lg border border-gray-700">
           <h3 className="text-base font-medium mb-4">Модельный ряд</h3>
           
           <div className="grid grid-cols-2 gap-4">
             {carModels.slice(0, 4).map((model) => {
-              // Находим данные для этой модели
               const modelData = primaryAggregated.find(m => m.id === model.id);
               const value = modelData ? modelData.value : 0;
               const percent = modelData ? modelData.percent : 0;
@@ -1419,7 +1666,6 @@ const AutoDashboard = () => {
                     </div>
                   </div>
                   
-                  {/* Индикатор заполнения */}
                   <div className="h-1 bg-gray-800 rounded-full mt-2 overflow-hidden">
                     <div 
                       className="h-full bg-blue-600 rounded-full" 
@@ -1432,24 +1678,21 @@ const AutoDashboard = () => {
           </div>
         </div>
         
-        {/* Динамика изменений */}
-        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-5 shadow-lg border border-gray-700">
+         <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-5 shadow-lg border border-gray-700">
           <h3 className="text-base font-medium mb-4">Динамика по месяцам</h3>
           
           <div ref={trendChartRef} className="w-full" style={{ height: '220px' }}></div>
         </div>
-      </div>
+      </div> */}
       
       {/* Нижняя часть - Распределение и топ */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Распределение по регионам */}
+      {/* <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-5 shadow-lg border border-gray-700">
           <h3 className="text-base font-medium mb-4">Региональное распределение</h3>
           
           <div ref={distributionChartRef} className="w-full" style={{ height: '300px' }}></div>
         </div>
         
-        {/* Топ список */}
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-5 shadow-lg border border-gray-700">
           <h3 className="text-base font-medium mb-4">Топ {activeSection === 'import' ? 'категории' : 'модели'}</h3>
           
@@ -1490,7 +1733,7 @@ const AutoDashboard = () => {
             ))}
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };
