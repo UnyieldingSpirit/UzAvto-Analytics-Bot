@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Package, Clock, Check, AlertTriangle, Filter, Truck, MapPin, Archive, ChevronLeft, BarChart3, Users, Activity, ChevronRight, Zap, Calendar, Car } from 'lucide-react';
+import { Package, Clock, Download,Info, Check, ChevronDown, AlertTriangle, Filter, Truck, MapPin, Archive, ChevronLeft, BarChart3, Users, Activity, ChevronRight, Zap, Calendar, Car } from 'lucide-react';
 import { carModels, regions } from '@/src/shared/mocks/mock-data';
 
 const SalesDashboard = () => {
@@ -10,7 +10,21 @@ const SalesDashboard = () => {
  const [selectedRegion, setSelectedRegion] = useState(null);
  const [selectedDealer, setSelectedDealer] = useState(null);
  const [showSidebar, setShowSidebar] = useState(false);
+const [showPeriodFilter, setShowPeriodFilter] = useState(false);
+const [showComparison, setShowComparison] = useState(false);
+const [period, setPeriod] = useState({
+  start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+  end: new Date().toISOString().split('T')[0]
+});
 
+// Данные продаж за прошлый год для сравнения
+const lastYearSalesData = [60, 70, 58, 82, 65, 75, 80, 68, 79, 85, 60, 70];
+ const salesData = [75, 82, 65, 90, 70, 85, 92, 78, 88, 94, 65, 75];
+
+// Вычисляем максимальное значение для графика с учетом режима сравнения
+const maxValue = showComparison 
+  ? Math.max(...salesData, ...lastYearSalesData) 
+  : Math.max(...salesData);
  // Создаем маппинг моделей для быстрого доступа
  const carModelMap = carModels.reduce((acc, model) => {
    acc[model.name] = model;
@@ -25,7 +39,6 @@ const SalesDashboard = () => {
  };
 
  // Данные продаж по месяцам
- const salesData = [75, 82, 65, 90, 70, 85, 92, 78, 88, 94, 65, 75];
  const maxSales = Math.max(...salesData);
  const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
 
@@ -507,81 +520,276 @@ const SalesDashboard = () => {
        {/* Сетка отчетов */}
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
          {/* Обновленный график продаж */}
-         <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden">
-           <div className="flex justify-between items-center p-3 border-b border-gray-700">
-             <h3 className="text-base font-medium text-white flex items-center gap-2">
-               <BarChart3 size={18} className="text-purple-400" />
-               Продажи за последние 30 дней
-             </h3>
-             <div className="flex items-center gap-1">
-               <span className="text-xl font-bold text-white">98,546</span>
-               <span className="px-2 py-0.5 bg-green-900/50 text-green-400 text-xs rounded-md border border-green-800">
-                 +26.7%
-               </span>
-             </div>
-           </div>
-           
-           <div className="p-4">
-             <div className="relative h-48">
-               <div className="absolute inset-0 flex items-end justify-between p-1">
-               {salesData.map((value, index) => (
-                 <div key={index} className="group relative flex flex-col items-center">
-                   <div className="absolute bottom-full mb-1 opacity-0 group-hover:opacity-100 bg-purple-800 text-white py-1 px-2 rounded text-xs whitespace-nowrap transition-opacity shadow-lg">
-                     {value} заказов в {months[index]}
-                   </div>
-                   <div 
-                     className="w-6 rounded-t-md bg-gradient-to-t from-purple-600 to-purple-400 group-hover:from-purple-500 group-hover:to-purple-300 transition-colors relative overflow-hidden"
-                     style={{ height: `${(value / maxSales) * 100}%` }}
-                   >
-                     <div className="absolute inset-0 opacity-20 bg-grid-pattern"></div>
-                   </div>
-                   <div className="text-xs font-medium text-gray-400 mt-2">{months[index]}</div>
-                 </div>
-               ))}
-               </div>
-               
-               {/* Сетка для фона */}
-               <div className="absolute inset-0 grid grid-rows-4 pointer-events-none">
-                 {[0, 1, 2, 3].map((i) => (
-                   <div key={i} className="border-t border-gray-700/50 flex items-center">
-                    <span className="text-xs text-gray-500 w-8">{Math.round(maxSales - (i * (maxSales / 4)))}</span>
-                   </div>
-                 ))}
-               </div>
-             </div>
-             
-             {/* Фильтры */}
-             <div className="border-t border-gray-700 mt-4 pt-3 flex justify-between items-center">
-               <div className="inline-flex rounded-md shadow-sm">
-                 <button
-                   className={`px-4 py-1.5 text-xs font-medium rounded-l-md ${
-                     activeTab === 'месяц' 
-                       ? 'bg-purple-700 text-white' 
-                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                   }`}
-                   onClick={() => setActiveTab('месяц')}
-                 >
-                   МЕСЯЦЫ
-                 </button>
-                 <button
-                   className={`px-4 py-1.5 text-xs font-medium rounded-r-md ${
-                     activeTab === 'год' 
-                       ? 'bg-purple-700 text-white' 
-                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                   }`}
-                   onClick={() => setActiveTab('год')}
-                 >
-                   ГОДЫ
-                 </button>
-               </div>
-               
-               <button className="flex items-center gap-1 text-xs text-gray-400 px-3 py-1.5 rounded-md bg-gray-700 hover:bg-gray-600">
-                 <Filter size={12} />
-                 <span>Фильтры</span>
-               </button>
-             </div>
-           </div>
-         </div>
+<div className="bg-gray-800/80 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-lg overflow-hidden">
+  <div className="flex justify-between items-center p-4 border-b border-gray-700">
+    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+      <BarChart3 size={20} className="text-purple-400" />
+      Продажи за {activeTab === 'месяц' ? 'последние 30 дней' : 'год'}
+    </h3>
+    <div className="flex items-center gap-2">
+      <span className="text-2xl font-bold text-white">98,546</span>
+      <span className="px-2 py-1 bg-green-900/50 text-green-400 text-sm rounded-md border border-green-800">
+        +26.7%
+      </span>
+    </div>
+  </div>
+  
+  {/* Панель управления - крупнее и четче */}
+  <div className="p-4 bg-gray-850 border-b border-gray-700">
+    <div className="flex flex-wrap gap-4 items-center">
+      <div className="flex-grow">
+        <div className="mb-2 text-sm font-medium text-gray-300">Период анализа:</div>
+        <div className="flex space-x-3">
+          <select 
+            className="bg-gray-700 border-2 border-gray-600 rounded-md px-4 py-2 text-sm text-white appearance-none pr-10 focus:outline-none focus:border-purple-500"
+            onChange={(e) => {
+              if (e.target.value === 'custom') {
+                setShowPeriodFilter(true);
+              } else {
+                const now = new Date();
+                let start = new Date();
+                
+                switch(e.target.value) {
+                  case '7days': start.setDate(now.getDate() - 7); break;
+                  case '30days': start.setDate(now.getDate() - 30); break;
+                  case '90days': start.setDate(now.getDate() - 90); break;
+                  case '6months': start.setMonth(now.getMonth() - 6); break;
+                  case '12months': start.setMonth(now.getMonth() - 12); break;
+                }
+                
+                setPeriod({
+                  start: start.toISOString().split('T')[0],
+                  end: now.toISOString().split('T')[0]
+                });
+              }
+            }}
+          >
+            <option value="30days">Последние 30 дней</option>
+            <option value="7days">Последние 7 дней</option>
+            <option value="90days">Последние 3 месяца</option>
+            <option value="6months">Последние 6 месяцев</option>
+            <option value="12months">Последние 12 месяцев</option>
+            <option value="custom">Произвольный период</option>
+          </select>
+          
+          <button
+            className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors shadow-md"
+            onClick={() => setShowPeriodFilter(true)}
+          >
+            <Calendar size={16} />
+            <span>Выбрать даты</span>
+          </button>
+        </div>
+      </div>
+      
+      <div className="flex-grow-0">
+        <div className="mb-2 text-sm font-medium text-gray-300">Дополнительно:</div>
+        <button 
+          className={`min-w-[180px] py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 shadow-md transition-all ${
+            showComparison 
+              ? 'bg-purple-600 hover:bg-purple-500 text-white border-2 border-purple-500' 
+              : 'bg-gray-700 hover:bg-gray-600 text-white border-2 border-gray-600'
+          }`}
+          onClick={() => setShowComparison(!showComparison)}
+        >
+          <Activity size={16} />
+          <span>Сравнить с прошлым годом</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <div className="p-6">
+    {/* НОВЫЙ ГРАФИК С ГАРАНТИРОВАННОЙ ВИДИМОСТЬЮ */}
+    <div className="relative h-80 mb-8 bg-gray-900 rounded-lg p-3 border border-gray-700 shadow-inner">
+      {/* Ось Y и горизонтальные линии */}
+      <div className="absolute left-0 top-0 bottom-6 w-12 border-r border-gray-700 flex flex-col justify-between px-2">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex items-center h-6 -translate-y-3">
+            <span className="text-xs font-medium text-gray-400">
+              {Math.round(maxValue - (i * (maxValue / 4)))}
+            </span>
+          </div>
+        ))}
+      </div>
+      
+      {/* Горизонтальные линии для сетки */}
+      <div className="absolute left-12 right-4 top-0 bottom-6 flex flex-col justify-between">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="w-full border-b border-gray-700/50 h-0"></div>
+        ))}
+      </div>
+      
+      {/* Контейнер для столбцов */}
+      <div className="absolute left-16 right-8 top-4 bottom-10 flex items-end justify-between">
+        {salesData.map((value, index) => {
+          // Высоты в процентах для текущего и прошлого года
+          const currentYearHeight = (value / maxValue) * 100;
+          const lastYearHeight = showComparison ? (lastYearSalesData[index] / maxValue) * 100 : 0;
+          const percentChange = lastYearSalesData[index] > 0 
+            ? ((value - lastYearSalesData[index]) / lastYearSalesData[index] * 100).toFixed(1) 
+            : 0;
+          
+          return (
+            <div key={index} className="group relative h-full" style={{ width: `${100 / salesData.length - 2}%` }}>
+              {/* ТУЛТИП С ИНФОРМАЦИЕЙ */}
+              <div className="opacity-0 group-hover:opacity-100 absolute bottom-[105%] left-1/2 -translate-x-1/2 bg-gray-800 text-white p-3 rounded-md text-sm min-w-[160px] transition-opacity shadow-xl z-20 border-2 border-gray-700">
+                <div className="font-bold text-center mb-2 text-purple-300">{months[index]}</div>
+                <table className="w-full">
+                  <tbody>
+                    <tr>
+                      <td className="py-1 text-gray-300">Текущий год:</td>
+                      <td className="py-1 font-bold text-right">{value.toLocaleString()}</td>
+                    </tr>
+                    {showComparison && (
+                      <>
+                        <tr>
+                          <td className="py-1 text-gray-300">Прошлый год:</td>
+                          <td className="py-1 font-bold text-right">{lastYearSalesData[index].toLocaleString()}</td>
+                        </tr>
+                        <tr className="border-t border-gray-700">
+                          <td className="py-1 pt-2 text-gray-300">Изменение:</td>
+                          <td className={`py-1 pt-2 font-bold text-right ${percentChange > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {percentChange > 0 ? '+' : ''}{percentChange}%
+                          </td>
+                        </tr>
+                      </>
+                    )}
+                  </tbody>
+                </table>
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-8 border-transparent border-t-gray-800"></div>
+              </div>
+              
+              {/* КОНТЕЙНЕР ДЛЯ СТОЛБЦОВ */}
+              <div className="relative h-full w-full flex justify-center items-end group">
+                {/* Область для интерактивности */}
+                <div className="absolute inset-0 z-10 cursor-pointer"></div>
+                
+                {/* СТОЛБЦЫ */}
+                <div className="relative flex items-end h-full">
+                  {/* Столбец прошлого года */}
+                  {showComparison && (
+                    <div 
+                      className="w-6 bg-blue-500 hover:bg-blue-400 transition-colors rounded-sm mx-0.5 transform group-hover:translate-x-1 shadow-lg"
+                      style={{ 
+                        height: `${lastYearHeight}%`, 
+                        minHeight: lastYearHeight > 0 ? '4px' : '0',
+                        opacity: 0.7
+                      }}
+                    ></div>
+                  )}
+                  
+                  {/* Столбец текущего года - ОЧЕНЬ ЯРКИЙ И ЗАМЕТНЫЙ */}
+                  <div 
+                    className={`w-10 bg-gradient-to-t from-purple-700 via-purple-600 to-purple-500 hover:from-purple-600 hover:via-purple-500 hover:to-purple-400 transition-all rounded-sm group-hover:scale-105 transform shadow-[0_0_15px_rgba(168,85,247,0.5)] z-20`}
+                    style={{ 
+                      height: `${currentYearHeight}%`, 
+                      minHeight: currentYearHeight > 0 ? '4px' : '0',
+                    }}
+                  >
+                    {/* Значение над столбцом */}
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-white">
+                      {value}
+                    </div>
+                    
+                    {/* Индикатор изменения */}
+                    {showComparison && percentChange !== 0 && (
+                      <div className={`absolute top-0 right-0 -mr-1 -mt-1 px-1 py-0.5 rounded-sm text-xs font-bold ${percentChange > 0 ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                        {percentChange > 0 ? '↑' : '↓'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Метка месяца */}
+                <div className="absolute bottom-0 left-0 right-0 text-center translate-y-6 text-xs font-medium text-white">
+                  {months[index]}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      
+      {/* Ось X */}
+      <div className="absolute left-12 right-4 bottom-0 h-6 border-t border-gray-700"></div>
+    </div>
+    
+    {/* ЛЕГЕНДА И СТАТИСТИКА */}
+    <div className="bg-gray-900 rounded-lg p-4 border border-gray-700 flex flex-wrap justify-between items-center">
+      {/* Легенда */}
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-10 rounded-sm bg-gradient-to-t from-purple-700 via-purple-600 to-purple-500"></div>
+          <span className="text-sm font-medium text-white">Текущий год</span>
+        </div>
+        
+        {showComparison && (
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-10 rounded-sm bg-blue-500 opacity-70"></div>
+            <span className="text-sm font-medium text-white">Прошлый год</span>
+          </div>
+        )}
+      </div>
+      
+      {/* Общая статистика */}
+      <div className="px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+        <div className="text-sm">
+          <div className="flex items-center gap-3">
+            <span className="text-gray-300">Всего за период:</span>
+            <span className="text-xl font-bold text-white">{salesData.reduce((a, b) => a + b, 0).toLocaleString()}</span>
+            
+            {showComparison && (
+              <>
+                <span className="text-gray-400 mx-2">•</span>
+                <span className="text-gray-300">Рост:</span>
+                <span className="text-lg font-bold text-green-400">+12.3%</span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    {/* Переключатель между месяцами и годами */}
+    <div className="mt-4 flex justify-between items-center">
+      <div className="inline-flex rounded-md shadow-sm">
+        <button
+          className={`px-4 py-2 text-sm font-medium rounded-l-md border-2 ${
+            activeTab === 'месяц' 
+              ? 'bg-purple-700 text-white border-purple-600' 
+              : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'
+          }`}
+          onClick={() => setActiveTab('месяц')}
+        >
+          МЕСЯЦЫ
+        </button>
+        <button
+          className={`px-4 py-2 text-sm font-medium rounded-r-md border-2 ${
+            activeTab === 'год' 
+              ? 'bg-purple-700 text-white border-purple-600' 
+              : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'
+          }`}
+          onClick={() => setActiveTab('год')}
+        >
+          ГОДЫ
+        </button>
+      </div>
+      
+      <div className="flex gap-3">
+        <button className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md flex items-center gap-2 border border-gray-600">
+          <Filter size={16} />
+          <span>Фильтры</span>
+        </button>
+        
+        <button className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-md flex items-center gap-2">
+          <Download size={16} />
+          <span>Экспорт CSV</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
          
          {/* Обновленная таблица с контрактами */}
          <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden">

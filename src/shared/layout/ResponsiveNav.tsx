@@ -100,7 +100,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/statistics',
-    label: 'Общая аналитика',
+    label: 'Аналитика продаж',
     category: 'analytics',
     icon: <AreaChart size={22} strokeWidth={1.5} color={categoryColors.analytics} />,
     notification: 3
