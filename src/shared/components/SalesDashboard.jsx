@@ -39,11 +39,10 @@ const SalesDashboard = () => {
     }, {});
   }, []);
 
-  // Данные о задолженностях по контрактам (переименовано)
+  // Данные о задолженностях по контрактам (обновлено)
   const contractDebtData = {
-    notShipped: 64,  // Распределены, но не отгружены в течение 48 часов
-    inTransit: 48,   // В пути более 3 дней
-    delivered: 96    // Доставлены
+    overdue: 64,    // Просроченные (от 5 дней)
+    frozen: 48      // Замороженные
   };
 
   // Данные продаж по месяцам
@@ -60,15 +59,15 @@ const SalesDashboard = () => {
     }
   };
 
-  // Реалистичные данные о задолженностях
+  // Реалистичные данные о задолженностях (обновлено)
   const generateDebtData = () => {
     const clients = ['Ахмедов А.', 'Садыков М.', 'Каримова С.', 'Рахимов Т.', 'Исламов Д.'];
     
     return Array.from({ length: 5 }, (_, i) => {
       const modelIndex = i % carModels.length;
       const model = carModels[modelIndex];
-      const days = i === 0 ? 8 : i === 1 ? 6 : i === 2 ? 5 : i === 3 ? 3 : 2;
-      const status = days > 7 ? 'Критический' : days > 3 ? 'Средний' : 'Низкий';
+      const days = i === 0 ? 8 : i === 1 ? 7 : i === 2 ? 6 : i === 3 ? 5 : 5;
+      const status = i < 3 ? 'Просрочен' : 'Заморожен';
       
       return {
         contractId: `7891${i}`,
@@ -91,12 +90,11 @@ const SalesDashboard = () => {
       : data;
   }, [selectedModel]);
 
-  // Расчет статистики
+  // Расчет статистики (обновлено)
   const totalDebtDays = debtData.reduce((sum, item) => sum + item.days, 0);
   const avgDebtDays = Math.round(totalDebtDays / (debtData.length || 1));
-  const criticalCount = debtData.filter(item => item.status === 'Критический').length;
-  const mediumCount = debtData.filter(item => item.status === 'Средний').length;
-  const lowCount = debtData.filter(item => item.status === 'Низкий').length;
+  const overdueCount = debtData.filter(item => item.status === 'Просрочен').length;
+  const frozenCount = debtData.filter(item => item.status === 'Заморожен').length;
 
   // Данные для регионов
   const regionDebtData = [24700000, 10500000, 8700000, 4300000, 3600000];
@@ -122,6 +120,7 @@ const SalesDashboard = () => {
 
   // Фильтрованные данные по выбранной модели
   const getFilteredData = (dataArray, modelId) => {
+    if (!dataArray) return [];
     if (!modelId) return dataArray;
     return dataArray.filter(item => item.model === modelId);
   };
@@ -149,15 +148,17 @@ const SalesDashboard = () => {
     return selectedModel ? allRecentOrders.filter(order => order.model === selectedModel) : allRecentOrders;
   }, [allRecentOrders, selectedModel]);
 
-  // Данные по регионам для каждого статуса (с учетом фильтрации по модели)
+  // Данные по регионам для каждого статуса (с учетом фильтрации по модели) - обновлено
   const getRegionData = (status, modelId) => {
     const baseData = regions.slice(0, 5).map((region, index) => {
       // Генерация значений с учетом выбранной модели
       let value;
-      if (status === 'notShipped') {
+      if (status === 'overdue') {
         value = 24 - (index * 5);
-      } else {
+      } else if (status === 'frozen') {
         value = 15 - (index * 3);
+      } else {
+        value = 10 - (index * 2); // Значение по умолчанию
       }
       
       // Если выбрана модель, уменьшаем значения пропорционально
@@ -177,8 +178,8 @@ const SalesDashboard = () => {
   };
 
   const regionData = {
-    notShipped: getRegionData('notShipped', selectedModel),
-    inTransit: getRegionData('inTransit', selectedModel)
+    overdue: getRegionData('overdue', selectedModel),
+    frozen: getRegionData('frozen', selectedModel)
   };
 
   // Генерация моделей для дилеров с учетом выбранной модели
@@ -212,7 +213,7 @@ const SalesDashboard = () => {
     return result;
   };
 
-  // Данные по дилерам для каждого региона и статуса
+  // Данные по дилерам для каждого региона и статуса - обновлено
   const getDealerData = (status, regionName, selectedModelId) => {
     const baseDealers = {
       'Ташкент': [
@@ -246,15 +247,15 @@ const SalesDashboard = () => {
   };
 
   const dealerData = {
-    notShipped: {
-      'Ташкент': getDealerData('notShipped', 'Ташкент', selectedModel),
-      'Самарканд': getDealerData('notShipped', 'Самарканд', selectedModel),
-      'Бухара': getDealerData('notShipped', 'Бухара', selectedModel),
+    overdue: {
+      'Ташкент': getDealerData('overdue', 'Ташкент', selectedModel),
+      'Самарканд': getDealerData('overdue', 'Самарканд', selectedModel),
+      'Бухара': getDealerData('overdue', 'Бухара', selectedModel),
     },
-    inTransit: {
-      'Ташкент': getDealerData('inTransit', 'Ташкент', selectedModel),
-      'Самарканд': getDealerData('inTransit', 'Самарканд', selectedModel),
-      'Бухара': getDealerData('inTransit', 'Бухара', selectedModel),
+    frozen: {
+      'Ташкент': getDealerData('frozen', 'Ташкент', selectedModel),
+      'Самарканд': getDealerData('frozen', 'Самарканд', selectedModel),
+      'Бухара': getDealerData('frozen', 'Бухара', selectedModel),
     }
   };
 
@@ -318,6 +319,9 @@ const SalesDashboard = () => {
 
   // Получение максимального значения для прогрессбаров
   const getMaxValue = (dataArray) => {
+    if (!dataArray || !Array.isArray(dataArray) || dataArray.length === 0) {
+      return 0;
+    }
     return Math.max(...dataArray.map(item => item.value));
   };
 
@@ -334,18 +338,20 @@ const SalesDashboard = () => {
     }
   }, [selectedModel]);
 
-  // Рендеринг содержимого бокового окна
+  // Рендеринг содержимого бокового окна - обновлено
   const renderSidebarContent = () => {
     if (activeDetailLevel === 0 || !selectedStatus) return null;
 
-    const statusTitle = selectedStatus === 'notShipped' ? 'Не отгружено >48ч' : 'В пути >3 дней';
-    const statusColor = selectedStatus === 'notShipped' ? 'blue' : 'yellow';
-    const statusIcon = selectedStatus === 'notShipped' ? <Archive size={20} /> : <Truck size={20} />;
+    // Проверяем на новые статусы
+    const statusTitle = selectedStatus === 'overdue' ? 'Просрочен ≥5 дней' : 'Заморожен';
+    const statusColor = selectedStatus === 'overdue' ? 'red' : 'blue';
+    const statusIcon = selectedStatus === 'overdue' ? <Clock size={20} /> : <AlertTriangle size={20} />;
 
     // Уровень 1: Список регионов
     if (activeDetailLevel === 1) {
-      const regions = regionData[selectedStatus];
-      const maxRegionValue = getMaxValue(regions);
+      // Проверяем, что regionData[selectedStatus] существует
+      const regions = regionData[selectedStatus] || [];
+      const maxRegionValue = regions.length > 0 ? getMaxValue(regions) : 0;
       
       return (
         <div className="h-full flex flex-col">
@@ -386,11 +392,11 @@ const SalesDashboard = () => {
                     <div className="w-full bg-gray-700 rounded-full h-2">
                       <div 
                         className={`h-2 rounded-full bg-${statusColor}-600`}
-                        style={{ width: `${(region.value / maxRegionValue) * 100}%` }}
+                        style={{ width: `${maxRegionValue > 0 ? (region.value / maxRegionValue) * 100 : 0}%` }}
                       ></div>
                     </div>
                     <span className="text-xs text-gray-400 w-12 text-right">
-                      {Math.round((region.value / maxRegionValue) * 100)}%
+                      {maxRegionValue > 0 ? Math.round((region.value / maxRegionValue) * 100) : 0}%
                     </span>
                   </div>
                 </div>
@@ -403,7 +409,7 @@ const SalesDashboard = () => {
     
     // Уровень 2: Список дилеров для выбранного региона
     if (activeDetailLevel === 2 && selectedRegion) {
-      const dealers = dealerData[selectedStatus][selectedRegion] || [];
+      const dealers = dealerData[selectedStatus]?.[selectedRegion] || [];
       const maxDealerValue = dealers.length > 0 ? getMaxValue(dealers) : 0;
       
       return (
@@ -451,11 +457,11 @@ const SalesDashboard = () => {
                     <div className="w-full bg-gray-700 rounded-full h-2">
                       <div 
                         className={`h-2 rounded-full bg-${statusColor}-600`}
-                        style={{ width: `${(dealer.value / maxDealerValue) * 100}%` }}
+                        style={{ width: `${maxDealerValue > 0 ? (dealer.value / maxDealerValue) * 100 : 0}%` }}
                       ></div>
                     </div>
                     <span className="text-xs text-gray-400 w-12 text-right">
-                      {Math.round((dealer.value / maxDealerValue) * 100)}%
+                      {maxDealerValue > 0 ? Math.round((dealer.value / maxDealerValue) * 100) : 0}%
                     </span>
                   </div>
                 </div>
@@ -468,7 +474,7 @@ const SalesDashboard = () => {
     
     // Уровень 3: Детализация по моделям для выбранного дилера
     if (activeDetailLevel === 3 && selectedDealer && selectedRegion) {
-      const dealers = dealerData[selectedStatus][selectedRegion] || [];
+      const dealers = dealerData[selectedStatus]?.[selectedRegion] || [];
       const dealer = dealers.find(d => d.name === selectedDealer);
       
       if (!dealer) return null;
@@ -630,7 +636,7 @@ const SalesDashboard = () => {
           </div>
         </div>
         
-        {/* Информационная панель - переименовано в "Задолженность по общим контрактам" */}
+        {/* Информационная панель - обновлено */}
         <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg mb-5 border border-gray-700/50 shadow-md overflow-hidden">
           <div className="flex justify-between items-center p-3 border-b border-gray-700">
             <h2 className="text-base font-medium text-white flex items-center gap-2">
@@ -645,63 +651,47 @@ const SalesDashboard = () => {
             <span className="text-sm text-gray-400">Активные задачи: <span className="text-white font-medium">89</span>/276</span>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
             <div 
-             onClick={() => handleStatusSelect('notShipped')}
+              onClick={() => handleStatusSelect('overdue')}
               className="relative p-4 border-r border-gray-700 cursor-pointer hover:bg-gray-700/30 transition-colors group"
+            >
+              <div className="absolute bottom-0 left-0 w-full h-1 bg-red-900/30"></div>
+              <div className="absolute bottom-0 left-0 h-1 bg-red-600" 
+                   style={{ width: `${(contractDebtData.overdue / (contractDebtData.overdue + contractDebtData.frozen)) * 100}%` }}></div>
+              
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 rounded-full bg-red-900/40 flex items-center justify-center">
+                  <Clock size={22} className="text-red-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-2xl font-bold text-white mb-1">{contractDebtData.overdue}</div>
+                  <div className="text-sm text-red-300 flex items-center justify-between">
+                    <span>Просрочен ≥5 дней</span>
+                    <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div 
+              onClick={() => handleStatusSelect('frozen')}
+              className="relative p-4 border-gray-700 cursor-pointer hover:bg-gray-700/30 transition-colors group"
             >
               <div className="absolute bottom-0 left-0 w-full h-1 bg-blue-900/30"></div>
               <div className="absolute bottom-0 left-0 h-1 bg-blue-600" 
-                   style={{ width: `${(contractDebtData.notShipped / (contractDebtData.notShipped + contractDebtData.inTransit + contractDebtData.delivered)) * 100}%` }}></div>
+                   style={{ width: `${(contractDebtData.frozen / (contractDebtData.overdue + contractDebtData.frozen)) * 100}%` }}></div>
               
               <div className="flex items-start gap-3">
                 <div className="w-12 h-12 rounded-full bg-blue-900/40 flex items-center justify-center">
-                  <Archive size={22} className="text-blue-400" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-2xl font-bold text-white mb-1">{contractDebtData.notShipped}</div>
-                  <div className="text-sm text-blue-300 flex items-center justify-between">
-                    <span>Не отгружены 48ч</span>
-                    <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div 
-              onClick={() => handleStatusSelect('inTransit')}
-              className="relative p-4 border-r border-gray-700 cursor-pointer hover:bg-gray-700/30 transition-colors group"
-            >
-              <div className="absolute bottom-0 left-0 w-full h-1 bg-yellow-900/30"></div>
-              <div className="absolute bottom-0 left-0 h-1 bg-yellow-600" 
-                   style={{ width: `${(contractDebtData.inTransit / (contractDebtData.notShipped + contractDebtData.inTransit + contractDebtData.delivered)) * 100}%` }}></div>
-              
-              <div className="flex items-start gap-3">
-                <div className="w-12 h-12 rounded-full bg-yellow-900/40 flex items-center justify-center">
-                  <Truck size={22} className="text-yellow-400" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-2xl font-bold text-white mb-1">{contractDebtData.inTransit}</div>
-                  <div className="text-sm text-yellow-300 flex items-center justify-between">
-                    <span>В пути 3 дней</span>
-                    <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="relative p-4 border-l-0 border-gray-700">
-              <div className="absolute bottom-0 left-0 w-full h-1 bg-green-900/30"></div>
-              <div className="absolute bottom-0 left-0 h-1 bg-green-600" 
-                   style={{ width: `${(contractDebtData.delivered / (contractDebtData.notShipped + contractDebtData.inTransit + contractDebtData.delivered)) * 100}%` }}></div>
-              
-              <div className="flex items-start gap-3">
-                <div className="w-12 h-12 rounded-full bg-green-900/40 flex items-center justify-center">
-                  <Check size={22} className="text-green-400" />
+                  <AlertTriangle size={22} className="text-blue-400" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-white mb-1">{contractDebtData.delivered}</div>
-                  <div className="text-sm text-green-300">Доставлено</div>
+                  <div className="text-2xl font-bold text-white mb-1">{contractDebtData.frozen}</div>
+                  <div className="text-sm text-blue-300 flex items-center justify-between">
+                    <span>Заморожен</span>
+                    <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1037,18 +1027,16 @@ const SalesDashboard = () => {
                         <td className="px-3 py-2 text-right text-gray-300 font-medium">{item.debt.toLocaleString()}</td>
                         <td className="px-3 py-2 text-center">
                           <span className={`inline-block px-2 py-1 rounded-full text-xs ${
-                            item.days > 7 ? 'bg-red-900/30 text-red-400 border border-red-800/50' :
-                            item.days > 3 ? 'bg-orange-900/30 text-orange-400 border border-orange-800/50' :
-                            'bg-yellow-900/30 text-yellow-400 border border-yellow-800/50'
+                            item.status === 'Просрочен' ? 'bg-red-900/30 text-red-400 border border-red-800/50' :
+                            'bg-blue-900/30 text-blue-400 border border-blue-800/50'
                           }`}>
                             {item.days} {getDayWord(item.days)}
                           </span>
                         </td>
                         <td className="px-3 py-2 text-center">
                           <span className={`inline-block px-2 py-1 rounded-full text-xs ${
-                            item.status === 'Критический' ? 'bg-red-900/30 text-red-400 border border-red-800/50' :
-                            item.status === 'Средний' ? 'bg-orange-900/30 text-orange-400 border border-orange-800/50' :
-                            'bg-yellow-900/30 text-yellow-400 border border-yellow-800/50'
+                            item.status === 'Просрочен' ? 'bg-red-900/30 text-red-400 border border-red-800/50' :
+                            'bg-blue-900/30 text-blue-400 border border-blue-800/50'
                           }`}>
                             {item.status}
                           </span>
@@ -1076,13 +1064,10 @@ const SalesDashboard = () => {
               <div className="mt-3 flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  <span className="text-xs text-gray-300">{`Критическая (>7 дней): ${criticalCount}`}</span>
+                  <span className="text-xs text-gray-300">{`Просрочен (≥5 дней): ${overdueCount}`}</span>
                   
-                  <div className="w-3 h-3 rounded-full bg-orange-500 ml-3"></div>
-                  <span className="text-xs text-gray-300">Средняя (3-6 дней): {mediumCount}</span>
-                  
-                  <div className="w-3 h-3 rounded-full bg-yellow-500 ml-3"></div>
-                  <span className="text-xs text-gray-300">{`Низкая (<3 дней): ${lowCount}`}</span>
+                  <div className="w-3 h-3 rounded-full bg-blue-500 ml-3"></div>
+                  <span className="text-xs text-gray-300">Заморожен: {frozenCount}</span>
                 </div>
                 
                 <button className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300">
@@ -1096,297 +1081,290 @@ const SalesDashboard = () => {
         
         {/* НОВЫЙ БЛОК ДЕТАЛИЗАЦИИ ПО РЕГИОНАМ */}
         <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden mb-5">
-<div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden  mb-5">
-  <div className="flex justify-between items-center p-3 border-b border-gray-700">
-    <h3 className="text-base font-medium text-white flex items-center gap-2">
-      <MapPin size={18} className="text-red-400" />
-      Задолженность по регионам
-      {selectedModel && (
-        <span className="ml-2 text-sm text-gray-400">
-          • {carModels.find(m => m.id === selectedModel)?.name}
-        </span>
-      )}
-      {selectedRegion && (
-        <span className="ml-2 text-sm text-blue-400">
-          • {selectedRegion}
-        </span>
-      )}
-    </h3>
-    <div className="flex items-center gap-2">
-      {selectedRegion && (
-        <button 
-          onClick={() => setSelectedRegion(null)}
-          className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm text-white flex items-center gap-1.5 transition-colors"
-        >
-          <ChevronLeft size={14} />
-          <span>Назад</span>
-        </button>
-      )}
-      <button className="px-2.5 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm text-white flex items-center gap-1.5 transition-colors">
-        <Download size={14} />
-        <span>Экспорт</span>
-      </button>
-    </div>
-  </div>
-  
-  <div className="p-4">
-    {!selectedRegion ? (
-      // Список регионов - упрощенный
-      <div>
-        <div className="mb-4">
-          <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-3 mb-2">
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-white font-medium">Регион</span>
-              <span className="text-white font-medium">Задолженность (UZS)</span>
+          <div className="flex justify-between items-center p-3 border-b border-gray-700">
+            <h3 className="text-base font-medium text-white flex items-center gap-2">
+              <MapPin size={18} className="text-red-400" />
+              Задолженность по регионам
+              {selectedModel && (
+                <span className="ml-2 text-sm text-gray-400">
+                  • {carModels.find(m => m.id === selectedModel)?.name}
+                </span>
+              )}
+              {selectedRegion && (
+                <span className="ml-2 text-sm text-blue-400">
+                  • {selectedRegion}
+                </span>
+              )}
+            </h3>
+            <div className="flex items-center gap-2">
+              {selectedRegion && (
+                <button 
+                  onClick={() => setSelectedRegion(null)}
+                  className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm text-white flex items-center gap-1.5 transition-colors"
+                >
+                  <ChevronLeft size={14} />
+                  <span>Назад</span>
+                </button>
+              )}
+              <button className="px-2.5 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm text-white flex items-center gap-1.5 transition-colors">
+                <Download size={14} />
+                <span>Экспорт</span>
+              </button>
             </div>
           </div>
           
-          {regions.slice(0, 5).map((region, idx) => {
-            // Определяем статус задолженности
-            const statusColor = idx === 0 ? 'red' : idx === 1 ? 'orange' : 'yellow';
-            const percentValue = Math.round((regionDebtData[idx] / regionDebtData.reduce((a, b) => a + b, 0)) * 100);
-            
-            return (
-              <div 
-                key={idx}
-                className="bg-gray-800/60 hover:bg-gray-700/70 border border-gray-700 rounded-lg p-3 cursor-pointer transition-colors mb-2"
-                onClick={() => setSelectedRegion(region.name)}
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full bg-${statusColor}-500`}></div>
-                    <div className="text-white">{region.name}</div>
+          <div className="p-4">
+            {!selectedRegion ? (
+              // Список регионов - упрощенный
+              <div>
+                <div className="mb-4">
+                  <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-3 mb-2">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-white font-medium">Регион</span>
+                      <span className="text-white font-medium">Задолженность (UZS)</span>
+                    </div>
                   </div>
                   
-                  <div className="text-right">
-                    <div className="text-white font-medium">{regionDebtData[idx].toLocaleString()} UZS</div>
-                  </div>
+                  {regions.slice(0, 5).map((region, idx) => {
+                    // Определяем статус задолженности
+                    const statusColor = idx === 0 ? 'red' : idx === 1 ? 'blue' : 'blue';
+                    const percentValue = Math.round((regionDebtData[idx] / regionDebtData.reduce((a, b) => a + b, 0)) * 100);
+                    
+                    return (
+                      <div 
+                        key={idx}
+                        className="bg-gray-800/60 hover:bg-gray-700/70 border border-gray-700 rounded-lg p-3 cursor-pointer transition-colors mb-2"
+                        onClick={() => setSelectedRegion(region.name)}
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full bg-${statusColor}-500`}></div>
+                            <div className="text-white">{region.name}</div>
+                          </div>
+                          
+                          <div className="text-right">
+                            <div className="text-white font-medium">{regionDebtData[idx].toLocaleString()} UZS</div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full bg-${statusColor}-600`}
+                              style={{ width: `${percentValue}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs text-gray-400 w-10 text-right">
+                            {percentValue}%
+                          </span>
+                        </div>
+                        
+                        <div className="flex justify-between mt-2 text-xs text-gray-400">
+                          <span>Контрактов: {regionContracts[idx]}</span>
+                          <span>Статус: {idx === 0 ? 'Просрочен' : 'Заморожен'}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 
-                <div className="flex items-center gap-2">
-                  <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full bg-${statusColor}-600`}
-                      style={{ width: `${percentValue}%` }}
-                    ></div>
+                <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-3">
+                  <div className="text-sm text-white mb-2 flex justify-between">
+                    <span>Общая задолженность:</span>
+                    <span className="font-bold">{regionDebtData.reduce((a, b) => a + b, 0).toLocaleString()} UZS</span>
                   </div>
-                  <span className="text-xs text-gray-400 w-10 text-right">
-                    {percentValue}%
-                  </span>
-                </div>
-                
-                <div className="flex justify-between mt-2 text-xs text-gray-400">
-                  <span>Контрактов: {regionContracts[idx]}</span>
-                  <span>Статус: {idx === 0 ? 'Критический' : idx === 1 ? 'Средний' : 'Низкий'}</span>
+                  <div className="text-xs text-gray-400 mb-3">
+                    Нажмите на регион для просмотра детальной информации
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                      <span className="text-xs text-gray-300">Просрочен ≥5 дней</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                      <span className="text-xs text-gray-300">Заморожен</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-        
-        <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-3">
-          <div className="text-sm text-white mb-2 flex justify-between">
-            <span>Общая задолженность:</span>
-            <span className="font-bold">{regionDebtData.reduce((a, b) => a + b, 0).toLocaleString()} UZS</span>
-          </div>
-          <div className="text-xs text-gray-400 mb-3">
-            Нажмите на регион для просмотра детальной информации
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <span className="text-xs text-gray-300">Критический</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-              <span className="text-xs text-gray-300">Средний</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <span className="text-xs text-gray-300">Низкий</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    ) : (
-      // Детальная информация по выбранному региону - упрощенная
-      <div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-          <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-3">
-            <div className="text-xs text-gray-400 mb-1">Общая задолженность</div>
-            <div className="text-lg font-bold text-white mb-1">
-              {regionDebtData[regions.findIndex(r => r.name === selectedRegion)].toLocaleString()} UZS
-            </div>
-            <div className="text-xs text-red-400">+12.4% к прошлому месяцу</div>
-          </div>
-          
-          <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-3">
-            <div className="text-xs text-gray-400 mb-1">Активных контрактов</div>
-            <div className="text-lg font-bold text-white mb-1">
-              {regionContracts[regions.findIndex(r => r.name === selectedRegion)]}
-            </div>
-            <div className="text-xs text-blue-400">+3 за последнюю неделю</div>
-          </div>
-          
-          <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-3">
-            <div className="text-xs text-gray-400 mb-1">Средний срок просрочки</div>
-            <div className="text-lg font-bold text-white mb-1">7 дней</div>
-            <div className="text-xs text-green-400">-2 дня к прошлой неделе</div>
-          </div>
-        </div>
-        
-        {/* ПРОСТОЙ ГРАФИК ДИНАМИКИ ЗАДОЛЖЕННОСТИ */}
-        <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-4 mb-4">
-          <div className="flex justify-between items-center mb-3">
-            <h4 className="text-white text-sm font-medium">
-              Динамика задолженности в регионе {selectedRegion}
-            </h4>
-            
-            <div className="flex gap-2">
-              <button className="px-2 py-1 bg-blue-600 rounded text-xs text-white">6М</button>
-              <button className="px-2 py-1 bg-gray-700 rounded text-xs text-white">1Г</button>
-            </div>
-          </div>
-          
-          <div className="h-56 bg-gray-800/60 rounded-lg border border-gray-700 p-3 relative">
-            {/* Простой SVG график */}
-            <svg className="w-full h-full" viewBox="0 0 600 200" preserveAspectRatio="none">
-              {/* Горизонтальные линии */}
-              <line x1="0" y1="0" x2="600" y2="0" stroke="#374151" strokeWidth="1" />
-              <line x1="0" y1="50" x2="600" y2="50" stroke="#374151" strokeWidth="1" />
-              <line x1="0" y1="100" x2="600" y2="100" stroke="#374151" strokeWidth="1" />
-              <line x1="0" y1="150" x2="600" y2="150" stroke="#374151" strokeWidth="1" />
-              <line x1="0" y1="200" x2="600" y2="200" stroke="#374151" strokeWidth="1" />
-              
-              {/* Линия тренда */}
-              <path 
-                d="M0,150 L100,160 L200,120 L300,135 L400,90 L500,70 L600,40" 
-                fill="none" 
-                stroke="#3b82f6" 
-                strokeWidth="3"
-              />
-              
-              {/* Точки данных */}
-              <circle cx="0" cy="150" r="4" fill="#3b82f6" />
-              <circle cx="100" cy="160" r="4" fill="#3b82f6" />
-              <circle cx="200" cy="120" r="4" fill="#3b82f6" />
-              <circle cx="300" cy="135" r="4" fill="#3b82f6" />
-              <circle cx="400" cy="90" r="4" fill="#3b82f6" />
-              <circle cx="500" cy="70" r="4" fill="#3b82f6" />
-              <circle cx="600" cy="40" r="4" fill="#3b82f6" />
-            </svg>
-            
-            {/* Метки по оси X и Y */}
-            <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-400 px-2">
-              <span>Янв</span>
-              <span>Фев</span>
-              <span>Мар</span>
-              <span>Апр</span>
-              <span>Май</span>
-              <span>Июн</span>
-            </div>
-            
-            <div className="absolute top-0 left-0 bottom-0 flex flex-col justify-between text-xs text-gray-400 py-1">
-              <span>30M</span>
-              <span>24M</span>
-              <span>18M</span>
-              <span>12M</span>
-              <span>6M</span>
-              <span>0</span>
-            </div>
-          </div>
-        </div>
-        
-        {/* ТАБЛИЦА ЗАДОЛЖЕННОСТЕЙ ПО МОДЕЛЯМ - ЧЕТКАЯ И ПОНЯТНАЯ */}
-        <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-4">
-          <h4 className="text-white text-sm font-medium mb-3">
-            Задолженность по моделям в регионе {selectedRegion}
-          </h4>
-          
-          <div className="overflow-hidden rounded-lg border border-gray-700 mb-3">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-900/80">
-                <tr>
-                  <th className="px-3 py-2 text-left text-gray-400 font-medium">Модель</th>
-                  <th className="px-3 py-2 text-center text-gray-400 font-medium">Контракты</th>
-                  <th className="px-3 py-2 text-right text-gray-400 font-medium">Сумма долга (UZS)</th>
-                  <th className="px-3 py-2 text-center text-gray-400 font-medium">Ср. просрочка</th>
-                  <th className="px-3 py-2 text-center text-gray-400 font-medium">Статус</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-700">
-                {carModels.map((model, idx) => {
-                  // Генерируем данные
-                  const contractCount = Math.floor(Math.random() * 5) + 1;
-                  const debtAmount = (Math.floor(Math.random() * 2000) + 1000) * 10000;
-                  const avgDelay = Math.floor(Math.random() * 8) + 2;
-                  const status = avgDelay > 7 ? 'Критический' : avgDelay > 4 ? 'Средний' : 'Низкий';
-                  const statusColor = status === 'Критический' ? 'red' : status === 'Средний' ? 'orange' : 'yellow';
+            ) : (
+              // Детальная информация по выбранному региону - упрощенная
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                  <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-3">
+                    <div className="text-xs text-gray-400 mb-1">Общая задолженность</div>
+                    <div className="text-lg font-bold text-white mb-1">
+                      {regionDebtData[regions.findIndex(r => r.name === selectedRegion)].toLocaleString()} UZS
+                    </div>
+                    <div className="text-xs text-red-400">+12.4% к прошлому месяцу</div>
+                  </div>
                   
-                  return (
-                    <tr 
-                      key={idx} 
-                      className={`${idx % 2 === 0 ? 'bg-gray-800/60' : 'bg-gray-750/80'} hover:bg-gray-700/70 cursor-pointer`}
-                      onClick={() => handleModelSelect(model.id)}
-                    >
-                      <td className="px-3 py-2 text-white">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-md overflow-hidden bg-gray-600/30">
-                            <img 
-                              src={model.img} 
-                              alt={model.name} 
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-                          <span>{model.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-center text-gray-300">{contractCount}</td>
-                      <td className="px-3 py-2 text-right text-gray-300 font-medium">{debtAmount.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-center text-gray-300">{avgDelay} {getDayWord(avgDelay)}</td>
-                      <td className="px-3 py-2 text-center">
-                        <span className={`inline-block px-2 py-1 rounded-full text-xs bg-${statusColor}-900/30 text-${statusColor}-400 border border-${statusColor}-800/50`}>
-                          {status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot className="bg-gray-900/80">
-                <tr>
-                  <td className="px-3 py-2 font-medium text-white">Итого</td>
-                  <td className="px-3 py-2 text-center text-white font-medium">
-                    {regionContracts[regions.findIndex(r => r.name === selectedRegion)]}
-                  </td>
-                  <td className="px-3 py-2 text-right font-medium text-white">
-                    {regionDebtData[regions.findIndex(r => r.name === selectedRegion)].toLocaleString()} UZS
-                  </td>
-                  <td className="px-3 py-2 text-center text-white font-medium">7 дней</td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
+                  <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-3">
+                    <div className="text-xs text-gray-400 mb-1">Активных контрактов</div>
+                    <div className="text-lg font-bold text-white mb-1">
+                      {regionContracts[regions.findIndex(r => r.name === selectedRegion)]}
+                    </div>
+                    <div className="text-xs text-blue-400">+3 за последнюю неделю</div>
+                  </div>
+                  
+                  <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-3">
+                    <div className="text-xs text-gray-400 mb-1">Средний срок просрочки</div>
+                    <div className="text-lg font-bold text-white mb-1">7 дней</div>
+                    <div className="text-xs text-green-400">-2 дня к прошлой неделе</div>
+                  </div>
+                </div>
+                
+                {/* ПРОСТОЙ ГРАФИК ДИНАМИКИ ЗАДОЛЖЕННОСТИ */}
+                <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-4 mb-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-white text-sm font-medium">
+                      Динамика задолженности в регионе {selectedRegion}
+                    </h4>
+                    
+                    <div className="flex gap-2">
+                      <button className="px-2 py-1 bg-blue-600 rounded text-xs text-white">6М</button>
+                      <button className="px-2 py-1 bg-gray-700 rounded text-xs text-white">1Г</button>
+                    </div>
+                  </div>
+                  
+                  <div className="h-56 bg-gray-800/60 rounded-lg border border-gray-700 p-3 relative">
+                    {/* Простой SVG график */}
+                    <svg className="w-full h-full" viewBox="0 0 600 200" preserveAspectRatio="none">
+                      {/* Горизонтальные линии */}
+                      <line x1="0" y1="0" x2="600" y2="0" stroke="#374151" strokeWidth="1" />
+                      <line x1="0" y1="50" x2="600" y2="50" stroke="#374151" strokeWidth="1" />
+                      <line x1="0" y1="100" x2="600" y2="100" stroke="#374151" strokeWidth="1" />
+                      <line x1="0" y1="150" x2="600" y2="150" stroke="#374151" strokeWidth="1" />
+                      <line x1="0" y1="200" x2="600" y2="200" stroke="#374151" strokeWidth="1" />
+                      
+                      {/* Линия тренда */}
+                      <path 
+                        d="M0,150 L100,160 L200,120 L300,135 L400,90 L500,70 L600,40" 
+                        fill="none" 
+                        stroke="#3b82f6" 
+                        strokeWidth="3"
+                      />
+                      
+                      {/* Точки данных */}
+                      <circle cx="0" cy="150" r="4" fill="#3b82f6" />
+                      <circle cx="100" cy="160" r="4" fill="#3b82f6" />
+                      <circle cx="200" cy="120" r="4" fill="#3b82f6" />
+                      <circle cx="300" cy="135" r="4" fill="#3b82f6" />
+                      <circle cx="400" cy="90" r="4" fill="#3b82f6" />
+                      <circle cx="500" cy="70" r="4" fill="#3b82f6" />
+                      <circle cx="600" cy="40" r="4" fill="#3b82f6" />
+                    </svg>
+                    
+                    {/* Метки по оси X и Y */}
+                    <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-400 px-2">
+                      <span>Янв</span>
+                      <span>Фев</span>
+                      <span>Мар</span>
+                      <span>Апр</span>
+                      <span>Май</span>
+                      <span>Июн</span>
+                    </div>
+                    
+                    <div className="absolute top-0 left-0 bottom-0 flex flex-col justify-between text-xs text-gray-400 py-1">
+                      <span>30M</span>
+                      <span>24M</span>
+                      <span>18M</span>
+                      <span>12M</span>
+                      <span>6M</span>
+                      <span>0</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* ТАБЛИЦА ЗАДОЛЖЕННОСТЕЙ ПО МОДЕЛЯМ - ЧЕТКАЯ И ПОНЯТНАЯ */}
+                <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-4">
+                  <h4 className="text-white text-sm font-medium mb-3">
+                    Задолженность по моделям в регионе {selectedRegion}
+                  </h4>
+                  
+                  <div className="overflow-hidden rounded-lg border border-gray-700 mb-3">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-900/80">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-gray-400 font-medium">Модель</th>
+                          <th className="px-3 py-2 text-center text-gray-400 font-medium">Контракты</th>
+                          <th className="px-3 py-2 text-right text-gray-400 font-medium">Сумма долга (UZS)</th>
+                          <th className="px-3 py-2 text-center text-gray-400 font-medium">Ср. просрочка</th>
+                          <th className="px-3 py-2 text-center text-gray-400 font-medium">Статус</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-700">
+                        {carModels.map((model, idx) => {
+                          // Генерируем данные
+                          const contractCount = Math.floor(Math.random() * 5) + 1;
+                          const debtAmount = (Math.floor(Math.random() * 2000) + 1000) * 10000;
+                          const avgDelay = Math.floor(Math.random() * 8) + 2;
+                          const status = idx < 3 ? 'Просрочен' : 'Заморожен';
+                          const statusColor = status === 'Просрочен' ? 'red' : 'blue';
+                          
+                          return (
+                            <tr 
+                              key={idx} 
+                              className={`${idx % 2 === 0 ? 'bg-gray-800/60' : 'bg-gray-750/80'} hover:bg-gray-700/70 cursor-pointer`}
+                              onClick={() => handleModelSelect(model.id)}
+                            >
+                              <td className="px-3 py-2 text-white">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-md overflow-hidden bg-gray-600/30">
+                                    <img 
+                                      src={model.img} 
+                                      alt={model.name} 
+                                      className="w-full h-full object-contain"
+                                    />
+                                  </div>
+                                  <span>{model.name}</span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2 text-center text-gray-300">{contractCount}</td>
+                              <td className="px-3 py-2 text-right text-gray-300 font-medium">{debtAmount.toLocaleString()}</td>
+                              <td className="px-3 py-2 text-center text-gray-300">{avgDelay} {getDayWord(avgDelay)}</td>
+                              <td className="px-3 py-2 text-center">
+                                <span className={`inline-block px-2 py-1 rounded-full text-xs bg-${statusColor}-900/30 text-${statusColor}-400 border border-${statusColor}-800/50`}>
+                                  {status}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="bg-gray-900/80">
+                        <tr>
+                          <td className="px-3 py-2 font-medium text-white">Итого</td>
+                          <td className="px-3 py-2 text-center text-white font-medium">
+                            {regionContracts[regions.findIndex(r => r.name === selectedRegion)]}
+                          </td>
+                          <td className="px-3 py-2 text-right font-medium text-white">
+                            {regionDebtData[regions.findIndex(r => r.name === selectedRegion)].toLocaleString()} UZS
+                          </td>
+                          <td className="px-3 py-2 text-center text-white font-medium">7 дней</td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                  
+                  <div className="flex justify-end gap-2">
+                    <button className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded flex items-center gap-1.5 transition-colors">
+                      <Download size={16} />
+                      <span>Экспорт</span>
+                    </button>
+                    <button className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded flex items-center gap-1.5 transition-colors">
+                      <Clock size={16} />
+                      <span>Отправить напоминания</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          
-          <div className="flex justify-end gap-2">
-            <button className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded flex items-center gap-1.5 transition-colors">
-              <Download size={16} />
-              <span>Экспорт</span>
-            </button>
-            <button className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded flex items-center gap-1.5 transition-colors">
-              <Clock size={16} />
-              <span>Отправить напоминания</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-</div>
         </div>
         
-
         {/* Панель моделей автомобилей - с интерактивным выбором */}
         <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden mt-5">
           <div className="flex justify-between items-center p-3 border-b border-gray-700">
