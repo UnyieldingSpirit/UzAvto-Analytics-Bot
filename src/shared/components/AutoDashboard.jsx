@@ -1003,9 +1003,9 @@ const AutoDashboard = () => {
       {/* Заголовок и основные элементы управления */}
       <div className="mb-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-          <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500 mb-3 sm:mb-0">
-            АВТОМОБИЛЬНАЯ АНАЛИТИКА
-          </h1>
+       <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500 mb-3 sm:mb-0">
+  Производство 
+</h1>
           
           <div className="flex items-center space-x-2">
             <button 
