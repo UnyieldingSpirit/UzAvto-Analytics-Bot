@@ -436,7 +436,6 @@ if (viewType === 'bar') {
 }
   };
   
-  // Пользовательский линейный график с дополнительными функциями
   const renderCustomLineChart = (data, options) => {
     const { container, title, height = 400 } = options;
     
@@ -5416,6 +5415,7 @@ const renderProgressChart = () => {
     .style('color', '#f9fafb')
     .style('font-size', '1.1rem')
     .style('font-weight', 'bold')
+    .style('margin-top', '15px')
     .style('margin-bottom', '15px')
     .style('text-align', 'center')
     .text('Прогресс выполнения плана продаж');
@@ -5424,6 +5424,7 @@ const renderProgressChart = () => {
   const progressContainer = container.append('div')
     .style('position', 'relative')
     .style('width', '150px')
+    .style('margin-top', '25px')
     .style('height', '150px');
     
   // Создаем SVG для кругового индикатора

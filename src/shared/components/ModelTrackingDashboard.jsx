@@ -1324,9 +1324,9 @@ const renderDonutChart = () => {
       </div>
       
       {/* Карточка с моделями или регионами */}
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl shadow-xl border border-slate-700/50 mb-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-indigo-500/5 to-blue-500/5 z-0"></div>
-        <div className="relative z-10">
+      <div className="bg-gradient-to-br h-full from-slate-800 to-slate-900 p-6 rounded-2xl shadow-xl border border-slate-700/50 mb-6 relative ">
+        <div className=" w-full h-full bg-gradient-to-br from-indigo-500/5 to-blue-500/5 z-0"></div>
+        <div className="">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-bold text-slate-200">
               {currentView === 'general' 

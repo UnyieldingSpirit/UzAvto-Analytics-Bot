@@ -1103,7 +1103,7 @@ return (
         </svg>
       </div>
       <div>
-        {/* <div className="text-sm text-gray-400">Всего</div> */}
+        <div className="text-sm text-gray-400">Всего</div>
         <div className="text-xl font-bold">{totalVehicles}</div>
       </div>
     </div>
@@ -1210,12 +1210,14 @@ return (
         }`}
         onClick={() => handleCarModelClick(model)}
       >
-        <div className="h-48 bg-gray-800 relative overflow-hidden flex items-center justify-center">
-  <img 
-    src={model.img || `https://source.unsplash.com/random/400x300/?car,${model.name.toLowerCase()}`} 
-    alt={model.name}
-    className="w-full h-auto object-contain" 
-  />
+   <div className="bg-gray-800 relative overflow-hidden rounded-t-lg">
+  <div className="pt-[75%] relative">
+    <img 
+      src={model.img || `https://source.unsplash.com/random/400x300/?car,${model.name.toLowerCase()}`} 
+      alt={model.name}
+      className="absolute inset-0 w-full h-full object-contain p-2" 
+    />
+  </div>
   <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-gray-900/70 text-xs text-white text-center">
     {model.category === 'sedan' ? 'Седан' :
      model.category === 'suv' ? 'Внедорожник' :

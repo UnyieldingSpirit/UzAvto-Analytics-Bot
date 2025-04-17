@@ -638,229 +638,249 @@ const WarehouseAnalytics = () => {
  };
  
  // Рендер графика инвентаря моделей
- const renderModelInventoryChart = () => {
-   if (!modelInventoryChartRef.current) return;
-   
-   const container = modelInventoryChartRef.current;
-   container.innerHTML = '';
-   
-   const margin = { top: 30, right: 20, bottom: 50, left: 140 };
-   const width = container.clientWidth - margin.left - margin.right;
-   const height = container.clientHeight - margin.top - margin.bottom;
-   
-   const svg = d3.select(container)
-     .append('svg')
-     .attr('width', width + margin.left + margin.right)
-     .attr('height', height + margin.top + margin.bottom)
-     .append('g')
-     .attr('transform', `translate(${margin.left},${margin.top})`);
-     
-   // Добавляем заголовок
-   svg.append('text')
-     .attr('x', width / 2)
-     .attr('y', -margin.top / 2)
-     .attr('text-anchor', 'middle')
-     .style('font-size', '16px')
-     .style('fill', '#f9fafb')
-     .text('Склад: состояние автомобилей');
-     
-   // Берем топ-5 моделей
-   const topModels = [...filteredModels]
-     .sort((a, b) => b.totalCount - a.totalCount)
-     .slice(0, 5);
-   
-   // Подготавливаем данные
-   const carModelInventory = topModels.map(model => ({
-     model: model.name,
-     id: model.id,
-     stock: Math.round((model.goodCondition / model.totalCount) * 100),
-     defective: Math.round((model.defective / model.totalCount) * 100)
-   }));
-   
-   // Создаем шкалы
-   const y = d3.scaleBand()
-     .domain(carModelInventory.map(d => d.model))
-     .range([0, height])
-     .padding(0.3);
-     
-   const x = d3.scaleLinear()
-     .domain([0, 100])
-     .range([0, width]);
-     
-   // Добавляем оси
-   svg.append('g')
-     .call(d3.axisLeft(y))
-     .selectAll('text')
-     .style('font-size', '12px')
-     .style('fill', '#d1d5db')
-     .style('cursor', 'pointer')
-     .on('click', (event, d) => {
-       const model = enhancedCarModels.find(m => m.name === d);
-       if (model) handleCarModelClick(model);
-     });
-     
-   svg.append('g')
-     .attr('transform', `translate(0,${height})`)
-     .call(d3.axisBottom(x).ticks(5).tickFormat(d => `${d}%`))
-     .selectAll('text')
-     .style('font-size', '12px')
-     .style('fill', '#d1d5db');
-     
-   // Добавляем сетку
-   svg.append('g')
-     .attr('class', 'grid')
-     .call(d3.axisBottom(x)
-       .tickSize(height)
-       .tickFormat(''))
-  .selectAll('line')
-.style('stroke', 'rgba(255, 255, 255, 0.1)');
-     
-// Создаем градиенты для исправных авто
-const defs = svg.append('defs');
+// Модификация функции renderModelInventoryChart()
 
-const stockGradient = defs.append('linearGradient')
- .attr('id', 'stockGradient')
- .attr('x1', '0%')
- .attr('y1', '0%')
- .attr('x2', '100%')
- .attr('y2', '0%');
- 
-stockGradient.append('stop')
- .attr('offset', '0%')
- .attr('stop-color', '#3b82f6')
- .attr('stop-opacity', 1);
- 
-stockGradient.append('stop')
- .attr('offset', '100%')
- .attr('stop-color', '#60a5fa')
- .attr('stop-opacity', 1);
- 
-// Градиент для бракованных авто
-const defectiveGradient = defs.append('linearGradient')
- .attr('id', 'defectiveGradient')
- .attr('x1', '0%')
- .attr('y1', '0%')
- .attr('x2', '100%')
- .attr('y2', '0%');
- 
-defectiveGradient.append('stop')
- .attr('offset', '0%')
- .attr('stop-color', '#ef4444')
- .attr('stop-opacity', 1);
- 
-defectiveGradient.append('stop')
- .attr('offset', '100%')
- .attr('stop-color', '#f87171')
- .attr('stop-opacity', 1);
- 
-// Добавляем полосы для исправных
-svg.selectAll('.stock-bar')
- .data(carModelInventory)
- .join('rect')
- .attr('class', 'stock-bar')
- .attr('y', d => y(d.model))
- .attr('height', y.bandwidth())
- .attr('x', 0)
- .attr('rx', 4)
- .attr('ry', 4)
- .attr('fill', 'url(#stockGradient)')
- .attr('width', 0)
- .style('cursor', 'pointer')
- .on('click', (event, d) => {
-   const model = enhancedCarModels.find(m => m.id === d.id);
-   if (model) handleCarModelClick(model);
- })
- .transition()
- .duration(800)
- .attr('width', d => x(d.stock));
- 
-// Добавляем полосы для дефектных
-svg.selectAll('.defective-bar')
- .data(carModelInventory)
- .join('rect')
- .attr('class', 'defective-bar')
- .attr('y', d => y(d.model))
- .attr('height', y.bandwidth())
- .attr('x', d => x(d.stock))
- .attr('rx', 4)
- .attr('ry', 4)
- .attr('fill', 'url(#defectiveGradient)')
- .attr('width', 0)
- .style('cursor', 'pointer')
- .on('click', (event, d) => {
-   const model = enhancedCarModels.find(m => m.id === d.id);
-   if (model) handleCarModelClick(model);
- })
- .transition()
- .duration(800)
- .delay(800)
- .attr('width', d => x(d.defective));
- 
-// Добавляем значения
-svg.selectAll('.stock-label')
- .data(carModelInventory)
- .join('text')
- .attr('class', 'stock-label')
- .attr('x', d => x(d.stock / 2))
- .attr('y', d => y(d.model) + y.bandwidth() / 2)
- .attr('dy', '0.35em')
- .attr('text-anchor', 'middle')
- .style('fill', '#ffffff')
- .style('font-size', '12px')
- .style('opacity', 0)
- .text(d => `${d.stock}%`)
- .transition()
- .duration(500)
- .delay(1000)
- .style('opacity', 1);
- 
-svg.selectAll('.defective-label')
- .data(carModelInventory)
- .join('text')
- .attr('class', 'defective-label')
- .attr('x', d => x(d.stock + d.defective / 2))
- .attr('y', d => y(d.model) + y.bandwidth() / 2)
- .attr('dy', '0.35em')
- .attr('text-anchor', 'middle')
- .style('fill', '#ffffff')
- .style('font-size', '12px')
- .style('opacity', 0)
- .text(d => `${d.defective}%`)
- .transition()
- .duration(500)
- .delay(1200)
- .style('opacity', d => d.defective > 1 ? 1 : 0);
- 
-// Добавляем легенду
-const legend = svg.append('g')
- .attr('transform', `translate(${width - 200}, ${height - 50})`);
- 
-legend.append('rect')
- .attr('width', 15)
- .attr('height', 15)
- .attr('fill', '#3b82f6')
- .attr('rx', 2);
- 
-legend.append('text')
- .attr('x', 20)
- .attr('y', 12)
- .style('font-size', '12px')
- .style('fill', '#d1d5db')
- .text('Исправные авто');
- 
-legend.append('rect')
- .attr('width', 15)
- .attr('height', 15)
- .attr('fill', '#ef4444')
- .attr('rx', 2)
- .attr('transform', 'translate(120, 0)');
- 
-legend.append('text')
- .attr('x', 140)
- .attr('y', 12)
- .style('font-size', '12px')
- .style('fill', '#d1d5db')
- .text('Брак');
+const renderModelInventoryChart = () => {
+  if (!modelInventoryChartRef.current) return;
+  
+  const container = modelInventoryChartRef.current;
+  container.innerHTML = '';
+  
+  const margin = { top: 30, right: 20, bottom: 50, left: 140 };
+  const width = container.clientWidth - margin.left - margin.right;
+  const height = container.clientHeight - margin.top - margin.bottom;
+  
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', height + margin.top + margin.bottom)
+    .append('g')
+    .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+  // Добавляем заголовок
+  svg.append('text')
+    .attr('x', width / 2)
+    .attr('y', -margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '16px')
+    .style('fill', '#f9fafb')
+    .text('Склад: состояние автомобилей');
+    
+  // Берем топ-5 моделей
+  const topModels = [...filteredModels]
+    .sort((a, b) => b.totalCount - a.totalCount)
+    .slice(0, 5);
+  
+  // Подготавливаем данные
+  const carModelInventory = topModels.map(model => ({
+    model: model.name,
+    id: model.id,
+    img: model.img, // Добавляем изображение
+    stock: Math.round((model.goodCondition / model.totalCount) * 100),
+    defective: Math.round((model.defective / model.totalCount) * 100)
+  }));
+  
+  // Создаем шкалы
+  const y = d3.scaleBand()
+    .domain(carModelInventory.map(d => d.model))
+    .range([0, height])
+    .padding(0.3);
+    
+  const x = d3.scaleLinear()
+    .domain([0, 100])
+    .range([0, width]);
+    
+  // Добавляем оси
+  svg.append('g')
+    .call(d3.axisLeft(y))
+    .selectAll('text')
+    .style('font-size', '12px')
+    .style('fill', '#d1d5db')
+    .style('cursor', 'pointer')
+    .on('click', (event, d) => {
+      const model = enhancedCarModels.find(m => m.name === d);
+      if (model) handleCarModelClick(model);
+    });
+    
+  svg.append('g')
+    .attr('transform', `translate(0,${height})`)
+    .call(d3.axisBottom(x).ticks(5).tickFormat(d => `${d}%`))
+    .selectAll('text')
+    .style('font-size', '12px')
+    .style('fill', '#d1d5db');
+    
+  // Добавляем сетку
+  svg.append('g')
+    .attr('class', 'grid')
+    .call(d3.axisBottom(x)
+      .tickSize(height)
+      .tickFormat(''))
+    .selectAll('line')
+    .style('stroke', 'rgba(255, 255, 255, 0.1)');
+    
+  // Создаем градиенты для исправных авто
+  const defs = svg.append('defs');
+
+  const stockGradient = defs.append('linearGradient')
+    .attr('id', 'stockGradient')
+    .attr('x1', '0%')
+    .attr('y1', '0%')
+    .attr('x2', '100%')
+    .attr('y2', '0%');
+  
+  stockGradient.append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', '#3b82f6')
+    .attr('stop-opacity', 1);
+  
+  stockGradient.append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', '#60a5fa')
+    .attr('stop-opacity', 1);
+  
+  // Градиент для бракованных авто
+  const defectiveGradient = defs.append('linearGradient')
+    .attr('id', 'defectiveGradient')
+    .attr('x1', '0%')
+    .attr('y1', '0%')
+    .attr('x2', '100%')
+    .attr('y2', '0%');
+  
+  defectiveGradient.append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', '#ef4444')
+    .attr('stop-opacity', 1);
+  
+  defectiveGradient.append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', '#f87171')
+    .attr('stop-opacity', 1);
+  
+  // Добавляем изображения автомобилей рядом с названиями
+  svg.selectAll('.car-image')
+    .data(carModelInventory)
+    .join('svg:image')
+    .attr('class', 'car-image')
+    .attr('xlink:href', d => d.img)
+    .attr('x', -40) // Размещаем слева от названий
+    .attr('y', d => y(d.model) - 5)
+    .attr('width', 30)
+    .attr('height', 20)
+    .attr('preserveAspectRatio', 'xMidYMid meet')
+    .style('cursor', 'pointer')
+    .on('click', (event, d) => {
+      const model = enhancedCarModels.find(m => m.id === d.id);
+      if (model) handleCarModelClick(model);
+    });
+  
+  // Добавляем полосы для исправных
+  svg.selectAll('.stock-bar')
+    .data(carModelInventory)
+    .join('rect')
+    .attr('class', 'stock-bar')
+    .attr('y', d => y(d.model))
+    .attr('height', y.bandwidth())
+    .attr('x', 0)
+    .attr('rx', 4)
+    .attr('ry', 4)
+    .attr('fill', 'url(#stockGradient)')
+    .attr('width', 0)
+    .style('cursor', 'pointer')
+    .on('click', (event, d) => {
+      const model = enhancedCarModels.find(m => m.id === d.id);
+      if (model) handleCarModelClick(model);
+    })
+    .transition()
+    .duration(800)
+    .attr('width', d => x(d.stock));
+  
+  // Добавляем полосы для дефектных
+  svg.selectAll('.defective-bar')
+    .data(carModelInventory)
+    .join('rect')
+    .attr('class', 'defective-bar')
+    .attr('y', d => y(d.model))
+    .attr('height', y.bandwidth())
+    .attr('x', d => x(d.stock))
+    .attr('rx', 4)
+    .attr('ry', 4)
+    .attr('fill', 'url(#defectiveGradient)')
+    .attr('width', 0)
+    .style('cursor', 'pointer')
+    .on('click', (event, d) => {
+      const model = enhancedCarModels.find(m => m.id === d.id);
+      if (model) handleCarModelClick(model);
+    })
+    .transition()
+    .duration(800)
+    .delay(800)
+    .attr('width', d => x(d.defective));
+  
+  // Добавляем значения
+  svg.selectAll('.stock-label')
+    .data(carModelInventory)
+    .join('text')
+    .attr('class', 'stock-label')
+    .attr('x', d => x(d.stock / 2))
+    .attr('y', d => y(d.model) + y.bandwidth() / 2)
+    .attr('dy', '0.35em')
+    .attr('text-anchor', 'middle')
+    .style('fill', '#ffffff')
+    .style('font-size', '12px')
+    .style('opacity', 0)
+    .text(d => `${d.stock}%`)
+    .transition()
+    .duration(500)
+    .delay(1000)
+    .style('opacity', 1);
+  
+  svg.selectAll('.defective-label')
+    .data(carModelInventory)
+    .join('text')
+    .attr('class', 'defective-label')
+    .attr('x', d => x(d.stock + d.defective / 2))
+    .attr('y', d => y(d.model) + y.bandwidth() / 2)
+    .attr('dy', '0.35em')
+    .attr('text-anchor', 'middle')
+    .style('fill', '#ffffff')
+    .style('font-size', '12px')
+    .style('opacity', 0)
+    .text(d => `${d.defective}%`)
+    .transition()
+    .duration(500)
+    .delay(1200)
+    .style('opacity', d => d.defective > 1 ? 1 : 0);
+  
+  // Перемещаем легенду в верхнюю часть графика, чтобы не заграждать данные
+  const legend = svg.append('g')
+    .attr('transform', `translate(${width - 200}, ${-20})`);
+  
+  legend.append('rect')
+    .attr('width', 15)
+    .attr('height', 15)
+    .attr('fill', '#3b82f6')
+    .attr('rx', 2);
+  
+  legend.append('text')
+    .attr('x', 20)
+    .attr('y', 12)
+    .style('font-size', '12px')
+    .style('fill', '#d1d5db')
+    .text('Исправные авто');
+  
+  legend.append('rect')
+    .attr('width', 15)
+    .attr('height', 15)
+    .attr('fill', '#ef4444')
+    .attr('rx', 2)
+    .attr('transform', 'translate(120, 0)');
+  
+  legend.append('text')
+    .attr('x', 140)
+    .attr('y', 12)
+    .style('font-size', '12px')
+    .style('fill', '#d1d5db')
+    .text('Брак');
 };
 
 // Функция для отрисовки графика детализации выбранной модели

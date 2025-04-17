@@ -1,9 +1,453 @@
 'use client';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef,useCallback } from 'react';
 import { Package, Clock, Download, Info, Check, ChevronDown, AlertTriangle, Filter, Truck, MapPin, 
   Archive, ChevronLeft, BarChart3, Users, Activity, ChevronRight, Zap, Calendar, Car } from 'lucide-react';
 import { carModels, regions } from '@/src/shared/mocks/mock-data';
 import { useTelegram } from '@/src/hooks/useTelegram';
+import * as d3 from 'd3';
+
+// Внутренний компонент SalesChart для графика продаж
+// Внутренний компонент SalesChart для графика продаж
+const SalesChart = ({ 
+  salesData, 
+  lastYearSalesData, 
+  months, 
+  selectedModel, 
+  activeTab, 
+  setActiveTab,
+  period,
+  setPeriod
+}) => {
+  const [showPeriodFilter, setShowPeriodFilter] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
+  const chartRef = useRef(null);
+  const tooltipRef = useRef(null);
+  
+  // Вычисляем максимальное значение для графика с учетом режима сравнения
+  const maxValue = useMemo(() => {
+    return showComparison 
+      ? Math.max(...salesData, ...lastYearSalesData) * 1.1
+      : Math.max(...salesData) * 1.1;
+  }, [salesData, lastYearSalesData, showComparison]);
+  
+  // Общая сумма продаж
+  const totalSales = useMemo(() => 
+    salesData.reduce((a, b) => a + b, 0), [salesData]);
+  
+  // Рост в сравнении с прошлым годом
+  const growthPercent = useMemo(() => {
+    const lastYearTotal = lastYearSalesData.reduce((a, b) => a + b, 0);
+    return ((totalSales - lastYearTotal) / lastYearTotal * 100).toFixed(1);
+  }, [salesData, lastYearSalesData, totalSales]);
+
+  // Функция для рендеринга графика
+  const renderChart = useCallback(() => {
+    if (!chartRef.current) return;
+    
+    const container = chartRef.current;
+    const tooltip = tooltipRef.current;
+    
+    // Очистка существующего графика
+    d3.select(container).selectAll('*').remove();
+    
+    // Размеры графика
+    const margin = { top: 30, right: 30, bottom: 50, left: 60 };
+    const width = container.clientWidth - margin.left - margin.right;
+    const height = container.clientHeight - margin.top - margin.bottom;
+    
+    // Создание SVG
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.top + margin.bottom)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Шкалы
+    const x = d3.scaleBand()
+      .domain(d3.range(salesData.length))
+      .range([0, width])
+      .padding(0.4);
+    
+    const y = d3.scaleLinear()
+      .domain([0, maxValue])
+      .range([height, 0]);
+    
+    // Оси
+    const xAxis = d3.axisBottom(x)
+      .tickFormat(i => months[i % months.length])
+      .tickSizeOuter(0);
+    
+    const yAxis = d3.axisLeft(y)
+      .ticks(5)
+      .tickFormat(d3.format(',d'))
+      .tickSizeInner(-width)
+      .tickSizeOuter(0);
+    
+    // Добавление осей
+    svg.append('g')
+      .attr('class', 'x-axis')
+      .attr('transform', `translate(0,${height})`)
+      .call(xAxis)
+      .selectAll('text')
+      .attr('fill', '#D1D5DB')
+      .attr('font-size', '12px');
+    
+    svg.append('g')
+      .attr('class', 'y-axis')
+      .call(yAxis)
+      .selectAll('text')
+      .attr('fill', '#D1D5DB')
+      .attr('font-size', '12px');
+    
+    // Стили для сетки
+    svg.selectAll('.y-axis line')
+      .attr('stroke', 'rgba(75, 85, 99, 0.3)')
+      .attr('stroke-dasharray', '2,2');
+    
+    svg.selectAll('.y-axis path, .x-axis path')
+      .attr('stroke', 'rgba(75, 85, 99, 0.7)');
+    
+    // Функция для отображения тултипа
+    const showTooltip = (event, d, i) => {
+      const percentChange = lastYearSalesData[i] > 0 
+        ? ((d - lastYearSalesData[i]) / lastYearSalesData[i] * 100).toFixed(1) 
+        : 0;
+        
+      const tooltipContent = `
+        <div class="font-bold text-center mb-2 text-purple-300">${months[i % months.length]}</div>
+        <table class="w-full">
+          <tbody>
+            <tr>
+              <td class="py-1 text-gray-300">Текущий год:</td>
+              <td class="py-1 font-bold text-right">${d.toLocaleString()}</td>
+            </tr>
+            ${showComparison ? `
+              <tr>
+                <td class="py-1 text-gray-300">Прошлый год:</td>
+                <td class="py-1 font-bold text-right">${lastYearSalesData[i].toLocaleString()}</td>
+              </tr>
+              <tr class="border-t border-gray-700">
+                <td class="py-1 pt-2 text-gray-300">Изменение:</td>
+                <td class="py-1 pt-2 font-bold text-right ${d > lastYearSalesData[i] ? 'text-green-400' : 'text-red-400'}">
+                  ${percentChange > 0 ? '+' : ''}${percentChange}%
+                </td>
+              </tr>
+            ` : ''}
+          </tbody>
+        </table>
+      `;
+      
+      // Позиционирование и отображение тултипа
+      const tooltipWidth = 200;
+      const tooltipHeight = showComparison ? 140 : 80;
+      
+      // Расчет позиции тултипа относительно курсора
+      let xPos = event.pageX - container.getBoundingClientRect().left;
+      let yPos = event.pageY - container.getBoundingClientRect().top - window.scrollY;
+      
+      // Проверка границ экрана
+      if (xPos + tooltipWidth > container.clientWidth) {
+        xPos = xPos - tooltipWidth;
+      }
+      
+      if (yPos - tooltipHeight < 0) {
+        yPos = yPos + 20;
+      } else {
+        yPos = yPos - tooltipHeight - 10;
+      }
+      
+      d3.select(tooltip)
+        .html(tooltipContent)
+        .style('left', `${xPos}px`)
+        .style('top', `${yPos}px`)
+        .style('opacity', 1);
+    };
+    
+    // Функция для скрытия тултипа
+    const hideTooltip = () => {
+      d3.select(tooltip).style('opacity', 0);
+    };
+    
+    // Градиент для столбцов текущего года
+    const gradient = svg.append('defs')
+      .append('linearGradient')
+      .attr('id', 'purpleGradient')
+      .attr('x1', '0%')
+      .attr('x2', '0%')
+      .attr('y1', '0%')
+      .attr('y2', '100%');
+    
+    gradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', '#A855F7');
+    
+    gradient.append('stop')
+      .attr('offset', '50%')
+      .attr('stop-color', '#9333EA');
+    
+    gradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', '#7E22CE');
+    
+    // Рисуем столбцы прошлого года при активном сравнении
+    if (showComparison) {
+      svg.selectAll('.bar-last-year')
+        .data(lastYearSalesData)
+        .enter()
+        .append('rect')
+        .attr('class', 'bar-last-year')
+        .attr('x', (_, i) => x(i) - x.bandwidth() * 0.15)
+        .attr('y', d => y(d))
+        .attr('width', x.bandwidth() * 0.3)
+        .attr('height', d => height - y(d))
+        .attr('rx', 2)
+        .attr('fill', 'rgba(59, 130, 246, 0.7)')
+        .attr('filter', 'drop-shadow(0 0 2px rgba(59, 130, 246, 0.3))')
+        .on('mouseover', (event, d, i) => showTooltip(event, d, i))
+        .on('mousemove', (event, d, i) => showTooltip(event, d, i))
+        .on('mouseout', hideTooltip);
+    }
+    
+    // Рисуем столбцы текущего года
+    svg.selectAll('.bar-current-year')
+      .data(salesData)
+      .enter()
+      .append('rect')
+      .attr('class', 'bar-current-year')
+      .attr('x', (_, i) => showComparison ? x(i) + x.bandwidth() * 0.15 : x(i))
+      .attr('y', d => y(d))
+      .attr('width', showComparison ? x.bandwidth() * 0.3 : x.bandwidth())
+      .attr('height', d => height - y(d))
+      .attr('rx', 2)
+      .attr('fill', 'url(#purpleGradient)')
+      .attr('filter', 'drop-shadow(0 0 5px rgba(168, 85, 247, 0.5))')
+      .on('mouseover', (event, d, i) => showTooltip(event, d, i))
+      .on('mousemove', (event, d, i) => showTooltip(event, d, i))
+      .on('mouseout', hideTooltip);
+    
+    // Добавляем метки изменений при сравнении
+    if (showComparison) {
+      salesData.forEach((value, i) => {
+        const percentChange = ((value - lastYearSalesData[i]) / lastYearSalesData[i] * 100);
+        const isPositive = value > lastYearSalesData[i];
+        
+        svg.append('text')
+          .attr('x', x(i) + x.bandwidth() / 2)
+          .attr('y', y(value) - 10)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '10px')
+          .attr('font-weight', 'bold')
+          .attr('fill', isPositive ? '#4ADE80' : '#F87171')
+          .text(isPositive ? '↑' : '↓');
+      });
+    }
+  }, [salesData, lastYearSalesData, showComparison, months, maxValue]);
+
+  // Инициализация графика при первой загрузке и при изменении зависимостей
+  useEffect(() => {
+    renderChart();
+  }, [renderChart]);
+
+  // Обработчик изменения размера окна
+  useEffect(() => {
+    const handleResize = () => {
+      renderChart();
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [renderChart]);
+
+  // Обработчик выбора периода
+  const handlePeriodChange = (e) => {
+    if (e.target.value === 'custom') {
+      setShowPeriodFilter(true);
+    } else {
+      const now = new Date();
+      let start = new Date();
+      
+      switch(e.target.value) {
+        case '7days': start.setDate(now.getDate() - 7); break;
+        case '30days': start.setDate(now.getDate() - 30); break;
+        case '90days': start.setDate(now.getDate() - 90); break;
+        case '6months': start.setMonth(now.getMonth() - 6); break;
+        case '12months': start.setMonth(now.getMonth() - 12); break;
+        default: start.setDate(now.getDate() - 30);
+      }
+      
+      setPeriod({
+        start: start.toISOString().split('T')[0],
+        end: now.toISOString().split('T')[0]
+      });
+    }
+  };
+  
+  // Переключатель сравнения с прошлым годом
+  const toggleComparison = () => {
+    setShowComparison(!showComparison);
+  };
+  
+  return (
+    <>
+      {/* Заголовок */}
+      <div className="flex justify-between items-center p-4 border-b border-gray-700">
+        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <BarChart3 size={20} className="text-purple-400" />
+          Продажи за {activeTab === 'месяц' ? 'последние 30 дней' : 'год'}
+          {selectedModel && (
+            <span className="ml-2 text-sm text-gray-400">
+              • {carModels.find(m => m.id === selectedModel)?.name}
+            </span>
+          )}
+        </h3>
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-bold text-white">{totalSales.toLocaleString()}</span>
+          <span className="px-2 py-1 bg-green-900/50 text-green-400 text-sm rounded-md border border-green-800">
+            +{growthPercent}%
+          </span>
+        </div>
+      </div>
+      
+      {/* Панель управления */}
+      <div className="p-4 bg-gray-850 border-b border-gray-700">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div>
+            <div className="mb-2 text-sm font-medium text-gray-300">Период анализа:</div>
+            <div className="flex flex-wrap gap-2">
+              <div className="flex-grow min-w-[200px]">
+                <select 
+                  className="w-full bg-gray-700 border-2 border-gray-600 rounded-md px-3 py-2 text-sm text-white appearance-none pr-8 focus:outline-none focus:border-purple-500"
+                  onChange={handlePeriodChange}
+                >
+                  <option value="30days">Последние 30 дней</option>
+                  <option value="7days">Последние 7 дней</option>
+                  <option value="90days">Последние 3 месяца</option>
+                  <option value="6months">Последние 6 месяцев</option>
+                  <option value="12months">Последние 12 месяцев</option>
+                  <option value="custom">Произвольный период</option>
+                </select>
+              </div>
+              <button
+                className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors shadow-md whitespace-nowrap"
+                onClick={() => setShowPeriodFilter(true)}
+              >
+                <Calendar size={16} />
+                <span>Выбрать даты</span>
+              </button>
+            </div>
+          </div>
+          
+          <div className="flex items-end justify-end">
+            <button 
+              className={`min-w-[180px] py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 shadow-md transition-all ${
+                showComparison 
+                  ? 'bg-purple-600 hover:bg-purple-500 text-white border-2 border-purple-500' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white border-2 border-gray-600'
+              }`}
+              onClick={toggleComparison}
+            >
+              <Activity size={16} />
+              <span>Сравнить с прошлым годом</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div className="p-6">
+        {/* График D3 */}
+        <div className="relative h-80 mb-8 bg-gray-900 rounded-lg p-4 border border-gray-700 shadow-inner">
+          {/* Контейнер для D3 графика */}
+          <div 
+            ref={chartRef} 
+            className="w-full h-full"
+          ></div>
+          
+          {/* Тултип */}
+          <div 
+            ref={tooltipRef}
+            className="absolute opacity-0 bg-gray-800 text-white p-3 rounded-md text-sm min-w-[160px] transition-opacity shadow-xl z-20 border-2 border-gray-700 pointer-events-none"
+            style={{ transform: 'translate(-50%, -100%)' }}
+          ></div>
+        </div>
+        
+        {/* ЛЕГЕНДА И СТАТИСТИКА */}
+        <div className="bg-gray-900 rounded-lg p-4 border border-gray-700 flex flex-wrap justify-between items-center">
+          {/* Легенда */}
+          <div className="flex items-center gap-6 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-10 rounded-sm bg-gradient-to-t from-purple-700 via-purple-600 to-purple-500"></div>
+              <span className="text-sm font-medium text-white whitespace-nowrap">Текущий год</span>
+            </div>
+            
+            {showComparison && (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-10 rounded-sm bg-blue-500 opacity-70"></div>
+                <span className="text-sm font-medium text-white whitespace-nowrap">Прошлый год</span>
+              </div>
+            )}
+          </div>
+          
+          {/* Общая статистика */}
+          <div className="px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700 mt-3 sm:mt-0">
+            <div className="text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-gray-300 whitespace-nowrap">Всего за период:</span>
+                <span className="text-xl font-bold text-white whitespace-nowrap">{totalSales.toLocaleString()}</span>
+                
+                {showComparison && (
+                  <>
+                    <span className="text-gray-400 mx-1 hidden sm:inline">•</span>
+                    <span className="text-gray-300 whitespace-nowrap">Рост:</span>
+                    <span className="text-lg font-bold text-green-400 whitespace-nowrap">+{growthPercent}%</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Переключатель между месяцами и годами */}
+        <div className="mt-4 flex flex-wrap gap-3 justify-between items-center">
+          <div className="inline-flex rounded-md shadow-sm">
+            <button
+              className={`px-4 py-2 text-sm font-medium rounded-l-md border-2 ${
+                activeTab === 'месяц' 
+                  ? 'bg-purple-700 text-white border-purple-600' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'
+              }`}
+              onClick={() => setActiveTab('месяц')}
+            >
+              МЕСЯЦЫ
+            </button>
+            <button
+              className={`px-4 py-2 text-sm font-medium rounded-r-md border-2 ${
+                activeTab === 'год' 
+                  ? 'bg-purple-700 text-white border-purple-600' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'
+              }`}
+              onClick={() => setActiveTab('год')}
+            >
+              ГОДЫ
+            </button>
+          </div>
+          
+          <div className="flex flex-wrap gap-2">
+            <button className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md flex items-center gap-2 border border-gray-600">
+              <Filter size={16} />
+              <span>Фильтры</span>
+            </button>
+            
+            <button className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-md flex items-center gap-2">
+              <Download size={16} />
+              <span>Экспорт CSV</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
 
 const SalesDashboard = () => {
   const [activeTab, setActiveTab] = useState('месяц');
@@ -710,281 +1154,18 @@ const SalesDashboard = () => {
         
         {/* Сетка отчетов */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-          {/* Обновленный график продаж */}
+          {/* Обновленный график продаж с использованием компонента SalesChart */}
           <div className="bg-gray-800/80 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-lg overflow-hidden">
-            <div className="flex justify-between items-center p-4 border-b border-gray-700">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <BarChart3 size={20} className="text-purple-400" />
-                Продажи за {activeTab === 'месяц' ? 'последние 30 дней' : 'год'}
-                {selectedModel && (
-                  <span className="ml-2 text-sm text-gray-400">
-                    • {carModels.find(m => m.id === selectedModel)?.name}
-                  </span>
-                )}
-              </h3>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold text-white">98,546</span>
-                <span className="px-2 py-1 bg-green-900/50 text-green-400 text-sm rounded-md border border-green-800">
-                  +26.7%
-                </span>
-              </div>
-            </div>
-            
-            {/* Панель управления - крупнее и четче */}
-            <div className="p-4 bg-gray-850 border-b border-gray-700">
-              <div className="flex flex-wrap gap-4 items-center">
-                <div className="flex-grow">
-                  <div className="mb-2 text-sm font-medium text-gray-300">Период анализа:</div>
-                  <div className="flex space-x-3">
-                    <select 
-                      className="bg-gray-700 border-2 border-gray-600 rounded-md px-4 py-2 text-sm text-white appearance-none pr-10 focus:outline-none focus:border-purple-500"
-                      onChange={(e) => {
-                        if (e.target.value === 'custom') {
-                          setShowPeriodFilter(true);
-                        } else {
-                          const now = new Date();
-                          let start = new Date();
-                          
-                          switch(e.target.value) {
-                            case '7days': start.setDate(now.getDate() - 7); break;
-                            case '30days': start.setDate(now.getDate() - 30); break;
-                            case '90days': start.setDate(now.getDate() - 90); break;
-                            case '6months': start.setMonth(now.getMonth() - 6); break;
-                            case '12months': start.setMonth(now.getMonth() - 12); break;
-                          }
-                          
-                          setPeriod({
-                            start: start.toISOString().split('T')[0],
-                            end: now.toISOString().split('T')[0]
-                          });
-                        }
-                      }}
-                    >
-                      <option value="30days">Последние 30 дней</option>
-                      <option value="7days">Последние 7 дней</option>
-                      <option value="90days">Последние 3 месяца</option>
-                      <option value="6months">Последние 6 месяцев</option>
-                      <option value="12months">Последние 12 месяцев</option>
-                      <option value="custom">Произвольный период</option>
-                    </select>
-                    
-                    <button
-                      className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors shadow-md"
-                      onClick={() => setShowPeriodFilter(true)}
-                    >
-                      <Calendar size={16} />
-                      <span>Выбрать даты</span>
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="flex-grow-0">
-                  <div className="mb-2 text-sm font-medium text-gray-300">Дополнительно:</div>
-                  <button 
-                    className={`min-w-[180px] py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 shadow-md transition-all ${
-                      showComparison 
-                        ? 'bg-purple-600 hover:bg-purple-500 text-white border-2 border-purple-500' 
-                        : 'bg-gray-700 hover:bg-gray-600 text-white border-2 border-gray-600'
-                    }`}
-                    onClick={() => setShowComparison(!showComparison)}
-                  >
-                    <Activity size={16} />
-                    <span>Сравнить с прошлым годом</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-6">
-              {/* НОВЫЙ ГРАФИК С ГАРАНТИРОВАННОЙ ВИДИМОСТЬЮ */}
-              <div className="relative h-80 mb-8 bg-gray-900 rounded-lg p-3 border border-gray-700 shadow-inner">
-                {/* Ось Y и горизонтальные линии */}
-                <div className="absolute left-0 top-0 bottom-6 w-12 border-r border-gray-700 flex flex-col justify-between px-2">
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <div key={i} className="flex items-center h-6 -translate-y-3">
-                      <span className="text-xs font-medium text-gray-400">
-                        {Math.round(maxValue - (i * (maxValue / 4)))}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                
-                {/* Горизонтальные линии для сетки */}
-                <div className="absolute left-12 right-4 top-0 bottom-6 flex flex-col justify-between">
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <div key={i} className="w-full border-b border-gray-700/50 h-0"></div>
-                  ))}
-                </div>
-                
-                {/* Контейнер для столбцов */}
-                <div className="absolute left-16 right-8 top-4 bottom-10 flex items-end justify-between">
-                  {salesData.map((value, index) => {
-                    // Высоты в процентах для текущего и прошлого года
-                    const currentYearHeight = (value / maxValue) * 100;
-                    const lastYearHeight = showComparison ? (lastYearSalesData[index] / maxValue) * 100 : 0;
-                    const percentChange = lastYearSalesData[index] > 0 
-                      ? ((value - lastYearSalesData[index]) / lastYearSalesData[index] * 100).toFixed(1) 
-                      : 0;
-                    
-                    return (
-                      <div key={index} className="group relative h-full" style={{ width: `${100 / salesData.length - 2}%` }}>
-                        {/* ТУЛТИП С ИНФОРМАЦИЕЙ */}
-                        <div className="opacity-0 group-hover:opacity-100 absolute bottom-[105%] left-1/2 -translate-x-1/2 bg-gray-800 text-white p-3 rounded-md text-sm min-w-[160px] transition-opacity shadow-xl z-20 border-2 border-gray-700">
-                          <div className="font-bold text-center mb-2 text-purple-300">{months[index]}</div>
-                          <table className="w-full">
-                            <tbody>
-                              <tr>
-                                <td className="py-1 text-gray-300">Текущий год:</td>
-                                <td className="py-1 font-bold text-right">{value.toLocaleString()}</td>
-                              </tr>
-                              {showComparison && (
-                                <>
-                                  <tr>
-                                    <td className="py-1 text-gray-300">Прошлый год:</td>
-                                    <td className="py-1 font-bold text-right">{lastYearSalesData[index].toLocaleString()}</td>
-                                  </tr>
-                                  <tr className="border-t border-gray-700">
-                                    <td className="py-1 pt-2 text-gray-300">Изменение:</td>
-                                    <td className={`py-1 pt-2 font-bold text-right ${percentChange > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                      {percentChange > 0 ? '+' : ''}{percentChange}%
-                                    </td>
-                                  </tr>
-                                </>
-                              )}
-                            </tbody>
-                          </table>
-                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-8 border-transparent border-t-gray-800"></div>
-                        </div>
-                        
-                        {/* КОНТЕЙНЕР ДЛЯ СТОЛБЦОВ */}
-                        <div className="relative h-full w-full flex justify-center items-end group">
-                          {/* Область для интерактивности */}
-                          <div className="absolute inset-0 z-10 cursor-pointer"></div>
-                          
-                          {/* СТОЛБЦЫ */}
-                          <div className="relative flex items-end h-full">
-                            {/* Столбец прошлого года */}
-                            {showComparison && (
-                              <div 
-                                className="w-6 bg-blue-500 hover:bg-blue-400 transition-colors rounded-sm mx-0.5 transform group-hover:translate-x-1 shadow-lg"
-                                style={{ 
-                                  height: `${lastYearHeight}%`, 
-                                  minHeight: lastYearHeight > 0 ? '4px' : '0',
-                                  opacity: 0.7
-                                }}
-                              ></div>
-                            )}
-                            
-                            {/* Столбец текущего года - ОЧЕНЬ ЯРКИЙ И ЗАМЕТНЫЙ */}
-                            <div 
-                              className={`w-10 bg-gradient-to-t from-purple-700 via-purple-600 to-purple-500 hover:from-purple-600 hover:via-purple-500 hover:to-purple-400 transition-all rounded-sm group-hover:scale-105 transform shadow-[0_0_15px_rgba(168,85,247,0.5)] z-20`}
-                              style={{ 
-                                height: `${currentYearHeight}%`, 
-                                minHeight: currentYearHeight > 0 ? '4px' : '0',
-                              }}
-                            >
-                              {/* Значение над столбцом */}
-                              <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-white">
-                                {value}
-                              </div>
-                              
-                              {/* Индикатор изменения */}
-                              {showComparison && percentChange !== 0 && (
-                                <div className={`absolute top-0 right-0 -mr-1 -mt-1 px-1 py-0.5 rounded-sm text-xs font-bold ${percentChange > 0 ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
-                                  {percentChange > 0 ? '↑' : '↓'}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Метка месяца */}
-                          <div className="absolute bottom-0 left-0 right-0 text-center translate-y-6 text-xs font-medium text-white">
-                            {months[index]}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                {/* Ось X */}
-                <div className="absolute left-12 right-4 bottom-0 h-6 border-t border-gray-700"></div>
-              </div>
-              
-              {/* ЛЕГЕНДА И СТАТИСТИКА */}
-              <div className="bg-gray-900 rounded-lg p-4 border border-gray-700 flex flex-wrap justify-between items-center">
-                {/* Легенда */}
-                <div className="flex items-center gap-6">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-10 rounded-sm bg-gradient-to-t from-purple-700 via-purple-600 to-purple-500"></div>
-                    <span className="text-sm font-medium text-white">Текущий год</span>
-                  </div>
-                  
-                  {showComparison && (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-10 rounded-sm bg-blue-500 opacity-70"></div>
-                      <span className="text-sm font-medium text-white">Прошлый год</span>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Общая статистика */}
-                <div className="px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
-                  <div className="text-sm">
-                    <div className="flex items-center gap-3">
-                      <span className="text-gray-300">Всего за период:</span>
-                      <span className="text-xl font-bold text-white">{salesData.reduce((a, b) => a + b, 0).toLocaleString()}</span>
-                      
-                      {showComparison && (
-                        <>
-                          <span className="text-gray-400 mx-2">•</span>
-                          <span className="text-gray-300">Рост:</span>
-                          <span className="text-lg font-bold text-green-400">+12.3%</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Переключатель между месяцами и годами */}
-              <div className="mt-4 flex justify-between items-center">
-                <div className="inline-flex rounded-md shadow-sm">
-                  <button
-                    className={`px-4 py-2 text-sm font-medium rounded-l-md border-2 ${
-                      activeTab === 'месяц' 
-                        ? 'bg-purple-700 text-white border-purple-600' 
-                        : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'
-                    }`}
-                    onClick={() => setActiveTab('месяц')}
-                  >
-                    МЕСЯЦЫ
-                  </button>
-                  <button
-                    className={`px-4 py-2 text-sm font-medium rounded-r-md border-2 ${
-                      activeTab === 'год' 
-                        ? 'bg-purple-700 text-white border-purple-600' 
-                        : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'
-                    }`}
-                    onClick={() => setActiveTab('год')}
-                  >
-                    ГОДЫ
-                  </button>
-                </div>
-                
-                <div className="flex gap-3">
-                  <button className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md flex items-center gap-2 border border-gray-600">
-                    <Filter size={16} />
-                    <span>Фильтры</span>
-                  </button>
-                  
-                  <button className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-md flex items-center gap-2">
-                    <Download size={16} />
-                    <span>Экспорт CSV</span>
-                  </button>
-                </div>
-              </div>
-            </div>
+            <SalesChart 
+              salesData={salesData}
+              lastYearSalesData={lastYearSalesData}
+              months={months}
+              selectedModel={selectedModel}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              period={period}
+              setPeriod={setPeriod}
+            />
           </div>
           
           {/* УЛУЧШЕННАЯ ТАБЛИЦА ЗАДОЛЖЕННОСТИ ПО КОНТРАКТАМ */}
@@ -1031,7 +1212,7 @@ const SalesDashboard = () => {
                                 className="w-full h-full object-contain"
                               />
                             </div>
-                            <span>{item.modelName}</span>
+                      <span>{item.modelName}</span>
                           </div>
                         </td>
                         <td className="px-3 py-2 text-right text-gray-300 font-medium">{item.debt.toLocaleString()}</td>
