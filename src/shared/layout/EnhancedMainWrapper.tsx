@@ -1,3 +1,4 @@
+// src/shared/layout/EnhancedMainWrapper.tsx
 'use client';
 
 import { ReactNode, useRef, useEffect, useState } from 'react';
@@ -17,6 +18,9 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
   const [isMobile, setIsMobile] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const pathname = usePathname();
+  
+  // Проверяем, находимся ли мы на странице онбординга
+  const isOnboardingPage = pathname === '/onboarding';
 
   // Определение типа устройства
   useEffect(() => {
@@ -98,14 +102,84 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
     forceScrollToTop();
   }, [pathname]);
 
+  // Полноэкранный режим для страницы онбординга
+  if (isOnboardingPage) {
+    return (
+      <>
+        <ContentReadyLoader />
+        <div className="flex h-screen w-screen overflow-hidden">
+          <div 
+            ref={mainRef}
+            className="flex-grow h-full relative bg-white dark:bg-gray-900"
+          >
+            <TelegramWebAppInitializer />
+            
+            <div 
+              ref={contentRef}
+              className="content-scroll-container h-full bg-white dark:bg-gray-900 text-gray-800 dark:text-white overflow-auto"
+            >
+              {children}
+            </div>
+          </div>
+        </div>
+        
+        <style jsx global>{`
+          /* Стили для скролла и темы */
+          :root {
+            color-scheme: light dark;
+          }
+          
+          html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+          }
+          
+          body {
+            background-color: white;
+            color: #1f2937;
+          }
+          
+          body.dark,
+          .dark body,
+          html.dark,
+          .dark html {
+            background-color: #111827;
+            color: white;
+          }
+          
+          .content-scroll-container {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          
+          .content-scroll-container::-webkit-scrollbar {
+            display: none;
+          }
+          
+          .scrollable-content, .page-scrollable {
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+            max-height: 100%;
+          }
+          
+          .tg-expanded .fixed-navigation {
+            bottom: env(safe-area-inset-bottom, 0px) !important;
+          }
+        `}</style>
+      </>
+    );
+  }
+
+  // Стандартный режим с боковой панелью
   return (
     <>
-      {/* Лоадер, исчезающий при фактической готовности контента */}
       <ContentReadyLoader />
       
       <div className="flex h-screen w-screen overflow-hidden">
-        {/* Основной контейнер с фиксированными размерами */}
-         <div className="h-full">
+        <div className="h-full">
           <ResponsiveNav />
         </div>
         <div 
@@ -114,7 +188,6 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
         >
           <TelegramWebAppInitializer />
           
-          {/* Скроллируемый контейнер для содержимого */}
           <div 
             ref={contentRef}
             className="content-scroll-container h-full bg-white dark:bg-gray-900 text-gray-800 dark:text-white overflow-auto"
@@ -122,12 +195,8 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
             {children}
           </div>
         </div>
-        
-        {/* Навигация справа */}
-       
       </div>
       
-      {/* Стили для скролла и темы */}
       <style jsx global>{`
         /* Устанавливаем цвета темы для всего приложения */
         :root {
