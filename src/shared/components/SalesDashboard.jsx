@@ -1094,7 +1094,6 @@ const SalesDashboard = () => {
           </div>
         </div>
         
-        {/* НОВЫЙ БЛОК ДЕТАЛИЗАЦИИ ПО РЕГИОНАМ */}
         <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden mb-5">
 <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden mt-5 mb-5">
   <div className="flex justify-between items-center p-3 border-b border-gray-700">
