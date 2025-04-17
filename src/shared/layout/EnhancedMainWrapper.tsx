@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
 import { ReactNode, useRef, useEffect, useState } from 'react';
@@ -33,12 +32,13 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
     
     detectDeviceType();
     
-    // Также проверяем размер экрана для адаптивности
+    // Проверка размера экрана для адаптивности
     const checkScreenSize = () => {
       const isMobileSize = window.innerWidth < 768;
-      // Если UserAgent не определил как мобильное, но ширина экрана мобильная
       if (!isMobile && isMobileSize) {
         setIsMobile(true);
+      } else if (isMobile && !isMobileSize) {
+        setIsMobile(false);
       }
     };
     
@@ -56,7 +56,6 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
   // Отслеживаем изменение пути для сброса скролла
   useEffect(() => {
     if (prevPath !== pathname) {
-      // Сбрасываем скролл при смене страницы
       if (contentRef.current) {
         contentRef.current.scrollTop = 0;
       }
@@ -86,7 +85,6 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
           }
         });
       
-      // Пробуем скроллить window
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
@@ -100,69 +98,33 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
     forceScrollToTop();
   }, [pathname]);
 
-  // Получаем отступы в зависимости от типа устройства
-  const getPaddings = () => {
-    // Константы для отступов
-    const MOBILE_TOP_PADDING = '5rem';                      // Отступ сверху для мобильных
-    const MOBILE_BOTTOM_PADDING = isIOS ? '6rem' : '5rem';  // Увеличенный отступ снизу для iOS
-    const DESKTOP_TOP_PADDING = '1rem';                     // Отступ сверху для десктопа
-    const DESKTOP_LEFT_PADDING = '16rem';                   // Отступ слева для сайдбара на десктопе
-    const DESKTOP_BOTTOM_PADDING = '1rem';                  // Отступ снизу для десктопа
-    
-    // Учет safe-area-inset для iOS
-    const safeAreaBottom = 'env(safe-area-inset-bottom, 0px)';
-    
-    return {
-      paddingTop: isMobile ? MOBILE_TOP_PADDING : DESKTOP_TOP_PADDING,
-      paddingBottom: isMobile 
-        ? `calc(${MOBILE_BOTTOM_PADDING} + ${safeAreaBottom})`
-        : DESKTOP_BOTTOM_PADDING,
-      paddingLeft: isMobile ? '16px' : `calc(${DESKTOP_LEFT_PADDING} + 16px)`,  // Добавляем место для сайдбара на десктопе
-      paddingRight: '16px',
-      transition: 'padding 0.3s ease'
-    };
-  };
-  
-  // Получаем стили для контента
-  const contentPaddings = getPaddings();
-
   return (
     <>
       {/* Лоадер, исчезающий при фактической готовности контента */}
       <ContentReadyLoader />
       
-      {/* Добавляем ResponsiveNav перед основным содержимым */}
-      <ResponsiveNav />
-      
-      {/* Неподвижная основная оболочка */}
-      <div 
-        ref={mainRef}
-        className="main-content relative bg-white dark:bg-gray-900"
-        style={{ 
-          position: 'fixed',
-          top: 0,
-          left: 40,
-          right: 0,
-          bottom: 0,
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <TelegramWebAppInitializer />
-        
-        {/* Скроллируемый контейнер для содержимого */}
-        <div 
-          ref={contentRef}
-          className="content-scroll-container bg-white dark:bg-gray-900 text-gray-800 dark:text-white"
-          style={{ 
-            flex: 1,
-            overflow: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            ...contentPaddings
-          }}
-        >
-          {children}
+      <div className="flex h-screen w-screen overflow-hidden">
+        {/* Основной контейнер с фиксированными размерами */}
+         <div className="h-full">
+          <ResponsiveNav />
         </div>
+        <div 
+          ref={mainRef}
+          className="flex-grow h-full relative bg-white dark:bg-gray-900"
+        >
+          <TelegramWebAppInitializer />
+          
+          {/* Скроллируемый контейнер для содержимого */}
+          <div 
+            ref={contentRef}
+            className="content-scroll-container h-full bg-white dark:bg-gray-900 text-gray-800 dark:text-white overflow-auto"
+          >
+            {children}
+          </div>
+        </div>
+        
+        {/* Навигация справа */}
+       
       </div>
       
       {/* Стили для скролла и темы */}
@@ -170,6 +132,15 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
         /* Устанавливаем цвета темы для всего приложения */
         :root {
           color-scheme: light dark;
+        }
+        
+        /* Убираем стандартные отступы и поля */
+        html, body {
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+          height: 100%;
+          width: 100%;
         }
         
         /* Стили для светлой темы */

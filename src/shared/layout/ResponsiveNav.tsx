@@ -52,135 +52,136 @@ export default function ResponsiveNav() {
     }
   };
   
-  // Используем компоненты из библиотеки Lucide для иконок
-// Используем компоненты из библиотеки Lucide для иконок
-const {
-  LayoutDashboard,
-  BarChart3,
-  LineChart,
-  CarFront,
-  CreditCard,
-  ScrollText,
-  DollarSign,
-  Receipt,
-  PackageSearch,
-  BarChart4,
-  Package,
-  Settings,
-  HelpCircle,
-  Activity,
-  PieChart,
-  Warehouse,
-  ShoppingCart,
-  Gauge,
-  ClipboardCheck,
-  TrendingUp,
-  FileSpreadsheet,
-  Building,
-  HandCoins,
-  AreaChart,
-  Car
-} = LucideIcons;
+  const {
+    LayoutDashboard,
+    BarChart3,
+    LineChart,
+    CarFront,
+    CreditCard,
+    ScrollText,
+    DollarSign,
+    Receipt,
+    PackageSearch,
+    BarChart4,
+    Package,
+    Settings,
+    HelpCircle,
+    Activity,
+    PieChart,
+    Warehouse,
+    ShoppingCart,
+    Gauge,
+    ClipboardCheck,
+    TrendingUp,
+    FileSpreadsheet,
+    Building,
+    HandCoins,
+    AreaChart,
+    Car,
+    LayoutGrid,
+    Menu,
+    X
+  } = LucideIcons;
 
-// Цвета по категориям
-const categoryColors = {
-  main: "#3b82f6", // синий
-  analytics: "#6366f1", // индиго
-  finance: "#10b981", // зеленый
-  warehouse: "#f59e0b", // янтарный
-  utility: "#8b5cf6" // фиолетовый
-};
+  // Цвета по категориям
+  const categoryColors = {
+    main: "#3b82f6", // синий
+    analytics: "#6366f1", // индиго
+    finance: "#10b981", // зеленый
+    warehouse: "#f59e0b", // янтарный
+    utility: "#8b5cf6" // фиолетовый
+  };
 
-const navItems: NavItem[] = [
-  {
-    path: '/',
-    label: 'Обзорная панель',
-    category: 'main',
-    icon: <LayoutDashboard size={22} strokeWidth={1.5} color={categoryColors.main} />
-  },
-  {
-    path: '/statistics',
-    label: 'Аналитика продаж',
-    category: 'analytics',
-    icon: <AreaChart size={22} strokeWidth={1.5} color={categoryColors.analytics} />,
-    notification: 3
-  },
-  {
-    path: '/sales-dashboard',
-    label: 'Мониторинг продаж',
-    category: 'analytics',
-    icon: <TrendingUp size={22} strokeWidth={1.5} color={categoryColors.analytics} />,
-    notification: 8
-  },
-  {
-    path: '/model-tracking',
-    label: 'Отслеживание моделей',
-    category: 'analytics',
-    icon: <Gauge size={22} strokeWidth={1.5} color={categoryColors.analytics} />
-  },
-  {
-    path: '/analytics-dashboard',
-    label: 'Бизнес-аналитика',
-    category: 'analytics',
-    icon: <PieChart size={22} strokeWidth={1.5} color={categoryColors.analytics} />
-  },
-  {
-    path: '/auto-market',
-    label: 'Производство',
-    category: 'analytics',
-    icon: <CarFront size={22} strokeWidth={1.5} color={categoryColors.analytics} />
-  },
-  {
-    path: '/financial-analytics',
-    label: 'Финансовая аналитика',
-    category: 'finance',
-    icon: <FileSpreadsheet size={22} strokeWidth={1.5} color={categoryColors.finance} />,
-    notification: 5
-  },
-  {
-    path: '/car-contracts',
-    label: 'Контракты',
-    category: 'finance',
-    icon: <ScrollText size={22} strokeWidth={1.5} color={categoryColors.finance} />
-  },
-  {
-    path: '/installment-dashboard',
-    label: 'Рассрочки',
-    category: 'finance',
-    icon: <HandCoins size={22} strokeWidth={1.5} color={categoryColors.finance} />
-  },
-  {
-    path: '/warehouse-dashboard',
-    label: 'Управление складом',
-    category: 'warehouse',
-    icon: <Building size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
-  },
-  {
-    path: '/warehouse-analytics',
-    label: 'Аналитика склада',
-    category: 'warehouse',
-    icon: <BarChart4 size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
-  },
-  {
-    path: '/car-warehouse',
-    label: 'Автомобильный склад',
-    category: 'warehouse',
-    icon: <Car size={22} strokeWidth={1.5} color={categoryColors.warehouse} />,
-    notification: 3
-  },
-  {
-    path: '/settings',
-    label: 'Настройки системы',
-    category: 'utility',
-    icon: <Settings size={22} strokeWidth={1.5} color={categoryColors.utility} />
-  },
-  {
-    path: '/help',
-    label: 'Документация и поддержка',
-    category: 'utility',
-    icon: <HelpCircle size={22} strokeWidth={1.5} color={categoryColors.utility} />
-  }
-];
+  const navItems: NavItem[] = [
+    {
+      path: '/',
+      label: 'Обзорная панель',
+      category: 'main',
+      icon: <LayoutDashboard size={22} strokeWidth={1.5} color={categoryColors.main} />
+    },
+    {
+      path: '/statistics',
+      label: 'Аналитика продаж',
+      category: 'analytics',
+      icon: <AreaChart size={22} strokeWidth={1.5} color={categoryColors.analytics} />,
+      notification: 3
+    },
+    {
+      path: '/sales-dashboard',
+      label: 'Мониторинг продаж',
+      category: 'analytics',
+      icon: <TrendingUp size={22} strokeWidth={1.5} color={categoryColors.analytics} />,
+      notification: 8
+    },
+    {
+      path: '/model-tracking',
+      label: 'Отслеживание моделей',
+      category: 'analytics',
+      icon: <Gauge size={22} strokeWidth={1.5} color={categoryColors.analytics} />
+    },
+    {
+      path: '/analytics-dashboard',
+      label: 'Бизнес-аналитика',
+      category: 'analytics',
+      icon: <PieChart size={22} strokeWidth={1.5} color={categoryColors.analytics} />
+    },
+    {
+      path: '/auto-market',
+      label: 'Производство',
+      category: 'analytics',
+      icon: <CarFront size={22} strokeWidth={1.5} color={categoryColors.analytics} />
+    },
+    {
+      path: '/financial-analytics',
+      label: 'Финансовая аналитика',
+      category: 'finance',
+      icon: <FileSpreadsheet size={22} strokeWidth={1.5} color={categoryColors.finance} />,
+      notification: 5
+    },
+    {
+      path: '/car-contracts',
+      label: 'Контракты',
+      category: 'finance',
+      icon: <ScrollText size={22} strokeWidth={1.5} color={categoryColors.finance} />
+    },
+    {
+      path: '/installment-dashboard',
+      label: 'Рассрочки',
+      category: 'finance',
+      icon: <HandCoins size={22} strokeWidth={1.5} color={categoryColors.finance} />
+    },
+    {
+      path: '/warehouse-dashboard',
+      label: 'Управление складом',
+      category: 'warehouse',
+      icon: <Building size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
+    },
+    {
+      path: '/warehouse-analytics',
+      label: 'Аналитика склада',
+      category: 'warehouse',
+      icon: <BarChart4 size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
+    },
+    {
+      path: '/car-warehouse',
+      label: 'Автомобильный склад',
+      category: 'warehouse',
+      icon: <Car size={22} strokeWidth={1.5} color={categoryColors.warehouse} />,
+      notification: 3
+    },
+    {
+      path: '/settings',
+      label: 'Настройки системы',
+      category: 'utility',
+      icon: <Settings size={22} strokeWidth={1.5} color={categoryColors.utility} />
+    },
+    {
+      path: '/help',
+      label: 'Документация и поддержка',
+      category: 'utility',
+      icon: <HelpCircle size={22} strokeWidth={1.5} color={categoryColors.utility} />
+    }
+  ];
 
   // Компоненты навигации
   const NavItem = ({ item }: { item: NavItem }) => {
@@ -244,7 +245,7 @@ const navItems: NavItem[] = [
 
   return (
     <>
-      {/* Desktop & Mobile Sidebar */}
+      {/* Боковая навигация */}
       <div ref={menuRef} className={`sidebar ${isNavOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div className="logo-container">
@@ -253,7 +254,7 @@ const navItems: NavItem[] = [
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <LucideIcons.LayoutGrid size={26} />
+              <LayoutGrid size={26} />
             </motion.div>
             <div className="brand">
               <h1>UzAvtoAnalytics</h1>
@@ -261,14 +262,14 @@ const navItems: NavItem[] = [
             </div>
           </div>
           
-          {/* Mobile only close button */}
+          {/* Кнопка закрытия для мобильных */}
           {isMobile && (
             <motion.button 
               className="close-btn"
               onClick={() => setIsNavOpen(false)}
               whileTap={{ scale: 0.9 }}
             >
-              <LucideIcons.X size={20} />
+              <X size={20} />
             </motion.button>
           )}
         </div>
@@ -312,7 +313,7 @@ const navItems: NavItem[] = [
         </div>
       </div>
 
-      {/* Mobile Header */}
+      {/* Мобильная шапка */}
       {isMobile && (
         <header className="mobile-header">
           <motion.button 
@@ -320,7 +321,7 @@ const navItems: NavItem[] = [
             onClick={() => setIsNavOpen(true)}
             whileTap={{ scale: 0.9 }}
           >
-            <LucideIcons.Menu size={24} />
+            <Menu size={24} />
           </motion.button>
           
           <h1 className="page-title">
@@ -336,7 +337,7 @@ const navItems: NavItem[] = [
         </header>
       )}
 
-      {/* Mobile Backdrop */}
+      {/* Затемнение фона для мобильных */}
       {isMobile && isNavOpen && (
         <motion.div 
           className="backdrop"
@@ -348,7 +349,7 @@ const navItems: NavItem[] = [
       )}
 
       <style jsx global>{`
-        /* Base */
+        /* Базовые стили */
         :root {
           --sidebar-width: 280px;
           --header-height: 60px;
@@ -378,32 +379,8 @@ const navItems: NavItem[] = [
           --border-color: rgba(59, 130, 246, 0.15);
         }
 
-        /* Layout */
-        body {
-          margin: 0;
-          padding: 0;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-          background: var(--bg-dark);
-          color: var(--text-light);
-        }
-
-        @media (min-width: 1024px) {
-          body {
-            padding-left: var(--sidebar-width);
-          }
-        }
-
-        @media (max-width: 1023px) {
-          body {
-            padding-top: var(--header-height);
-          }
-        }
-
-        /* Sidebar */
+        /* Сайдбар */
         .sidebar {
-          position: fixed;
-          top: 0;
-          left: 0;
           width: var(--sidebar-width);
           height: 100vh;
           background: var(--bg-dark);
@@ -412,14 +389,18 @@ const navItems: NavItem[] = [
           z-index: 100;
           overflow-y: auto;
           box-shadow: var(--shadow-md);
-          transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          flex-shrink: 0;
         }
 
         @media (max-width: 1023px) {
           .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
             transform: translateX(-100%);
             width: 85%;
             max-width: 320px;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
           }
 
           .sidebar.open {
@@ -488,7 +469,7 @@ const navItems: NavItem[] = [
           cursor: pointer;
         }
 
-        /* Navigation Content */
+        /* Контент навигации */
         .nav-content {
           flex: 1;
           overflow-y: auto;
@@ -543,7 +524,7 @@ const navItems: NavItem[] = [
           padding: 0 var(--space-sm);
         }
 
-        /* Navigation Item */
+        /* Элемент навигации */
         .nav-item-container {
           margin: 3px 0;
         }
@@ -634,7 +615,7 @@ const navItems: NavItem[] = [
           z-index: -1;
         }
 
-        /* User Profile */
+        /* Профиль пользователя */
         .user-profile {
           padding: var(--space-md);
           margin: var(--space-md);
@@ -711,7 +692,7 @@ const navItems: NavItem[] = [
           margin: 0;
         }
 
-        /* Mobile Header */
+        /* Мобильная шапка */
         .mobile-header {
           position: fixed;
           top: 0;
@@ -762,7 +743,7 @@ const navItems: NavItem[] = [
           font-weight: 600;
         }
 
-        /* Backdrop */
+        /* Затемнение фона */
         .backdrop {
           position: fixed;
           top: 0;
@@ -774,7 +755,7 @@ const navItems: NavItem[] = [
           z-index: 95;
         }
 
-        /* Scrollbar Styling */
+        /* Стили для скроллбара */
         .nav-content::-webkit-scrollbar {
           width: 4px;
         }

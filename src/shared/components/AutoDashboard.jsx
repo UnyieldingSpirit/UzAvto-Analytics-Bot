@@ -1142,7 +1142,6 @@ const renderMainChart = () => {
           .attr("stroke", "#f9fafb")
           .attr("stroke-width", 2);
         
-        // Всплывающая подсказка
         const tooltip = d3.select(container)
           .append("div")
           .attr("class", "absolute z-10 p-3 rounded-lg shadow-xl bg-gray-800 border border-gray-700 text-white text-sm")

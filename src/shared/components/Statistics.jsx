@@ -654,7 +654,7 @@ export default function Statistics() {
   const modelCards = view === 'models' ? data.modelData : [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4">
       <header className="mb-8">
         <motion.h1 
           initial={{ opacity: 0, y: -20 }}
