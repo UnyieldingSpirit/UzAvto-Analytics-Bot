@@ -1774,16 +1774,10 @@ const showCarModelDetails = (year, month, monthName) => {
   
   // Генерируем модели автомобилей для анализа
   const carModels = [
-    { id: 'nx', name: 'Chevrolet Nexia', sales: Math.round(550000 + Math.random() * 150000), count: Math.round(85 + Math.random() * 25) },
-    { id: 'cb', name: 'Chevrolet Cobalt', sales: Math.round(480000 + Math.random() * 120000), count: Math.round(70 + Math.random() * 20) },
-    { id: 'sp', name: 'Chevrolet Spark', sales: Math.round(320000 + Math.random() * 90000), count: Math.round(90 + Math.random() * 30) },
-    { id: 'gn', name: 'Ravon Gentra', sales: Math.round(410000 + Math.random() * 100000), count: Math.round(65 + Math.random() * 15) },
-    { id: 'lc', name: 'Chevrolet Lacetti', sales: Math.round(490000 + Math.random() * 130000), count: Math.round(60 + Math.random() * 20) },
-    { id: 'ml', name: 'Chevrolet Malibu', sales: Math.round(720000 + Math.random() * 180000), count: Math.round(40 + Math.random() * 15) },
-    { id: 'cp', name: 'Chevrolet Captiva', sales: Math.round(850000 + Math.random() * 200000), count: Math.round(35 + Math.random() * 10) },
-    { id: 'sn', name: 'Hyundai Sonata', sales: Math.round(680000 + Math.random() * 170000), count: Math.round(30 + Math.random() * 12) },
-    { id: 'k5', name: 'Kia K5', sales: Math.round(750000 + Math.random() * 180000), count: Math.round(28 + Math.random() * 10) },
-    { id: 'cm', name: 'Toyota Camry', sales: Math.round(950000 + Math.random() * 220000), count: Math.round(25 + Math.random() * 8) }
+    { id: 'nx', name: 'DAMAS-2', sales: Math.round(550000 + Math.random() * 150000), count: Math.round(85 + Math.random() * 25) },
+    { id: 'cb', name: 'TRACKER-2', sales: Math.round(480000 + Math.random() * 120000), count: Math.round(70 + Math.random() * 20) },
+    { id: 'sn', name: 'Captiva 5T', sales: Math.round(680000 + Math.random() * 170000), count: Math.round(30 + Math.random() * 12) },
+    { id: 'k5', name: 'ONIX', sales: Math.round(750000 + Math.random() * 180000), count: Math.round(28 + Math.random() * 10) },
   ];
   
   // Сортируем модели по объему продаж
@@ -2221,32 +2215,32 @@ const showCarModelDetails = (year, month, monthName) => {
       .delay((d, i) => 800 + i * 70)
       .style('opacity', 1);
     
-    // Добавляем индикаторы изменения относительно прошлого периода
-    barChartSvg.selectAll('.trend-indicator')
-      .data(data)
-      .join('text')
-      .attr('class', 'trend-indicator')
-      .attr('x', d => barMargin.left - 25)
-      .attr('y', d => barY(d.name) + barY.bandwidth() / 2)
-      .attr('dy', '0.35em')
-      .style('font-size', '0.75rem')
-      .style('font-weight', '500')
-      .style('text-anchor', 'end')
-      .style('fill', (d, i) => {
-        // Имитируем данные изменения
-        const change = (i % 3 === 0) ? -5 - Math.random() * 10 : 5 + Math.random() * 15;
-        return change >= 0 ? '#10b981' : '#ef4444';
-      })
-      .text((d, i) => {
-        // Имитируем данные изменения
-        const change = (i % 3 === 0) ? -5 - Math.random() * 10 : 5 + Math.random() * 15;
-        return `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(1)}%`;
-      })
-      .style('opacity', 0)
-      .transition()
-      .duration(500)
-      .delay((d, i) => 1000 + i * 70)
-      .style('opacity', 0.9);
+    // // Добавляем индикаторы изменения относительно прошлого периода
+    // barChartSvg.selectAll('.trend-indicator')
+    //   .data(data)
+    //   .join('text')
+    //   .attr('class', 'trend-indicator')
+    //   .attr('x', d => barMargin.left - 25)
+    //   .attr('y', d => barY(d.name) + barY.bandwidth() / 2)
+    //   .attr('dy', '0.35em')
+    //   .style('font-size', '0.75rem')
+    //   .style('font-weight', '500')
+    //   .style('text-anchor', 'end')
+    //   .style('fill', (d, i) => {
+    //     // Имитируем данные изменения
+    //     const change = (i % 3 === 0) ? -5 - Math.random() * 10 : 5 + Math.random() * 15;
+    //     return change >= 0 ? '#10b981' : '#ef4444';
+    //   })
+    //   .text((d, i) => {
+    //     // Имитируем данные изменения
+    //     const change = (i % 3 === 0) ? -5 - Math.random() * 10 : 5 + Math.random() * 15;
+    //     return `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(1)}%`;
+    //   })
+    //   .style('opacity', 0)
+    //   .transition()
+    //   .duration(500)
+    //   .delay((d, i) => 1000 + i * 70)
+    //   .style('opacity', 0.9);
   }
   
   // Первичная отрисовка графика
