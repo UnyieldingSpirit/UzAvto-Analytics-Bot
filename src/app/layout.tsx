@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Telegram Mini App",
+  title: "UzAvtoAnalytics",
   description: "Next.js template for Telegram Mini Apps",
   viewport: {
     width: 'device-width',
