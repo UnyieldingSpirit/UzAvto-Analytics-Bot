@@ -454,12 +454,10 @@ const renderWarehouseDistribution = () => {
      
    // Данные для диаграммы производителей с более актуальными моделями
    const manufacturerData = [
-     { manufacturer: 'Toyota', percentage: 28, color: '#3b82f6' },
-     { manufacturer: 'Hyundai', percentage: 22, color: '#ef4444' },
-     { manufacturer: 'Kia', percentage: 18, color: '#f59e0b' },
-     { manufacturer: 'Volkswagen', percentage: 12, color: '#06b6d4' },
-     { manufacturer: 'Skoda', percentage: 10, color: '#22c55e' },
-     { manufacturer: 'Другие', percentage: 10, color: '#8b5cf6' }
+     { manufacturer: 'DAMAS-2', percentage: 28, color: '#3b82f6' },
+     { manufacturer: 'TRACKER-2', percentage: 22, color: '#ef4444' },
+     { manufacturer: 'Captiva 5T', percentage: 18, color: '#f59e0b' },
+     { manufacturer: 'ONIX', percentage: 12, color: '#06b6d4' },
    ];
      
    // Создаем пирог
