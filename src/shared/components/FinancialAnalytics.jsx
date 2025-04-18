@@ -7478,7 +7478,7 @@ return (
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-medium text-purple-300">Средний чек</h3>
+                <h3 className="text-lg font-medium text-purple-300">Средний показатель за день</h3>
                 <p className="text-3xl font-bold text-white mt-1">
                   {formatCurrency(Math.round(getTotalForPeriod() / (filteredData.length * 20)))}
                 </p>

@@ -443,14 +443,6 @@ const renderWarehouseDistribution = () => {
      .append('g')
      .attr('transform', `translate(${width/2},${height/2})`);
      
-   // Добавляем заголовок
-   svg.append('text')
-     .attr('x', 0)
-     .attr('y', -height/2 + 20)
-     .attr('text-anchor', 'middle')
-     .style('font-size', '16px')
-     .style('fill', '#f9fafb')
-     .text('Производители на рынке');
      
    // Данные для диаграммы производителей с более актуальными моделями
    const manufacturerData = [
@@ -1175,7 +1167,7 @@ return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       <div className="bg-gray-800 rounded-lg p-4 shadow-md">
         <div className="flex justify-between mb-2">
-          <h2 className="text-lg font-medium">Производители на рынке</h2>
+          <h2 className="text-lg font-medium">Распределение автомобилей по складам</h2>
           <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Доли рынка</span>
         </div>
         <div ref={manufacturerChartRef} className="h-[300px]"></div>

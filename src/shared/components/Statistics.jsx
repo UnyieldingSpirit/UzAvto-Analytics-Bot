@@ -17,8 +17,12 @@ export default function Statistics() {
     modelData: [],
     dealerData: [],
     salespersonData: [],
-    trendData: []
+    trendData: [],
+    paymentData: [] // Новое состояние для данных о платежах
   });
+  
+  // Режим просмотра детализации платежей
+  const [viewMode, setViewMode] = useState('general'); // 'general' или 'payments'
   
   // Период времени - новое состояние
   const [dateRange, setDateRange] = useState({
@@ -33,6 +37,7 @@ export default function Statistics() {
   const modelSecondaryChartRef = useRef(null);
   const dealerChartRef = useRef(null);
   const dealerSecondaryChartRef = useRef(null);
+  const dealerPaymentsChartRef = useRef(null);
   const salespersonChartRef = useRef(null);
   const salespersonSecondaryChartRef = useRef(null);
   const trendChartRef = useRef(null);
@@ -48,22 +53,31 @@ export default function Statistics() {
         d => d.modelId === selectedModel.id && d.dealerId === selectedDealer.dealerId
       )
     : [];
+    
+  const filteredPaymentData = (selectedModel && selectedDealer)
+    ? data.paymentData.find(
+        p => p.modelId === selectedModel.id && p.dealerId === selectedDealer.dealerId
+      )
+    : null;
 
   // Event handlers
   const handleModelClick = (model) => {
     setSelectedModel(model);
     setView('dealers');
     setAnimateCards(true);
+    setViewMode('general');
   };
 
   const handleDealerClick = (dealer) => {
     setSelectedDealer(dealer);
     setView('salespeople');
     setAnimateCards(true);
+    setViewMode('general');
   };
 
   const handleBackClick = () => {
     setAnimateCards(true);
+    setViewMode('general');
     if (view === 'salespeople') {
       setView('dealers');
       setSelectedDealer(null);
@@ -71,6 +85,11 @@ export default function Statistics() {
       setView('models');
       setSelectedModel(null);
     }
+  };
+  
+  // Обработчик переключения режима просмотра
+  const toggleViewMode = () => {
+    setViewMode(viewMode === 'general' ? 'payments' : 'general');
   };
   
   // Обработчики для датапикера
@@ -146,6 +165,16 @@ export default function Statistics() {
   // Форматирование даты для отображения
   const formatDate = (date) => {
     return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+  
+  // Форматирование суммы в удобочитаемый вид
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('ru-RU', { 
+      style: 'currency', 
+      currency: 'UZS',
+      maximumFractionDigits: 0,
+      notation: 'compact'
+    }).format(amount);
   };
   
   // Получение названия периода
@@ -277,8 +306,72 @@ export default function Statistics() {
         sales: Math.floor((Math.random() * 400 + 100) * monthFactor * trendFactor)
       });
     }
+    
+    // Новая генерация данных о платежах
+    const paymentData = [];
+    dealerData.forEach(dealerRecord => {
+      // Для каждого дилера генерируем данные о платежах
+      const totalCars = dealerRecord.sales;
+      const paidCars = Math.floor(totalCars * (0.7 + Math.random() * 0.2)); // 70-90% оплачено полностью
+      const returnedCars = Math.floor((totalCars - paidCars) * (Math.random() * 0.8)); // Часть возвращена
+      const pendingCars = totalCars - paidCars - returnedCars; // Остальные в процессе
+      
+      const paidAmount = paidCars * (Math.random() * 25000 + 75000);
+      const returnedAmount = returnedCars * (Math.random() * 20000 + 60000);
+      const pendingAmount = pendingCars * (Math.random() * 15000 + 80000);
+      
+      // Данные о платежах для этого дилера и модели
+      paymentData.push({
+        modelId: dealerRecord.modelId,
+        modelName: dealerRecord.modelName,
+        dealerId: dealerRecord.dealerId,
+        dealerName: dealerRecord.dealerName,
+        totalCars: totalCars,
+        paidCars: paidCars,
+        returnedCars: returnedCars,
+        pendingCars: pendingCars,
+        paidAmount: paidAmount,
+        returnedAmount: returnedAmount,
+        pendingAmount: pendingAmount,
+        totalAmount: paidAmount + pendingAmount,
+        // Генерируем детали по отдельным транзакциям
+        transactions: Array.from({ length: totalCars }).map((_, i) => {
+          const status = i < paidCars ? 'paid' : (i < paidCars + returnedCars ? 'returned' : 'pending');
+          const carId = `CAR-${dealerRecord.modelId}-${dealerRecord.dealerId}-${i + 1}`;
+          const carName = `${dealerRecord.modelName} ${["Base", "Comfort", "Lux", "Premium"][Math.floor(Math.random() * 4)]}`;
+          const paymentDate = new Date(startDate);
+          paymentDate.setDate(startDate.getDate() + Math.floor(Math.random() * daysDiff));
+          
+          const baseAmount = Math.floor(Math.random() * 30000 + 70000);
+          let paymentAmount = baseAmount;
+          let returnAmount = 0;
+          let returnDate = null;
+          
+          if (status === 'returned') {
+            returnDate = new Date(paymentDate);
+            returnDate.setDate(paymentDate.getDate() + Math.floor(Math.random() * 30) + 5);
+            returnAmount = Math.floor(baseAmount * (Math.random() * 0.5 + 0.5)); // 50-100% возвращено
+          } else if (status === 'pending') {
+            paymentAmount = Math.floor(baseAmount * (Math.random() * 0.4 + 0.1)); // 10-50% предоплата
+          }
+          
+          return {
+            id: `TRX-${dealerRecord.modelId}-${dealerRecord.dealerId}-${i + 1}`,
+            carId,
+            carName,
+            status,
+            totalAmount: baseAmount,
+            paymentAmount,
+            paymentDate: paymentDate.toISOString(),
+            returnDate: returnDate ? returnDate.toISOString() : null,
+            returnAmount,
+            balanceAmount: baseAmount - paymentAmount + returnAmount
+          };
+        })
+      });
+    });
 
-    return { modelData, dealerData, salespersonData, trendData };
+    return { modelData, dealerData, salespersonData, trendData, paymentData };
   };
 
   // Render functions with our new D3 visualizer
@@ -355,22 +448,22 @@ export default function Statistics() {
     }
     
     // Вторичный график - диаграмма рассеяния цена vs продажи
-    const scatterData = data.modelData.map(model => ({
-      x: Math.random() * 50000 + 50000, // Примерная цена
-      y: model.totalSales,
-      label: model.name,
-      size: model.totalSales / 50,
-      group: model.name,
-      model
-    }));
-    
-    D3Visualizer.createScatterPlot(scatterData, {
-      container: modelSecondaryChartRef.current,
-      title: `Соотношение цены и объема продаж (${getDateRangeLabel()})`,
-      onClick: (item) => handleModelClick(item.model),
-      height: 400,
-      colors: data.modelData.map(m => m.color)
-    });
+const scatterData = data.modelData.map(model => ({
+  x: Math.random() * 50000 + 50000, // Примерная цена
+  y: model.totalSales,
+  label: model.name,
+  size: model.totalSales / 50,
+  group: model.name,
+  model
+}));
+
+D3Visualizer.createScatterPlot(scatterData, {
+  container: modelSecondaryChartRef.current,
+  title: `Соотношение цены и объема продаж (${getDateRangeLabel()})`,
+  onClick: (item) => handleModelClick(item.model),
+  height: 400,
+  colors: data.modelData.map(m => m.color)
+});
   };
 
   const renderDealerCharts = () => {
@@ -416,223 +509,575 @@ export default function Statistics() {
       });
     }
     
-    // Secondary chart - Stacked bar для продавцов по дилерам
-    const dealerSalespersonData = data.salespersonData.filter(sp => sp.modelId === selectedModel.id);
-    const salespeopleByDealer = dealerSalespersonData.reduce((acc, salesperson) => {
-      if (!acc[salesperson.dealerName]) {
-        acc[salesperson.dealerName] = {
-          category: salesperson.dealerName,
-          values: []
+    // Secondary chart - Визуализация статуса платежей по дилерам
+    const paymentStatusData = data.paymentData
+      .filter(p => p.modelId === selectedModel.id)
+      .map(payment => {
+        return {
+          id: payment.dealerId,
+          label: payment.dealerName,
+          dealer: filteredDealerData.find(d => d.dealerId === payment.dealerId),
+          values: [
+            { 
+              label: 'Оплачено полностью', 
+              value: payment.paidCars,
+              color: '#10b981' // зеленый
+            },
+            { 
+              label: 'Возвращено', 
+              value: payment.returnedCars,
+              color: '#ef4444' // красный
+            },
+            { 
+              label: 'Частичная оплата', 
+              value: payment.pendingCars,
+              color: '#f59e0b' // оранжевый
+            }
+          ]
         };
-      }
-      
-      acc[salesperson.dealerName].values.push({
-        label: salesperson.salespersonName,
-        value: salesperson.sales
       });
-      
-      return acc;
-    }, {});
+    
+    // Группируем данные для stacked chart
+    const stackedPaymentData = paymentStatusData.map(dealer => ({
+      category: dealer.label,
+      values: dealer.values,
+      dealer: dealer.dealer
+    }));
 
-    D3Visualizer.createStackedBarChart(Object.values(salespeopleByDealer), {
-      container: dealerSecondaryChartRef.current,
-      title: `Продажи ${selectedModel.name} по продавцам (${getDateRangeLabel()})`,
-      onClick: (item) => {
-        const dealer = filteredDealerData.find(d => d.dealerName === item.category);
-        if (dealer) handleDealerClick(dealer);
-      },
-      height: 400
-    });
+    if (stackedPaymentData.length) {
+      D3Visualizer.createStackedBarChart(stackedPaymentData, {
+        container: dealerSecondaryChartRef.current,
+        title: `Статус платежей по ${selectedModel.name} (${getDateRangeLabel()})`,
+        onClick: (item) => {
+          const dealer = item.dealer || filteredDealerData.find(d => d.dealerName === item.category);
+          if (dealer) handleDealerClick(dealer);
+        },
+        height: 400,
+        // Пользовательские цвета для стеков
+        colors: (d) => {
+          if (d && d.label) {
+            if (d.label === 'Оплачено полностью') return '#10b981';
+            if (d.label === 'Возвращено') return '#ef4444';
+            if (d.label === 'Частичная оплата') return '#f59e0b';
+          }
+          return '#3b82f6';
+        }
+      });
+    }
   };
 
   const renderSalespersonCharts = () => {
     if (!salespersonChartRef.current || !salespersonSecondaryChartRef.current || !filteredSalespersonData.length || !selectedModel || !selectedDealer) return;
     
-    // Формат данных для D3 визуализатора
-    const chartData = filteredSalespersonData.map(salesperson => ({
-      id: salesperson.salespersonId,
-      label: salesperson.salespersonName,
-      value: salesperson.sales,
-      color: selectedModel.color,
-      salesperson
-    }));
-    
-    // Primary chart
-    if (chartType === 'bar') {
-      D3Visualizer.createBarChart(chartData, {
-        container: salespersonChartRef.current,
-        title: `Продажи ${selectedModel.name} в ${selectedDealer.dealerName} (${getDateRangeLabel()})`,
-        height: 400,
-        colors: chartData.map((_, i) => {
-          // Creating color variations
-          const baseColor = selectedModel.color;
-          const hslColor = d3.hsl(baseColor);
-          hslColor.l = 0.4 + (i * 0.1);
-          return hslColor.toString();
-        })
-      });
-    } else if (chartType === 'pie') {
-      D3Visualizer.createPieChart(chartData, {
-        container: salespersonChartRef.current,
-        title: `Доля продаж ${selectedModel.name} в ${selectedDealer.dealerName} (${getDateRangeLabel()})`,
-        height: 400,
-        colors: chartData.map((_, i) => {
-          // Creating color variations
-          const baseColor = selectedModel.color;
-          const hslColor = d3.hsl(baseColor);
-          hslColor.l = 0.4 + (i * 0.1);
-          return hslColor.toString();
-        })
-      });
-    }
-    
-    // Generate some mock monthly performance data for each salesperson
-    const monthlyData = filteredSalespersonData.flatMap(salesperson => {
-      const today = new Date();
-      return Array.from({ length: 6 }).map((_, i) => {
-        const date = new Date();
-        date.setMonth(today.getMonth() - 5 + i);
-        return {
-          x: date.toISOString().slice(0, 7),
-          y: Math.floor(Math.random() * 30) + 10,
-          group: salesperson.salespersonName
-        };
-      });
-    });
-
-    // Group by month for line chart
-    const monthlyByPerson = {};
-    monthlyData.forEach(d => {
-      if (!monthlyByPerson[d.group]) {
-        monthlyByPerson[d.group] = [];
+    // Разные визуализации в зависимости от режима просмотра
+    if (viewMode === 'general') {
+      // Обычный режим с продавцами
+      
+      // Формат данных для D3 визуализатора
+      const chartData = filteredSalespersonData.map(salesperson => ({
+        id: salesperson.salespersonId,
+        label: salesperson.salespersonName,
+        value: salesperson.sales,
+        color: selectedModel.color,
+        salesperson
+      }));
+      
+      // Primary chart
+      if (chartType === 'bar') {
+        D3Visualizer.createBarChart(chartData, {
+          container: salespersonChartRef.current,
+          title: `Продажи ${selectedModel.name} в ${selectedDealer.dealerName} (${getDateRangeLabel()})`,
+          height: 400,
+          colors: chartData.map((_, i) => {
+            // Creating color variations
+            const baseColor = selectedModel.color;
+            const hslColor = d3.hsl(baseColor);
+            hslColor.l = 0.4 + (i * 0.1);
+            return hslColor.toString();
+          })
+        });
+      } else if (chartType === 'pie') {
+        D3Visualizer.createPieChart(chartData, {
+          container: salespersonChartRef.current,
+          title: `Доля продаж ${selectedModel.name} в ${selectedDealer.dealerName} (${getDateRangeLabel()})`,
+          height: 400,
+          colors: chartData.map((_, i) => {
+            // Creating color variations
+            const baseColor = selectedModel.color;
+            const hslColor = d3.hsl(baseColor);
+            hslColor.l = 0.4 + (i * 0.1);
+            return hslColor.toString();
+          })
+        });
       }
-      monthlyByPerson[d.group].push(d);
-    });
+      
+      // Generate some mock monthly performance data for each salesperson
+      const monthlyData = filteredSalespersonData.flatMap(salesperson => {
+        const today = new Date();
+        return Array.from({ length: 6 }).map((_, i) => {
+          const date = new Date();
+          date.setMonth(today.getMonth() - 5 + i);
+          return {
+            x: date.toISOString().slice(0, 7),
+            y: Math.floor(Math.random() * 30) + 10,
+            group: salesperson.salespersonName
+          };
+        });
+      });
 
-    // Secondary chart - Performance over time
-    const multiLineData = Object.entries(monthlyByPerson).map(([name, values]) => ({
-      name,
-      values: values.map(v => ({ date: v.x, value: v.y }))
-    }));
+      // Group by month for line chart
+      const monthlyByPerson = {};
+      monthlyData.forEach(d => {
+        if (!monthlyByPerson[d.group]) {
+          monthlyByPerson[d.group] = [];
+        }
+        monthlyByPerson[d.group].push(d);
+      });
 
-    // Custom D3 rendering for multi-line chart
-    const container = salespersonSecondaryChartRef.current;
-    container.innerHTML = '';
-    
-    const width = container.clientWidth;
-    const height = 400;
-    const margin = { top: 40, right: 80, bottom: 60, left: 60 };
-    
-    const svg = d3.select(container)
-      .append('svg')
-      .attr('width', width)
-      .attr('height', height)
-      .style('background', '#1f2937')
-      .style('border-radius', '0.5rem');
+      // Secondary chart - Performance over time
+      const multiLineData = Object.entries(monthlyByPerson).map(([name, values]) => ({
+        name,
+        values: values.map(v => ({ date: v.x, value: v.y }))
+      }));
+
+      // Custom D3 rendering for multi-line chart
+      const container = salespersonSecondaryChartRef.current;
+      container.innerHTML = '';
       
-    svg.append('text')
-      .attr('x', width / 2)
-      .attr('y', margin.top / 2)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '1.2rem')
-      .style('font-weight', 'bold')
-      .style('fill', '#f9fafb')
-      .text(`Динамика продаж за период: ${getDateRangeLabel()}`);
+      const width = container.clientWidth;
+      const height = 400;
+      const margin = { top: 40, right: 80, bottom: 60, left: 60 };
       
-    const x = d3.scaleTime()
-      .domain(d3.extent(monthlyData, d => new Date(d.x)))
-      .range([margin.left, width - margin.right]);
-      
-    const y = d3.scaleLinear()
-      .domain([0, d3.max(monthlyData, d => d.y)])
-      .nice()
-      .range([height - margin.bottom, margin.top]);
-      
-    const colorScale = d3.scaleOrdinal()
-      .domain(Object.keys(monthlyByPerson))
-      .range(d3.quantize(d => {
-        const baseColor = selectedModel.color;
-        const hslColor = d3.hsl(baseColor);
-        hslColor.h += d * 180;
-        return hslColor.toString();
-      }, Object.keys(monthlyByPerson).length));
-      
-    const line = d3.line()
-      .x(d => x(new Date(d.x)))
-      .y(d => y(d.y))
-      .curve(d3.curveMonotoneX);
-      
-    // Add axes
+      const svg = d3.select(container)
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .style('background', '#1f2937')
+        .style('border-radius', '0.5rem');
+        
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', margin.top / 2)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '1.2rem')
+        .style('font-weight', 'bold')
+        .style('fill', '#f9fafb')
+        .text(`Динамика продаж за период: ${getDateRangeLabel()}`);
+        
+      const x = d3.scaleTime()
+        .domain(d3.extent(monthlyData, d => new Date(d.x)))
+        .range([margin.left, width - margin.right]);
+        
+      const y = d3.scaleLinear()
+        .domain([0, d3.max(monthlyData, d => d.y)])
+        .nice()
+        .range([height - margin.bottom, margin.top]);
+        
+      const colorScale = d3.scaleOrdinal()
+        .domain(Object.keys(monthlyByPerson))
+        .range(d3.quantize(d => {
+          const baseColor = selectedModel.color;
+          const hslColor = d3.hsl(baseColor);
+          hslColor.h += d * 180;
+          return hslColor.toString();
+        }, Object.keys(monthlyByPerson).length));
+        
+      const line = d3.line()
+        .x(d => x(new Date(d.x)))
+        .y(d => y(d.y))
+        .curve(d3.curveMonotoneX);
+        
+      svg.append('g')
+        .attr('transform', `translate(0,${height - margin.bottom})`)
+        .call(d3.axisBottom(x).ticks(6).tickFormat(d => d3.timeFormat('%b %Y')(d)))
+        .call(g => g.select('.domain').remove())
+        .call(g => g.selectAll('text').style('fill', '#f9fafb'));
+        
     svg.append('g')
-      .attr('transform', `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).ticks(6).tickFormat(d => d3.timeFormat('%b %Y')(d)))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('text').style('fill', '#f9fafb'));
-      
-    svg.append('g')
-      .attr('transform', `translate(${margin.left},0)`)
-      .call(d3.axisLeft(y).ticks(5))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('text').style('fill', '#f9fafb'))
-      .call(g => g.selectAll('.tick line')
-        .attr('x2', width - margin.left - margin.right)
-        .attr('stroke-opacity', 0.1));
+        .attr('transform', `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y).ticks(5))
+        .call(g => g.select('.domain').remove())
+        .call(g => g.selectAll('text').style('fill', '#f9fafb'))
+        .call(g => g.selectAll('.tick line')
+          .attr('x2', width - margin.left - margin.right)
+          .attr('stroke-opacity', 0.1));
+          
+      // Add lines
+      Object.entries(monthlyByPerson).forEach(([name, values], i) => {
+        const pathData = monthlyData.filter(d => d.group === name);
         
-    // Add lines
-    Object.entries(monthlyByPerson).forEach(([name, values], i) => {
-      const pathData = monthlyData.filter(d => d.group === name);
-      
-      // Add path
-      svg.append('path')
-        .datum(pathData)
-        .attr('fill', 'none')
-        .attr('stroke', colorScale(name))
-        .attr('stroke-width', 3)
-        .attr('d', line)
-        .attr('opacity', 0)
-        .transition()
-        .duration(1000)
-        .delay(i * 300)
-        .attr('opacity', 0.8);
+        // Add path
+        svg.append('path')
+          .datum(pathData)
+          .attr('fill', 'none')
+          .attr('stroke', colorScale(name))
+          .attr('stroke-width', 3)
+          .attr('d', line)
+          .attr('opacity', 0)
+          .transition()
+          .duration(1000)
+          .delay(i * 300)
+          .attr('opacity', 0.8);
 
-      // Add points
-      svg.selectAll(`.point-${i}`)
-        .data(pathData)
-        .join('circle')
-        .attr('class', `point-${i}`)
-        .attr('cx', d => x(new Date(d.x)))
-        .attr('cy', d => y(d.y))
-        .attr('r', 0)
-        .attr('fill', colorScale(name))
-        .attr('stroke', '#1f2937')
-        .attr('stroke-width', 2)
-        .transition()
-        .duration(500)
-        .delay((d, j) => i * 300 + j * 100 + 1000)
-        .attr('r', 6);
-    });
-    
-    // Add legend
-    const legend = svg.append('g')
-      .attr('transform', `translate(${width - margin.right + 20}, ${margin.top + 20})`);
+        // Add points
+        svg.selectAll(`.point-${i}`)
+          .data(pathData)
+          .join('circle')
+          .attr('class', `point-${i}`)
+          .attr('cx', d => x(new Date(d.x)))
+          .attr('cy', d => y(d.y))
+          .attr('r', 0)
+          .attr('fill', colorScale(name))
+          .attr('stroke', '#1f2937')
+          .attr('stroke-width', 2)
+          .transition()
+          .duration(500)
+          .delay((d, j) => i * 300 + j * 100 + 1000)
+          .attr('r', 6);
+      });
       
-    Object.keys(monthlyByPerson).forEach((name, i) => {
-      const legendRow = legend.append('g')
-        .attr('transform', `translate(0, ${i * 25})`);
+      // Add legend
+      const legend = svg.append('g')
+        .attr('transform', `translate(${width - margin.right + 20}, ${margin.top + 20})`);
         
-      legendRow.append('rect')
-        .attr('width', 15)
-        .attr('height', 3)
-        .attr('fill', colorScale(name));
+      Object.keys(monthlyByPerson).forEach((name, i) => {
+        const legendRow = legend.append('g')
+          .attr('transform', `translate(0, ${i * 25})`);
+          
+        legendRow.append('rect')
+          .attr('width', 15)
+          .attr('height', 3)
+          .attr('fill', colorScale(name));
+          
+        legendRow.append('text')
+          .attr('x', 25)
+          .attr('y', 5)
+          .text(name)
+          .style('font-size', '0.8rem')
+          .style('fill', '#f9fafb');
+      });
+    } else if (viewMode === 'payments') {
+      // Режим просмотра платежей
+      
+      if (filteredPaymentData && dealerPaymentsChartRef.current) {
+        // Отображаем детализацию платежей дилера
         
-      legendRow.append('text')
-        .attr('x', 25)
-        .attr('y', 5)
-        .text(name)
-        .style('font-size', '0.8rem')
-        .style('fill', '#f9fafb');
-    });
+        // График статуса платежей
+        const paymentStatusData = [
+          { 
+            label: 'Оплачено полностью', 
+            value: filteredPaymentData.paidCars,
+            color: '#10b981' // зеленый
+          },
+          { 
+            label: 'Возвращено', 
+            value: filteredPaymentData.returnedCars,
+            color: '#ef4444' // красный
+          },
+          { 
+            label: 'Частичная оплата', 
+            value: filteredPaymentData.pendingCars,
+            color: '#f59e0b' // оранжевый
+          }
+        ];
+        
+        D3Visualizer.createPieChart(paymentStatusData, {
+          container: salespersonChartRef.current,
+          title: `Статус платежей ${selectedModel.name} в ${selectedDealer.dealerName}`,
+          height: 400,
+          colors: paymentStatusData.map(d => d.color)
+        });
+        
+        // График сумм платежей
+        const paymentAmountData = [
+          { 
+            label: 'Оплачено', 
+            value: filteredPaymentData.paidAmount,
+            color: '#10b981' // зеленый
+          },
+          { 
+            label: 'Возвращено', 
+            value: filteredPaymentData.returnedAmount,
+            color: '#ef4444' // красный
+          },
+          { 
+            label: 'В ожидании', 
+            value: filteredPaymentData.pendingAmount,
+            color: '#f59e0b' // оранжевый
+          }
+        ];
+        
+        D3Visualizer.createBarChart(paymentAmountData, {
+          container: salespersonSecondaryChartRef.current,
+          title: `Суммы платежей ${selectedModel.name} (${getDateRangeLabel()})`,
+          height: 400,
+          colors: paymentAmountData.map(d => d.color)
+        });
+        
+        // Детальная таблица транзакций (не через D3, а через DOM)
+        if (dealerPaymentsChartRef.current) {
+          const container = dealerPaymentsChartRef.current;
+          container.innerHTML = '';
+          
+          // Создаем таблицу транзакций
+          const tableContainer = document.createElement('div');
+          tableContainer.className = 'overflow-auto max-h-[400px] mt-4';
+          
+          const table = document.createElement('table');
+          table.className = 'min-w-full divide-y divide-gray-700';
+          
+          // Заголовок таблицы
+          const tableHead = document.createElement('thead');
+          tableHead.className = 'bg-gray-800 sticky top-0';
+          tableHead.innerHTML = `
+            <tr>
+              <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">ID</th>
+              <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Автомобиль</th>
+              <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Статус</th>
+              <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Сумма (UZS)</th>
+              <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Дата платежа</th>
+              <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Возврат</th>
+              <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Баланс</th>
+            </tr>
+          `;
+          
+          // Тело таблицы
+          const tableBody = document.createElement('tbody');
+          tableBody.className = 'bg-gray-900 divide-y divide-gray-800';
+          
+          // Сортируем транзакции: сначала возвращенные, затем частично оплаченные, затем полностью оплаченные
+          const sortedTransactions = [...filteredPaymentData.transactions].sort((a, b) => {
+            const order = { returned: 0, pending: 1, paid: 2 };
+            return order[a.status] - order[b.status];
+          });
+          
+          // Добавляем строки таблицы
+          sortedTransactions.forEach((transaction, i) => {
+            const row = document.createElement('tr');
+            row.className = i % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800/50';
+            
+            // Определяем цвет и текст статуса
+            let statusColor, statusText;
+            switch (transaction.status) {
+              case 'paid':
+                statusColor = 'bg-green-900 text-green-300';
+                statusText = 'Оплачено';
+                break;
+              case 'returned':
+                statusColor = 'bg-red-900 text-red-300';
+                statusText = 'Возвращено';
+                break;
+              case 'pending':
+                statusColor = 'bg-yellow-900 text-yellow-300';
+                statusText = 'Частично';
+                break;
+            }
+            
+            const formatter = new Intl.NumberFormat('ru-RU');
+            
+            row.innerHTML = `
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-400">${transaction.id}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-white">${transaction.carName}</td>
+              <td class="px-4 py-3 whitespace-nowrap">
+                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">
+                  ${statusText}
+                </span>
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-white">${formatter.format(transaction.paymentAmount)}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-400">${new Date(transaction.paymentDate).toLocaleDateString('ru-RU')}</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm ${transaction.returnAmount > 0 ? 'text-red-400' : 'text-gray-500'}">
+                ${transaction.returnAmount > 0 ? 
+                  `${formatter.format(transaction.returnAmount)} (${new Date(transaction.returnDate).toLocaleDateString('ru-RU')})` : 
+                  '-'}
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm ${transaction.balanceAmount > 0 ? 'text-yellow-400' : 'text-green-400'}">
+                ${formatter.format(transaction.balanceAmount)}
+              </td>
+            `;
+            
+            tableBody.appendChild(row);
+          });
+          
+          table.appendChild(tableHead);
+          table.appendChild(tableBody);
+          tableContainer.appendChild(table);
+          
+          // Добавляем заголовок и таблицу в контейнер
+          const titleElement = document.createElement('h3');
+          titleElement.className = 'text-xl font-bold text-white mb-4';
+          titleElement.textContent = `Детализация транзакций (${filteredPaymentData.transactions.length})`;
+          
+          container.appendChild(titleElement);
+          container.appendChild(tableContainer);
+        }
+      }
+    }
   };
+
+  // Альтернативный график - рейтинг продаж моделей по месяцам
+const months = [];
+const today = new Date();
+for (let i = 5; i >= 0; i--) {
+  const month = new Date(today);
+  month.setMonth(today.getMonth() - i);
+  months.push(month.toLocaleString('ru', { month: 'short' }));
+}
+
+// Создаем данные по месяцам для каждой модели
+const modelTimelineData = data.modelData.map(model => {
+  // Базовые продажи для модели
+  const baseSales = model.totalSales / 6;
+  
+  // Создаем массив данных по месяцам с некоторой вариативностью
+  return {
+    category: model.name,
+    color: model.color,
+    model: model,
+    values: months.map((month, idx) => {
+      // Добавляем случайную вариацию и тренд (более новые месяцы имеют больше продаж)
+      const trendFactor = 0.8 + (idx * 0.05);
+      const randomFactor = 0.8 + (Math.random() * 0.4);
+      
+      return {
+        label: month,
+        value: Math.round(baseSales * trendFactor * randomFactor),
+      };
+    })
+  };
+});
+
+// Создаем групповую столбчатую диаграмму
+if (modelSecondaryChartRef.current) {
+  const container = modelSecondaryChartRef.current;
+  container.innerHTML = '';
+  
+  const width = container.clientWidth;
+  const height = 400;
+  const margin = { top: 40, right: 90, bottom: 60, left: 60 };
+  
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height)
+    .style('background', '#1f2937')
+    .style('border-radius', '0.5rem');
+  
+  svg.append('text')
+    .attr('x', width / 2)
+    .attr('y', margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '1.2rem')
+    .style('font-weight', 'bold')
+    .style('fill', '#f9fafb')
+    .text(`Динамика продаж моделей по месяцам (${getDateRangeLabel()})`);
+  
+  // Вычисляем максимальное значение для масштаба
+  const maxValue = d3.max(modelTimelineData, d => 
+    d3.max(d.values, v => v.value)
+  );
+  
+  // Задаем масштабы
+  const x0 = d3.scaleBand()
+    .domain(months)
+    .rangeRound([margin.left, width - margin.right])
+    .padding(0.2);
+  
+  const x1 = d3.scaleBand()
+    .domain(modelTimelineData.map(d => d.category))
+    .rangeRound([0, x0.bandwidth()])
+    .padding(0.05);
+  
+  const y = d3.scaleLinear()
+    .domain([0, maxValue * 1.1])
+    .nice()
+    .rangeRound([height - margin.bottom, margin.top]);
+  
+  // Добавляем оси
+  svg.append('g')
+    .attr('transform', `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(x0))
+    .call(g => g.select('.domain').remove())
+    .call(g => g.selectAll('text')
+      .style('fill', '#f9fafb')
+      .style('font-size', '0.8rem'));
+  
+  svg.append('g')
+    .attr('transform', `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y).ticks(5).tickFormat(d => d))
+    .call(g => g.select('.domain').remove())
+    .call(g => g.selectAll('text').style('fill', '#f9fafb'))
+    .call(g => g.selectAll('.tick line')
+      .attr('x2', width - margin.left - margin.right)
+      .attr('stroke-opacity', 0.1));
+  
+  // Добавляем группы и столбцы
+  const groups = svg.append('g')
+    .selectAll('g')
+    .data(modelTimelineData)
+    .join('g')
+    .attr('transform', d => `translate(${x1(d.category)},0)`)
+    .on('click', (event, d) => {
+      if (d.model) handleModelClick(d.model);
+    });
+  
+  groups.selectAll('rect')
+    .data(d => d.values.map(v => ({ ...v, color: d.color, model: d.model })))
+    .join('rect')
+    .attr('x', (d, i) => x0(months[i]))
+    .attr('y', height - margin.bottom)
+    .attr('width', x1.bandwidth())
+    .attr('height', 0)
+    .attr('rx', 3)
+    .attr('fill', d => d.color)
+    .style('cursor', 'pointer')
+    .transition()
+    .duration(800)
+    .delay((d, i) => i * 50)
+    .attr('y', d => y(d.value))
+    .attr('height', d => height - margin.bottom - y(d.value));
+  
+  // Добавляем подписи к столбцам
+  groups.selectAll('text')
+    .data(d => d.values.map(v => ({ ...v, color: d.color })))
+    .join('text')
+    .attr('x', (d, i) => x0(months[i]) + x1.bandwidth() / 2)
+    .attr('y', d => y(d.value) - 5)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '0.7rem')
+    .style('fill', '#f9fafb')
+    .style('opacity', 0)
+    .text(d => d.value)
+    .transition()
+    .duration(400)
+    .delay((d, i) => i * 50 + 800)
+    .style('opacity', 1);
+  
+  // Добавляем легенду
+  const legend = svg.append('g')
+    .attr('transform', `translate(${width - margin.right + 15}, ${margin.top + 10})`);
+  
+  modelTimelineData.forEach((d, i) => {
+    const legendRow = legend.append('g')
+      .attr('transform', `translate(0, ${i * 20})`)
+      .style('cursor', 'pointer')
+      .on('click', () => {
+        if (d.model) handleModelClick(d.model);
+      });
+    
+    legendRow.append('rect')
+      .attr('width', 12)
+      .attr('height', 12)
+      .attr('rx', 2)
+      .attr('fill', d.color);
+    
+    legendRow.append('text')
+      .attr('x', 20)
+      .attr('y', 10)
+      .style('font-size', '0.7rem')
+      .style('fill', '#f9fafb')
+      .text(d.category);
+  });
+}
 
   // Initialize on mount and update charts when view changes
   useEffect(() => {
@@ -648,7 +1093,7 @@ export default function Statistics() {
     } else if (view === 'salespeople' && selectedModel && selectedDealer) {
       renderSalespersonCharts();
     }
-  }, [view, selectedModel, selectedDealer, data, chartType, dateRange]);
+  }, [view, selectedModel, selectedDealer, data, chartType, dateRange, viewMode]);
 
   // Prepare model card data
   const modelCards = view === 'models' ? data.modelData : [];
@@ -726,7 +1171,30 @@ export default function Statistics() {
            </motion.button>
          </div>
          
-         {/* Новый компонент выбора периода */}
+         {/* Режим просмотра платежей (только для уровня продавцов) */}
+         {view === 'salespeople' && selectedDealer && (
+           <div className="flex items-center space-x-2">
+             <motion.button
+               whileHover={{ scale: 1.05 }}
+               whileTap={{ scale: 0.95 }}
+               onClick={toggleViewMode}
+               className={`px-3 py-1.5 rounded-md text-sm ${viewMode === 'general' ? 'bg-gray-700 text-gray-300' : 'bg-blue-600 text-white'}`}
+             >
+               {viewMode === 'general' ? 'Показать платежи' : 'Показать продавцов'}
+             </motion.button>
+             
+             {viewMode === 'payments' && (
+               <div className="text-sm text-yellow-300 flex items-center">
+                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                 </svg>
+                 Режим просмотра платежей
+               </div>
+             )}
+           </div>
+         )}
+         
+         {/* Компонент выбора периода */}
          <div className="relative ml-auto">
            <motion.div 
              className="bg-gray-800 rounded-lg border border-gray-700 flex items-center cursor-pointer p-2 hover:bg-gray-700/70 transition-colors"
@@ -894,6 +1362,7 @@ export default function Statistics() {
                setSelectedModel(null);
                setSelectedDealer(null);
                setView('models');
+               setViewMode('general');
              }}
              className="text-blue-400 hover:text-blue-300 transition-colors"
            >
@@ -909,6 +1378,7 @@ export default function Statistics() {
                  onClick={() => {
                    setSelectedDealer(null);
                    setView('dealers');
+                   setViewMode('general');
                  }}
                  className="text-blue-400 hover:text-blue-300 transition-colors"
                  style={{ color: selectedModel.color }}
@@ -924,10 +1394,17 @@ export default function Statistics() {
                <span className="text-gray-300">{selectedDealer.dealerName}</span>
              </>
            )}
+           
+           {viewMode === 'payments' && (
+             <>
+               <span className="mx-2 text-gray-500">/</span>
+               <span className="text-yellow-300">Платежи и возвраты</span>
+             </>
+           )}
          </div>
        )}
        
-       {/* Уровень моделей - с карточками автомобилей */}
+
        {view === 'models' && (
          <motion.div 
            initial={{ opacity: 0 }}
@@ -956,375 +1433,570 @@ export default function Statistics() {
                        alt={model.name} 
                        className="w-full h-full object-contain p-2"
                      />
-                   )}
-                   <div className="absolute top-2 right-2 bg-gray-900/70 rounded-full px-2 py-1 text-xs">
-                     {model.category === 'suv' && 'Внедорожник'}
-                     {model.category === 'sedan' && 'Седан'}
-                     {model.category === 'minivan' && 'Минивэн'}
-                   </div>
-                 </div>
-                 <div className="p-4">
-                   <h3 className="text-lg font-bold" style={{ color: model.color }}>{model.name}</h3>
-                   <div className="flex justify-between items-center mt-2">
-                     <div className="text-gray-400 text-sm">Продажи</div>
-                     <div className="text-white font-bold">{model.totalSales.toLocaleString()}</div>
-                   </div>
-                   <div className="mt-3 w-full bg-gray-700 rounded-full h-1.5">
-                     <motion.div 
-                       initial={{ width: 0 }}
-                       animate={{ width: `${(model.totalSales / Math.max(...data.modelData.map(m => m.totalSales))) * 100}%` }}
-                       transition={{ duration: 1, delay: index * 0.1 + 0.5 }}
-                       className="h-full rounded-full"
-                       style={{ backgroundColor: model.color }}
-                     />
-                   </div>
-                 </div>
-                 <div className="p-4 bg-gray-900/50 border-t border-gray-700 flex justify-between items-center">
-                   <button className="text-xs text-gray-400 hover:text-white transition-colors">
-                     Подробнее
-                   </button>
-                   <span className="text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300">
-                     Рейтинг: {Math.floor(model.totalSales / 100)}
-                   </span>
-                 </div>
-               </motion.div>
-             ))}
-           </div>
-           
-           <h2 className="text-2xl font-bold mb-6 text-white">Общие продажи по моделям</h2>
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-             {/* Основной график */}
-             <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-               <div ref={modelChartRef} className="w-full h-full"></div>
-               <p className="text-center text-gray-400 mt-2">Нажмите на элемент для просмотра продаж по дилерам</p>
-             </div>
-             
-             {/* Дополнительный график */}
-             <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-               <div ref={modelSecondaryChartRef} className="w-full h-full"></div>
-             </div>
-           </div>
-           
-           {/* Тренд */}
-           <div className="mt-6 bg-gray-800 p-4 rounded-lg shadow-md">
-             <div ref={trendChartRef} className="w-full h-full"></div>
-           </div>
-         </motion.div>
-       )}
-       
-       {/* Уровень дилеров */}
-       {view === 'dealers' && (
-         <motion.div 
-           initial={{ opacity: 0 }}
-           animate={{ opacity: 1 }}
-           className="mb-8"
-         >
-           <div className="flex flex-col md:flex-row gap-6 mb-8">
-             {/* Информация о модели */}
-             <motion.div 
-               initial={animateCards ? { opacity: 0, x: -20 } : false}
-               animate={animateCards ? { opacity: 1, x: 0 } : false}
-               transition={{ duration: 0.5 }}
-               onAnimationComplete={() => setAnimateCards(false)}
-               className="bg-gray-800 p-4 rounded-lg shadow-md md:w-1/3"
-             >
-               <div className="relative h-40 bg-gradient-to-br from-gray-700 to-gray-900 rounded-md overflow-hidden mb-4">
-                 {selectedModel && selectedModel.img && (
-                   <img 
-                     src={selectedModel.img} 
-                     alt={selectedModel.name} 
-                     className="w-full h-full object-contain p-2"
-                   />
-                 )}
-               </div>
-               
-               <h2 className="text-2xl font-bold mb-4" style={{ color: selectedModel?.color }}>
-                 {selectedModel ? selectedModel.name : ''}
-               </h2>
-               
-               <div className="space-y-3">
-                 <div className="flex justify-between items-center">
-                   <span className="text-gray-400">Всего продаж</span>
-                   <span className="text-white font-bold">
-                     {selectedModel ? selectedModel.totalSales.toLocaleString() : 0}
-                   </span>
-                 </div>
-                 
-                 <div className="flex justify-between items-center">
-                   <span className="text-gray-400">Категория</span>
-                   <span className="text-white">
-                     {selectedModel?.category === 'suv' && 'Внедорожник'}
-                     {selectedModel?.category === 'sedan' && 'Седан'}
-                     {selectedModel?.category === 'minivan' && 'Минивэн'}
-                   </span>
-                 </div>
-                 
-                 <div className="flex justify-between items-center">
-                   <span className="text-gray-400">Дилеров</span>
-                   <span className="text-white">{filteredDealerData.length}</span>
-                 </div>
-                 
-                 <div className="flex justify-between items-center">
-                   <span className="text-gray-400">Средние продажи на дилера</span>
-                   <span className="text-white">
-                     {filteredDealerData.length > 0 
-                       ? Math.round(filteredDealerData.reduce((sum, d) => sum + d.sales, 0) / filteredDealerData.length).toLocaleString()
-                       : 0}
-                   </span>
-                 </div>
-               </div>
-               
-               <div className="mt-4">
-                 <motion.button
-                   whileHover={{ scale: 1.03 }}
-                   whileTap={{ scale: 0.98 }}
-                   onClick={handleBackClick}
-                   className="w-full py-2 rounded-md bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
-                 >
-                   Вернуться к моделям
-                 </motion.button>
-               </div>
-             </motion.div>
-             
-             {/* Дилеры в виде карточек */}
-             <div className="md:w-2/3 space-y-4">
-               <h3 className="text-xl font-bold text-white mb-4">Дилеры {selectedModel?.name}</h3>
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 {filteredDealerData.map((dealer, index) => (
-                   <motion.div
-                     key={dealer.dealerId}
-                     initial={animateCards ? { opacity: 0, y: 20 } : false}
-                     animate={animateCards ? { opacity: 1, y: 0 } : false}
-                     transition={{ delay: index * 0.1 }}
-                     whileHover={{ scale: 1.03, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2)' }}
-                     className="bg-gray-800 rounded-lg overflow-hidden shadow-lg cursor-pointer"
-                     onClick={() => handleDealerClick(dealer)}
-                     onAnimationComplete={() => index === filteredDealerData.length - 1 && setAnimateCards(false)}
-                   >
-                     <div className="p-4 border-l-4" style={{ borderColor: selectedModel?.color }}>
-                       <h3 className="text-lg font-bold text-white">{dealer.dealerName}</h3>
-                       <div className="flex justify-between items-center mt-2">
-                         <div className="text-gray-400 text-sm">Продажи</div>
-                         <div className="text-white font-bold">{dealer.sales.toLocaleString()}</div>
-                       </div>
-                       <div className="mt-3 w-full bg-gray-700 rounded-full h-1.5">
-                         <motion.div 
-                           initial={{ width: 0 }}
-                           animate={{ width: `${(dealer.sales / Math.max(...filteredDealerData.map(d => d.sales))) * 100}%` }}
-                           transition={{ duration: 1, delay: index * 0.1 + 0.3 }}
-                           className="h-full rounded-full"
-                           style={{ backgroundColor: selectedModel?.color }}
-                         />
-                       </div>
-                     </div>
-                   </motion.div>
-                 ))}
-               </div>
-             </div>
-           </div>
-           
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-             {/* Основной график */}
-             <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-               <div ref={dealerChartRef} className="w-full h-full"></div>
-               <p className="text-center text-gray-400 mt-2">Нажмите на элемент для просмотра продаж по продавцам</p>
-             </div>
-             
-             {/* Дополнительный график */}
-             <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-               <div ref={dealerSecondaryChartRef} className="w-full h-full"></div>
-             </div>
-           </div>
-         </motion.div>
-       )}
-       
-       {/* Уровень продавцов */}
-       {view === 'salespeople' && (
-         <motion.div 
-           initial={{ opacity: 0 }}
-           animate={{ opacity: 1 }}
-           className="mb-8"
-         >
-           <div className="flex flex-col md:flex-row gap-6 mb-8">
-             {/* Инфо о дилере и модели */}
-             <motion.div 
-               initial={animateCards ? { opacity: 0, x: -20 } : false}
-               animate={animateCards ? { opacity: 1, x: 0 } : false}
-               transition={{ duration: 0.5 }}
-               onAnimationComplete={() => setAnimateCards(false)}
-               className="bg-gray-800 p-4 rounded-lg shadow-md md:w-1/3"
-             >
-               <div className="relative h-32 bg-gradient-to-br from-gray-700 to-gray-900 rounded-md overflow-hidden mb-4">
-                 {selectedModel && selectedModel.img && (
-                   <img 
-                     src={selectedModel.img} 
-                     alt={selectedModel.name} 
-                     className="w-full h-full object-contain p-2"
-                   />
-                 )}
-               </div>
-               
-               <h3 className="text-xl font-bold mb-1" style={{ color: selectedModel?.color }}>
-                 {selectedModel ? selectedModel.name : ''}
-               </h3>
-               
-               <h2 className="text-2xl font-bold mb-4 text-white">
-                 {selectedDealer ? selectedDealer.dealerName : ''}
-               </h2>
-               
-               <div className="space-y-3">
-                 <div className="flex justify-between items-center">
-                   <span className="text-gray-400">Продажи модели</span>
-                   <span className="text-white font-bold">
-                     {selectedDealer ? selectedDealer.sales.toLocaleString() : 0}
-                   </span>
-                 </div>
-                 
-                 <div className="flex justify-between items-center">
-                   <span className="text-gray-400">Продавцов</span>
-                   <span className="text-white">{filteredSalespersonData.length}</span>
-                 </div>
-                 
-                 <div className="flex justify-between items-center">
-                   <span className="text-gray-400">Средние продажи на продавца</span>
-                   <span className="text-white">
-                     {filteredSalespersonData.length > 0 
-                       ? Math.round(filteredSalespersonData.reduce((sum, d) => sum + d.sales, 0) / filteredSalespersonData.length).toLocaleString()
-                       : 0}
-                   </span>
-                 </div>
-               </div>
-               
-               <div className="mt-4 space-y-2">
-                 <motion.button
-                   whileHover={{ scale: 1.03 }}
-                   whileTap={{ scale: 0.98 }}
-                   onClick={handleBackClick}
-                   className="w-full py-2 rounded-md bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
-                 >
-                   Вернуться к дилерам
-                 </motion.button>
-                 
-                 <motion.button
-                   whileHover={{ scale: 1.03 }}
-                   whileTap={{ scale: 0.98 }}
-                   onClick={() => {
-                     setSelectedModel(null);
-                     setSelectedDealer(null);
-                     setView('models');
-                   }}
-                   className="w-full py-2 rounded-md bg-gray-700/50 text-gray-400 hover:bg-gray-700 transition-colors"
-                 >
-                   К списку моделей
-                 </motion.button>
-               </div>
-             </motion.div>
-             
-             {/* Список продавцов в виде карточек */}
-             <div className="md:w-2/3">
-               <h3 className="text-xl font-bold text-white mb-4">Продавцы {selectedDealer?.dealerName}</h3>
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 {filteredSalespersonData.map((salesperson, index) => (
-                   <motion.div
-                     key={salesperson.salespersonId}
-                     initial={animateCards ? { opacity: 0, y: 20 } : false}
-                     animate={animateCards ? { opacity: 1, y: 0 } : false}
-                     transition={{ delay: index * 0.1 }}
-                     whileHover={{ scale: 1.03 }}
-                     className="bg-gray-800 rounded-lg overflow-hidden shadow-lg p-4"
-                     onAnimationComplete={() => index === filteredSalespersonData.length - 1 && setAnimateCards(false)}
-                   >
-                     <div className="flex items-center mb-3">
-                       <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center font-bold mr-3" 
-                            style={{ backgroundColor: `${selectedModel?.color}20` }}>
-                         {salesperson.salespersonName.split(' ').map(n => n[0]).join('')}
-                       </div>
-                       <div>
-                         <h4 className="text-lg font-bold text-white">{salesperson.salespersonName}</h4>
-                         <p className="text-sm text-gray-400">Менеджер по продажам</p>
-                       </div>
-                     </div>
-                     
-                     <div className="flex justify-between items-center mt-2">
-                       <div className="text-gray-400 text-sm">Продажи {selectedModel?.name}</div>
-                       <div className="text-white font-bold">{salesperson.sales.toLocaleString()}</div>
-                     </div>
-                     
-                     <div className="mt-3 w-full bg-gray-700 rounded-full h-1.5">
-                       <motion.div 
-                         initial={{ width: 0 }}
-                        animate={{ width: `${(salesperson.sales / Math.max(...filteredSalespersonData.map(d => d.sales))) * 100}%` }}
-                         transition={{ duration: 1, delay: index * 0.1 + 0.3 }}
-                         className="h-full rounded-full"
-                         style={{ backgroundColor: selectedModel?.color }}
-                       />
-                     </div>
-                     
-                     <div className="flex items-center justify-between mt-4">
-                       <span className="px-2 py-1 rounded-full text-xs" 
-                             style={{ backgroundColor: `${selectedModel?.color}20`, color: selectedModel?.color }}>
-                         {salesperson.sales > 100 ? 'Топ продавец' : 'Стандарт'}
-                       </span>
-                       
-                       <motion.button
-                         whileHover={{ scale: 1.05 }}
-                         whileTap={{ scale: 0.95 }}
-                         className="text-sm text-gray-400 hover:text-white transition-colors"
-                       >
-                         Подробнее
-                       </motion.button>
-                     </div>
-                   </motion.div>
-                 ))}
-               </div>
-             </div>
-           </div>
-           
-           <h2 className="text-2xl font-bold mb-6 text-white" style={{ color: selectedModel?.color }}>
-             {selectedModel && selectedDealer ? 
-               `${selectedModel.name} - Продажи в ${selectedDealer.dealerName}` : ''}
-           </h2>
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-             {/* Основной график */}
-             <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-               <div ref={salespersonChartRef} className="w-full h-full"></div>
-             </div>
-             
-             {/* Дополнительный график */}
-             <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-               <div ref={salespersonSecondaryChartRef} className="w-full h-full"></div>
-             </div>
-           </div>
-         </motion.div>
-       )}
-     </div>
-     
-     {/* Плавающая кнопка для быстрого выбора периода */}
+                     )}
+                  <div className="absolute top-2 right-2 bg-gray-900/70 rounded-full px-2 py-1 text-xs">
+                    {model.category === 'suv' && 'Внедорожник'}
+                    {model.category === 'sedan' && 'Седан'}
+                    {model.category === 'minivan' && 'Минивэн'}
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className="text-lg font-bold" style={{ color: model.color }}>{model.name}</h3>
+                  <div className="flex justify-between items-center mt-2">
+                    <div className="text-gray-400 text-sm">Продажи</div>
+                    <div className="text-white font-bold">{model.totalSales.toLocaleString()}</div>
+                  </div>
+                  <div className="mt-3 w-full bg-gray-700 rounded-full h-1.5">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(model.totalSales / Math.max(...data.modelData.map(m => m.totalSales))) * 100}%` }}
+                      transition={{ duration: 1, delay: index * 0.1 + 0.5 }}
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: model.color }}
+                    />
+                  </div>
+                </div>
+                <div className="p-4 bg-gray-900/50 border-t border-gray-700 flex justify-between items-center">
+                  <button className="text-xs text-gray-400 hover:text-white transition-colors">
+                    Подробнее
+                  </button>
+                  <span className="text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300">
+                    Рейтинг: {Math.floor(model.totalSales / 100)}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+          
+          <h2 className="text-2xl font-bold mb-6 text-white">Общие продажи по моделям</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Основной график */}
+            <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+              <div ref={modelChartRef} className="w-full h-full"></div>
+              <p className="text-center text-gray-400 mt-2">Нажмите на элемент для просмотра продаж по дилерам</p>
+            </div>
+            
+            {/* Дополнительный график */}
+            <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+              <div ref={modelSecondaryChartRef} className="w-full h-full"></div>
+            </div>
+          </div>
+          
+          {/* Тренд */}
+          <div className="mt-6 bg-gray-800 p-4 rounded-lg shadow-md">
+            <div ref={trendChartRef} className="w-full h-full"></div>
+          </div>
+        </motion.div>
+      )}
+      
+      {/* Уровень дилеров */}
+      {view === 'dealers' && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mb-8"
+        >
+          <div className="flex flex-col md:flex-row gap-6 mb-8">
+            {/* Информация о модели */}
+            <motion.div 
+              initial={animateCards ? { opacity: 0, x: -20 } : false}
+              animate={animateCards ? { opacity: 1, x: 0 } : false}
+              transition={{ duration: 0.5 }}
+              onAnimationComplete={() => setAnimateCards(false)}
+              className="bg-gray-800 p-4 rounded-lg shadow-md md:w-1/3"
+            >
+              <div className="relative h-40 bg-gradient-to-br from-gray-700 to-gray-900 rounded-md overflow-hidden mb-4">
+                {selectedModel && selectedModel.img && (
+                  <img 
+                    src={selectedModel.img} 
+                    alt={selectedModel.name} 
+                    className="w-full h-full object-contain p-2"
+                  />
+                )}
+              </div>
+              
+              <h2 className="text-2xl font-bold mb-4" style={{ color: selectedModel?.color }}>
+                {selectedModel ? selectedModel.name : ''}
+              </h2>
+              
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Всего продаж</span>
+                  <span className="text-white font-bold">
+                    {selectedModel ? selectedModel.totalSales.toLocaleString() : 0}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Категория</span>
+                  <span className="text-white">
+                    {selectedModel?.category === 'suv' && 'Внедорожник'}
+                    {selectedModel?.category === 'sedan' && 'Седан'}
+                    {selectedModel?.category === 'minivan' && 'Минивэн'}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Дилеров</span>
+                  <span className="text-white">{filteredDealerData.length}</span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Средние продажи на дилера</span>
+                  <span className="text-white">
+                    {filteredDealerData.length > 0 
+                      ? Math.round(filteredDealerData.reduce((sum, d) => sum + d.sales, 0) / filteredDealerData.length).toLocaleString()
+                      : 0}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="mt-4">
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleBackClick}
+                  className="w-full py-2 rounded-md bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
+                >
+                  Вернуться к моделям
+                </motion.button>
+              </div>
+            </motion.div>
+            
+            {/* Дилеры в виде карточек */}
+            <div className="md:w-2/3 space-y-4">
+              <h3 className="text-xl font-bold text-white mb-4">Дилеры {selectedModel?.name}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {filteredDealerData.map((dealer, index) => {
+                  // Находим данные о платежах для этого дилера
+                  const paymentInfo = data.paymentData.find(
+                    p => p.modelId === selectedModel.id && p.dealerId === dealer.dealerId
+                  );
+                  
+                  return (
+                    <motion.div
+                      key={dealer.dealerId}
+                      initial={animateCards ? { opacity: 0, y: 20 } : false}
+                      animate={animateCards ? { opacity: 1, y: 0 } : false}
+                      transition={{ delay: index * 0.1 }}
+                      whileHover={{ scale: 1.03, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2)' }}
+                      className="bg-gray-800 rounded-lg overflow-hidden shadow-lg cursor-pointer"
+                      onClick={() => handleDealerClick(dealer)}
+                      onAnimationComplete={() => index === filteredDealerData.length - 1 && setAnimateCards(false)}
+                    >
+                      <div className="p-4 border-l-4" style={{ borderColor: selectedModel?.color }}>
+                        <h3 className="text-lg font-bold text-white">{dealer.dealerName}</h3>
+                        <div className="flex justify-between items-center mt-2">
+                          <div className="text-gray-400 text-sm">Продажи</div>
+                          <div className="text-white font-bold">{dealer.sales.toLocaleString()}</div>
+                        </div>
+                        <div className="mt-3 w-full bg-gray-700 rounded-full h-1.5">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(dealer.sales / Math.max(...filteredDealerData.map(d => d.sales))) * 100}%` }}
+                            transition={{ duration: 1, delay: index * 0.1 + 0.3 }}
+                            className="h-full rounded-full"
+                            style={{ backgroundColor: selectedModel?.color }}
+                          />
+                        </div>
+                        
+                        {/* Добавляем информацию о возвратах */}
+                        {paymentInfo && paymentInfo.returnedCars > 0 && (
+                          <div className="mt-3 flex items-center">
+                            <div className="text-xs px-2 py-1 rounded-full bg-red-900/50 text-red-300 flex items-center space-x-1">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                              </svg>
+                              <span>Возвратов: {paymentInfo.returnedCars}</span>
+                            </div>
+                            <div className="flex-grow text-right text-xs text-red-300">
+                              {formatCurrency(paymentInfo.returnedAmount)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Основной график */}
+            <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+              <div ref={dealerChartRef} className="w-full h-full"></div>
+              <p className="text-center text-gray-400 mt-2">Нажмите на элемент для просмотра продаж по продавцам</p>
+            </div>
+            
+            {/* Дополнительный график - теперь показывает статус платежей */}
+            <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+              <div ref={dealerSecondaryChartRef} className="w-full h-full"></div>
+              <p className="text-center text-gray-400 mt-2">Статус оплаты и возвратов по дилерам</p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+      
+      {/* Уровень продавцов / платежей */}
+      {view === 'salespeople' && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mb-8"
+        >
+          <div className="flex flex-col md:flex-row gap-6 mb-8">
+            {/* Инфо о дилере и модели */}
+            <motion.div 
+              initial={animateCards ? { opacity: 0, x: -20 } : false}
+              animate={animateCards ? { opacity: 1, x: 0 } : false}
+              transition={{ duration: 0.5 }}
+              onAnimationComplete={() => setAnimateCards(false)}
+              className="bg-gray-800 p-4 rounded-lg shadow-md md:w-1/3"
+            >
+              <div className="relative h-32 bg-gradient-to-br from-gray-700 to-gray-900 rounded-md overflow-hidden mb-4">
+                {selectedModel && selectedModel.img && (
+                  <img 
+                    src={selectedModel.img} 
+                    alt={selectedModel.name} 
+                    className="w-full h-full object-contain p-2"
+                  />
+                )}
+              </div>
+              
+              <h3 className="text-xl font-bold mb-1" style={{ color: selectedModel?.color }}>
+                {selectedModel ? selectedModel.name : ''}
+              </h3>
+              
+              <h2 className="text-2xl font-bold mb-4 text-white">
+                {selectedDealer ? selectedDealer.dealerName : ''}
+              </h2>
+              
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Продажи модели</span>
+                  <span className="text-white font-bold">
+                    {selectedDealer ? selectedDealer.sales.toLocaleString() : 0}
+                  </span>
+                </div>
+                
+                {viewMode === 'general' ? (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Продавцов</span>
+                      <span className="text-white">{filteredSalespersonData.length}</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Средние продажи на продавца</span>
+                      <span className="text-white">
+                        {filteredSalespersonData.length > 0 
+                          ? Math.round(filteredSalespersonData.reduce((sum, d) => sum + d.sales, 0) / filteredSalespersonData.length).toLocaleString()
+                          : 0}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {filteredPaymentData && (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-400">Оплачено полностью</span>
+                          <div className="flex items-center">
+                            <span className="text-green-400 font-medium mr-2">{filteredPaymentData.paidCars}</span>
+                            <span className="text-white text-xs">{formatCurrency(filteredPaymentData.paidAmount)}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-400">Возвращено</span>
+                          <div className="flex items-center">
+                            <span className="text-red-400 font-medium mr-2">{filteredPaymentData.returnedCars}</span>
+                            <span className="text-white text-xs">{formatCurrency(filteredPaymentData.returnedAmount)}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-400">Частичная оплата</span>
+                          <div className="flex items-center">
+                            <span className="text-yellow-400 font-medium mr-2">{filteredPaymentData.pendingCars}</span>
+                            <span className="text-white text-xs">{formatCurrency(filteredPaymentData.pendingAmount)}</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+              
+              <div className="mt-4 space-y-2">
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleBackClick}
+                  className="w-full py-2 rounded-md bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
+                >
+                  Вернуться к дилерам
+                </motion.button>
+                
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setSelectedModel(null);
+                    setSelectedDealer(null);
+                    setView('models');
+                    setViewMode('general');
+                  }}
+                  className="w-full py-2 rounded-md bg-gray-700/50 text-gray-400 hover:bg-gray-700 transition-colors"
+                >
+                  К списку моделей
+                </motion.button>
+                
+                {/* Кнопка переключения режима */}
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={toggleViewMode}
+                  className="w-full py-2 rounded-md bg-blue-600/70 text-white hover:bg-blue-600 transition-colors flex items-center justify-center"
+                >
+                  {viewMode === 'general' ? (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Показать платежи и возвраты
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      Показать продавцов
+                    </>
+                  )}
+                </motion.button>
+              </div>
+            </motion.div>
+            
+            {/* Список продавцов или платежные карточки */}
+            <div className="md:w-2/3">
+              {viewMode === 'general' ? (
+                <>
+                  <h3 className="text-xl font-bold text-white mb-4">Продавцы {selectedDealer?.dealerName}</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {filteredSalespersonData.map((salesperson, index) => (
+                      <motion.div
+                        key={salesperson.salespersonId}
+                        initial={animateCards ? { opacity: 0, y: 20 } : false}
+                        animate={animateCards ? { opacity: 1, y: 0 } : false}
+                        transition={{ delay: index * 0.1 }}
+                        whileHover={{ scale: 1.03 }}
+                        className="bg-gray-800 rounded-lg overflow-hidden shadow-lg p-4"
+                        onAnimationComplete={() => index === filteredSalespersonData.length - 1 && setAnimateCards(false)}
+                      >
+                        <div className="flex items-center mb-3">
+                          <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center font-bold mr-3" 
+                               style={{ backgroundColor: `${selectedModel?.color}20` }}>
+                            {salesperson.salespersonName.split(' ').map(n => n[0]).join('')}
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-bold text-white">{salesperson.salespersonName}</h4>
+                            <p className="text-sm text-gray-400">Менеджер по продажам</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-between items-center mt-2">
+                          <div className="text-gray-400 text-sm">Продажи {selectedModel?.name}</div>
+                          <div className="text-white font-bold">{salesperson.sales.toLocaleString()}</div>
+                        </div>
+                        
+                        <div className="mt-3 w-full bg-gray-700 rounded-full h-1.5">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(salesperson.sales / Math.max(...filteredSalespersonData.map(d => d.sales))) * 100}%` }}
+                            transition={{ duration: 1, delay: index * 0.1 + 0.3 }}
+                            className="h-full rounded-full"
+                            style={{ backgroundColor: selectedModel?.color }}
+                          />
+                        </div>
+                        
+                        <div className="flex items-center justify-between mt-4">
+                          <span className="px-2 py-1 rounded-full text-xs" 
+                                style={{ backgroundColor: `${selectedModel?.color}20`, color: selectedModel?.color }}>
+                            {salesperson.sales > 100 ? 'Топ продавец' : 'Стандарт'}
+                          </span>
+                          
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="text-sm text-gray-400 hover:text-white transition-colors"
+                          >
+                            Подробнее
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-xl font-bold text-white mb-4">Статус платежей и возвратов</h3>
+                  {filteredPaymentData && (
+                    <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg p-4 mb-4">
+                      <div className="grid grid-cols-3 gap-4 mb-4">
+                        <div className="bg-gray-900/50 p-3 rounded-lg border border-green-900/30">
+                          <div className="text-sm text-gray-400">Оплачено полностью</div>
+                          <div className="text-xl font-bold text-green-400 mt-1">{filteredPaymentData.paidCars}</div>
+                          <div className="text-xs text-gray-500">{formatCurrency(filteredPaymentData.paidAmount)}</div>
+                        </div>
+                        <div className="bg-gray-900/50 p-3 rounded-lg border border-red-900/30">
+                          <div className="text-sm text-gray-400">Возвращено</div>
+                          <div className="text-xl font-bold text-red-400 mt-1">{filteredPaymentData.returnedCars}</div>
+                          <div className="text-xs text-gray-500">{formatCurrency(filteredPaymentData.returnedAmount)}</div>
+                        </div>
+                        <div className="bg-gray-900/50 p-3 rounded-lg border border-yellow-900/30">
+                          <div className="text-sm text-gray-400">Частичная оплата</div>
+                          <div className="text-xl font-bold text-yellow-400 mt-1">{filteredPaymentData.pendingCars}</div>
+                          <div className="text-xs text-gray-500">{formatCurrency(filteredPaymentData.pendingAmount)}</div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col space-y-3 mb-4">
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-gray-400">Общая стоимость автомобилей</span>
+                            <span className="text-white">{formatCurrency(filteredPaymentData.totalAmount)}</span>
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="h-full rounded-full bg-blue-500"
+                              style={{ width: '100%' }}
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-gray-400">Оплачено полностью</span>
+                            <span className="text-green-400">{formatCurrency(filteredPaymentData.paidAmount)}</span>
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="h-full rounded-full bg-green-500"
+                              style={{ width: `${(filteredPaymentData.paidAmount / filteredPaymentData.totalAmount) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-gray-400">Частичная оплата</span>
+                            <span className="text-yellow-400">{formatCurrency(filteredPaymentData.pendingAmount)}</span>
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="h-full rounded-full bg-yellow-500"
+                              style={{ width: `${(filteredPaymentData.pendingAmount / filteredPaymentData.totalAmount) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-gray-400">Возвращено</span>
+                            <span className="text-red-400">{formatCurrency(filteredPaymentData.returnedAmount)}</span>
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="h-full rounded-full bg-red-500"
+                              style={{ width: `${(filteredPaymentData.returnedAmount / filteredPaymentData.totalAmount) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <p className="text-xs text-gray-500 bg-gray-900/30 p-2 rounded">
+                        Суммы указаны в узбекских сумах (UZS). Данные актуальны на {new Date().toLocaleDateString('ru-RU')}.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Здесь будет детальная таблица транзакций */}
+                  <div ref={dealerPaymentsChartRef} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg"></div>
+                </>
+              )}
+            </div>
+          </div>
+          
+          <h2 className="text-2xl font-bold mb-6 text-white" style={{ color: selectedModel?.color }}>
+            {selectedModel && selectedDealer ? 
+              `${selectedModel.name} - ${viewMode === 'general' ? 'Продажи' : 'Финансы'} в ${selectedDealer.dealerName}` : ''}
+          </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Основной график */}
+            <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+              <div ref={salespersonChartRef} className="w-full h-full"></div>
+            </div>
+            
+            <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+              <div ref={salespersonSecondaryChartRef} className="w-full h-full"></div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </div>
+    
+    {/* Плавающая кнопка для быстрого выбора периода */}
+    <motion.div 
+      className="fixed bottom-6 right-6 z-10"
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+    >
+      <button 
+        onClick={() => setShowDatePicker(!showDatePicker)}
+        className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-colors"
+      >
+     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+       </svg>
+     </button>
+   </motion.div>
+   
+   {/* Плавающая кнопка для переключения режима просмотра */}
+   {view === 'salespeople' && (
      <motion.div 
-       className="fixed bottom-6 right-6 z-10"
+       className="fixed bottom-6 right-24 z-10"
        whileHover={{ scale: 1.05 }}
        whileTap={{ scale: 0.95 }}
      >
        <button 
-         onClick={() => setShowDatePicker(!showDatePicker)}
-         className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-colors"
+         onClick={toggleViewMode}
+         className={`${viewMode === 'payments' ? 'bg-green-600 hover:bg-green-700' : 'bg-yellow-600 hover:bg-yellow-700'} text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-colors`}
        >
-         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-         </svg>
+         {viewMode === 'general' ? (
+           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+           </svg>
+         ) : (
+           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+           </svg>
+         )}
        </button>
      </motion.div>
-     
-     <style jsx>{`
-       .bg-clip-text {
-         -webkit-background-clip: text;
-         background-clip: text;
-       }
+   )}
+   
+   <style jsx>{`
+     .bg-clip-text {
+       -webkit-background-clip: text;
+       background-clip: text;
+     }
 
-       .text-transparent {
-         color: transparent;
-       }
-     `}</style>
-   </div>
- );
+     .text-transparent {
+       color: transparent;
+     }
+   `}</style>
+ </div>
+);
 }
