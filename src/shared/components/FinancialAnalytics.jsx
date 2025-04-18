@@ -4055,9 +4055,8 @@ const showRegionModelDistribution = (regionName, year, month, monthName) => {
     
   // Генерируем данные о моделях
   const modelNames = [
-    'Chevrolet Nexia', 'Chevrolet Cobalt', 'Chevrolet Spark', 
-    'Ravon Gentra', 'Chevrolet Lacetti', 'Chevrolet Malibu', 
-    'Chevrolet Captiva', 'Hyundai Sonata', 'Kia K5', 'Toyota Camry'
+    'DAMAS-2', 'TRACKER-2', 'Captiva 5T', 
+    'ONIX',
   ];
   
   const modelsComparisonData = modelNames.map(model => {
