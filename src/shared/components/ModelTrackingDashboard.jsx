@@ -366,7 +366,7 @@ const renderDonutChart = () => {
     .attr('font-size', `${textSizeSmall}px`)
     .attr('font-weight', 'medium')
     .attr('fill', '#94a3b8')
-    .text(`₽${revenueData.total.toLocaleString('ru-RU')}`)
+    .text(`UZS${revenueData.total.toLocaleString('ru-RU')}`)
     .style('opacity', 0)
     .transition()
     .duration(800)
@@ -710,9 +710,9 @@ const renderDonutChart = () => {
       
       // Создаем таблицу с метриками
       const metrics = [
-        { label: 'Общий объем продаж', value: selectedModel.value.toLocaleString('ru-RU') + ' ₽' },
+        { label: 'Общий объем продаж', value: selectedModel.value.toLocaleString('ru-RU') + '  UZS' },
         { label: 'Изменение к прошлому периоду', value: (selectedModel.change >= 0 ? '+' : '') + selectedModel.change + '%' },
-        { label: 'Средняя цена', value: Math.round(selectedModel.value / 100).toLocaleString('ru-RU') + ' ₽' },
+        { label: 'Средняя цена', value: Math.round(selectedModel.value / 100).toLocaleString('ru-RU') + '  UZS' },
         { label: 'Регионы с наличием', value: '6 из 12' }
       ];
       
@@ -793,7 +793,7 @@ const renderDonutChart = () => {
         
         // Метрики по региону
         const regionMetrics = [
-          { label: 'Продажи в регионе', value: Math.round(selectedModel.value * 0.4).toLocaleString('ru-RU') + ' ₽' },
+          { label: 'Продажи в регионе', value: Math.round(selectedModel.value * 0.4).toLocaleString('ru-RU') + '  UZS' },
           { label: 'Доля в регионе', value: '32%' },
           { label: 'Рост в регионе', value: '+15.7%' },
           { label: 'Наличие у дилеров', value: '12 шт.' }
@@ -1224,8 +1224,8 @@ const renderDonutChart = () => {
                   ></div>
                 </div>
                 <div className="flex justify-between mt-2 text-sm text-slate-400">
-                  <span>Оплачено: 65% (₽5,704)</span>
-                  <span>Не оплачено: 35% (₽3,092)</span>
+                  <span>Оплачено: 65% (UZS 5,704)</span>
+                  <span>Не оплачено: 35% (UZS 3,092)</span>
                 </div>
               </div>
               
@@ -1253,7 +1253,7 @@ const renderDonutChart = () => {
                 <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
                   <h3 className="text-sm text-slate-400 mb-1">Объем продаж</h3>
                   <div className="text-xl font-bold text-white">
-                    {formatNumber(selectedModel?.value || 0)} ₽
+                    {formatNumber(selectedModel?.value || 0)} UZS
                   </div>
                 </div>
                 
@@ -1294,7 +1294,7 @@ const renderDonutChart = () => {
                     <tr className="border-b border-slate-700/50">
                       <th className="px-4 py-2 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Статус</th>
                       <th className="px-4 py-2 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Количество</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Сумма (₽)</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Сумма (UZS)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700/50">
@@ -1367,7 +1367,7 @@ const renderDonutChart = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Статус</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Количество</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Процент</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Сумма (₽)</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Сумма (UZS)</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Действия</th>
                   </tr>
                 </thead>
@@ -1404,7 +1404,7 @@ const renderDonutChart = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">{formatNumber(amount)} ₽</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">{formatNumber(amount)} UZS</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <button className="text-blue-400 hover:text-blue-300 transition-colors px-2 py-1 bg-blue-500/10 rounded-lg mr-2">
                             Открыть
@@ -1425,7 +1425,7 @@ const renderDonutChart = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-300">100%</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-300">
-                      {formatNumber(revenueData.current)} ₽
+                      {formatNumber(revenueData.current)} UZS
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap"></td>
                   </tr>

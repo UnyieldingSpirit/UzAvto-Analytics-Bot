@@ -4209,8 +4209,8 @@ const showRegionModelDistribution = (regionName, year, month, monthName) => {
     .style('border-radius', '8px 8px 0 0');
   
   tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').text('Модель');
-  tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'right').text(`${year} г., руб.`);
-  tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'right').text(`${year-1} г., руб.`);
+  tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'right').text(`${year} г., UZS.`);
+  tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'right').text(`${year-1} г., UZS.`);
   tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'right').text('Рост, %');
   tableHeader.append('div').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'right').text('Доля, %');
   
@@ -4692,7 +4692,7 @@ const renderGroupedBarChart = (data, options) => {
                 return monthData ? 
                   `<div style="display: flex; justify-content: space-between; margin: 2px 0;">
                     <span style="color: ${colorScale(parseInt(year))};">${year}:</span>
-                    <span style="margin-left: 12px;">${d3.format(',.0f')(monthData.value)} ₽</span>
+                    <span style="margin-left: 12px;">${d3.format(',.0f')(monthData.value)}  UZS</span>
                   </div>` : '';
               })
               .join('')}
@@ -5850,7 +5850,7 @@ const renderProgressChart = () => {
       .attr('y', 28)
       .style('font-size', '0.8rem')
       .style('fill', d => d.color)
-      .text(d => `${d3.format(',.0f')(d.value)} ₽ (${d3.format('.1f')((d.value / total) * 100)}%)`);
+      .text(d => `${d3.format(',.0f')(d.value)}  UZS (${d3.format('.1f')((d.value / total) * 100)}%)`);
   };
     
     // Отрисовка графика тренда
@@ -6635,7 +6635,7 @@ const renderProgressChart = () => {
       .style('font-size', '0.8rem')
       .style('fill', '#10b981')
       .style('opacity', 0)
-      .text(`Ожидаемый рост: +${growthPercentage.toFixed(1)}% (${(nextYearEstimate / 1000000).toFixed(2)} млн ₽)`)
+      .text(`Ожидаемый рост: +${growthPercentage.toFixed(1)}% (${(nextYearEstimate / 1000000).toFixed(2)} млн  UZS)`)
       .transition()
       .delay(2500)
       .duration(500)
@@ -7053,7 +7053,7 @@ const renderProgressChart = () => {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
-      currency: 'RUB',
+      currency: 'UZS',
       maximumFractionDigits: 0
     }).format(amount);
   };
