@@ -1169,110 +1169,71 @@ const SalesDashboard = () => {
           </div>
           
           {/* УЛУЧШЕННАЯ ТАБЛИЦА ЗАДОЛЖЕННОСТИ ПО КОНТРАКТАМ */}
-          <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden">
-            <div className="flex justify-between items-center p-3 border-b border-gray-700">
-              <h3 className="text-base font-medium text-white flex items-center gap-2">
-                <AlertTriangle size={18} className="text-yellow-400" />
-                Задолженность по контрактам
-                {selectedModel && (
-                  <span className="ml-2 text-sm text-gray-400">
-                    • {carModels.find(m => m.id === selectedModel)?.name}
-                  </span>
-                )}
-              </h3>
-              <div className="text-sm text-yellow-300">
-                Общая просрочка: <span className="font-bold">{totalDebtDays} {getDayWord(totalDebtDays)}</span>
-              </div>
-            </div>
-            
-            <div className="p-3">
-              <div className="rounded-lg overflow-hidden border border-gray-700">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-900/80">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-gray-400 font-medium">№ Контракта</th>
-                      <th className="px-3 py-2 text-left text-gray-400 font-medium">Клиент</th>
-                      <th className="px-3 py-2 text-left text-gray-400 font-medium">Модель</th>
-                      <th className="px-3 py-2 text-right text-gray-400 font-medium">Сумма долга (UZS)</th>
-                      <th className="px-3 py-2 text-center text-gray-400 font-medium">Просрочка</th>
-                      <th className="px-3 py-2 text-center text-gray-400 font-medium">Статус</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    {debtData.map((item, index) => (
-                      <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-800/60' : 'bg-gray-850/70'} hover:bg-gray-700/70 cursor-pointer`}>
-                        <td className="px-3 py-2 font-medium text-white">{item.contractId}</td>
-                        <td className="px-3 py-2 text-gray-300">{item.client}</td>
-                        <td className="px-3 py-2 text-gray-300">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-md overflow-hidden bg-gray-600/30">
-                              <img 
-                                src={item.modelImg} 
-                                alt={item.modelName} 
-                                className="w-full h-full object-contain"
-                              />
-                            </div>
-                      <span>{item.modelName}</span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-right text-gray-300 font-medium">{item.debt.toLocaleString()}</td>
-                        <td className="px-3 py-2 text-center">
-                          <span className={`inline-block px-2 py-1 rounded-full text-xs ${
-                            item.days > 7 ? 'bg-red-900/30 text-red-400 border border-red-800/50' :
-                            item.days > 3 ? 'bg-orange-900/30 text-orange-400 border border-orange-800/50' :
-                            'bg-yellow-900/30 text-yellow-400 border border-yellow-800/50'
-                          }`}>
-                            {item.days} {getDayWord(item.days)}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <span className={`inline-block px-2 py-1 rounded-full text-xs ${
-                            item.status === 'Критический' ? 'bg-red-900/30 text-red-400 border border-red-800/50' :
-                            item.status === 'Средний' ? 'bg-orange-900/30 text-orange-400 border border-orange-800/50' :
-                            'bg-yellow-900/30 text-yellow-400 border border-yellow-800/50'
-                          }`}>
-                            {item.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-gray-900/80">
-                    <tr>
-                      <td className="px-3 py-2 font-medium text-white">Итого</td>
-                      <td className="px-3 py-2">{debtData.length} контрактов</td>
-                      <td></td>
-                      <td className="px-3 py-2 text-right font-medium text-white">
-                        {debtData.reduce((sum, item) => sum + item.debt, 0).toLocaleString()} UZS
-                      </td>
-                      <td className="px-3 py-2 text-center text-red-400 text-xs font-medium">
-                        В среднем: {avgDebtDays} {getDayWord(avgDebtDays)}
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-              
-              <div className="mt-3 flex justify-between items-center">
+       <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden">
+  <div className="flex justify-between items-center p-3 border-b border-gray-700">
+    <h3 className="text-base font-medium text-white flex items-center gap-2">
+      <AlertTriangle size={18} className="text-yellow-400" />
+      Задолженность по контрактам
+      {selectedModel && (
+        <span className="ml-2 text-sm text-gray-400">
+          • {carModels.find(m => m.id === selectedModel)?.name}
+        </span>
+      )}
+    </h3>
+    <div className="text-sm text-yellow-300">
+      Общая просрочка: <span className="font-bold">{totalDebtDays} {getDayWord(totalDebtDays)}</span>
+    </div>
+  </div>
+  
+  <div className="p-3">
+    <div className="rounded-lg overflow-hidden border border-gray-700">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-900/80">
+          <tr>
+            <th className="px-3 py-2 text-left text-gray-400 font-medium">№ Контракта</th>
+            <th className="px-3 py-2 text-left text-gray-400 font-medium">Модель</th>
+            <th className="px-3 py-2 text-right text-gray-400 font-medium">Сумма долга (UZS)</th>
+            <th className="px-3 py-2 text-center text-gray-400 font-medium">Просрочка</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-700">
+          {debtData.map((item, index) => (
+            <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-800/60' : 'bg-gray-850/70'} hover:bg-gray-700/70`}>
+              <td className="px-3 py-2 font-medium text-white">{item.contractId}</td>
+              <td className="px-3 py-2 text-gray-300">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  <span className="text-xs text-gray-300">{`Критическая (>7 дней): ${criticalCount}`}</span>
-                  
-                  <div className="w-3 h-3 rounded-full bg-orange-500 ml-3"></div>
-                  <span className="text-xs text-gray-300">Средняя (3-6 дней): {mediumCount}</span>
-                  
-                  <div className="w-3 h-3 rounded-full bg-yellow-500 ml-3"></div>
-                  <span className="text-xs text-gray-300">{`Низкая (<3 дней): ${lowCount}`}</span>
+                  <span>{item.modelName}</span>
                 </div>
-                
-                <button className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300">
-                  <span>Все задолженности</span>
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          </div>
+              </td>
+              <td className="px-3 py-2 text-right text-gray-300 font-medium">{item.debt.toLocaleString()}</td>
+              <td className="px-3 py-2 text-center">
+                <span className={`inline-block px-2 py-1 rounded-full text-xs ${
+                  item.days > 7 ? 'bg-red-900/30 text-red-400 border border-red-800/50' :
+                  item.days > 3 ? 'bg-orange-900/30 text-orange-400 border border-orange-800/50' :
+                  'bg-yellow-900/30 text-yellow-400 border border-yellow-800/50'
+                }`}>
+                  {item.days} {getDayWord(item.days)}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot className="bg-gray-900/80">
+          <tr>
+            <td className="px-3 py-2 font-medium text-white">Итого</td>
+            <td></td>
+            <td className="px-3 py-2 text-right font-medium text-white">
+              {debtData.reduce((sum, item) => sum + item.debt, 0).toLocaleString()} UZS
+            </td>
+            <td className="px-3 py-2 text-center text-red-400 text-xs font-medium">
+              В среднем: {avgDebtDays} {getDayWord(avgDebtDays)}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
         </div>
         
         <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden mb-5">
