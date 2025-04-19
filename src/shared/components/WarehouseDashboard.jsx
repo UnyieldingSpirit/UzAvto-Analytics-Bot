@@ -678,7 +678,7 @@ const WarehouseDashboard = () => {
             </div>
           </div>
        {/* Распределение по регионам */}
-         <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+         {/* <div className="bg-gray-800 p-4 rounded-lg shadow-md">
            <h3 className="text-lg font-medium text-white mb-4">Распределение по регионам</h3>
            <div className="space-y-3">
              {regions.map(region => {
@@ -705,7 +705,7 @@ const WarehouseDashboard = () => {
              })}
            </div>
          </div>
-         
+          */}
          {/* Графики по цветам и комплектациям */}
          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
            <div className="bg-gray-800 p-4 rounded-lg shadow-md">
