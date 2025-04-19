@@ -1,44 +1,93 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef,useCallback } from 'react';
-import {  Clock, Download, Check, AlertTriangle, Filter, Truck, MapPin, 
-  Archive, ChevronLeft, BarChart3, Users, Activity, ChevronRight, Zap, Calendar, Car } from 'lucide-react';
+import {  Clock, Download, Check, AlertTriangle, ChevronDown, Truck, MapPin, 
+  Archive, ChevronLeft, BarChart3, Users, Activity, ChevronRight,RefreshCcw, Zap, Calendar, Car, X  } from 'lucide-react';
 import { carModels, regions } from '@/src/shared/mocks/mock-data';
 import { useTelegram } from '@/src/hooks/useTelegram';
 import * as d3 from 'd3';
 
+// Компонент SalesChart
 const SalesChart = ({ 
-  salesData, 
-  lastYearSalesData, 
+  salesData: initialSalesData, 
+  lastYearSalesData: initialLastYearData, 
   months, 
-  selectedModel, 
+  selectedModel,
+  setSelectedModel,
   activeTab, 
   setActiveTab,
   period,
   setPeriod
 }) => {
-  const [showPeriodFilter, setShowPeriodFilter] = useState(false);
+  const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [showRegionDropdown, setShowRegionDropdown] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState(null);
+  const [dateRange, setDateRange] = useState(period);
+  const [isFilterAnimating, setIsFilterAnimating] = useState(false);
+  
   const chartRef = useRef(null);
   const tooltipRef = useRef(null);
+  const modelDropdownRef = useRef(null);
+  const regionDropdownRef = useRef(null);
   
+  // Генерация данных с учетом фильтров
+  const filteredData = useMemo(() => {
+    let sales = [...initialSalesData];
+    let lastYear = [...initialLastYearData];
+    
+    if (selectedModel) {
+      const modelIndex = carModels.findIndex(m => m.id === selectedModel);
+      // Создаем более выраженную разницу для наглядности
+      const factor = 0.6 + (modelIndex * 0.15);
+      
+      sales = sales.map(value => Math.round(value * factor));
+      lastYear = lastYear.map(value => Math.round(value * (factor - 0.15)));
+    }
+    
+    if (selectedRegion) {
+      const regionIndex = regions.findIndex(r => r.id === selectedRegion);
+      // Создаем более выраженную разницу для наглядности
+      const regionFactor = 0.75 + (regionIndex * 0.08);
+      
+      sales = sales.map(value => Math.round(value * regionFactor));
+      lastYear = lastYear.map(value => Math.round(value * (regionFactor - 0.1)));
+    }
+    
+    return { sales, lastYear };
+  }, [initialSalesData, initialLastYearData, selectedModel, selectedRegion]);
+  
+  const displaySalesData = filteredData.sales;
+  const displayLastYearData = filteredData.lastYear;
+  
+  // Вычисляем максимальное значение для графика
   const maxValue = useMemo(() => {
     return showComparison 
-      ? Math.max(...salesData, ...lastYearSalesData) * 1.1
-      : Math.max(...salesData) * 1.1;
-  }, [salesData, lastYearSalesData, showComparison]);
+      ? Math.max(...displaySalesData, ...displayLastYearData) * 1.1
+      : Math.max(...displaySalesData) * 1.1;
+  }, [displaySalesData, displayLastYearData, showComparison]);
   
   // Общая сумма продаж
   const totalSales = useMemo(() => 
-    salesData.reduce((a, b) => a + b, 0), [salesData]);
+    displaySalesData.reduce((a, b) => a + b, 0), [displaySalesData]);
   
   // Рост в сравнении с прошлым годом
   const growthPercent = useMemo(() => {
-    const lastYearTotal = lastYearSalesData.reduce((a, b) => a + b, 0);
+    const lastYearTotal = displayLastYearData.reduce((a, b) => a + b, 0);
     return ((totalSales - lastYearTotal) / lastYearTotal * 100).toFixed(1);
-  }, [salesData, lastYearSalesData, totalSales]);
+  }, [displaySalesData, displayLastYearData, totalSales]);
 
-  // Функция для рендеринга графика
+  // Анимация при изменении фильтров
+  useEffect(() => {
+    setIsFilterAnimating(true);
+    const timer = setTimeout(() => {
+      setIsFilterAnimating(false);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [selectedModel, selectedRegion]);
+
+  // Функция для рендеринга графика с анимацией
   const renderChart = useCallback(() => {
     if (!chartRef.current) return;
     
@@ -63,7 +112,7 @@ const SalesChart = ({
     
     // Шкалы
     const x = d3.scaleBand()
-      .domain(d3.range(salesData.length))
+      .domain(d3.range(displaySalesData.length))
       .range([0, width])
       .padding(0.4);
     
@@ -108,8 +157,8 @@ const SalesChart = ({
     
     // Функция для отображения тултипа
     const showTooltip = (event, d, i) => {
-      const percentChange = lastYearSalesData[i] > 0 
-        ? ((d - lastYearSalesData[i]) / lastYearSalesData[i] * 100).toFixed(1) 
+      const percentChange = displayLastYearData[i] > 0 
+        ? ((d - displayLastYearData[i]) / displayLastYearData[i] * 100).toFixed(1) 
         : 0;
         
       const tooltipContent = `
@@ -123,11 +172,11 @@ const SalesChart = ({
             ${showComparison ? `
               <tr>
                 <td class="py-1 text-gray-300">Прошлый год:</td>
-                <td class="py-1 font-bold text-right">${lastYearSalesData[i].toLocaleString()}</td>
+                <td class="py-1 font-bold text-right">${displayLastYearData[i].toLocaleString()}</td>
               </tr>
               <tr class="border-t border-gray-700">
                 <td class="py-1 pt-2 text-gray-300">Изменение:</td>
-                <td class="py-1 pt-2 font-bold text-right ${d > lastYearSalesData[i] ? 'text-green-400' : 'text-red-400'}">
+                <td class="py-1 pt-2 font-bold text-right ${d > displayLastYearData[i] ? 'text-green-400' : 'text-red-400'}">
                   ${percentChange > 0 ? '+' : ''}${percentChange}%
                 </td>
               </tr>
@@ -136,15 +185,13 @@ const SalesChart = ({
         </table>
       `;
       
-      // Позиционирование и отображение тултипа
+      // Позиционирование тултипа
       const tooltipWidth = 200;
       const tooltipHeight = showComparison ? 140 : 80;
       
-      // Расчет позиции тултипа относительно курсора
       let xPos = event.pageX - container.getBoundingClientRect().left;
       let yPos = event.pageY - container.getBoundingClientRect().top - window.scrollY;
       
-      // Проверка границ экрана
       if (xPos + tooltipWidth > container.clientWidth) {
         xPos = xPos - tooltipWidth;
       }
@@ -191,44 +238,54 @@ const SalesChart = ({
     // Рисуем столбцы прошлого года при активном сравнении
     if (showComparison) {
       svg.selectAll('.bar-last-year')
-        .data(lastYearSalesData)
+        .data(displayLastYearData)
         .enter()
         .append('rect')
         .attr('class', 'bar-last-year')
         .attr('x', (_, i) => x(i) - x.bandwidth() * 0.15)
-        .attr('y', d => y(d))
         .attr('width', x.bandwidth() * 0.3)
-        .attr('height', d => height - y(d))
         .attr('rx', 2)
         .attr('fill', 'rgba(59, 130, 246, 0.7)')
         .attr('filter', 'drop-shadow(0 0 2px rgba(59, 130, 246, 0.3))')
+        .attr('y', height) // Начинаем с нуля для анимации
+        .attr('height', 0)
         .on('mouseover', (event, d, i) => showTooltip(event, d, i))
         .on('mousemove', (event, d, i) => showTooltip(event, d, i))
-        .on('mouseout', hideTooltip);
+        .on('mouseout', hideTooltip)
+        .transition()
+        .duration(800)
+        .delay((_, i) => i * 30)
+        .attr('y', d => y(d))
+        .attr('height', d => height - y(d));
     }
     
-    // Рисуем столбцы текущего года
+    // Рисуем столбцы текущего года с анимацией
     svg.selectAll('.bar-current-year')
-      .data(salesData)
+      .data(displaySalesData)
       .enter()
       .append('rect')
       .attr('class', 'bar-current-year')
       .attr('x', (_, i) => showComparison ? x(i) + x.bandwidth() * 0.15 : x(i))
-      .attr('y', d => y(d))
       .attr('width', showComparison ? x.bandwidth() * 0.3 : x.bandwidth())
-      .attr('height', d => height - y(d))
       .attr('rx', 2)
       .attr('fill', 'url(#purpleGradient)')
       .attr('filter', 'drop-shadow(0 0 5px rgba(168, 85, 247, 0.5))')
+      .attr('y', height) // Начинаем с нуля для анимации
+      .attr('height', 0)
       .on('mouseover', (event, d, i) => showTooltip(event, d, i))
       .on('mousemove', (event, d, i) => showTooltip(event, d, i))
-      .on('mouseout', hideTooltip);
+      .on('mouseout', hideTooltip)
+      .transition()
+      .duration(800)
+      .delay((_, i) => i * 30)
+      .attr('y', d => y(d))
+      .attr('height', d => height - y(d));
     
     // Добавляем метки изменений при сравнении
     if (showComparison) {
-      salesData.forEach((value, i) => {
-        const percentChange = ((value - lastYearSalesData[i]) / lastYearSalesData[i] * 100);
-        const isPositive = value > lastYearSalesData[i];
+      displaySalesData.forEach((value, i) => {
+        const percentChange = ((value - displayLastYearData[i]) / displayLastYearData[i] * 100);
+        const isPositive = value > displayLastYearData[i];
         
         svg.append('text')
           .attr('x', x(i) + x.bandwidth() / 2)
@@ -237,30 +294,60 @@ const SalesChart = ({
           .attr('font-size', '10px')
           .attr('font-weight', 'bold')
           .attr('fill', isPositive ? '#4ADE80' : '#F87171')
-          .text(isPositive ? '↑' : '↓');
+          .attr('opacity', 0)
+          .text(isPositive ? '↑' : '↓')
+          .transition()
+          .duration(500)
+          .delay(800 + i * 30)
+          .attr('opacity', 1);
       });
     }
-  }, [salesData, lastYearSalesData, showComparison, months, maxValue]);
+  }, [displaySalesData, displayLastYearData, showComparison, months, maxValue]);
 
-  // Инициализация графика при первой загрузке и при изменении зависимостей
+  // Отслеживаем клики вне выпадающих списков для их закрытия
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target)) {
+        setShowModelDropdown(false);
+      }
+      if (regionDropdownRef.current && !regionDropdownRef.current.contains(event.target)) {
+        setShowRegionDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Инициализация графика при изменении зависимостей
   useEffect(() => {
     renderChart();
   }, [renderChart]);
 
   // Обработчик изменения размера окна
   useEffect(() => {
-    const handleResize = () => {
-      renderChart();
-    };
-
+    const handleResize = () => renderChart();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [renderChart]);
 
+  // Обработчики выбора
+  const handleModelSelect = (modelId) => {
+    if (setSelectedModel) {
+      setSelectedModel(modelId === selectedModel ? null : modelId);
+    }
+    setShowModelDropdown(false);
+  };
+
+  const handleRegionSelect = (regionId) => {
+    setSelectedRegion(regionId === selectedRegion ? null : regionId);
+    setShowRegionDropdown(false);
+  };
+
   // Обработчик выбора периода
   const handlePeriodChange = (e) => {
     if (e.target.value === 'custom') {
-      setShowPeriodFilter(true);
+      setShowPeriodModal(true);
     } else {
       const now = new Date();
       let start = new Date();
@@ -274,11 +361,20 @@ const SalesChart = ({
         default: start.setDate(now.getDate() - 30);
       }
       
-      setPeriod({
+      const newPeriod = {
         start: start.toISOString().split('T')[0],
         end: now.toISOString().split('T')[0]
-      });
+      };
+      
+      setDateRange(newPeriod);
+      if (setPeriod) setPeriod(newPeriod);
     }
+  };
+  
+  // Применение выбранных дат
+  const applyDateFilter = () => {
+    if (setPeriod) setPeriod(dateRange);
+    setShowPeriodModal(false);
   };
   
   // Переключатель сравнения с прошлым годом
@@ -286,167 +382,422 @@ const SalesChart = ({
     setShowComparison(!showComparison);
   };
   
+  // Информация о выбранных фильтрах
+  const selectedModelInfo = useMemo(() => {
+    if (!selectedModel) return null;
+    return carModels.find(m => m.id === selectedModel);
+  }, [selectedModel]);
+  
+  const selectedRegionInfo = useMemo(() => {
+    if (!selectedRegion) return null;
+    return regions.find(r => r.id === selectedRegion);
+  }, [selectedRegion]);
+  
+  // Сброс всех фильтров
+  const resetFilters = () => {
+    if (setSelectedModel) setSelectedModel(null);
+    setSelectedRegion(null);
+  };
+  
+  // Функция для отображения категории модели
+  const getModelCategory = (category) => {
+    switch(category) {
+      case 'suv': return 'Внедорожник';
+      case 'sedan': return 'Седан';
+      case 'minivan': return 'Минивэн';
+      default: return category;
+    }
+  };
+  
   return (
     <>
-      {/* Заголовок */}
+      {/* Заголовок с инфо о выборе */}
       <div className="flex justify-between items-center p-4 border-b border-gray-700">
         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
           <BarChart3 size={20} className="text-purple-400" />
-          Продажи за {activeTab === 'месяц' ? 'последние 30 дней' : 'год'}
-          {selectedModel && (
-            <span className="ml-2 text-sm text-gray-400">
-              • {carModels.find(m => m.id === selectedModel)?.name}
-            </span>
-          )}
+          <div>
+            Продажи за {activeTab === 'месяц' ? 'последние 30 дней' : 'год'}
+            {(selectedModelInfo || selectedRegionInfo) && (
+              <div className="text-sm text-gray-400 flex items-center gap-1 mt-0.5">
+                {selectedModelInfo && `${selectedModelInfo.name}`}
+                {selectedModelInfo && selectedRegionInfo && " • "}
+                {selectedRegionInfo && `${selectedRegionInfo.name}`}
+              </div>
+            )}
+          </div>
         </h3>
         <div className="flex items-center gap-2">
           <span className="text-2xl font-bold text-white">{totalSales.toLocaleString()}</span>
-          <span className="px-2 py-1 bg-green-900/50 text-green-400 text-sm rounded-md border border-green-800">
-            +{growthPercent}%
+          <span className={`px-2 py-1 ${parseFloat(growthPercent) >= 0 ? 'bg-green-900/50 text-green-400 border-green-800' : 'bg-red-900/50 text-red-400 border-red-800'} text-sm rounded-md border`}>
+            {parseFloat(growthPercent) >= 0 ? '+' : ''}{growthPercent}%
           </span>
         </div>
       </div>
       
-      {/* Панель управления */}
-      <div className="p-4 bg-gray-850 border-b border-gray-700">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div>
-            <div className="mb-2 text-sm font-medium text-gray-300">Период анализа:</div>
-            <div className="flex flex-wrap gap-2">
-              <div className="flex-grow min-w-[200px]">
-                <select 
-                  className="w-full bg-gray-700 border-2 border-gray-600 rounded-md px-3 py-2 text-sm text-white appearance-none pr-8 focus:outline-none focus:border-purple-500"
-                  onChange={handlePeriodChange}
-                >
-                  <option value="30days">Последние 30 дней</option>
-                  <option value="7days">Последние 7 дней</option>
-                  <option value="90days">Последние 3 месяца</option>
-                  <option value="6months">Последние 6 месяцев</option>
-                  <option value="12months">Последние 12 месяцев</option>
-                  <option value="custom">Произвольный период</option>
-                </select>
-              </div>
-              <button
-                className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors shadow-md whitespace-nowrap"
-                onClick={() => setShowPeriodFilter(true)}
-              >
-                <Calendar size={16} />
-                <span>Выбрать даты</span>
-              </button>
-            </div>
-          </div>
+      {/* Панель фильтров */}
+      <div className="p-3 bg-gray-850 border-b border-gray-700">
+        <div className="flex flex-wrap gap-2">
+          {/* Селектор периода */}
+          <select 
+            className="bg-gray-700 border border-gray-600 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-purple-500"
+            onChange={handlePeriodChange}
+          >
+            <option value="30days">30 дней</option>
+            <option value="7days">7 дней</option>
+            <option value="90days">3 месяца</option>
+            <option value="6months">6 месяцев</option>
+            <option value="12months">12 месяцев</option>
+            <option value="custom">Свой период...</option>
+          </select>
           
-          <div className="flex items-end justify-end">
-            <button 
-              className={`min-w-[180px] py-2 px-4 rounded-md text-sm flex items-center justify-center gap-2 shadow-md transition-all ${
-                showComparison 
-                  ? 'bg-purple-600 hover:bg-purple-500 text-white border-2 border-purple-500' 
-                  : 'bg-gray-700 hover:bg-gray-600 text-white border-2 border-gray-600'
+          {/* Выбор модели */}
+          <div className="relative inline-block" ref={modelDropdownRef}>
+            <button
+              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-sm border ${
+                selectedModelInfo 
+                  ? 'bg-purple-900/30 text-purple-100 border-purple-700'
+                  : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'
               }`}
-              onClick={toggleComparison}
+              onClick={() => {
+                setShowModelDropdown(!showModelDropdown);
+                setShowRegionDropdown(false);
+              }}
             >
-              <Activity size={16} />
-              <span>Сравнить с прошлым годом</span>
+              <Car size={14} />
+              <span>{selectedModelInfo ? selectedModelInfo.name : "Выбрать модель"}</span>
+              {selectedModelInfo ? (
+                <button 
+                  className="ml-1 text-gray-400 hover:text-white" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (setSelectedModel) setSelectedModel(null);
+                  }}
+                >
+                  <X size={12} />
+                </button>
+              ) : (
+                <ChevronDown size={14} className="ml-1" />
+              )}
             </button>
-          </div>
-        </div>
-      </div>
-      
-      <div className="p-6">
-        {/* График D3 */}
-        <div className="relative h-80 mb-8 bg-gray-900 rounded-lg p-4 border border-gray-700 shadow-inner">
-          {/* Контейнер для D3 графика */}
-          <div 
-            ref={chartRef} 
-            className="w-full h-full"
-          ></div>
-          
-          {/* Тултип */}
-          <div 
-            ref={tooltipRef}
-            className="absolute opacity-0 bg-gray-800 text-white p-3 rounded-md text-sm min-w-[160px] transition-opacity shadow-xl z-20 border-2 border-gray-700 pointer-events-none"
-            style={{ transform: 'translate(-50%, -100%)' }}
-          ></div>
-        </div>
-        
-        {/* ЛЕГЕНДА И СТАТИСТИКА */}
-        <div className="bg-gray-900 rounded-lg p-4 border border-gray-700 flex flex-wrap justify-between items-center">
-          {/* Легенда */}
-          <div className="flex items-center gap-6 flex-wrap">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-10 rounded-sm bg-gradient-to-t from-purple-700 via-purple-600 to-purple-500"></div>
-              <span className="text-sm font-medium text-white whitespace-nowrap">Текущий год</span>
-            </div>
             
-            {showComparison && (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-10 rounded-sm bg-blue-500 opacity-70"></div>
-                <span className="text-sm font-medium text-white whitespace-nowrap">Прошлый год</span>
+            {/* Выпадающий список моделей */}
+            {showModelDropdown && (
+              <div className="absolute left-0 mt-1 w-72 bg-gray-800 rounded-md shadow-lg overflow-hidden z-20 border border-gray-700">
+                <div className="p-2 border-b border-gray-700 flex justify-between items-center">
+                  <span className="text-sm font-medium text-white">Модели автомобилей</span>
+                  {selectedModelInfo && (
+                    <button 
+                      className="text-xs text-gray-400 hover:text-white flex items-center gap-1"
+                      onClick={() => {
+                        if (setSelectedModel) setSelectedModel(null);
+                        setShowModelDropdown(false);
+                      }}
+                    >
+                      <RefreshCcw size={10} />
+                      Сбросить
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-72 overflow-y-auto py-1">
+                  {carModels.map(model => (
+                    <div 
+                      key={model.id}
+                      className={`flex items-center p-2 cursor-pointer gap-3 hover:bg-gray-700/70 ${
+                        selectedModel === model.id ? 'bg-purple-900/30' : ''
+                      }`}
+                      onClick={() => handleModelSelect(model.id)}
+                    >
+                      <div className="w-12 h-12 rounded-md overflow-hidden bg-gray-700/70 flex-shrink-0 flex items-center justify-center">
+                        <img 
+                          src={model.img} 
+                          alt={model.name} 
+                          className="h-full w-auto object-contain"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center">
+                          <span className="text-sm text-white font-medium">{model.name}</span>
+                          {selectedModel === model.id && (
+                            <Check size={14} className="ml-2 text-purple-400" />
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-400">{getModelCategory(model.category)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
           
-          {/* Общая статистика */}
-          <div className="px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700 mt-3 sm:mt-0">
-            <div className="text-sm">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-gray-300 whitespace-nowrap">Всего за период:</span>
-                <span className="text-xl font-bold text-white whitespace-nowrap">{totalSales.toLocaleString()}</span>
-                
-                {showComparison && (
-                  <>
-                    <span className="text-gray-400 mx-1 hidden sm:inline">•</span>
-                    <span className="text-gray-300 whitespace-nowrap">Рост:</span>
-                    <span className="text-lg font-bold text-green-400 whitespace-nowrap">+{growthPercent}%</span>
-                  </>
-                )}
+          {/* Выбор региона */}
+          <div className="relative inline-block" ref={regionDropdownRef}>
+            <button
+              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-sm border ${
+                selectedRegionInfo 
+                  ? 'bg-blue-900/30 text-blue-100 border-blue-700'
+                  : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'
+              }`}
+              onClick={() => {
+                setShowRegionDropdown(!showRegionDropdown);
+                setShowModelDropdown(false);
+              }}
+            >
+              <MapPin size={14} />
+              <span>{selectedRegionInfo ? selectedRegionInfo.name : "Выбрать регион"}</span>
+              {selectedRegionInfo ? (
+                <button 
+                  className="ml-1 text-gray-400 hover:text-white" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedRegion(null);
+                  }}
+                >
+                  <X size={12} />
+                </button>
+              ) : (
+                <ChevronDown size={14} className="ml-1" />
+              )}
+            </button>
+            
+            {/* Выпадающий список регионов */}
+            {showRegionDropdown && (
+              <div className="absolute left-0 mt-1 w-56 bg-gray-800 rounded-md shadow-lg overflow-hidden z-20 border border-gray-700">
+                <div className="p-2 border-b border-gray-700 flex justify-between items-center">
+                  <span className="text-sm font-medium text-white">Регионы</span>
+                  {selectedRegionInfo && (
+                    <button 
+                      className="text-xs text-gray-400 hover:text-white flex items-center gap-1"
+                      onClick={() => {
+                        setSelectedRegion(null);
+                        setShowRegionDropdown(false);
+                      }}
+                    >
+                      <RefreshCcw size={10} />
+                      Сбросить
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-72 overflow-y-auto py-1">
+                  {regions.map(region => (
+                    <div 
+                      key={region.id}
+                      className={`flex items-center p-2 cursor-pointer hover:bg-gray-700/70 ${
+                        selectedRegion === region.id ? 'bg-blue-900/30' : ''
+                      }`}
+                      onClick={() => handleRegionSelect(region.id)}
+                    >
+                      <MapPin size={14} className="text-gray-400 mr-2" />
+                      <span className="text-sm text-white">{region.name}</span>
+                      {selectedRegion === region.id && (
+                        <Check size={14} className="ml-auto text-blue-400" />
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
+            )}
+          </div>
+          
+          {/* Кнопка сравнения */}
+          <button 
+            className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-sm border ${
+              showComparison 
+                ? 'bg-indigo-900/30 text-indigo-100 border-indigo-700'
+                : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'
+            }`}
+            onClick={toggleComparison}
+          >
+            <Activity size={14} />
+            <span>Сравнение с прошлым годом</span>
+          </button>
+          
+          {/* Растягивающийся элемент */}
+          <div className="flex-grow"></div>
+          
+          {/* Сброс фильтров */}
+          {(selectedModelInfo || selectedRegionInfo) && (
+            <button 
+              className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-md text-white text-sm flex items-center gap-1.5"
+              onClick={resetFilters}
+            >
+              <RefreshCcw size={14} />
+              <span>Сбросить фильтры</span>
+            </button>
+          )}
+          
+          {/* Экспорт */}
+          <button className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-md text-white text-sm flex items-center gap-1.5">
+            <Download size={14} />
+            <span>Экспорт</span>
+          </button>
+        </div>
+      </div>
+      
+      {/* Основной контент */}
+      <div className="p-4">
+        {/* График D3 */}
+        <div className={`relative h-80 mb-4 bg-gray-900 rounded-lg p-4 border border-gray-700 shadow-inner ${isFilterAnimating ? 'animate-pulse' : ''}`}>
+          <div ref={chartRef} className="w-full h-full"></div>
+          
+          <div 
+            ref={tooltipRef}
+            className="absolute opacity-0 bg-gray-800 text-white p-3 rounded-md text-sm min-w-[160px] z-10 border border-gray-700 shadow-xl pointer-events-none"
+          ></div>
+          
+          {/* Информация о выбранных фильтрах */}
+          {(selectedModelInfo || selectedRegionInfo) && (
+            <div className="absolute top-4 left-4 flex gap-2 items-center">
+              {selectedModelInfo && (
+                <div className="px-2 py-1 bg-purple-900/50 text-white text-xs rounded-full border border-purple-700 flex items-center gap-1">
+                  <Car size={10} className="text-purple-300" />
+                  <span>{selectedModelInfo.name}</span>
+                </div>
+              )}
+              {selectedRegionInfo && (
+                <div className="px-2 py-1 bg-blue-900/50 text-white text-xs rounded-full border border-blue-700 flex items-center gap-1">
+                  <MapPin size={10} className="text-blue-300" />
+                  <span>{selectedRegionInfo.name}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* Легенда и статистика */}
+        <div className="bg-gray-900 rounded-lg p-3 border border-gray-700 flex flex-wrap justify-between items-center">
+          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+              <div className="w-3 h-8 rounded-sm bg-gradient-to-t from-purple-700 via-purple-600 to-purple-500"></div>
+              <span className="text-sm text-white">Текущий год</span>
+            </div>
+            
+            {showComparison && (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-8 rounded-sm bg-blue-500 opacity-70"></div>
+                <span className="text-sm text-white">Прошлый год</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="px-3 py-1.5 bg-gray-800/70 rounded-md border border-gray-700 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">Общая сумма:</span>
+              <span className="text-lg font-bold text-white">{totalSales.toLocaleString()}</span>
+              
+              {showComparison && (
+                <span className={`ml-1 text-sm font-medium ${
+                  parseFloat(growthPercent) >= 0 ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {parseFloat(growthPercent) >= 0 ? '+' : ''}{growthPercent}%
+                </span>
+              )}
             </div>
           </div>
         </div>
         
         {/* Переключатель между месяцами и годами */}
-        <div className="mt-4 flex flex-wrap gap-3 justify-between items-center">
-          <div className="inline-flex rounded-md shadow-sm">
+        <div className="mt-3 flex justify-between items-center">
+          <div className="inline-flex rounded-md overflow-hidden border border-gray-700">
             <button
-              className={`px-4 py-2 text-sm font-medium rounded-l-md border-2 ${
+              className={`px-3 py-1.5 text-sm font-medium ${
                 activeTab === 'месяц' 
-                  ? 'bg-purple-700 text-white border-purple-600' 
-                  : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'
+                  ? 'bg-purple-700 text-white' 
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
               }`}
               onClick={() => setActiveTab('месяц')}
             >
-              МЕСЯЦЫ
+              Месяцы
             </button>
             <button
-              className={`px-4 py-2 text-sm font-medium rounded-r-md border-2 ${
+              className={`px-3 py-1.5 text-sm font-medium ${
                 activeTab === 'год' 
-                  ? 'bg-purple-700 text-white border-purple-600' 
-                  : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'
+                  ? 'bg-purple-700 text-white' 
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
               }`}
               onClick={() => setActiveTab('год')}
             >
-              ГОДЫ
+              Годы
             </button>
           </div>
           
-          <div className="flex flex-wrap gap-2">
-            <button className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md flex items-center gap-2 border border-gray-600">
-              <Filter size={16} />
-              <span>Фильтры</span>
-            </button>
-            
-            <button className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-md flex items-center gap-2">
-              <Download size={16} />
-              <span>Экспорт CSV</span>
-            </button>
-          </div>
+          <button 
+            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-sm rounded-md flex items-center gap-1.5 border border-gray-700"
+            onClick={() => setShowPeriodModal(true)}
+          >
+            <Calendar size={14} />
+            <span>Выбрать даты</span>
+          </button>
         </div>
       </div>
+      
+      {/* Модальное окно выбора периода */}
+      {showPeriodModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowPeriodModal(false)}>
+          <div 
+            className="bg-gray-800 w-80 rounded-lg shadow-xl border border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-3 border-b border-gray-700">
+              <h3 className="text-white font-medium flex items-center gap-2">
+                <Calendar size={16} className="text-purple-400" />
+                Выбор периода
+              </h3>
+              <button 
+                className="text-gray-400 hover:text-white rounded-full p-1 hover:bg-gray-700"
+                onClick={() => setShowPeriodModal(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="p-4">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Начальная дата</label>
+                  <input 
+                    type="date" 
+                    value={dateRange.start}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Конечная дата</label>
+                  <input 
+                    type="date" 
+                    value={dateRange.end}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-2 mt-4">
+                <button 
+                  className="flex-1 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 text-sm"
+                  onClick={() => setShowPeriodModal(false)}
+                >
+                  Отмена
+                </button>
+                <button 
+                  className="flex-1 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-500 text-sm font-medium"
+                  onClick={applyDateFilter}
+                >
+                  Применить
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
 
+
+                
 const SalesDashboard = () => {
   const [activeTab, setActiveTab] = useState('месяц');
   const [activeDetailLevel, setActiveDetailLevel] = useState(0);
@@ -468,7 +819,7 @@ const SalesDashboard = () => {
   const lastYearSalesData = [60, 70, 58, 82, 65, 75, 80, 68, 79, 85, 60, 70];
   const salesData = [75, 82, 65, 90, 70, 85, 92, 78, 88, 94, 65, 75];
 
-  // Вычисляем максимальное значение для графика с учетом режима сравнения
+  // Вычисляем максимальное значение для графика с учетом режима сравнение 
   const maxValue = showComparison 
     ? Math.max(...salesData, ...lastYearSalesData) 
     : Math.max(...salesData);
@@ -1234,298 +1585,6 @@ const SalesDashboard = () => {
 </div>
         </div>
         
-        <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden mb-5">
-<div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden mt-5 mb-5">
-  <div className="flex justify-between items-center p-3 border-b border-gray-700">
-    <h3 className="text-base font-medium text-white flex items-center gap-2">
-      <MapPin size={18} className="text-red-400" />
-      Задолженность по регионам
-      {selectedModel && (
-        <span className="ml-2 text-sm text-gray-400">
-          • {carModels.find(m => m.id === selectedModel)?.name}
-        </span>
-      )}
-      {selectedRegion && (
-        <span className="ml-2 text-sm text-blue-400">
-          • {selectedRegion}
-        </span>
-      )}
-    </h3>
-    <div className="flex items-center gap-2">
-      {selectedRegion && (
-        <button 
-          onClick={() => setSelectedRegion(null)}
-          className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm text-white flex items-center gap-1.5 transition-colors"
-        >
-          <ChevronLeft size={14} />
-          <span>Назад</span>
-        </button>
-      )}
-      <button className="px-2.5 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm text-white flex items-center gap-1.5 transition-colors">
-        <Download size={14} />
-        <span>Экспорт</span>
-      </button>
-    </div>
-  </div>
-  
-  <div className="p-4">
-    {!selectedRegion ? (
-      // Список регионов - упрощенный
-      <div>
-        <div className="mb-4">
-          <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-3 mb-2">
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-white font-medium">Регион</span>
-              <span className="text-white font-medium">Задолженность (UZS)</span>
-            </div>
-          </div>
-          
-          {regions.slice(0, 5).map((region, idx) => {
-            // Определяем статус задолженности
-            const statusColor = idx === 0 ? 'red' : idx === 1 ? 'orange' : 'yellow';
-            const percentValue = Math.round((regionDebtData[idx] / regionDebtData.reduce((a, b) => a + b, 0)) * 100);
-            
-            return (
-              <div 
-                key={idx}
-                className="bg-gray-800/60 hover:bg-gray-700/70 border border-gray-700 rounded-lg p-3 cursor-pointer transition-colors mb-2"
-                onClick={() => setSelectedRegion(region.name)}
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full bg-${statusColor}-500`}></div>
-                    <div className="text-white">{region.name}</div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <div className="text-white font-medium">{regionDebtData[idx].toLocaleString()} UZS</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full bg-${statusColor}-600`}
-                      style={{ width: `${percentValue}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-xs text-gray-400 w-10 text-right">
-                    {percentValue}%
-                  </span>
-                </div>
-                
-                <div className="flex justify-between mt-2 text-xs text-gray-400">
-                  <span>Контрактов: {regionContracts[idx]}</span>
-                  <span>Статус: {idx === 0 ? 'Критический' : idx === 1 ? 'Средний' : 'Низкий'}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        
-        <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-3">
-          <div className="text-sm text-white mb-2 flex justify-between">
-            <span>Общая задолженность:</span>
-            <span className="font-bold">{regionDebtData.reduce((a, b) => a + b, 0).toLocaleString()} UZS</span>
-          </div>
-          <div className="text-xs text-gray-400 mb-3">
-            Нажмите на регион для просмотра детальной информации
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <span className="text-xs text-gray-300">Критический</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-              <span className="text-xs text-gray-300">Средний</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <span className="text-xs text-gray-300">Низкий</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    ) : (
-      // Детальная информация по выбранному региону - упрощенная
-      <div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-          <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-3">
-            <div className="text-xs text-gray-400 mb-1">Общая задолженность</div>
-            <div className="text-lg font-bold text-white mb-1">
-              {regionDebtData[regions.findIndex(r => r.name === selectedRegion)].toLocaleString()} UZS
-            </div>
-            <div className="text-xs text-red-400">+12.4% к прошлому месяцу</div>
-          </div>
-          
-          <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-3">
-            <div className="text-xs text-gray-400 mb-1">Активных контрактов</div>
-            <div className="text-lg font-bold text-white mb-1">
-              {regionContracts[regions.findIndex(r => r.name === selectedRegion)]}
-            </div>
-            <div className="text-xs text-blue-400">+3 за последнюю неделю</div>
-          </div>
-          
-          <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-3">
-            <div className="text-xs text-gray-400 mb-1">Средний срок просрочки</div>
-            <div className="text-lg font-bold text-white mb-1">7 дней</div>
-            <div className="text-xs text-green-400">-2 дня к прошлой неделе</div>
-          </div>
-        </div>
-        
-        {/* ПРОСТОЙ ГРАФИК ДИНАМИКИ ЗАДОЛЖЕННОСТИ */}
-        <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-4 mb-4">
-          <div className="flex justify-between items-center mb-3">
-            <h4 className="text-white text-sm font-medium">
-              Динамика задолженности в регионе {selectedRegion}
-            </h4>
-            
-            <div className="flex gap-2">
-              <button className="px-2 py-1 bg-blue-600 rounded text-xs text-white">6М</button>
-              <button className="px-2 py-1 bg-gray-700 rounded text-xs text-white">1Г</button>
-            </div>
-          </div>
-          
-          <div className="h-56 bg-gray-800/60 rounded-lg border border-gray-700 p-3 relative">
-            {/* Простой SVG график */}
-            <svg className="w-full h-full" viewBox="0 0 600 200" preserveAspectRatio="none">
-              {/* Горизонтальные линии */}
-              <line x1="0" y1="0" x2="600" y2="0" stroke="#374151" strokeWidth="1" />
-              <line x1="0" y1="50" x2="600" y2="50" stroke="#374151" strokeWidth="1" />
-              <line x1="0" y1="100" x2="600" y2="100" stroke="#374151" strokeWidth="1" />
-              <line x1="0" y1="150" x2="600" y2="150" stroke="#374151" strokeWidth="1" />
-              <line x1="0" y1="200" x2="600" y2="200" stroke="#374151" strokeWidth="1" />
-              
-              {/* Линия тренда */}
-              <path 
-                d="M0,150 L100,160 L200,120 L300,135 L400,90 L500,70 L600,40" 
-                fill="none" 
-                stroke="#3b82f6" 
-                strokeWidth="3"
-              />
-              
-              {/* Точки данных */}
-              <circle cx="0" cy="150" r="4" fill="#3b82f6" />
-              <circle cx="100" cy="160" r="4" fill="#3b82f6" />
-              <circle cx="200" cy="120" r="4" fill="#3b82f6" />
-              <circle cx="300" cy="135" r="4" fill="#3b82f6" />
-              <circle cx="400" cy="90" r="4" fill="#3b82f6" />
-              <circle cx="500" cy="70" r="4" fill="#3b82f6" />
-              <circle cx="600" cy="40" r="4" fill="#3b82f6" />
-            </svg>
-            
-            {/* Метки по оси X и Y */}
-            <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-400 px-2">
-              <span>Янв</span>
-              <span>Фев</span>
-              <span>Мар</span>
-              <span>Апр</span>
-              <span>Май</span>
-              <span>Июн</span>
-            </div>
-            
-            <div className="absolute top-0 left-0 bottom-0 flex flex-col justify-between text-xs text-gray-400 py-1">
-              <span>30M</span>
-              <span>24M</span>
-              <span>18M</span>
-              <span>12M</span>
-              <span>6M</span>
-              <span>0</span>
-            </div>
-          </div>
-        </div>
-        
-        {/* ТАБЛИЦА ЗАДОЛЖЕННОСТЕЙ ПО МОДЕЛЯМ - ЧЕТКАЯ И ПОНЯТНАЯ */}
-        <div className="bg-gray-750/60 rounded-lg border border-gray-700 p-4">
-          <h4 className="text-white text-sm font-medium mb-3">
-            Задолженность по моделям в регионе {selectedRegion}
-          </h4>
-          
-          <div className="overflow-hidden rounded-lg border border-gray-700 mb-3">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-900/80">
-                <tr>
-                  <th className="px-3 py-2 text-left text-gray-400 font-medium">Модель</th>
-                  <th className="px-3 py-2 text-center text-gray-400 font-medium">Контракты</th>
-                  <th className="px-3 py-2 text-right text-gray-400 font-medium">Сумма долга (UZS)</th>
-                  <th className="px-3 py-2 text-center text-gray-400 font-medium">Ср. просрочка</th>
-                  <th className="px-3 py-2 text-center text-gray-400 font-medium">Статус</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-700">
-                {carModels.map((model, idx) => {
-                  // Генерируем данные
-                  const contractCount = Math.floor(Math.random() * 5) + 1;
-                  const debtAmount = (Math.floor(Math.random() * 2000) + 1000) * 10000;
-                  const avgDelay = Math.floor(Math.random() * 8) + 2;
-                  const status = avgDelay > 7 ? 'Критический' : avgDelay > 4 ? 'Средний' : 'Низкий';
-                  const statusColor = status === 'Критический' ? 'red' : status === 'Средний' ? 'orange' : 'yellow';
-                  
-                  return (
-                    <tr 
-                      key={idx} 
-                      className={`${idx % 2 === 0 ? 'bg-gray-800/60' : 'bg-gray-750/80'} hover:bg-gray-700/70 cursor-pointer`}
-                      onClick={() => handleModelSelect(model.id)}
-                    >
-                      <td className="px-3 py-2 text-white">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-md overflow-hidden bg-gray-600/30">
-                            <img 
-                              src={model.img} 
-                              alt={model.name} 
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-                          <span>{model.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-center text-gray-300">{contractCount}</td>
-                      <td className="px-3 py-2 text-right text-gray-300 font-medium">{debtAmount.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-center text-gray-300">{avgDelay} {getDayWord(avgDelay)}</td>
-                      <td className="px-3 py-2 text-center">
-                        <span className={`inline-block px-2 py-1 rounded-full text-xs bg-${statusColor}-900/30 text-${statusColor}-400 border border-${statusColor}-800/50`}>
-                          {status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot className="bg-gray-900/80">
-                <tr>
-                  <td className="px-3 py-2 font-medium text-white">Итого</td>
-                  <td className="px-3 py-2 text-center text-white font-medium">
-                    {regionContracts[regions.findIndex(r => r.name === selectedRegion)]}
-                  </td>
-                  <td className="px-3 py-2 text-right font-medium text-white">
-                    {regionDebtData[regions.findIndex(r => r.name === selectedRegion)].toLocaleString()} UZS
-                  </td>
-                  <td className="px-3 py-2 text-center text-white font-medium">7 дней</td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-          
-          <div className="flex justify-end gap-2">
-            <button className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded flex items-center gap-1.5 transition-colors">
-              <Download size={16} />
-              <span>Экспорт</span>
-            </button>
-            <button className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded flex items-center gap-1.5 transition-colors">
-              <Clock size={16} />
-              <span>Отправить напоминания</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-</div>
-        </div>
-        
-
         {/* Панель моделей автомобилей - с интерактивным выбором */}
         <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden mt-5">
           <div className="flex justify-between items-center p-3 border-b border-gray-700">
