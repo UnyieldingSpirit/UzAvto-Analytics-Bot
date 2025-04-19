@@ -1,4 +1,4 @@
-import AnalyticsDashboard from "../../shared/components/AnalyticsDashboard";
+import AnalyticsDashboard from "../../shared/components/ContractsAnalyticsDashboard";
 
 export default function AnalyticsDashboardPage() {
   return (

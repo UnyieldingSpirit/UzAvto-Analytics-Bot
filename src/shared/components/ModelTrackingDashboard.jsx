@@ -10,7 +10,7 @@ const OrderTrackingDashboard = () => {
   const [viewMode, setViewMode] = useState('grid');
   
   // Добавляем состояния для навигации и детализации
-  const [currentView, setCurrentView] = useState('general'); // 'general', 'region', 'model'
+  const [currentView, setCurrentView] = useState('general');
   const [selectedRegion, setSelectedRegion] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
   const [hoveredCard, setHoveredCard] = useState(null);
@@ -872,180 +872,313 @@ const renderDonutChart = () => {
   };
 
   // Функция для отрисовки графика статусов
-  const renderStatusChart = () => {
-    if (!statusChartRef.current) return;
-    d3.select(statusChartRef.current).selectAll('*').remove();
+ // Функция для отрисовки графика статусов
+const renderStatusChart = () => {
+  if (!statusChartRef.current) return;
+  d3.select(statusChartRef.current).selectAll('*').remove();
 
-    const width = statusChartRef.current.clientWidth;
-    const height = 300;
-    const margin = { top: 40, right: 20, bottom: 50, left: 50 };
+  const width = statusChartRef.current.clientWidth;
+  const height = 300;
+  const margin = { top: 40, right: 20, bottom: 80, left: 50 }; // Увеличенный нижний отступ для подписей
 
-    // Создаем SVG
-    const svg = d3.select(statusChartRef.current)
-      .append('svg')
-      .attr('width', width)
-      .attr('height', height)
-      .style('overflow', 'visible');
+  // Создаем SVG
+  const svg = d3.select(statusChartRef.current)
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height + 60) // Увеличиваем высоту для подписей
+    .style('overflow', 'visible');
 
-    // Создаем фильтр для эффекта свечения
-    const defs = svg.append('defs');
-    const filter = defs.append('filter')
-      .attr('id', 'glow');
-    filter.append('feGaussianBlur')
-      .attr('stdDeviation', '3.5')
-      .attr('result', 'coloredBlur');
+  // Создаем фильтр для эффекта свечения
+  const defs = svg.append('defs');
+  const filter = defs.append('filter')
+    .attr('id', 'glow');
+  filter.append('feGaussianBlur')
+    .attr('stdDeviation', '3.5')
+    .attr('result', 'coloredBlur');
 
-    const feMerge = filter.append('feMerge');
-    feMerge.append('feMergeNode')
-      .attr('in', 'coloredBlur');
-    feMerge.append('feMergeNode')
-      .attr('in', 'SourceGraphic');
+  const feMerge = filter.append('feMerge');
+  feMerge.append('feMergeNode')
+    .attr('in', 'coloredBlur');
+  feMerge.append('feMergeNode')
+    .attr('in', 'SourceGraphic');
 
-    // Создаем градиенты для столбцов
-    statusData.forEach((d, i) => {
-      const gradientId = `status-gradient-${i}`;
-      const gradient = defs.append('linearGradient')
-        .attr('id', gradientId)
-        .attr('x1', '0%')
-        .attr('y1', '0%')
-        .attr('x2', '0%')
-        .attr('y2', '100%');
-        
-      gradient.append('stop')
-        .attr('offset', '0%')
-        .attr('stop-color', d3.color(d.color).brighter(0.5));
-        
-      gradient.append('stop')
-        .attr('offset', '100%')
-        .attr('stop-color', d.color);
-    });
+  // Создаем градиенты для столбцов
+  statusData.forEach((d, i) => {
+    const gradientId = `status-gradient-${i}`;
+    const gradient = defs.append('linearGradient')
+      .attr('id', gradientId)
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '0%')
+      .attr('y2', '100%');
+      
+    gradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', d3.color(d.color).brighter(0.5));
+      
+    gradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', d.color);
+  });
 
-    // Создаем шкалы
-    const x = d3.scaleBand()
-      .domain(statusData.map(d => d.name))
-      .range([margin.left, width - margin.right])
-      .padding(0.5);
+  // Создаем всплывающую подсказку
+  const tooltip = d3.select('body')
+    .append('div')
+    .attr('class', 'tooltip')
+    .style('position', 'absolute')
+    .style('visibility', 'hidden')
+    .style('background', 'rgba(15, 23, 42, 0.9)')
+    .style('color', '#f1f5f9')
+    .style('padding', '10px')
+    .style('border-radius', '6px')
+    .style('font-size', '12px')
+    .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.3)')
+    .style('z-index', '1000')
+    .style('max-width', '220px')
+    .style('border', '1px solid rgba(59, 130, 246, 0.2)');
 
-    const y = d3.scaleLinear()
-      .domain([0, d3.max(statusData, d => d.value) * 1.1])
-      .nice()
-      .range([height - margin.bottom, margin.top]);
+  // Создаем шкалы
+  const x = d3.scaleBand()
+    .domain(statusData.map(d => d.name))
+    .range([margin.left, width - margin.right])
+    .padding(0.5);
 
-    // Добавляем оси
-    svg.append('g')
-      .attr('transform', `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).tickSize(0))
-      .call(g => g.select('.domain').remove())
-      .selectAll('text')
-      .attr('transform', 'rotate(-25)')
-      .style('text-anchor', 'end')
-      .style('font-size', '12px')
-      .style('fill', '#94a3b8');
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(statusData, d => d.value) * 1.1])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
 
-    svg.append('g')
-      .attr('transform', `translate(${margin.left},0)`)
-      .call(d3.axisLeft(y).ticks(5).tickFormat(d => d))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('.tick line')
-        .attr('x2', width - margin.left - margin.right)
-        .attr('stroke', '#334155')
-        .attr('stroke-opacity', 0.2))
-      .selectAll('text')
-      .style('font-size', '12px')
-      .style('fill', '#94a3b8');
+  // Добавляем оси
+  svg.append('g')
+    .attr('transform', `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(x).tickSize(0))
+    .call(g => g.select('.domain').remove())
+    .selectAll('text')
+    .attr('transform', 'rotate(-25)')
+    .style('text-anchor', 'end')
+    .style('font-size', '12px')
+    .style('fill', '#94a3b8');
 
-    // Добавляем сетку
-    svg.selectAll('.grid-line')
-      .data(y.ticks(5))
-      .enter()
-      .append('line')
-      .attr('class', 'grid-line')
-      .attr('x1', margin.left)
-      .attr('x2', width - margin.right)
-      .attr('y1', d => y(d))
-      .attr('y2', d => y(d))
+  svg.append('g')
+    .attr('transform', `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y).ticks(5).tickFormat(d => d))
+    .call(g => g.select('.domain').remove())
+    .call(g => g.selectAll('.tick line')
+      .attr('x2', width - margin.left - margin.right)
       .attr('stroke', '#334155')
-      .attr('stroke-opacity', 0.2)
-      .attr('stroke-dasharray', '4,4');
+      .attr('stroke-opacity', 0.2))
+    .selectAll('text')
+    .style('font-size', '12px')
+    .style('fill', '#94a3b8');
 
-    // Добавляем столбцы с анимацией
-    svg.selectAll('.bar')
-      .data(statusData)
-      .enter()
-      .append('rect')
-      .attr('class', 'bar')
-      .attr('x', d => x(d.name))
-      .attr('width', x.bandwidth())
-      .attr('y', height - margin.bottom)
-      .attr('height', 0)
-      .attr('rx', 8)
-      .attr('fill', (d, i) => `url(#status-gradient-${i})`)
-      .attr('stroke', '#0f172a')
-      .attr('stroke-width', 1)
-      .transition()
-      .duration(800)
-      .delay((d, i) => i * 100)
-      .attr('y', d => y(d.value))
-      .attr('height', d => height - margin.bottom - y(d.value));
+  // Добавляем сетку
+  svg.selectAll('.grid-line')
+    .data(y.ticks(5))
+    .enter()
+    .append('line')
+    .attr('class', 'grid-line')
+    .attr('x1', margin.left)
+    .attr('x2', width - margin.right)
+    .attr('y1', d => y(d))
+    .attr('y2', d => y(d))
+    .attr('stroke', '#334155')
+    .attr('stroke-opacity', 0.2)
+    .attr('stroke-dasharray', '4,4');
 
-    // Добавляем подписи над столбцами
-    svg.selectAll('.bar-label')
-      .data(statusData)
-      .enter()
-      .append('text')
-      .attr('class', 'bar-label')
-      .attr('x', d => x(d.name) + x.bandwidth() / 2)
-      .attr('y', d => y(d.value) - 10)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '12px')
-      .style('font-weight', 'bold')
-      .style('fill', d => d3.color(d.color).brighter(0.3))
-      .style('filter', 'url(#glow)')
-      .text(d => d.value)
-      .style('opacity', 0)
-      .transition()
-      .duration(500)
-      .delay((d, i) => i * 100 + 800)
-      .style('opacity', 1);
+  // Добавляем столбцы с анимацией
+  svg.selectAll('.bar')
+    .data(statusData)
+    .enter()
+    .append('rect')
+    .attr('class', 'bar')
+    .attr('x', d => x(d.name))
+    .attr('width', x.bandwidth())
+    .attr('y', height - margin.bottom)
+    .attr('height', 0)
+    .attr('rx', 8)
+    .attr('fill', (d, i) => `url(#status-gradient-${i})`)
+    .attr('stroke', '#0f172a')
+    .attr('stroke-width', 1)
+    .on('mouseover', function(event, d) {
+      // Определяем описание для каждого статуса
+      const descriptions = {
+        'neopl': 'Заказы без оплаты или с частичной оплатой',
+        'ocheredi': 'Оплаченные заказы в очереди на обработку',
+        'process': 'Заказы в процессе производства/сборки',
+        'dostavka': 'Заказы, отправленные к дилеру',
+        'raspredelenie': 'Заказы в процессе распределения по точкам',
+        'diler': 'Заказы, доставленные к дилеру'
+      };
+      
+      const desc = descriptions[d.id] || 'Нет описания';
+      
+      tooltip
+        .style('visibility', 'visible')
+        .html(`
+          <div>
+            <div style="display: flex; align-items: center; margin-bottom: 5px;">
+              <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${d.color}; margin-right: 5px;"></div>
+              <strong>${d.name}</strong>
+            </div>
+            <div style="margin-top: 5px;">${desc}</div>
+            <div style="margin-top: 8px; font-weight: bold;">Количество: ${d.value}</div>
+            <div style="margin-top: 3px;">Доля от всех заказов: ${((d.value / statusData.reduce((acc, curr) => acc + curr.value, 0)) * 100).toFixed(1)}%</div>
+          </div>
+        `)
+        .style('left', (event.pageX + 15) + 'px')
+        .style('top', (event.pageY - 20) + 'px');
+        
+      d3.select(this)
+        .transition()
+        .duration(200)
+        .attr('fill', d3.color(d.color).brighter(0.2))
+        .attr('stroke-width', 2);
+    })
+    .on('mousemove', function(event) {
+      tooltip
+        .style('left', (event.pageX + 15) + 'px')
+        .style('top', (event.pageY - 20) + 'px');
+    })
+    .on('mouseout', function(event, d) {
+      tooltip
+        .style('visibility', 'hidden');
+        
+      d3.select(this)
+        .transition()
+        .duration(200)
+        .attr('fill', (d, i) => `url(#status-gradient-${i})`)
+        .attr('stroke-width', 1);
+    })
+    .transition()
+    .duration(800)
+    .delay((d, i) => i * 100)
+    .attr('y', d => y(d.value))
+    .attr('height', d => height - margin.bottom - y(d.value));
 
-    // Добавляем линию тренда
-    const line = d3.line()
-      .x(d => x(d.name) + x.bandwidth() / 2)
-      .y(d => y(d.value))
-      .curve(d3.curveMonotoneX);
+  // Добавляем подписи над столбцами
+  svg.selectAll('.bar-label')
+    .data(statusData)
+    .enter()
+    .append('text')
+    .attr('class', 'bar-label')
+    .attr('x', d => x(d.name) + x.bandwidth() / 2)
+    .attr('y', d => y(d.value) - 10)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '12px')
+    .style('font-weight', 'bold')
+    .style('fill', d => d3.color(d.color).brighter(0.3))
+    .style('filter', 'url(#glow)')
+    .text(d => d.value)
+    .style('opacity', 0)
+    .transition()
+    .duration(500)
+    .delay((d, i) => i * 100 + 800)
+    .style('opacity', 1);
 
-    svg.append('path')
-      .datum(statusData)
-      .attr('fill', 'none')
-      .attr('stroke', '#94a3b8')
-      .attr('stroke-width', 2)
-      .attr('stroke-dasharray', '6,4')
-      .attr('d', line)
-      .style('opacity', 0)
-      .transition()
-      .duration(800)
-      .delay(1000)
-      .style('opacity', 0.6);
+  // Добавляем линию тренда
+  const line = d3.line()
+    .x(d => x(d.name) + x.bandwidth() / 2)
+    .y(d => y(d.value))
+    .curve(d3.curveMonotoneX);
 
-    // Добавляем точки пересечения
-    svg.selectAll('.dot')
-      .data(statusData)
-      .enter()
-      .append('circle')
-      .attr('class', 'dot')
-      .attr('cx', d => x(d.name) + x.bandwidth() / 2)
-      .attr('cy', d => y(d.value))
-      .attr('r', 4)
-      .attr('fill', '#f8fafc')
-      .attr('stroke', d => d.color)
-      .attr('stroke-width', 2)
-      .style('filter', 'url(#glow)')
-      .style('opacity', 0)
-      .transition()
-      .duration(300)
-      .delay((d, i) => i * 100 + 1100)
-      .style('opacity', 1);
-  };
+  svg.append('path')
+    .datum(statusData)
+    .attr('fill', 'none')
+    .attr('stroke', '#94a3b8')
+    .attr('stroke-width', 2)
+    .attr('stroke-dasharray', '6,4')
+    .attr('d', line)
+    .style('opacity', 0)
+    .transition()
+    .duration(800)
+    .delay(1000)
+    .style('opacity', 0.6);
+
+  // Добавляем точки пересечения
+  svg.selectAll('.dot')
+    .data(statusData)
+    .enter()
+    .append('circle')
+    .attr('class', 'dot')
+    .attr('cx', d => x(d.name) + x.bandwidth() / 2)
+    .attr('cy', d => y(d.value))
+    .attr('r', 4)
+    .attr('fill', '#f8fafc')
+    .attr('stroke', d => d.color)
+    .attr('stroke-width', 2)
+    .style('filter', 'url(#glow)')
+    .style('opacity', 0)
+    .transition()
+    .duration(300)
+    .delay((d, i) => i * 100 + 1100)
+    .style('opacity', 1);
+
+  // Добавляем заголовок "СТАТУС ОПЛАТЫ"
+  svg.append('text')
+    .attr('x', width / 2)
+    .attr('y', height + 15)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '14px')
+    .style('font-weight', 'bold')
+    .style('fill', '#94a3b8')
+    .text('СТАТУС ОПЛАТЫ');
+
+  // Добавляем описания статусов
+  const statusDescriptions = [
+    { id: 'neopl', desc: 'Заказы без оплаты' },
+    { id: 'ocheredi', desc: 'Оплаченные, ожидающие обработки' },
+    { id: 'process', desc: 'В производстве/сборке' },
+    { id: 'dostavka', desc: 'Отправлены к дилеру' },
+    { id: 'raspredelenie', desc: 'Распределение по точкам' },
+    { id: 'diler', desc: 'Доставлены к дилеру' }
+  ];
+  
+  // Определяем количество колонок в легенде
+  const columns = 3; // Показываем в 3 колонки
+  const itemsPerColumn = Math.ceil(statusDescriptions.length / columns);
+  const columnWidth = (width - margin.left - margin.right) / columns;
+  
+  // Создаем контейнер для легенды
+  const legendContainer = svg.append('g')
+    .attr('transform', `translate(${margin.left}, ${height + 25})`);
+  
+  // Добавляем элементы легенды
+  statusDescriptions.forEach((item, i) => {
+    const column = Math.floor(i / itemsPerColumn);
+    const row = i % itemsPerColumn;
+    
+    const status = statusData.find(s => s.id === item.id);
+    if (!status) return;
+    
+    const itemGroup = legendContainer.append('g')
+      .attr('transform', `translate(${column * columnWidth}, ${row * 20})`);
+    
+    // Цветной индикатор
+    itemGroup.append('rect')
+      .attr('width', 8)
+      .attr('height', 8)
+      .attr('rx', 2)
+      .attr('fill', status.color)
+      .attr('y', -8);
+    
+    // Название статуса
+    itemGroup.append('text')
+      .attr('x', 15)
+      .attr('y', 0)
+      .style('font-size', '10px')
+      .style('fill', '#e2e8f0')
+      .style('font-weight', 'medium')
+      .text(`${status.name}:`);
+    
+    // Описание статуса
+    itemGroup.append('text')
+      .attr('x', status.name.length * 5.5 + 20) // Отступ после названия
+      .attr('y', 0)
+      .style('font-size', '10px')
+      .style('fill', '#94a3b8')
+      .text(item.desc);
+  });
+};
 
   // Функция форматирования чисел
   const formatNumber = (num) => {
@@ -1169,56 +1302,63 @@ const renderDonutChart = () => {
       
       <div className="mb-6">
         {/* Карточка со статусом оплаты - отображаем только на общем экране и экране региона */}
-        {currentView !== 'model' && (
-          <div className="lg:col-span-8 bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl shadow-xl border border-slate-700/50 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-purple-500/5 to-pink-500/5 z-0"></div>
-            <div className="relative z-10">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-bold text-slate-200">СТАТУС ОПЛАТЫ</h2>
-                <div className="text-sm font-medium text-purple-400">
-                  Всего заказов: {statusData.reduce((acc, curr) => acc + curr.value, 0)}
-                </div>
-              </div>
-              
-              <div className="flex justify-center space-x-10 mb-6">
-                {Object.entries(paymentCategories).map(([key, category]) => (
-                  <div key={key} className="flex flex-col items-center">
-                    <div 
-                      className="w-20 h-20 rounded-full flex items-center justify-center mb-2 shadow-lg"
-                      style={{ 
-                        background: `radial-gradient(circle, ${category.color}30 0%, ${category.color}10 70%)`,
-                        boxShadow: `0 0 20px ${category.color}30`
-                      }}
-                    >
-                      <span className="text-2xl font-bold" style={{ color: category.color }}>{category.value}</span>
-                    </div>
-                    <span className="text-sm font-medium text-slate-300">{category.name}</span>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Прогресс-бар оплаты */}
-              <div className="mb-6">
-                <div className="w-full h-4 bg-slate-700 rounded-full overflow-hidden shadow-inner">
-                  <div 
-                    className="h-full rounded-full transition-all duration-1000" 
-                    style={{ 
-                      width: '65%', 
-                      background: 'linear-gradient(to right, #10b981, #3b82f6)',
-                      boxShadow: '0 0 10px rgba(16, 185, 129, 0.5)' 
-                    }}
-                  ></div>
-                </div>
-                <div className="flex justify-between mt-2 text-sm text-slate-400">
-                  <span>Оплачено: 65% (UZS 5,704)</span>
-                  <span>Не оплачено: 35% (UZS 3,092)</span>
-                </div>
-              </div>
-              
-              <div ref={statusChartRef} className="w-full" style={{ height: '220px' }}></div>
+{currentView !== 'model' && (
+  <div className="lg:col-span-8 bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl shadow-xl border border-slate-700/50 relative overflow-hidden">
+    <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-purple-500/5 to-pink-500/5 z-0"></div>
+    <div className="relative z-10">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-bold text-slate-200">СТАТУС ОПЛАТЫ</h2>
+        <div className="text-sm font-medium text-purple-400">
+          Всего заказов: {statusData.reduce((acc, curr) => acc + curr.value, 0)}
+        </div>
+      </div>
+      
+      <div className="flex justify-center space-x-10 mb-6">
+        {Object.entries(paymentCategories).map(([key, category]) => (
+          <div key={key} className="flex flex-col items-center">
+            <div 
+              className="w-20 h-20 rounded-full flex items-center justify-center mb-2 shadow-lg"
+              style={{ 
+                background: `radial-gradient(circle, ${category.color}30 0%, ${category.color}10 70%)`,
+                boxShadow: `0 0 20px ${category.color}30`
+              }}
+            >
+              <span className="text-2xl font-bold" style={{ color: category.color }}>{category.value}</span>
             </div>
+            <span className="text-sm font-medium text-slate-300">{category.name}</span>
           </div>
-        )}
+        ))}
+      </div>
+      
+      {/* Прогресс-бар оплаты с заголовком */}
+      <div className="mb-6">
+        <div className="flex justify-between mb-2">
+          <span className="text-sm font-medium text-slate-400">СТАТУС ОПЛАТЫ ПО ЗАКАЗАМ</span>
+          <span className="text-sm font-medium text-slate-400">
+            Период: Апрель 2025
+          </span>
+        </div>
+        <div className="w-full h-4 bg-slate-700 rounded-full overflow-hidden shadow-inner">
+          <div 
+            className="h-full rounded-full transition-all duration-1000" 
+            style={{ 
+              width: '65%', 
+              background: 'linear-gradient(to right, #10b981, #3b82f6)',
+              boxShadow: '0 0 10px rgba(16, 185, 129, 0.5)' 
+            }}
+          ></div>
+        </div>
+        <div className="flex justify-between mt-2 text-sm text-slate-400">
+          <span>Оплачено: 65% (UZS 5,704)</span>
+          <span>Не оплачено: 35% (UZS 3,092)</span>
+        </div>
+      </div>
+      
+      {/* График статусов заказов */}
+      <div ref={statusChartRef} className="w-full" style={{ height: '280px' }}></div>
+    </div>
+  </div>
+)}
         
         {/* Если мы в режиме модели, показываем детальную информацию */}
         {currentView === 'model' && (
