@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTelegram } from '../../hooks/useTelegram';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../../hooks/useAuth';
 // Импортируем библиотеку иконок Lucide
 import * as LucideIcons from 'lucide-react';
 
@@ -21,6 +22,7 @@ export default function ResponsiveNav() {
   const [isMobile, setIsMobile] = useState(false);
   const pathname = usePathname();
   const { hapticFeedback } = useTelegram();
+  const { logout } = useAuth();
   const menuRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -80,7 +82,8 @@ export default function ResponsiveNav() {
     Car,
     LayoutGrid,
     Menu,
-    X
+    X,
+    LogOut
   } = LucideIcons;
 
   // Цвета по категориям
@@ -310,6 +313,14 @@ export default function ResponsiveNav() {
             <h3>Администратор</h3>
             <p>Активный сеанс</p>
           </div>
+          
+          <motion.button
+            className="logout-btn"
+            onClick={logout}
+            whileTap={{ scale: 0.9 }}
+          >
+            <LogOut size={18} strokeWidth={1.5} />
+          </motion.button>
         </div>
       </div>
 
@@ -349,6 +360,22 @@ export default function ResponsiveNav() {
       )}
 
       <style jsx global>{`
+
+      .logout-btn {
+          width: 36px;
+          height: 36px;
+          border-radius: var(--radius-md);
+          background: rgba(239, 68, 68, 0.15);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #ef4444;
+          border: none;
+          cursor: pointer;
+          margin-left: auto;
+          transition: all 0.2s ease;
+        }
+        
         /* Базовые стили */
         :root {
           --sidebar-width: 280px;
