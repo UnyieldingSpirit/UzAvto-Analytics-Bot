@@ -1,5 +1,5 @@
 import FinancialAnalytics from "@/src/shared/components/FinancialAnalytics";
-import AnalyticsDashboard from "@/src/shared/components/AnalyticsDashboard";
+import AnalyticsDashboard from "@/src/shared/components/ContractsAnalyticsDashboard";
 import ModelTrackingDashboard from "@/src/shared/components/ModelTrackingDashboard";
 import InstallmentDashboard from "@/src/shared/components/InstallmentDashboard";
 import SalesDashboard from "@/src/shared/components/SalesDashboard";
