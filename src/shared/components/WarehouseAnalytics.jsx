@@ -1298,79 +1298,32 @@ return (
          <p className="text-gray-400 mt-1">Мониторинг остатков автомобилей</p>
        </div>
        
-       <div className="flex items-center space-x-4 mt-3 md:mt-0">
-         <select 
-           value={selectedMonth}
-           onChange={(e) => setSelectedMonth(e.target.value)}
-           className="bg-gray-700 border border-gray-600 rounded px-3 py-1 text-sm"
-         >
-           <option>Январь</option>
-           <option>Февраль</option>
-           <option>Март</option>
-           <option>Апрель</option>
-         </select>
-         
-         <select 
-           value={selectedView}
-           onChange={(e) => setSelectedView(e.target.value)}
-           className="bg-gray-700 border border-gray-600 rounded px-3 py-1 text-sm"
-         >
-           <option value="общий">Общий вид</option>
-           <option value="модель">По моделям</option>
-           <option value="регион">По регионам</option>
-         </select>
-       </div>
-     </div>
-     
-     {/* Фильтры по регионам */}
-     <div className="flex flex-wrap gap-2 mb-2">
-       <button
-         className={`px-3 py-1 rounded-full text-sm font-medium ${
-           !selectedRegion 
-             ? 'bg-blue-600 text-white' 
-             : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-         }`}
-         onClick={() => setSelectedRegion(null)}
-       >
-         Все регионы
-       </button>
-       {enhancedRegions.map(region => (
-         <button
-           key={region.id}
-           className={`px-3 py-1 rounded-full text-sm font-medium ${
-             selectedRegion?.id === region.id 
-               ? 'bg-blue-600 text-white' 
-               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-           }`}
-           onClick={() => handleRegionClick(region)}
-         >
-           {region.name}
-         </button>
-       ))}
-     </div>
-     
-     {/* Фильтры по категориям моделей - дополнительный фильтр */}
-     <div className="flex flex-wrap gap-2">
-       {Array.from(new Set(enhancedCarModels.map(m => m.category))).map(category => (
-         <button
-           key={category}
-           className={`px-3 py-1 rounded-full text-sm font-medium ${
-             selectedCarModel?.category === category
-               ? 'bg-purple-600 text-white'
-               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-           }`}
-           onClick={() => {
-             if (!selectedCarModel || selectedCarModel.category !== category) {
-               const firstModelInCategory = enhancedCarModels.find(m => m.category === category);
-               if (firstModelInCategory) handleCarModelClick(firstModelInCategory);
-             } else {
-               setSelectedCarModel(null);
-             }
-           }}
-         >
-           {category}
-         </button>
-       ))}
+    {/* Фильтры по складам */}
+<div className="flex flex-wrap gap-2 mb-2">
+  <button
+    className={`px-3 py-1 rounded-full text-sm font-medium ${
+      !selectedRegion 
+        ? 'bg-blue-600 text-white' 
+        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+    }`}
+    onClick={() => setSelectedRegion(null)}
+  >
+    Все склады
+  </button>
+  {enhancedRegions.map(region => (
+    <button
+      key={region.id}
+      className={`px-3 py-1 rounded-full text-sm font-medium ${
+        selectedRegion?.id === region.id 
+          ? 'bg-blue-600 text-white' 
+          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+      }`}
+      onClick={() => handleRegionClick(region)}
+    >
+      Склад: {region.name}
+    </button>
+  ))}
+</div>
      </div>
    </div>
    
