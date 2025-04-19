@@ -21,34 +21,36 @@ const CarContractsAnalytics = () => {
   const regionStockRef = useRef(null);
   const modelStockRef = useRef(null);
   const stockTrendRef = useRef(null);
-  
+  const moneyReturnChartRef = useRef(null);
   // Дополнительные данные
   const carColors = ['Белый', 'Черный', 'Серебряный', 'Красный', 'Синий', 'Зеленый'];
   const carModifications = ['Стандарт', 'Комфорт', 'Люкс', 'Премиум', 'Спорт'];
 
-  useEffect(() => {
-    // Set default dates (last 12 months)
-    const today = new Date();
-    const lastYear = new Date();
-    lastYear.setFullYear(today.getFullYear() - 1);
-    
-    setStartDate(lastYear.toISOString().substring(0, 10));
-    setEndDate(today.toISOString().substring(0, 10));
-    
-    // Initialize charts
+useEffect(() => {
+  // Set default dates (last 12 months)
+  const today = new Date();
+  const lastYear = new Date();
+  lastYear.setFullYear(today.getFullYear() - 1);
+  
+  setStartDate(lastYear.toISOString().substring(0, 10));
+  setEndDate(today.toISOString().substring(0, 10));
+  
+  // Initialize charts
+  renderCharts();
+  renderMoneyReturnChart();
+  
+  // Window resize handler
+  const handleResize = () => {
     renderCharts();
-    
-    // Window resize handler
-    const handleResize = () => {
-      renderCharts();
-    };
-    
-    window.addEventListener('resize', handleResize);
-    
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
+    renderMoneyReturnChart();
+  };
+  
+  window.addEventListener('resize', handleResize);
+  
+  return () => {
+    window.removeEventListener('resize', handleResize);
+  };
+}, []);
   
   // Redraw charts when tab or filters change
   useEffect(() => {
@@ -346,6 +348,7 @@ const CarContractsAnalytics = () => {
   
   // Render all charts based on active tab
   const renderCharts = () => {
+
     if (activeTab === 'contracts') {
       renderContractsCharts();
     } else if (activeTab === 'sales') {
@@ -414,8 +417,279 @@ const CarContractsAnalytics = () => {
     }
     return `Динамика ${activeTab === 'contracts' ? 'контрактов' : activeTab === 'sales' ? 'продаж' : 'остатков'}`;
   };
+// Функция для рендеринга графика возврата денег
+const renderMoneyReturnChart = () => {
+  if (!moneyReturnChartRef.current) return;
   
-  // Generic bar chart renderer
+  const container = moneyReturnChartRef.current;
+  container.innerHTML = '';
+  
+  const margin = { top: 30, right: 30, bottom: 60, left: 60 };
+  const width = container.clientWidth - margin.left - margin.right;
+  const height = container.clientHeight - margin.top - margin.bottom;
+  
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', height + margin.top + margin.bottom)
+    .style('background', '#1f2937')
+    .style('border-radius', '0.5rem')
+    .append('g')
+    .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+  // Добавляем заголовок
+  svg.append('text')
+    .attr('x', width / 2)
+    .attr('y', -margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '16px')
+    .style('fill', '#f9fafb')
+    .text('Динамика возврата денежных средств');
+    
+  // Данные для графика возврата денег (последние 6 месяцев)
+  const currentDate = new Date();
+  const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+  
+  const moneyReturnData = Array.from({ length: 6 }, (_, i) => {
+    const month = new Date(currentDate);
+    month.setMonth(currentDate.getMonth() - 5 + i);
+    
+    // Генерируем данные о возвратах с тенденцией к росту
+    const baseValue = 25000 + Math.random() * 15000;
+    const trendFactor = 1 + (i * 0.15); // Увеличиваем возвраты с каждым месяцем
+    
+    return {
+      month: monthNames[month.getMonth()],
+      year: month.getFullYear(),
+      amount: Math.round(baseValue * trendFactor),
+      expectedAmount: Math.round((baseValue * trendFactor) * 1.2)
+    };
+  });
+  
+  // Создаем шкалы
+  const x = d3.scaleBand()
+    .domain(moneyReturnData.map(d => d.month))
+    .range([0, width])
+    .padding(0.3);
+    
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(moneyReturnData, d => Math.max(d.amount, d.expectedAmount)) * 1.1])
+    .range([height, 0]);
+    
+  // Добавляем оси
+  svg.append('g')
+    .attr('transform', `translate(0,${height})`)
+    .call(d3.axisBottom(x))
+    .selectAll('text')
+    .style('font-size', '12px')
+    .style('fill', '#d1d5db');
+    
+  svg.append('g')
+    .call(d3.axisLeft(y).ticks(5).tickFormat(d => `${(d / 1000)}k`))
+    .selectAll('text')
+    .style('font-size', '12px')
+    .style('fill', '#d1d5db');
+    
+  // Добавляем сетку
+  svg.append('g')
+    .attr('class', 'grid')
+    .call(d3.axisLeft(y)
+      .tickSize(-width)
+      .tickFormat(''))
+    .selectAll('line')
+    .style('stroke', 'rgba(255, 255, 255, 0.1)');
+    
+  // Создаем линию для фактических возвратов
+  const actualLine = d3.line()
+    .x(d => x(d.month) + x.bandwidth() / 2)
+    .y(d => y(d.amount))
+    .curve(d3.curveMonotoneX);
+    
+  // Создаем линию для ожидаемых возвратов
+  const expectedLine = d3.line()
+    .x(d => x(d.month) + x.bandwidth() / 2)
+    .y(d => y(d.expectedAmount))
+    .curve(d3.curveMonotoneX);
+    
+  // Создаем градиенты
+  const defs = svg.append('defs');
+  
+  // Градиент для фактической линии
+  const actualGradient = defs.append('linearGradient')
+    .attr('id', 'actualGradient')
+    .attr('x1', '0%')
+    .attr('y1', '0%')
+    .attr('x2', '100%')
+    .attr('y2', '0%');
+    
+  actualGradient.append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', '#3b82f6')
+    .attr('stop-opacity', 1);
+    
+  actualGradient.append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', '#60a5fa')
+    .attr('stop-opacity', 1);
+    
+  // Градиент для ожидаемой линии
+  const expectedGradient = defs.append('linearGradient')
+    .attr('id', 'expectedGradient')
+    .attr('x1', '0%')
+    .attr('y1', '0%')
+    .attr('x2', '100%')
+    .attr('y2', '0%');
+    
+  expectedGradient.append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', '#f59e0b')
+    .attr('stop-opacity', 1);
+    
+  expectedGradient.append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', '#fbbf24')
+    .attr('stop-opacity', 1);
+    
+  // Добавляем область под фактической линией
+  svg.append('path')
+    .datum(moneyReturnData)
+    .attr('fill', 'url(#actualGradient)')
+    .attr('fill-opacity', 0.2)
+    .attr('d', d3.area()
+      .x(d => x(d.month) + x.bandwidth() / 2)
+      .y0(height)
+      .y1(d => y(d.amount))
+      .curve(d3.curveMonotoneX)
+    );
+    
+  // Добавляем фактическую линию с анимацией
+  const actualPath = svg.append('path')
+    .datum(moneyReturnData)
+    .attr('fill', 'none')
+    .attr('stroke', 'url(#actualGradient)')
+    .attr('stroke-width', 3)
+    .attr('d', actualLine);
+    
+  // Рассчитываем длину линии для анимации
+  const actualPathLength = actualPath.node().getTotalLength();
+  
+  actualPath
+    .attr('stroke-dasharray', actualPathLength)
+    .attr('stroke-dashoffset', actualPathLength)
+    .transition()
+    .duration(2000)
+    .attr('stroke-dashoffset', 0);
+    
+  // Добавляем ожидаемую линию с анимацией
+  const expectedPath = svg.append('path')
+    .datum(moneyReturnData)
+    .attr('fill', 'none')
+    .attr('stroke', 'url(#expectedGradient)')
+    .attr('stroke-width', 2)
+    .attr('stroke-dasharray', '5,5')
+    .attr('d', expectedLine);
+    
+  // Рассчитываем длину линии для анимации
+  const expectedPathLength = expectedPath.node().getTotalLength();
+  
+  expectedPath
+    .attr('stroke-dasharray', `5,5,${expectedPathLength}`)
+    .attr('stroke-dashoffset', expectedPathLength)
+    .transition()
+    .duration(2000)
+    .delay(500)
+    .attr('stroke-dashoffset', 0);
+    
+  // Добавляем точки на линии фактических возвратов
+  svg.selectAll('.actual-point')
+    .data(moneyReturnData)
+    .join('circle')
+    .attr('class', 'actual-point')
+    .attr('cx', d => x(d.month) + x.bandwidth() / 2)
+    .attr('cy', d => y(d.amount))
+    .attr('r', 0)
+    .attr('fill', '#3b82f6')
+    .attr('stroke', '#1f2937')
+    .attr('stroke-width', 2)
+    .transition()
+    .duration(1000)
+    .delay((d, i) => 2000 + i * 150)
+    .attr('r', 5);
+    
+  // Добавляем подписи для фактических возвратов
+  svg.selectAll('.actual-label')
+    .data(moneyReturnData)
+    .join('text')
+    .attr('class', 'actual-label')
+    .attr('x', d => x(d.month) + x.bandwidth() / 2)
+    .attr('y', d => y(d.amount) - 15)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '10px')
+    .style('font-weight', 'bold')
+    .style('fill', '#60a5fa')
+    .style('opacity', 0)
+    .text(d => `${(d.amount / 1000).toFixed(1)}k`)
+    .transition()
+    .duration(500)
+    .delay((d, i) => 2500 + i * 150)
+    .style('opacity', 1);
+    
+  // Добавляем легенду
+  const legend = svg.append('g')
+    .attr('transform', `translate(${width - 180}, ${height - 50})`);
+    
+  legend.append('line')
+    .attr('x1', 0)
+    .attr('y1', 0)
+    .attr('x2', 20)
+    .attr('y2', 0)
+    .attr('stroke', '#3b82f6')
+    .attr('stroke-width', 3);
+    
+  legend.append('text')
+    .attr('x', 25)
+    .attr('y', 4)
+    .text('Фактический возврат')
+    .style('font-size', '10px')
+    .style('fill', '#d1d5db');
+    
+  legend.append('line')
+    .attr('x1', 0)
+    .attr('y1', 20)
+    .attr('x2', 20)
+    .attr('y2', 20)
+    .attr('stroke', '#f59e0b')
+    .attr('stroke-width', 2)
+    .attr('stroke-dasharray', '5,5');
+    
+  legend.append('text')
+    .attr('x', 25)
+    .attr('y', 24)
+    .text('Ожидаемый возврат')
+    .style('font-size', '10px')
+    .style('fill', '#d1d5db');
+    
+  // Высчитываем общую эффективность возврата
+  const totalActual = moneyReturnData.reduce((sum, d) => sum + d.amount, 0);
+  const totalExpected = moneyReturnData.reduce((sum, d) => sum + d.expectedAmount, 0);
+  const efficiency = (totalActual / totalExpected) * 100;
+  
+  // Добавляем суммарную информацию
+  const summary = svg.append('g')
+    .attr('transform', `translate(20, 20)`);
+    
+  summary.append('text')
+    .text(`Эффективность: ${efficiency.toFixed(1)}%`)
+    .style('font-size', '12px')
+    .style('font-weight', 'bold')
+    .style('fill', efficiency >= 85 ? '#22c55e' : efficiency >= 70 ? '#f59e0b' : '#ef4444');
+    
+  summary.append('text')
+    .attr('y', 20)
+    .text(`Всего возвращено: ${(totalActual / 1000).toFixed(1)}k`)
+    .style('font-size', '12px')
+    .style('fill', '#d1d5db');
+};
   const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     if (!ref.current) return;
     
@@ -1125,7 +1399,18 @@ const CarContractsAnalytics = () => {
          </div>
        </>
      )}
-     
+     {/* График возврата денежных средств */}
+<div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
+  <h3 className="text-xl font-semibold mb-4">Возврат денежных средств</h3>
+  <div className="flex items-center mb-3">
+    <div className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm mr-2">Финансовая аналитика</div>
+    <div className="text-sm text-gray-400">Отслеживание фактических и ожидаемых возвратов</div>
+  </div>
+  <div 
+    ref={moneyReturnChartRef} 
+    className="w-full h-[350px]"
+  ></div>
+</div>
      <div className="bg-blue-900/20 border-l-4 border-blue-500 p-5 rounded-r-lg mb-8">
        <h3 className="text-xl font-semibold text-blue-400 mb-2">Информация об аналитической панели</h3>
        <p className="text-gray-300">

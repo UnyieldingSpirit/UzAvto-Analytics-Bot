@@ -1,13 +1,12 @@
 'use client';
+
 import React, { useState, useEffect, useMemo, useRef,useCallback } from 'react';
-import { Package, Clock, Download, Info, Check, ChevronDown, AlertTriangle, Filter, Truck, MapPin, 
+import {  Clock, Download, Check, AlertTriangle, Filter, Truck, MapPin, 
   Archive, ChevronLeft, BarChart3, Users, Activity, ChevronRight, Zap, Calendar, Car } from 'lucide-react';
 import { carModels, regions } from '@/src/shared/mocks/mock-data';
 import { useTelegram } from '@/src/hooks/useTelegram';
 import * as d3 from 'd3';
 
-// Внутренний компонент SalesChart для графика продаж
-// Внутренний компонент SalesChart для графика продаж
 const SalesChart = ({ 
   salesData, 
   lastYearSalesData, 
@@ -23,7 +22,6 @@ const SalesChart = ({
   const chartRef = useRef(null);
   const tooltipRef = useRef(null);
   
-  // Вычисляем максимальное значение для графика с учетом режима сравнения
   const maxValue = useMemo(() => {
     return showComparison 
       ? Math.max(...salesData, ...lastYearSalesData) * 1.1
@@ -1173,7 +1171,7 @@ const SalesDashboard = () => {
   <div className="flex justify-between items-center p-3 border-b border-gray-700">
     <h3 className="text-base font-medium text-white flex items-center gap-2">
       <AlertTriangle size={18} className="text-yellow-400" />
-      Задолженность по контрактам
+      Замороженые контракты 
       {selectedModel && (
         <span className="ml-2 text-sm text-gray-400">
           • {carModels.find(m => m.id === selectedModel)?.name}
