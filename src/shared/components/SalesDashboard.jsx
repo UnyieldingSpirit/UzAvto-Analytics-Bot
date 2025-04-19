@@ -1586,7 +1586,7 @@ const SalesDashboard = () => {
         </div>
         
         {/* Панель моделей автомобилей - с интерактивным выбором */}
-        <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden mt-5">
+        {/* <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden mt-5">
           <div className="flex justify-between items-center p-3 border-b border-gray-700">
             <h3 className="text-base font-medium text-white flex items-center gap-2">
               <Car size={18} className="text-green-400" />
@@ -1657,7 +1657,7 @@ const SalesDashboard = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

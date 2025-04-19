@@ -1167,21 +1167,7 @@ const renderDonutChart = () => {
             : `ДЕТАЛЬНАЯ ИНФОРМАЦИЯ ПО МОДЕЛИ: ${selectedModel?.name}`}
       </p>
       
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
-        {/* Карточка с прогрессом */}
-<div className="lg:col-span-4 bg-gradient-to-br from-slate-800 to-slate-900 p-5 rounded-2xl shadow-xl border border-slate-700/50 relative overflow-hidden">
-  <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-blue-500/5 to-purple-500/5 z-0"></div>
-  <div className="relative z-10 flex flex-col h-full">
-    <div className="flex justify-between items-center mb-2">
-      <h2 className="text-lg font-bold text-slate-200">Целевая выручка</h2>
-      <div className="text-sm font-medium text-blue-400">План выполнен</div>
-    </div>
-            <div className="flex-1 flex items-center justify-center">
-      <div ref={donutChartRef} className="w-full h-full aspect-square max-h-64"></div>
-    </div>
-          </div>
-        </div>
-        
+      <div className="mb-6">
         {/* Карточка со статусом оплаты - отображаем только на общем экране и экране региона */}
         {currentView !== 'model' && (
           <div className="lg:col-span-8 bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl shadow-xl border border-slate-700/50 relative overflow-hidden">
