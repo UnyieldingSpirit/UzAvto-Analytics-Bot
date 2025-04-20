@@ -13,7 +13,6 @@ const ProductionDashboard = () => {
   const [year, setYear] = useState('2024');
   const [marketType, setMarketType] = useState('all');
   const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(false);
-  const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
   
   // Состояние для выбранного месяца
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -23,24 +22,9 @@ const ProductionDashboard = () => {
   
   // Рефы для элементов UI
   const chartRef = useRef(null);
-  const yearDropdownRef = useRef(null);
   
   // Доступные годы
   const availableYears = ['2024', '2023', '2022'];
-  
-  // Обработчик клика вне dropdown
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (yearDropdownRef.current && !yearDropdownRef.current.contains(event.target)) {
-        setIsYearDropdownOpen(false);
-      }
-    }
-    
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
   
   // Генерируем данные для производства
   const generateProductionData = () => {
@@ -145,9 +129,9 @@ const ProductionDashboard = () => {
   };
   
   // Обработчик изменения года
-  const handleYearChange = (selectedYear) => {
+  const handleYearChange = (e) => {
+    const selectedYear = e.target.value;
     setYear(selectedYear);
-    setIsYearDropdownOpen(false);
     // Сбрасываем выбранный месяц при смене года
     setSelectedMonth(null);
     setPrevMonthData(null);
@@ -500,35 +484,20 @@ const ProductionDashboard = () => {
                   </button>
                 </div>
                 
-          <div className="mt-3 relative" ref={yearDropdownRef}>
-  <button
-    onClick={() => setIsYearDropdownOpen(!isYearDropdownOpen)}
-    className="flex items-center justify-between w-full p-2.5 bg-gray-700 text-white border border-gray-600 rounded-md hover:bg-gray-650 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"
-  >
-    <span>{year} год</span>
-    <ChevronDown 
-      className={`transition-transform duration-300 ${isYearDropdownOpen ? 'rotate-180' : ''}`} 
-      size={18} 
-    />
-  </button>
-  
-  {isYearDropdownOpen && (
-    <div className="absolute z-20 mt-1 w-full bg-gray-800 border border-gray-700 rounded-md shadow-lg">
-      {availableYears.map((yearOption) => (
-        <button
-          key={yearOption}
-          onClick={() => handleYearChange(yearOption)}
-          className={`flex items-center justify-between w-full px-4 py-2.5 text-sm hover:bg-gray-700 transition-colors ${
-            yearOption === year ? 'bg-gray-700 text-white' : 'text-gray-300'
-          }`}
-        >
-          {yearOption} год
-          {yearOption === year && <Check size={16} className="text-orange-500" />}
-        </button>
-      ))}
-    </div>
-  )}
-</div>
+                {/* ЗАМЕНЕНО: Селект вместо выпадающего списка */}
+                <div className="mt-3">
+                  <select
+                    value={year}
+                    onChange={handleYearChange}
+                    className="w-full p-2.5 bg-gray-700 text-white border border-gray-600 rounded-md"
+                  >
+                    {availableYears.map((yearOption) => (
+                      <option key={yearOption} value={yearOption}>
+                        {yearOption} год
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               
               {/* Выбор типа рынка */}
@@ -631,7 +600,7 @@ const ProductionDashboard = () => {
           </div>
         </motion.div>
         
-     {/* Экспортный рынок */}
+        {/* Экспортный рынок */}
         <motion.div 
           whileHover={{ y: -5, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)' }}
           className="bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-lg border border-gray-700 shadow-md transition-all duration-300"
@@ -659,8 +628,7 @@ const ProductionDashboard = () => {
         </motion.div>
       </div>
       
-      {/* График производства */}
-      <motion.div 
+   <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
