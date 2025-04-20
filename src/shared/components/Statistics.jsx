@@ -67,6 +67,33 @@ export default function Statistics() {
       )
     : [];
     
+const getGlobalTopSalespeople = () => {
+  // Создаем карту для агрегации продаж по каждому продавцу
+  const salesByPerson = new Map();
+  
+  // Проходим по всем записям о продавцах
+  data.salespersonData.forEach(person => {
+    const key = `${person.salespersonId}-${person.salespersonName}`;
+    const currentSales = salesByPerson.get(key) || 0;
+    salesByPerson.set(key, currentSales + person.sales);
+  });
+  
+  // Преобразуем карту в массив и сортируем по убыванию продаж
+  const allSalespeople = Array.from(salesByPerson.entries()).map(([key, sales]) => {
+    const [id, name] = key.split('-', 2);
+    return {
+      id: parseInt(id),
+      name: name,
+      totalSales: sales
+    };
+  });
+  
+  // Сортируем и берем топ-5
+  return allSalespeople
+    .sort((a, b) => b.totalSales - a.totalSales)
+    .slice(0, 5);
+};
+  
   // Получаем топ-5 продавцов для выбранного дилера
   const getTopSalespeople = () => {
     if (!selectedDealer || !selectedModel) return [];
@@ -529,8 +556,8 @@ export default function Statistics() {
       height: 400
     });
   }
-  
-  // Secondary chart - Возвраты по моделям
+  // Компонент для отображения топ-продавцов по всем дилерам
+
   // Рассчитываем возвраты для каждой модели, суммируя возвраты по всем дилерам
   const returnsData = data.modelData.map(model => {
     // Находим все данные о платежах для этой модели
@@ -729,6 +756,74 @@ export default function Statistics() {
    });
  };
 
+  const renderGlobalTopSalespeople = () => {
+  const topSalespeople = getGlobalTopSalespeople();
+  
+  return (
+    <div className="bg-gray-800 rounded-lg p-4 mb-6">
+      <h3 className="text-xl font-bold text-white mb-4">Топ-5 продавцов по всем дилерам</h3>
+      
+      <div className="grid grid-cols-1 gap-3">
+        {topSalespeople.map((salesperson, index) => (
+          <motion.div
+            key={salesperson.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            className="bg-gray-900/70 rounded-lg p-3 flex items-center"
+          >
+            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center font-bold mr-3"
+                 style={{ backgroundColor: index === 0 ? '#FFD700' : 
+                                         index === 1 ? '#C0C0C0' : 
+                                         index === 2 ? '#CD7F32' : '#3b82f680' }}>
+              {salesperson.name.split(' ').map(n => n[0]).join('')}
+            </div>
+            
+            <div className="flex-grow">
+              <div className="flex justify-between items-center">
+                <h4 className="text-lg font-bold text-white">{salesperson.name}</h4>
+                <span className="px-2 py-1 rounded text-xs" 
+                      style={{ backgroundColor: `${index === 0 ? '#FFD700' : 
+                                                index === 1 ? '#C0C0C0' : 
+                                                index === 2 ? '#CD7F32' : '#3b82f6'}20`, 
+                               color: index === 0 ? '#FFD700' : 
+                                      index === 1 ? '#C0C0C0' : 
+                                      index === 2 ? '#CD7F32' : '#3b82f6' }}>
+                  {index === 0 ? '🥇 Абсолютный лидер' : 
+                   index === 1 ? '🥈 #2' : 
+                   index === 2 ? '🥉 #3' : `#${index + 1}`}
+                </span>
+              </div>
+              
+              <div className="flex items-center mt-1">
+                <div className="text-gray-400 text-sm">Общие продажи:</div>
+                <div className="text-white font-bold ml-2">{salesperson.totalSales.toLocaleString()}</div>
+                
+                <div className="ml-auto flex items-center">
+                  <div className="h-2 w-24 bg-gray-700 rounded-full mr-2">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(salesperson.totalSales / topSalespeople[0].totalSales) * 100}%` }}
+                      transition={{ duration: 0.5, delay: index * 0.1 + 0.3 }}
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: index === 0 ? '#FFD700' : 
+                                               index === 1 ? '#C0C0C0' : 
+                                               index === 2 ? '#CD7F32' : '#3b82f6' }}
+                    />
+                  </div>
+                  <span className="text-xs text-gray-400">
+                    {Math.round((salesperson.totalSales / topSalespeople.reduce((sum, sp) => sum + sp.totalSales, 0)) * 100)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+};
+  
  const renderSalespersonCharts = () => {
    if (!salespersonChartRef.current || !salespersonSecondaryChartRef.current || !filteredSalespersonData.length || !selectedModel || !selectedDealer) return;
    
@@ -1651,6 +1746,9 @@ export default function Statistics() {
            </div>
          </div>
          
+            <h2 className="text-2xl font-bold my-6 text-white">Лидеры продаж</h2>
+    {renderGlobalTopSalespeople()}
+
          {/* Тренд */}
          <div className="mt-6 bg-gray-800 p-4 rounded-lg shadow-md">
            <div ref={trendChartRef} className="w-full h-full"></div>
