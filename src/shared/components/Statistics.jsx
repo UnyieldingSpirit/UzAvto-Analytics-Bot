@@ -732,11 +732,7 @@ export default function Statistics() {
  const renderSalespersonCharts = () => {
    if (!salespersonChartRef.current || !salespersonSecondaryChartRef.current || !filteredSalespersonData.length || !selectedModel || !selectedDealer) return;
    
-   // Разные визуализации в зависимости от режима просмотра
    if (viewMode === 'general') {
-     // Обычный режим с продавцами
-     
-     // Сортируем продавцов по продажам и берем топ-15 для лучшей визуализации
      const topSalespeople = [...filteredSalespersonData]
        .sort((a, b) => b.sales - a.sales)
        .slice(0, 15);
