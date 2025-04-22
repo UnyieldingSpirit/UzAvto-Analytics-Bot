@@ -5,6 +5,7 @@ import * as d3 from 'd3';
 import { carModels as mockCarModels, regions } from '../mocks/mock-data';
 import ContentReadyLoader from "../layout/ContentReadyLoader";
 import axios from 'axios'
+
 const CarContractsAnalytics = () => {
   const [activeTab, setActiveTab] = useState('contracts');
   const [selectedRegion, setSelectedRegion] = useState('all');
@@ -32,16 +33,14 @@ const [loadingComponent, setLoadingComponent] = useState(true);
 
 useEffect(() => {
   const today = new Date();
-  const lastYear = new Date();
-  lastYear.setFullYear(today.getFullYear() - 1);
-
+  const firstDayOfYear = new Date(today.getFullYear(), 0, 1);
   
-  setStartDate(lastYear.toISOString().substring(0, 10));
+  setStartDate(firstDayOfYear.toISOString().substring(0, 10));
   setEndDate(today.toISOString().substring(0, 10));
  
   renderCharts();
   renderMoneyReturnChart();
-    setCarModels([]);
+  setCarModels([]);
   const handleResize = () => {
     renderCharts();
     renderMoneyReturnChart();
@@ -74,7 +73,6 @@ const formatDateForAPI = (dateString) => {
   const year = date.getFullYear();
   return `${day}.${month}.${year}`;
 };
-
   
 // Функция для отправки запроса с выбранным периодом дат
 useEffect(() => {
@@ -85,10 +83,9 @@ useEffect(() => {
 // Функция для установки дат "с первого числа месяца по текущий день"
 const initializeDateRange = () => {
   const today = new Date();
-  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  // const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   
-  // Форматируем даты в строки YYYY-MM-DD для input type="date"
-  setStartDate(firstDayOfMonth.toISOString().substring(0, 10));
+  setStartDate(today.toISOString().substring(0, 10));
   setEndDate(today.toISOString().substring(0, 10));
 };
 
@@ -121,17 +118,60 @@ const fetchData = async () => {
       // Сохраняем полный ответ API
       setApiData(response.data);
       
-      // Преобразуем массив моделей из API в формат для нашего компонента
-      const modelsList = response.data.map(model => ({
-        id: model.model_id,
-        name: model.model_name,
-        code: model.model_code || '',
-        img: 'https://telegra.ph/file/e54ca862bac1f2187ddde.png',
-        category: 'Автомобиль',
-        price: parseInt(model.filter_by_modification?.[0]?.average_cost) || 0
-      }));
+const modelsList = response.data.map(model => {
+  // Суммируем стоимость всех модификаций для данной модели
+  let totalPrice = 0;
+  if (model.filter_by_modification && Array.isArray(model.filter_by_modification)) {
+    totalPrice = model.filter_by_modification.reduce((sum, mod) => {
+      const modPrice = parseInt(mod.average_cost) || 0;
+      return sum + modPrice;
+    }, 0);
+  }
+
+  return {
+    id: model.model_id,
+    name: model.model_name,
+    code: model.model_code || '',
+    img: model.photo_sha ? 
+         `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400` : 
+         'https://telegra.ph/file/e54ca862bac1f2187ddde.png',
+    category: 'Автомобиль',
+    price: totalPrice // Теперь используем суммарную стоимость
+  };
+});
       
-      // Обновляем список моделей
+          setCarModels(modelsList);
+      
+      // Сразу отрисовываем графики контрактов по регионам и моделям
+      setTimeout(() => {
+        // Установим вкладку контрактов как активную
+        setActiveTab('contracts');
+        
+        // Получаем данные для графиков
+        const { regionData, modelData } = getFilteredData();
+        
+        // Рендерим графики
+        renderBarChart(
+          regionContractsRef, 
+          regionData, 
+          'contracts', 
+          'name', 
+          'Контракты по регионам', 
+          '#4CAF50'
+        );
+        
+        renderBarChart(
+          modelContractsRef, 
+          modelData, 
+          'contracts', 
+          'name', 
+          'Контракты по моделям', 
+          '#2196F3'
+        );
+        
+        setLoadingComponent(false);
+      }, 300);
+      
       setCarModels(modelsList);
       console.log('Список моделей обновлен:', modelsList);
     }
@@ -179,14 +219,59 @@ const applyDateFilter = async () => {
       setApiData(response.data);
       
       // Преобразуем массив моделей из API в формат для нашего компонента
-      const modelsList = response.data.map(model => ({
-        id: model.model_id,
-        name: model.model_name,
-        code: model.model_code || '',
-        img: 'https://telegra.ph/file/e54ca862bac1f2187ddde.png',
-        category: 'Автомобиль',
-        price: parseInt(model.filter_by_modification?.[0]?.average_cost) || 0
-      }));
+   const modelsList = response.data.map(model => {
+  // Суммируем стоимость всех модификаций для данной модели
+  let totalPrice = 0;
+  if (model.filter_by_modification && Array.isArray(model.filter_by_modification)) {
+    totalPrice = model.filter_by_modification.reduce((sum, mod) => {
+      const modPrice = parseInt(mod.average_cost) || 0;
+      return sum + modPrice;
+    }, 0);
+  }
+
+  return {
+    id: model.model_id,
+    name: model.model_name,
+    code: model.model_code || '',
+    img: model.photo_sha ? 
+         `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400` : 
+         'https://telegra.ph/file/e54ca862bac1f2187ddde.png',
+    category: 'Автомобиль',
+    price: totalPrice // Теперь используем суммарную стоимость
+  };
+});
+      
+          setCarModels(modelsList);
+      
+      // Сразу отрисовываем графики контрактов по регионам и моделям
+      setTimeout(() => {
+        // Установим вкладку контрактов как активную
+        setActiveTab('contracts');
+        
+        // Получаем данные для графиков
+        const { regionData, modelData } = getFilteredData();
+        
+        // Рендерим графики
+        renderBarChart(
+          regionContractsRef, 
+          regionData, 
+          'contracts', 
+          'name', 
+          'Контракты по регионам', 
+          '#4CAF50'
+        );
+        
+        renderBarChart(
+          modelContractsRef, 
+          modelData, 
+          'contracts', 
+          'name', 
+          'Контракты по моделям', 
+          '#2196F3'
+        );
+        
+        setLoadingComponent(false);
+      }, 300);
       
       // Обновляем список моделей
       setCarModels(modelsList);
@@ -1957,7 +2042,7 @@ const stats = getStats();
     </div>
     
     {/* Summary Cards */}
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
       <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
         <div className="flex justify-between items-start mb-4">
           <div>
