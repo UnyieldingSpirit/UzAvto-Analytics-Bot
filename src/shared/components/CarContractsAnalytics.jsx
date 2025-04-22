@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { carModels, regions } from '../mocks/mock-data';
-
+import axios from 'axios'
 const CarContractsAnalytics = () => {
   const [activeTab, setActiveTab] = useState('contracts');
   const [selectedRegion, setSelectedRegion] = useState('all');
@@ -57,6 +57,55 @@ useEffect(() => {
     renderCharts();
   }, [activeTab, selectedRegion, selectedModel]);
   
+// Функция для форматирования даты в формат DD.MM.YYYY
+const formatDateForAPI = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}.${month}.${year}`;
+};
+
+// Функция для отправки запроса с выбранным периодом дат
+const applyDateFilter = async () => {
+  try {
+    // Проверяем, что даты выбраны
+    if (!startDate || !endDate) {
+      alert('Пожалуйста, выберите период дат');
+      return;
+    }
+    
+    const formattedStartDate = formatDateForAPI(startDate);
+    const formattedEndDate = formatDateForAPI(endDate);
+    
+    const requestData = {
+      begin_date: formattedStartDate,
+      end_date: formattedEndDate
+    };
+    
+    console.log('Отправка запроса с данными:', requestData);
+    
+    const response = await axios.post('https://uzavtosalon.uz/b/dashboard/infos&auto_analytics', requestData);
+    
+    if (!response.ok) {
+      throw new Error(`Ошибка запроса: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Получены данные:', data);
+    
+    // Обновляем данные на графиках
+    renderCharts();
+    
+    // Опционально: показываем уведомление об успешном применении фильтра
+    // showNotification('Данные успешно обновлены');
+  } catch (error) {
+    console.error('Ошибка при отправке запроса:', error);
+    alert('Произошла ошибка при применении фильтра. Пожалуйста, попробуйте снова.');
+  }
+};
+
   // Функция для получения отфильтрованных данных
   const getFilteredData = () => {
     // Data functions (for demo purposes)
@@ -1482,26 +1531,35 @@ return (
         </div>
       </div>
       
-      <div className="flex items-center gap-4">
-        <div className="flex items-center">
-          <span className="text-gray-400 mr-2">С:</span>
-          <input 
-            type="date" 
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white"
-          />
-        </div>
-        <div className="flex items-center">
-          <span className="text-gray-400 mr-2">По:</span>
-          <input 
-            type="date" 
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white"
-          />
-        </div>
-      </div>
+<div className="flex items-center gap-4">
+  <div className="flex items-center">
+    <span className="text-gray-400 mr-2">С:</span>
+    <input 
+      type="date" 
+      value={startDate}
+      onChange={(e) => setStartDate(e.target.value)}
+      className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white"
+    />
+  </div>
+  <div className="flex items-center">
+    <span className="text-gray-400 mr-2">По:</span>
+    <input 
+      type="date" 
+      value={endDate}
+      onChange={(e) => setEndDate(e.target.value)}
+      className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white"
+    />
+  </div>
+  <button 
+    onClick={applyDateFilter}
+    className="ml-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md flex items-center transition-colors"
+  >
+    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    </svg>
+    Применить
+  </button>
+</div>
     </div>
     
     {/* Active Filters */}
