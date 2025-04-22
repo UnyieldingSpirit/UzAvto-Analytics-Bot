@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { carModels, regions } from '../mocks/mock-data';
 import axios from 'axios'
@@ -10,8 +10,9 @@ const CarContractsAnalytics = () => {
   const [selectedModel, setSelectedModel] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  
+  const [apiData, setApiData] = useState(null);
   // Chart refs
+const [carModels, setCarModels] = useState([]);
   const regionContractsRef = useRef(null);
   const modelContractsRef = useRef(null);
   const timelineContractsRef = useRef(null);
@@ -67,7 +68,11 @@ const formatDateForAPI = (dateString) => {
   return `${day}.${month}.${year}`;
 };
 
+  
 // Функция для отправки запроса с выбранным периодом дат
+useEffect(() => {
+  console.log('Список моделей обновлен:', carModels);
+}, [carModels]);
 const applyDateFilter = async () => {
   try {
     // Проверяем, что даты выбраны
@@ -81,30 +86,92 @@ const applyDateFilter = async () => {
     
     const requestData = {
       begin_date: formattedStartDate,
-      end_date: formattedEndDate
+      end_date: formattedEndDate,
     };
     
-    console.log('Отправка запроса с данными:', requestData);
     
     const response = await axios.post('https://uzavtosalon.uz/b/dashboard/infos&auto_analytics', requestData);
     
-    if (!response.ok) {
-      throw new Error(`Ошибка запроса: ${response.status}`);
+    if (response.data) {
+      console.log('Получены данные:', response.data);
+      
+      setApiData(response.data);
+      
+      if (response.data.model_id && response.data.model_name) {
+        const newModelInfo = {
+          id: response.data.model_id,
+          name: response.data.model_name,
+          code: response.data.model_code || '',
+          img: 'https://i.imgur.com/vjFpKay.png',
+          category: 'Автомобиль',
+          production: 'UzAuto Motors',
+          price: parseInt(response.data.filter_by_modification?.[0]?.average_cost) || 0
+        };
+        
+        setCarModels(prevModels => {
+          const existingIndex = prevModels.findIndex(m => m.id === newModelInfo.id);
+          
+          if (existingIndex !== -1) {
+            const updatedModels = [...prevModels];
+            updatedModels[existingIndex] = newModelInfo;
+            return updatedModels;
+          } else {
+            // Если нет, добавляем новую
+            return [...prevModels, newModelInfo];
+          }
+        });
+        
+        console.log('Модель добавлена/обновлена:', newModelInfo);
+      }
+      
+      // Обновляем графики
+      renderCharts();
     }
-    
-    const data = await response.json();
-    console.log('Получены данные:', data);
-    
-    // Обновляем данные на графиках
-    renderCharts();
-    
-    // Опционально: показываем уведомление об успешном применении фильтра
-    // showNotification('Данные успешно обновлены');
   } catch (error) {
     console.error('Ошибка при отправке запроса:', error);
     alert('Произошла ошибка при применении фильтра. Пожалуйста, попробуйте снова.');
   }
 };
+  
+  // Функция для получения или обновления списка моделей авто из apiData
+const updateCarModelsList = useCallback(() => {
+  if (!apiData) return;
+  
+  // Проверяем, есть ли в ответе информация о текущей модели
+  if (apiData.model_id && apiData.model_name) {
+    const modelInfo = {
+      id: apiData.model_id,
+      name: apiData.model_name,
+      code: apiData.model_code || '',
+      img: 'https://telegra.ph/file/e54ca862bac1f2187ddde.png',
+      category: 'Седан', 
+      price: parseInt(apiData.filter_by_modification?.[0]?.average_cost) || 0
+    };
+    
+    // Обновляем список автомобилей, добавляя или обновляя текущую модель
+    setCarModels(prevModels => {
+      const existingModelIndex = prevModels.findIndex(model => model.id === modelInfo.id);
+      
+      if (existingModelIndex !== -1) {
+        // Модель уже есть в списке, обновляем ее
+        const updatedModels = [...prevModels];
+        updatedModels[existingModelIndex] = modelInfo;
+        return updatedModels;
+      } else {
+        // Модели нет в списке, добавляем ее
+        return [...prevModels, modelInfo];
+      }
+    });
+    
+    if (selectedModel === 'all') {
+      setSelectedModel(modelInfo.id);
+    }
+  }
+}, [apiData, selectedModel]);
+
+useEffect(() => {
+  updateCarModelsList();
+}, [apiData, updateCarModelsList]);
 
   // Функция для получения отфильтрованных данных
   const getFilteredData = () => {
@@ -1485,7 +1552,14 @@ const CarModelThumbnail = ({ model, isSelected, onClick }) => {
       />
       <div>
         <h3 className="font-medium text-white">{model.name}</h3>
-        <p className="text-sm text-gray-400 capitalize">{model.category}</p>
+        <p className="text-sm text-gray-400 capitalize">
+          {model.code ? `Код: ${model.code}` : model.category || 'Автомобиль'}
+        </p>
+        {model.price > 0 && (
+          <p className="text-xs text-blue-400 mt-1">
+            {formatCurrency(model.price)}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -1733,65 +1807,67 @@ return (
     </div>
     
     {/* Модельный ряд - отображается только если не выбрана конкретная модель */}
-    {selectedModel === 'all' && (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {carModels.map(model => (
-          <CarModelThumbnail 
-            key={model.id} 
-            model={model} 
-            isSelected={selectedModel === model.id}
-            onClick={() => setSelectedModel(model.id)}
-          />
-        ))}
-      </div>
-    )}
-    
-    {/* Если выбрана конкретная модель, отображаем её детали */}
-    {selectedModel !== 'all' && (
-      <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-          <img 
-            src={carModels.find(m => m.id === selectedModel)?.img} 
-            alt={carModels.find(m => m.id === selectedModel)?.name}
-            className="w-32 h-32 object-contain"
-          />
+  {selectedModel === 'all' && (
+  <div className="mb-8">
+    <h3 className="text-xl font-semibold mb-4">Модельный ряд</h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {carModels.map(model => (
+        <CarModelThumbnail 
+          key={model.id} 
+          model={model} 
+          isSelected={selectedModel === model.id}
+          onClick={() => setSelectedModel(model.id)}
+        />
+      ))}
+    </div>
+  </div>
+)}
+   {/* Если выбрана конкретная модель, отображаем её детали */}
+{selectedModel !== 'all' && apiData && (
+  <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
+    <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+      <img 
+        src="https://i.imgur.com/vjFpKay.png" 
+        alt={apiData.model_name}
+        className="w-32 h-32 object-contain"
+      />
+      <div>
+        <h3 className="text-xl font-bold text-white mb-2">
+          {apiData.model_name}
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <h3 className="text-xl font-bold text-white mb-2">
-              {carModels.find(m => m.id === selectedModel)?.name}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <p className="text-gray-400 text-sm">Категория:</p>
-                <p className="text-white font-medium capitalize">
-                  {carModels.find(m => m.id === selectedModel)?.category}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm">Стоимость:</p>
-                <p className="text-white font-medium">
-                  {formatCurrency(carModels.find(m => m.id === selectedModel)?.price || 0)}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm">Производитель:</p>
-                <p className="text-white font-medium">
-                  {carModels.find(m => m.id === selectedModel)?.production || 'UzAuto Motors'}
-                </p>
-              </div>
-            </div>
-            <button 
-              className="mt-4 text-blue-400 text-sm flex items-center"
-              onClick={() => setSelectedModel('all')}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-              </svg>
-              Вернуться ко всем моделям
-            </button>
+            <p className="text-gray-400 text-sm">Код модели:</p>
+            <p className="text-white font-medium">
+              {apiData.model_code || 'Н/Д'}
+            </p>
+          </div>
+          <div>
+            <p className="text-gray-400 text-sm">Всего контрактов:</p>
+            <p className="text-white font-medium">
+              {apiData.filter_by_region?.reduce((sum, r) => sum + parseInt(r.total_contracts || 0), 0) || 0}
+            </p>
+          </div>
+          <div>
+            <p className="text-gray-400 text-sm">Средняя стоимость:</p>
+            <p className="text-white font-medium">
+              {formatCurrency(apiData.filter_by_modification?.[0]?.average_cost || 0)}
+            </p>
           </div>
         </div>
+        <button 
+          className="mt-4 text-blue-400 text-sm flex items-center"
+          onClick={() => setSelectedModel('all')}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          Вернуться ко всем моделям
+        </button>
       </div>
-    )}
+    </div>
+  </div>
+)}
     
     {/* Main Charts Section */}
     {activeTab === 'contracts' && (
