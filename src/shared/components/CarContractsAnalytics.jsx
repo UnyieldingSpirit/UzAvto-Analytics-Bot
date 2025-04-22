@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { carModels, regions } from '../mocks/mock-data';
+import { carModels as mockCarModels, regions } from '../mocks/mock-data';
+
 import axios from 'axios'
 const CarContractsAnalytics = () => {
   const [activeTab, setActiveTab] = useState('contracts');
@@ -11,8 +12,8 @@ const CarContractsAnalytics = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [apiData, setApiData] = useState(null);
+   const [carModels, setCarModels] = useState([]);
   // Chart refs
-const [carModels, setCarModels] = useState([]);
   const regionContractsRef = useRef(null);
   const modelContractsRef = useRef(null);
   const timelineContractsRef = useRef(null);
@@ -36,10 +37,10 @@ useEffect(() => {
   setStartDate(lastYear.toISOString().substring(0, 10));
   setEndDate(today.toISOString().substring(0, 10));
   
-  // Initialize charts
+ applyDateFilter()
   renderCharts();
   renderMoneyReturnChart();
-  
+    setCarModels([]);
   // Window resize handler
   const handleResize = () => {
     renderCharts();
@@ -53,9 +54,9 @@ useEffect(() => {
   };
 }, []);
   
-  // Redraw charts when tab or filters change
   useEffect(() => {
     renderCharts();
+    
   }, [activeTab, selectedRegion, selectedModel]);
   
 // Функция для форматирования даты в формат DD.MM.YYYY
@@ -73,6 +74,8 @@ const formatDateForAPI = (dateString) => {
 useEffect(() => {
   console.log('Список моделей обновлен:', carModels);
 }, [carModels]);
+  
+  
 const applyDateFilter = async () => {
   try {
     // Проверяем, что даты выбраны
@@ -89,40 +92,29 @@ const applyDateFilter = async () => {
       end_date: formattedEndDate,
     };
     
+    console.log('Отправка запроса с данными:', requestData);
     
     const response = await axios.post('https://uzavtosalon.uz/b/dashboard/infos&auto_analytics', requestData);
     
-    if (response.data) {
+    if (response.data && Array.isArray(response.data)) {
       console.log('Получены данные:', response.data);
       
+      // Сохраняем полный ответ API
       setApiData(response.data);
       
-      if (response.data.model_id && response.data.model_name) {
-        const newModelInfo = {
-          id: response.data.model_id,
-          name: response.data.model_name,
-          code: response.data.model_code || '',
-          img: 'https://i.imgur.com/vjFpKay.png',
-          category: 'Автомобиль',
-          production: 'UzAuto Motors',
-          price: parseInt(response.data.filter_by_modification?.[0]?.average_cost) || 0
-        };
-        
-        setCarModels(prevModels => {
-          const existingIndex = prevModels.findIndex(m => m.id === newModelInfo.id);
-          
-          if (existingIndex !== -1) {
-            const updatedModels = [...prevModels];
-            updatedModels[existingIndex] = newModelInfo;
-            return updatedModels;
-          } else {
-            // Если нет, добавляем новую
-            return [...prevModels, newModelInfo];
-          }
-        });
-        
-        console.log('Модель добавлена/обновлена:', newModelInfo);
-      }
+      // Преобразуем массив моделей из API в формат для нашего компонента
+      const modelsList = response.data.map(model => ({
+        id: model.model_id,
+        name: model.model_name,
+        code: model.model_code || '',
+        img: 'https://telegra.ph/file/e54ca862bac1f2187ddde.png',
+        category: 'Автомобиль',
+        price: parseInt(model.filter_by_modification?.[0]?.average_cost) || 0
+      }));
+      
+      // Обновляем список моделей
+      setCarModels(modelsList);
+      console.log('Список моделей обновлен:', modelsList);
       
       // Обновляем графики
       renderCharts();
@@ -133,6 +125,27 @@ const applyDateFilter = async () => {
   }
 };
   
+
+   useEffect(() => {
+    console.log('Список моделей обновлен:', carModels);
+    
+    // Если список моделей пуст, можно добавить тестовую модель
+    if (carModels.length === 0 && apiData) {
+      // Создаем тестовую модель на основе apiData
+      const testModel = {
+        id: apiData.model_id || 'test-id',
+        name: apiData.model_name || 'Тестовая модель',
+        code: apiData.model_code || 'TEST',
+        img: 'https://i.imgur.com/vjFpKay.png',
+        category: 'Тестовая категория',
+        price: 1000000
+      };
+      
+      // Добавляем тестовую модель в список
+      setCarModels([testModel]);
+      console.log('Добавлена тестовая модель:', testModel);
+    }
+  }, [carModels, apiData]);
   // Функция для получения или обновления списка моделей авто из apiData
 const updateCarModelsList = useCallback(() => {
   if (!apiData) return;
@@ -1548,13 +1561,13 @@ const CarModelThumbnail = ({ model, isSelected, onClick }) => {
       <img 
         src={model.img}
         alt={model.name}
-        className="w-12 h-12 object-contain mr-3"
+        className="w-14 h-14 object-contain mr-3"
       />
       <div>
         <h3 className="font-medium text-white">{model.name}</h3>
-        <p className="text-sm text-gray-400 capitalize">
+        {/* <p className="text-sm text-gray-400 capitalize">
           {model.code ? `Код: ${model.code}` : model.category || 'Автомобиль'}
-        </p>
+        </p> */}
         {model.price > 0 && (
           <p className="text-xs text-blue-400 mt-1">
             {formatCurrency(model.price)}
@@ -1807,18 +1820,26 @@ return (
     </div>
     
     {/* Модельный ряд - отображается только если не выбрана конкретная модель */}
-  {selectedModel === 'all' && (
+ {selectedModel === 'all' && (
   <div className="mb-8">
     <h3 className="text-xl font-semibold mb-4">Модельный ряд</h3>
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {carModels.map(model => (
-        <CarModelThumbnail 
-          key={model.id} 
-          model={model} 
-          isSelected={selectedModel === model.id}
-          onClick={() => setSelectedModel(model.id)}
-        />
-      ))}
+      {carModels.length > 0 ? (
+        // Отображаем список моделей из API
+        carModels.map(model => (
+          <CarModelThumbnail 
+            key={model.id} 
+            model={model} 
+            isSelected={selectedModel === model.id}
+            onClick={() => setSelectedModel(model.id)}
+          />
+        ))
+      ) : (
+        // Показываем сообщение, если список пуст
+        <div className="col-span-4 p-4 bg-gray-800 rounded-lg text-center">
+          <p className="text-gray-400">Нет доступных моделей. Выберите период и нажмите "Применить".</p>
+        </div>
+      )}
     </div>
   </div>
 )}
