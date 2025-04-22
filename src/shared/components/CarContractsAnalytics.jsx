@@ -14,8 +14,8 @@ const CarContractsAnalytics = () => {
   const [endDate, setEndDate] = useState('');
   const [apiData, setApiData] = useState(null);
    const [carModels, setCarModels] = useState([]);
-  // Chart refs
- const [loading, setLoading] = useState(true);
+
+  const [loading, setLoading] = useState(true);
 const [loadingComponent, setLoadingComponent] = useState(true);
   const regionContractsRef = useRef(null);
   const modelContractsRef = useRef(null);
@@ -35,7 +35,7 @@ useEffect(() => {
   const today = new Date();
   const firstDayOfYear = new Date(today.getFullYear(), 0, 1);
   
-  setStartDate(firstDayOfYear.toISOString().substring(0, 10));
+  setStartDate(today.toISOString().substring(0, 10));
   setEndDate(today.toISOString().substring(0, 10));
  
   renderCharts();
@@ -83,7 +83,7 @@ useEffect(() => {
 // Функция для установки дат "с первого числа месяца по текущий день"
 const initializeDateRange = () => {
   const today = new Date();
-  // const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   
   setStartDate(today.toISOString().substring(0, 10));
   setEndDate(today.toISOString().substring(0, 10));
