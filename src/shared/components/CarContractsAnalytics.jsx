@@ -2665,53 +2665,53 @@ const StatisticsCards = () => {
 // Компонент миниатюры авто
 const CarModelThumbnail = ({ model, isSelected, onClick }) => {
   // Рассчитываем статистику для конкретной модели с учетом выбранного региона
-  const getModelStats = useMemo(() => {
-    if (!apiData || !Array.isArray(apiData)) {
-      return { count: 0, amount: 0 };
+const getModelStats = useCallback((modelId) => {
+  if (!apiData || !Array.isArray(apiData)) {
+    return { count: 0, amount: 0 };
+  }
+  
+  const modelData = apiData.find(m => m.model_id === modelId);
+  if (!modelData) {
+    return { count: 0, amount: 0 };
+  }
+  
+  let totalCount = 0;
+  let totalAmount = 0;
+  
+  // Если выбран конкретный регион, фильтруем по нему
+  if (selectedRegion !== 'all') {
+    const regionData = modelData.filter_by_region?.find(r => r.region_id === selectedRegion);
+    if (regionData) {
+      totalCount = parseInt(regionData.total_contracts || 0);
+      totalAmount = parseInt(regionData.total_price || 0);
     }
-    
-    const modelData = apiData.find(m => m.model_id === model.id);
-    if (!modelData) {
-      return { count: 0, amount: 0 };
+  } else {
+    // Если регион не выбран, суммируем по всем регионам данной модели
+    if (modelData.filter_by_region && Array.isArray(modelData.filter_by_region)) {
+      modelData.filter_by_region.forEach(region => {
+        totalCount += parseInt(region.total_contracts || 0);
+        totalAmount += parseInt(region.total_price || 0);
+      });
     }
-    
-    let totalCount = 0;
-    let totalAmount = 0;
-    
-    // Если выбран конкретный регион, фильтруем по нему
-    if (selectedRegion !== 'all') {
-      const regionData = modelData.filter_by_region?.find(r => r.region_id === selectedRegion);
-      if (regionData) {
-        totalCount = parseInt(regionData.total_contracts || 0);
-        totalAmount = parseInt(regionData.total_price || 0);
-      }
-    } else {
-      // Если регион не выбран, суммируем по всем регионам данной модели
-      if (modelData.filter_by_region && Array.isArray(modelData.filter_by_region)) {
-        modelData.filter_by_region.forEach(region => {
-          totalCount += parseInt(region.total_contracts || 0);
-          totalAmount += parseInt(region.total_price || 0);
-        });
-      }
-    }
-    
-    // Применяем модификатор в зависимости от активного таба
-    const tabMultipliers = {
-      contracts: { count: 1, amount: 1 },
-      sales: { count: 1, amount: 1 },
-      stock: { count: 0.2, amount: 0.2 },
-      retail: { count: 0.7, amount: 0.7 },
-      wholesale: { count: 0.3, amount: 0.3 },
-      promotions: { count: 0.1, amount: 0.1 }
-    };
-    
-    const multiplier = tabMultipliers[activeTab] || tabMultipliers.contracts;
-    
-    return {
-      count: Math.round(totalCount * multiplier.count),
-      amount: Math.round(totalAmount * multiplier.amount)
-    };
-  }, [model.id, selectedRegion, activeTab, apiData]);
+  }
+  
+  // Применяем модификатор в зависимости от активного таба
+  const tabMultipliers = {
+    contracts: { count: 1, amount: 1 },
+    sales: { count: 1, amount: 1 },
+    stock: { count: 0.2, amount: 0.2 },
+    retail: { count: 0.7, amount: 0.7 },
+    wholesale: { count: 0.3, amount: 0.3 },
+    promotions: { count: 0.1, amount: 0.1 }
+  };
+  
+  const multiplier = tabMultipliers[activeTab] || tabMultipliers.contracts;
+  
+  return {
+    count: Math.round(totalCount * multiplier.count),
+    amount: Math.round(totalAmount * multiplier.amount)
+  };
+}, [apiData, selectedRegion, activeTab]);
   
   const stats = getModelStats;
   
@@ -2743,56 +2743,64 @@ const CarModelThumbnail = ({ model, isSelected, onClick }) => {
   
   return (
     <div 
-      className={`bg-gray-800 rounded-lg shadow-lg flex flex-col cursor-pointer border transition-all duration-300 overflow-hidden h-[320px] ${
-        isSelected ? 'border-blue-500 transform scale-105 ring-2 ring-blue-500/30' : 'border-gray-700 hover:border-gray-500 hover:shadow-xl'
+      className={`bg-gray-800 rounded-lg shadow-lg transition-all duration-300 overflow-hidden h-[320px] cursor-pointer transform hover:translate-y-[-5px] ${
+        isSelected 
+          ? 'ring-2 ring-blue-500 border-blue-600' 
+          : 'border border-gray-700 hover:border-gray-500 hover:shadow-xl'
       }`}
       onClick={onClick}
     >
-      {/* Верхняя полоса с цветом активного таба */}
+      {/* Индикатор активного таба */}
       <div className={`h-1.5 w-full bg-gradient-to-r ${getTabColor()}`}></div>
       
-      <div className="p-4 flex-1 flex flex-col">
-        {/* Изображение модели */}
-        <div className="relative w-full h-40 flex items-center justify-center bg-gray-700/50 rounded-lg mb-3 p-2 group overflow-hidden">
+      <div className="p-4 flex flex-col h-full">
+        {/* Изображение с эффектом наведения и индикатором выбора */}
+        <div className="relative w-full h-40 flex items-center justify-center bg-gradient-to-b from-gray-700/30 to-gray-800/40 rounded-lg mb-4 p-2 overflow-hidden group">
+          {/* Фоновый градиент для контраста */}
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-700/10 to-transparent z-0"></div>
+          
           <img 
             src={model.img}
             alt={model.name}
-            className="max-h-36 max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+            className="max-h-36 max-w-full object-contain z-10 transition-all duration-300 group-hover:scale-110 drop-shadow-lg"
           />
           
-          {/* Индикатор выбора */}
+          {/* Блик на изображении для эффекта глянца */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          
+          {/* Индикатор выбора с анимацией */}
           {isSelected && (
-            <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs font-bold py-1 px-2 rounded-full">
+            <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs font-bold py-1 px-2 rounded-full shadow-lg z-30 animate-pulse">
               Выбрано
             </div>
           )}
         </div>
         
-        {/* Информация о модели */}
-        <div className="text-center flex-1 flex flex-col">
-          <h3 className="font-semibold text-white text-lg mb-2 line-clamp-1">{model.name}</h3>
+        {/* Информация о модели с улучшенной типографикой */}
+        <div className="flex flex-col flex-grow">
+          <h3 className="font-semibold text-white text-lg mb-2 line-clamp-1 text-center">{model.name}</h3>
           
-          {/* Статистика - теперь всегда отображаем блоки */}
-          <div className="mt-auto space-y-2">
-            <div className="bg-gray-700/50 rounded-md p-2">
+          {/* Статистика со стильными индикаторами */}
+          <div className="mt-auto space-y-3">
+            <div className="bg-gray-700/50 rounded-md p-3 transition-all duration-300 hover:bg-gray-700/80">
               <div className="flex justify-between items-center">
                 <span className="text-gray-300 text-sm">{getMetricLabel()}:</span>
                 <span className="font-bold text-white">
                   {stats.count > 0 ? stats.count.toLocaleString('ru-RU') : '0'}
                 </span>
               </div>
-              {/* Прогресс-бар */}
-              <div className="w-full bg-gray-600 h-1.5 rounded-full mt-1.5 overflow-hidden">
-                <div className={`h-full rounded-full bg-gradient-to-r ${getTabColor()}`} 
-                     style={{ width: `${Math.min(100, (stats.count || 0) / 10)}%` }}></div>
-              </div>
+              
             </div>
             
-            <div className="bg-gradient-to-r from-gray-700/50 to-gray-800/70 rounded-md p-2">
+            {/* Красивое отображение суммы с градиентным текстом */}
+            <div className="bg-gradient-to-r from-gray-700/50 to-gray-700/30 rounded-md p-3 transition-all duration-300 hover:from-gray-700/70 hover:to-gray-700/50">
               <div className="text-center">
-                <p className="text-gray-300 text-xs mb-0.5">Общая сумма</p>
-                <p className={`font-bold text-transparent bg-clip-text bg-gradient-to-r ${getTabColor()}`}>
-                  {stats.amount > 0 ? formatCurrency(stats.amount) : '0 UZS'}
+                <p className="text-gray-400 text-xs mb-1 uppercase tracking-wider">Общая сумма</p>
+                <p className={`font-bold text-transparent bg-clip-text bg-gradient-to-r ${getTabColor()} text-lg`}>
+                  {stats.amount > 0 
+                    ? new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'UZS', maximumFractionDigits: 0 }).format(stats.amount)
+                    : '0 UZS'
+                  }
                 </p>
               </div>
             </div>
@@ -2800,18 +2808,41 @@ const CarModelThumbnail = ({ model, isSelected, onClick }) => {
         </div>
       </div>
       
-      {/* Кнопка подробнее */}
-      <div className={`p-2 text-center border-t ${isSelected ? 'border-blue-500/30 bg-blue-500/10' : 'border-gray-700'}`}>
+      {/* Нижняя панель действий */}
+      <div 
+        className={`px-4 py-2 text-center border-t transition-all duration-300 
+          ${isSelected 
+            ? 'border-blue-500/30 bg-blue-500/20 hover:bg-blue-500/30' 
+            : 'border-gray-700 bg-gray-800/80 hover:bg-gray-700/50'
+          }`
+        }
+      >
         <button 
-          className="text-sm text-gray-300 hover:text-white focus:outline-none transition-colors"
+          className={`text-sm focus:outline-none transition-colors 
+            ${isSelected 
+              ? 'text-blue-300 hover:text-blue-200' 
+              : 'text-gray-400 hover:text-white'
+            }`
+          }
           onClick={(e) => {
-            e.stopPropagation(); // Предотвращаем всплытие события
+            e.stopPropagation();
             onClick();
           }}
         >
           {isSelected ? 'Выбрано' : 'Подробнее'}
         </button>
       </div>
+      
+      {/* CSS для анимации пульсации прогресс-бара */}
+      <style jsx global>{`
+        @keyframes pulseX {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
+        }
+        .animate-pulse-x {
+          animation: pulseX 2s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 };
@@ -2989,10 +3020,65 @@ const stats = getStats();
     {/* Summary Cards */}
  <StatisticsCards/>
     
- {selectedModel === 'all' && (
+{selectedModel === 'all' && (
   <div className="mb-8">
-    <h3 className="text-xl font-semibold mb-4">Модельный ряд</h3>
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="flex justify-between items-center mb-6">
+      <h3 className="text-xl font-semibold">Модельный ряд</h3>
+      
+      <div className="flex items-center space-x-4">
+        <div className="flex items-center bg-gray-800 rounded-lg px-3 py-2 border border-gray-700">
+          <span className="text-gray-400 mr-2 text-sm">Сортировать:</span>
+          <select 
+            className="bg-gray-800 text-white border-none focus:outline-none text-sm"
+            onChange={(e) => {
+              const sortModels = [...carModels];
+              
+              if (e.target.value === 'price-high') {
+                sortModels.sort((a, b) => b.price - a.price);
+              } else if (e.target.value === 'price-low') {
+                sortModels.sort((a, b) => a.price - b.price);
+              } else if (e.target.value === 'contracts-high') {
+                sortModels.sort((a, b) => {
+                  const statsA = getModelStats(a.id);
+                  const statsB = getModelStats(b.id);
+                  return statsB.count - statsA.count;
+                });
+              } else if (e.target.value === 'contracts-low') {
+                sortModels.sort((a, b) => {
+                  const statsA = getModelStats(a.id);
+                  const statsB = getModelStats(b.id);
+                  return statsA.count - statsB.count;
+                });
+              }
+              
+              setCarModels(sortModels);
+            }}
+          >
+            <option value="default">По умолчанию</option>
+            <option value="price-high">По сумме (убывание)</option>
+            <option value="price-low">По сумме (возрастание)</option>
+            <option value="contracts-high">По количеству (убывание)</option>
+            <option value="contracts-low">По количеству (возрастание)</option>
+          </select>
+        </div>
+        <div className="flex items-center">
+          <button 
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 py-2 text-sm flex items-center transition-colors"
+            onClick={() => {
+              // Сбросить все фильтры и отсортировать по умолчанию
+              fetchData(getApiUrlForTab(activeTab));
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Сбросить
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
       {carModels.length > 0 ? (
         // Отображаем список моделей из API
         carModels.map(model => (
@@ -3005,11 +3091,23 @@ const stats = getStats();
         ))
       ) : (
         // Показываем сообщение, если список пуст
-        <div className="col-span-4 p-4 bg-gray-800 rounded-lg text-center">
-          <p className="text-gray-400">Нет доступных моделей. Выберите период и нажмите "Применить".</p>
+        <div className="col-span-full p-6 bg-gray-800 rounded-lg text-center">
+          <div className="flex flex-col items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-gray-400 mb-2">Нет доступных моделей</p>
+            <p className="text-gray-500 text-sm">Выберите период и нажмите "Применить"</p>
+          </div>
         </div>
       )}
     </div>
+    
+    {carModels.length > 0 && (
+      <div className="mt-4 text-center text-gray-400 text-sm">
+        Показано {carModels.length} моделей автомобилей
+      </div>
+    )}
   </div>
 )}
 {selectedModel !== 'all' && apiData && (
