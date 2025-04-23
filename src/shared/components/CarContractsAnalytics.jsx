@@ -13,10 +13,11 @@ const CarContractsAnalytics = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [apiData, setApiData] = useState(null);
-   const [carModels, setCarModels] = useState([]);
-
+  const [carModels, setCarModels] = useState([]);
   const [loading, setLoading] = useState(true);
-const [loadingComponent, setLoadingComponent] = useState(true);
+  const [loadingComponent, setLoadingComponent] = useState(true);
+ const [regionsList, setRegionsList] = useState([]);
+  // Refs для графиков
   const regionContractsRef = useRef(null);
   const modelContractsRef = useRef(null);
   const timelineContractsRef = useRef(null);
@@ -27,74 +28,151 @@ const [loadingComponent, setLoadingComponent] = useState(true);
   const modelStockRef = useRef(null);
   const stockTrendRef = useRef(null);
   const moneyReturnChartRef = useRef(null);
+  
+  // Массивы данных для генерации тестовых данных при необходимости
   const carColors = ['Белый', 'Черный', 'Серебряный', 'Красный', 'Синий', 'Зеленый'];
   const carModifications = ['Стандарт', 'Комфорт', 'Люкс', 'Премиум', 'Спорт'];
 
-useEffect(() => {
-  const today = new Date();
-  
-  setStartDate(today.toISOString().substring(0, 10));
-  setEndDate(today.toISOString().substring(0, 10));
- 
-  renderCharts();
-  renderMoneyReturnChart();
-  setCarModels([]);
-  const handleResize = () => {
+  useEffect(() => {
+    const today = new Date();
+    
+    setStartDate(today.toISOString().substring(0, 10));
+    setEndDate(today.toISOString().substring(0, 10));
+   
     renderCharts();
     renderMoneyReturnChart();
-  };
+    
+    const handleResize = () => {
+      renderCharts();
+      renderMoneyReturnChart();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
   
-  window.addEventListener('resize', handleResize);
+  // Загружаем данные при изменении дат
+  useEffect(() => {
+    if (startDate && endDate) {
+      fetchData(getApiUrlForTab(activeTab));
+    }
+  }, [startDate, endDate]);
   
-  return () => {
-    window.removeEventListener('resize', handleResize);
-  };
-}, []);
-  
-   useEffect(() => {
-  if (startDate && endDate) {
-    fetchData();
-  }
-}, [startDate, endDate]);
-  
+  useEffect(() => {
+    if (apiData && Array.isArray(apiData)) {
+      // Создаем набор для уникальных регионов
+      const uniqueRegions = new Map();
+      
+      // Проходим по всем моделям и собираем уникальные регионы
+      apiData.forEach(model => {
+        if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
+          model.filter_by_region.forEach(region => {
+            if (region.region_id && region.region_name) {
+              uniqueRegions.set(region.region_id, {
+                id: region.region_id,
+                name: region.region_name
+              });
+            }
+          });
+        }
+      });
+      
+      // Преобразуем Map в массив и сортируем по имени
+      const regionArray = Array.from(uniqueRegions.values()).sort((a, b) => 
+        a.name.localeCompare(b.name, 'ru-RU')
+      );
+      
+      setRegionsList(regionArray);
+      
+      // Перерисовываем графики с новыми данными
+      renderCharts();
+      setLoadingComponent(false);
+    }
+  }, [apiData]);
+
+  // Перерисовываем графики при изменении фильтров и загружаем данные при смене таба
   useEffect(() => {
     renderCharts();
     
+    // Если переключились на другой таб и есть даты, загружаем соответствующие данные
+    if (startDate && endDate) {
+      fetchData(getApiUrlForTab(activeTab));
+    }
   }, [activeTab, selectedRegion, selectedModel]);
   
-// Функция для форматирования даты в формат DD.MM.YYYY
-const formatDateForAPI = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const year = date.getFullYear();
-  return `${day}.${month}.${year}`;
-};
+  // Функция для получения URL API в зависимости от таба
+  const getApiUrlForTab = (tab) => {
+    const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
+    
+    switch(tab) {
+      case 'sales':
+        return `${baseUrl}&auto_reazlization`;
+      case 'stock':
+        return `${baseUrl}&auto_stock`;
+      case 'retail':
+        return `${baseUrl}&auto_retail`;
+      case 'wholesale':
+        return `${baseUrl}&auto_wholesale`;
+      case 'promotions':
+        return `${baseUrl}&auto_promotions`;
+      case 'contracts':
+      default:
+        return `${baseUrl}&auto_analytics`;
+    }
+  };
   
-// Функция для отправки запроса с выбранным периодом дат
+  // Функция для форматирования даты в формат DD.MM.YYYY
+  const formatDateForAPI = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}.${month}.${year}`;
+  };
+  
 useEffect(() => {
-  console.log('Список моделей обновлен:', carModels);
-}, [carModels]);
+  if (apiData) {
+    // Перерисовываем все графики сразу после обновления данных
+    renderCharts();
+    
+    // Если активный таб относится к конкретным типам графиков, рендерим соответствующие графики
+    if (activeTab === 'contracts') {
+      renderContractsCharts();
+    } else if (activeTab === 'sales') {
+      renderSalesCharts();
+    } else if (activeTab === 'stock') {
+      renderStockCharts();
+    } else if (activeTab === 'retail') {
+      renderRetailCharts();
+    } else if (activeTab === 'wholesale') {
+      renderWholesaleCharts();
+    } else if (activeTab === 'promotions') {
+      renderPromotionsCharts();
+    }
+    
+    // Обновляем график возврата денег, если он используется
+    renderMoneyReturnChart();
+    
+    // Скрываем индикатор загрузки
+    setLoadingComponent(false);
+  }
+}, [apiData]);
   
-  
-// Функция для установки дат "с первого числа месяца по текущий день"
-const initializeDateRange = () => {
-  const today = new Date();
-  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  
-  setStartDate(today.toISOString().substring(0, 10));
-  setEndDate(today.toISOString().substring(0, 10));
-};
 
-const fetchData = async () => {
+const fetchData = async (apiUrl) => {
   try {
     setLoading(true);
+    setLoadingComponent(true); // Показываем индикатор загрузки
     
-    // Проверяем, что даты установлены
     if (!startDate || !endDate) {
       console.log('Даты не установлены, устанавливаем значения по умолчанию');
-      initializeDateRange();
+      const today = new Date();
+      setStartDate(today.toISOString().substring(0, 10));
+      setEndDate(today.toISOString().substring(0, 10));
       return; // Выходим, так как useEffect сработает снова с установленными датами
     }
     
@@ -106,243 +184,74 @@ const fetchData = async () => {
       end_date: formattedEndDate,
     };
     
-    console.log('Отправка запроса с данными:', requestData);
+    console.log(`Отправка запроса на ${apiUrl} с данными:`, requestData);
     
-    const response = await axios.post('https://uzavtosalon.uz/b/dashboard/infos&auto_analytics', requestData);
+    const response = await axios.post(apiUrl, requestData);
     
     if (response.data && Array.isArray(response.data)) {
-      console.log('Получены данные:', response.data);
+      console.log(`Получены данные с ${apiUrl}:`, response.data);
       
-      // Сохраняем полный ответ API
-      setApiData(response.data);
-const modelsList = response.data.map(model => {
-  // Суммируем ОБЩУЮ СТОИМОСТЬ всех модификаций для данной модели
-  let totalPrice = 0;
-  if (model.filter_by_modification && Array.isArray(model.filter_by_modification)) {
-    totalPrice = model.filter_by_modification.reduce((sum, mod) => {
-      const modPrice = parseInt(mod.total_price) || 0;
-      return sum + modPrice;
-    }, 0);
-  }
+      // Преобразуем массив моделей из API
+      const modelsList = response.data.map(model => {
+        // Суммируем ОБЩУЮ СТОИМОСТЬ всех модификаций для данной модели
+        let totalPrice = 0;
+        if (model.filter_by_modification && Array.isArray(model.filter_by_modification)) {
+          totalPrice = model.filter_by_modification.reduce((sum, mod) => {
+            const modPrice = parseInt(mod.total_price) || 0;
+            return sum + modPrice;
+          }, 0);
+        }
 
-  return {
-    id: model.model_id,
-    name: model.model_name,
-    code: model.model_code || '',
-    img: model.photo_sha ? 
-         `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400` : 
-         'https://telegra.ph/file/e54ca862bac1f2187ddde.png',
-    category: 'Автомобиль',
-    price: totalPrice // Теперь используем суммарную стоимость
-  };
-});
+        return {
+          id: model.model_id,
+          name: model.model_name,
+          code: model.model_code || '',
+          img: model.photo_sha ? 
+               `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400` : 
+               'https://telegra.ph/file/e54ca862bac1f2187ddde.png',
+          category: 'Автомобиль',
+          price: totalPrice
+        };
+      });
       
-          setCarModels(modelsList);
-      
-      // Сразу отрисовываем графики контрактов по регионам и моделям
-      setTimeout(() => {
-        // Установим вкладку контрактов как активную
-        setActiveTab('contracts');
-        
-        // Получаем данные для графиков
-        const { regionData, modelData } = getFilteredData();
-        
-        // Рендерим графики
-        renderBarChart(
-          regionContractsRef, 
-          regionData, 
-          'contracts', 
-          'name', 
-          'Контракты по регионам', 
-          '#4CAF50'
-        );
-        
-        renderBarChart(
-          modelContractsRef, 
-          modelData, 
-          'contracts', 
-          'name', 
-          'Контракты по моделям', 
-          '#2196F3'
-        );
-        
-        setLoadingComponent(false);
-      }, 300);
-      
+      // Обновляем список моделей
       setCarModels(modelsList);
-      console.log('Список моделей обновлен:', modelsList);
+      
+      // Сохраняем полный ответ API - это вызовет срабатывание useEffect выше,
+      // который выполнит перерисовку графиков
+      setApiData(response.data);
     }
   } catch (error) {
-    console.error('Ошибка при отправке запроса:', error);
+    console.error(`Ошибка при отправке запроса на ${apiUrl}:`, error);
     console.log('Продолжаем с использованием тестовых данных');
     // В случае ошибки продолжаем с mock-данными
     setCarModels(mockCarModels);
+    setLoadingComponent(false);
   } finally {
-    // Скрываем индикатор загрузки после завершения запроса
     setLoading(false);
-    // Обновляем графики после загрузки данных
-    setTimeout(() => {
-      renderCharts();
-      // Скрываем глобальный лоадер после отрисовки графиков
-      setLoadingComponent(false);
-    }, 300);
   }
 };
   
-const applyDateFilter = async () => {
-  try {
-    // Проверяем, что даты выбраны
+  // Функция для применения фильтра дат (кнопка "Применить")
+  const applyDateFilter = () => {
     if (!startDate || !endDate) {
       alert('Пожалуйста, выберите период дат');
       return;
     }
     
-    const formattedStartDate = formatDateForAPI(startDate);
-    const formattedEndDate = formatDateForAPI(endDate);
-    
-    const requestData = {
-      begin_date: formattedStartDate,
-      end_date: formattedEndDate,
-    };
-    
-    console.log('Отправка запроса с данными:', requestData);
-    
-    const response = await axios.post('https://uzavtosalon.uz/b/dashboard/infos&auto_analytics', requestData);
-    
-    if (response.data && Array.isArray(response.data)) {
-      console.log('Получены данные:', response.data);
-      
-      // Сохраняем полный ответ API
-      setApiData(response.data);
-      
-      // Преобразуем массив моделей из API в формат для нашего компонента
-const modelsList = response.data.map(model => {
-  // Суммируем ОБЩУЮ СТОИМОСТЬ всех модификаций для данной модели
-  let totalPrice = 0;
-  if (model.filter_by_modification && Array.isArray(model.filter_by_modification)) {
-    totalPrice = model.filter_by_modification.reduce((sum, mod) => {
-      const modPrice = parseInt(mod.total_price) || 0;
-      return sum + modPrice;
-    }, 0);
-  }
-
-  return {
-    id: model.model_id,
-    name: model.model_name,
-    code: model.model_code || '',
-    img: model.photo_sha ? 
-         `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400` : 
-         'https://telegra.ph/file/e54ca862bac1f2187ddde.png',
-    category: 'Автомобиль',
-    price: totalPrice // Теперь используем суммарную стоимость
+    // Загружаем данные для текущего активного таба
+    fetchData(getApiUrlForTab(activeTab));
   };
-});
-      
-          setCarModels(modelsList);
-      
-      // Сразу отрисовываем графики контрактов по регионам и моделям
-      setTimeout(() => {
-        // Установим вкладку контрактов как активную
-        setActiveTab('contracts');
-        
-        // Получаем данные для графиков
-        const { regionData, modelData } = getFilteredData();
-        
-        // Рендерим графики
-        renderBarChart(
-          regionContractsRef, 
-          regionData, 
-          'contracts', 
-          'name', 
-          'Контракты по регионам', 
-          '#4CAF50'
-        );
-        
-        renderBarChart(
-          modelContractsRef, 
-          modelData, 
-          'contracts', 
-          'name', 
-          'Контракты по моделям', 
-          '#2196F3'
-        );
-        
-        setLoadingComponent(false);
-      }, 300);
-      
-      // Обновляем список моделей
-      setCarModels(modelsList);
-      console.log('Список моделей обновлен:', modelsList);
-      
-      // Обновляем графики
-      renderCharts();
-    }
-  } catch (error) {
-    console.error('Ошибка при отправке запроса:', error);
-    alert('Произошла ошибка при применении фильтра. Пожалуйста, попробуйте снова.');
-  }
-};
   
-
-   useEffect(() => {
-    console.log('Список моделей обновлен:', carModels);
+  // Обработчик переключения табов
+  const handleTabChange = (tabName) => {
+    setActiveTab(tabName);
     
-    // Если список моделей пуст, можно добавить тестовую модель
-    if (carModels.length === 0 && apiData) {
-      // Создаем тестовую модель на основе apiData
-      const testModel = {
-        id: apiData.model_id || 'test-id',
-        name: apiData.model_name || 'Тестовая модель',
-        code: apiData.model_code || 'TEST',
-        img: 'https://i.imgur.com/vjFpKay.png',
-        category: 'Тестовая категория',
-        price: 1000000
-      };
-      
-      // Добавляем тестовую модель в список
-      setCarModels([testModel]);
-      console.log('Добавлена тестовая модель:', testModel);
+    // Загружаем данные для нового таба, если есть даты
+    if (startDate && endDate) {
+      fetchData(getApiUrlForTab(tabName));
     }
-  }, [carModels, apiData]);
-  // Функция для получения или обновления списка моделей авто из apiData
-const updateCarModelsList = useCallback(() => {
-  if (!apiData) return;
-  
-  // Проверяем, есть ли в ответе информация о текущей модели
-  if (apiData.model_id && apiData.model_name) {
-    const modelInfo = {
-      id: apiData.model_id,
-      name: apiData.model_name,
-      code: apiData.model_code || '',
-      img: 'https://telegra.ph/file/e54ca862bac1f2187ddde.png',
-      category: 'Седан', 
-      price: parseInt(apiData.filter_by_modification?.[0]?.average_cost) || 0
-    };
-    
-    // Обновляем список автомобилей, добавляя или обновляя текущую модель
-    setCarModels(prevModels => {
-      const existingModelIndex = prevModels.findIndex(model => model.id === modelInfo.id);
-      
-      if (existingModelIndex !== -1) {
-        // Модель уже есть в списке, обновляем ее
-        const updatedModels = [...prevModels];
-        updatedModels[existingModelIndex] = modelInfo;
-        return updatedModels;
-      } else {
-        // Модели нет в списке, добавляем ее
-        return [...prevModels, modelInfo];
-      }
-    });
-    
-    if (selectedModel === 'all') {
-      setSelectedModel(modelInfo.id);
-    }
-  }
-}, [apiData, selectedModel]);
-
-useEffect(() => {
-  updateCarModelsList();
-}, [apiData, updateCarModelsList]);
+  };
 
  // Функция для получения отфильтрованных данных
   const getFilteredData = () => {
@@ -431,55 +340,80 @@ useEffect(() => {
       }
     }
  
-    // Получаем данные контрактов
-    const getContractsData = () => {
-      // Данные по регионам с суммированием
-      let regionData = [];
-   
-      if (apiData && Array.isArray(apiData)) {
-        // Создаем объект для группировки данных по регионам
-        const regionSummary = {};
-     
-        // Проходим по всем моделям и их регионам
+     const getContractsData = () => {
+    // Данные по регионам с суммированием
+    let regionData = [];
+    
+    if (apiData && Array.isArray(apiData)) {
+      // Создаем объект для группировки данных по регионам
+      const regionSummary = {};
+      
+      // Проходим по всем моделям и их регионам
+      apiData.forEach(model => {
+        if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
+          model.filter_by_region.forEach(region => {
+            if (!regionSummary[region.region_id]) {
+              regionSummary[region.region_id] = {
+                id: region.region_id,
+                name: region.region_name,
+                contracts: 0,
+                amount: 0
+              };
+            }
+            
+            // Суммируем данные по каждому региону
+            regionSummary[region.region_id].contracts += parseInt(region.total_contracts || 0);
+            regionSummary[region.region_id].amount += parseInt(region.total_price || 0);
+          });
+        }
+      });
+      
+      // Преобразуем объект обратно в массив для графика
+      regionData = Object.values(regionSummary);
+    } else {
+      // Запасной вариант с тестовыми данными
+      regionData = regions.map(region => ({
+        id: region.id,
+        name: region.name,
+        contracts: Math.round(80 + Math.random() * 120),
+        amount: Math.round((8000000 + Math.random() * 12000000))
+      }));
+    }
+    
+    // Данные по моделям с суммированием
+    let modelData = [];
+    
+    if (apiData && Array.isArray(apiData)) {
+      if (selectedRegion !== 'all') {
+        // Если выбран конкретный регион, фильтруем данные
+        const filteredModelSummary = {};
+        
         apiData.forEach(model => {
-          if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
-            model.filter_by_region.forEach(region => {
-              if (!regionSummary[region.region_id]) {
-                regionSummary[region.region_id] = {
-                  id: region.region_id,
-                  name: region.region_name,
+          if (model.filter_by_region) {
+            const regionData = model.filter_by_region.find(r => r.region_id === selectedRegion);
+            
+            if (regionData) {
+              if (!filteredModelSummary[model.model_id]) {
+                filteredModelSummary[model.model_id] = {
+                  id: model.model_id,
+                  name: model.model_name,
                   contracts: 0,
                   amount: 0
                 };
               }
-           
-              // Суммируем данные по каждому региону
-              regionSummary[region.region_id].contracts += parseInt(region.total_contracts || 0);
-              regionSummary[region.region_id].amount += parseInt(region.total_price || 0);
-            });
+              
+              filteredModelSummary[model.model_id].contracts += parseInt(regionData.total_contracts || 0);
+              filteredModelSummary[model.model_id].amount += parseInt(regionData.total_price || 0);
+            }
           }
         });
-     
+        
         // Преобразуем объект обратно в массив для графика
-        regionData = Object.values(regionSummary);
+        modelData = Object.values(filteredModelSummary);
       } else {
-        // Запасной вариант с тестовыми данными
-        regionData = regions.map(region => ({
-          id: region.id,
-          name: region.name,
-          contracts: Math.round(80 + Math.random() * 120),
-          amount: Math.round((8000000 + Math.random() * 12000000))
-        }));
-      }
-   
-      // Данные по моделям с суммированием
-      let modelData = [];
-   
-      if (apiData && Array.isArray(apiData)) {
-        // Создаем объект для группировки и суммирования данных
+        // Если регион не выбран, показываем данные по всем моделям
         const modelSummary = {};
-     
-        // Проходим по всем данным API и группируем по моделям
+        
         apiData.forEach(model => {
           if (!modelSummary[model.model_id]) {
             modelSummary[model.model_id] = {
@@ -489,7 +423,7 @@ useEffect(() => {
               amount: 0
             };
           }
-       
+          
           // Суммируем контракты и суммы по всем регионам данной модели
           if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
             model.filter_by_region.forEach(region => {
@@ -498,92 +432,47 @@ useEffect(() => {
             });
           }
         });
-     
+        
         // Преобразуем объект обратно в массив для графика
         modelData = Object.values(modelSummary);
-      } else {
-        // Запасной вариант с тестовыми данными, если нет API-данных
-        modelData = carModels.map(model => ({
-          id: model.id,
-          name: model.name,
-          contracts: Math.round(50 + Math.random() * 150),
-          amount: Math.round((5000000 + Math.random() * 15000000))
-        }));
       }
-   
-      let monthlyData = [
-        { month: "Янв", contracts: 124, amount: 8520000 },
-        { month: "Фев", contracts: 85, amount: 5950000 },
-        { month: "Мар", contracts: 102, amount: 7140000 },
-        { month: "Апр", contracts: 118, amount: 8260000 },
-        { month: "Май", contracts: 175, amount: 12250000 },
-        { month: "Июн", contracts: 140, amount: 9800000 },
-        { month: "Июл", contracts: 155, amount: 10850000 },
-        { month: "Авг", contracts: 132, amount: 9240000 },
-        { month: "Сен", contracts: 145, amount: 10150000 },
-        { month: "Окт", contracts: 120, amount: 8400000 },
-        { month: "Ноя", contracts: 165, amount: 11550000 },
-        { month: "Дек", contracts: 130, amount: 9100000 }
-      ];
-   
-      // Если выбран конкретный регион
-      if (selectedRegion !== 'all') {
-        // Создаем суммарные данные по моделям для выбранного региона
-        if (apiData && Array.isArray(apiData)) {
-          const filteredModelSummary = {};
-       
-          apiData.forEach(model => {
-            if (model.filter_by_region) {
-              const regionData = model.filter_by_region.find(r => r.region_id === selectedRegion);
-           
-              if (regionData) {
-                if (!filteredModelSummary[model.model_id]) {
-                  filteredModelSummary[model.model_id] = {
-                    id: model.model_id,
-                    name: model.model_name,
-                    contracts: 0,
-                    amount: 0
-                  };
-                }
-             
-                filteredModelSummary[model.model_id].contracts += parseInt(regionData.total_contracts || 0);
-                filteredModelSummary[model.model_id].amount += parseInt(regionData.total_price || 0);
-              }
-            }
-          });
-       
-          // Если есть данные по моделям для выбранного региона, используем их
-          if (Object.keys(filteredModelSummary).length > 0) {
-            modelData = Object.values(filteredModelSummary);
-          } else {
-            // Иначе используем тестовые данные
-            modelData = carModels.map(model => ({
-              id: model.id,
-              name: model.name,
-              contracts: Math.round(30 + Math.random() * 80),
-              amount: Math.round((3000000 + Math.random() * 8000000))
-            }));
-          }
-        } else {
-          // Тестовые данные если нет API
-          modelData = carModels.map(model => ({
-            id: model.id,
-            name: model.name,
-            contracts: Math.round(30 + Math.random() * 80),
-            amount: Math.round((3000000 + Math.random() * 8000000))
-          }));
-        }
-     
-        // Модифицируем временные данные для выбранного региона
-        monthlyData = monthlyData.map(item => ({
-          ...item,
-          contracts: Math.round(item.contracts * 0.7),
-          amount: Math.round(item.amount * 0.7)
-        }));
-      }
-   
-      return { regionData, modelData, monthlyData };
-    };
+    } else {
+      // Запасной вариант с тестовыми данными
+      modelData = carModels.map(model => ({
+        id: model.id,
+        name: model.name,
+        contracts: Math.round(50 + Math.random() * 150),
+        amount: Math.round((5000000 + Math.random() * 15000000))
+      }));
+    }
+    
+    // Генерируем временные данные (можно адаптировать для фильтрации по региону)
+    let monthlyData = [
+      { month: "Янв", contracts: 124, amount: 8520000 },
+      { month: "Фев", contracts: 85, amount: 5950000 },
+      { month: "Мар", contracts: 102, amount: 7140000 },
+      { month: "Апр", contracts: 118, amount: 8260000 },
+      { month: "Май", contracts: 175, amount: 12250000 },
+      { month: "Июн", contracts: 140, amount: 9800000 },
+      { month: "Июл", contracts: 155, amount: 10850000 },
+      { month: "Авг", contracts: 132, amount: 9240000 },
+      { month: "Сен", contracts: 145, amount: 10150000 },
+      { month: "Окт", contracts: 120, amount: 8400000 },
+      { month: "Ноя", contracts: 165, amount: 11550000 },
+      { month: "Дек", contracts: 130, amount: 9100000 }
+    ];
+    
+    // Если выбран конкретный регион, корректируем временные данные
+    if (selectedRegion !== 'all') {
+      monthlyData = monthlyData.map(item => ({
+        ...item,
+        contracts: Math.round(item.contracts * 0.7), // Уменьшаем данные для одного региона
+        amount: Math.round(item.amount * 0.7)
+      }));
+    }
+    
+    return { regionData, modelData, monthlyData };
+  };
    
     const getSalesData = () => {
       // Данные по регионам с суммированием
@@ -2365,110 +2254,37 @@ const formatCurrency = (value) => {
   }).format(value);
 };
 
-const getStats = () => {
-  // Если выбрана конкретная модель
-  if (selectedModel !== 'all' && apiData) {
-    // Находим данные выбранной модели
-    const selectedModelData = Array.isArray(apiData) 
-      ? apiData.find(model => model.model_id === selectedModel)
-      : apiData;
-      
-    if (selectedModelData) {
-      // Инициализируем счетчики
-      let totalContracts = 0;
-      let totalAmount = 0;
-      
-      // Суммируем контракты и суммы по регионам для выбранной модели
-      if (selectedModelData.filter_by_region && Array.isArray(selectedModelData.filter_by_region)) {
-        // Если выбран конкретный регион, учитываем только его
-        if (selectedRegion !== 'all') {
-          const regionData = selectedModelData.filter_by_region.find(r => r.region_id === selectedRegion);
-          if (regionData) {
-            totalContracts += parseInt(regionData.total_contracts || 0);
-            totalAmount += parseInt(regionData.total_price || 0);
-          }
-        } else {
-          // Иначе суммируем по всем регионам
-          selectedModelData.filter_by_region.forEach(region => {
-            totalContracts += parseInt(region.total_contracts || 0);
-            totalAmount += parseInt(region.total_price || 0);
-          });
-        }
-      }
-      
-      // Вычисляем среднюю стоимость
-      const average = totalContracts > 0 ? Math.round(totalAmount / totalContracts) : 0;
-      
-      // Возвращаем статистику в зависимости от активной вкладки
-      if (activeTab === 'contracts') {
-        return {
-          count: totalContracts,
-          amount: totalAmount,
-          average: average
-        };
-      } else if (activeTab === 'sales') {
-        // Для продаж возвращаем те же данные, что и для контрактов
-        return {
-          count: totalContracts,
-          amount: totalAmount,
-          average: average
-        };
-      } else if (activeTab === 'stock') {
-        // Для остатка используем примерно 20% от общего количества
-        const stockCount = Math.round(totalContracts * 0.2);
-        const stockAmount = Math.round(totalAmount * 0.2);
-        return {
-          count: stockCount,
-          amount: stockAmount,
-          average: stockCount > 0 ? Math.round(stockAmount / stockCount) : 0
-        };
-      } else if (activeTab === 'retail') {
-        // Для розницы используем примерно 70% от общего количества
-        const retailCount = Math.round(totalContracts * 0.7);
-        const retailAmount = Math.round(totalAmount * 0.7);
-        return {
-          count: retailCount,
-          amount: retailAmount,
-          average: retailCount > 0 ? Math.round(retailAmount / retailCount) : 0
-        };
-      } else if (activeTab === 'wholesale') {
-        // Для оптовых продаж используем примерно 30% от общего количества
-        const wholesaleCount = Math.round(totalContracts * 0.3);
-        const wholesaleAmount = Math.round(totalAmount * 0.3);
-        return {
-          count: wholesaleCount,
-          amount: wholesaleAmount,
-          average: wholesaleCount > 0 ? Math.round(wholesaleAmount / wholesaleCount) : 0
-        };
-      } else if (activeTab === 'promotions') {
-        // Для акционных продаж используем примерно 10% от общего количества
-        const promotionsCount = Math.round(totalContracts * 0.1);
-        const promotionsAmount = Math.round(totalAmount * 0.1);
-        return {
-          count: promotionsCount,
-          amount: promotionsAmount,
-          average: promotionsCount > 0 ? Math.round(promotionsAmount / promotionsCount) : 0
-        };
-      }
+  const getStats = () => {
+    if (!apiData || !Array.isArray(apiData)) {
+      return { count: 0, amount: 0, average: 0 };
     }
-  }
-  
-  // Если выбран конкретный регион, но не выбрана конкретная модель
-  if (selectedRegion !== 'all' && apiData && Array.isArray(apiData)) {
+    
     // Инициализируем счетчики
     let totalContracts = 0;
     let totalAmount = 0;
     
-    // Суммируем контракты и суммы по всем моделям для выбранного региона
-    apiData.forEach(model => {
-      if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
-        const regionData = model.filter_by_region.find(r => r.region_id === selectedRegion);
-        if (regionData) {
-          totalContracts += parseInt(regionData.total_contracts || 0);
-          totalAmount += parseInt(regionData.total_price || 0);
+    // Если выбран конкретный регион, фильтруем по нему
+    if (selectedRegion !== 'all') {
+      apiData.forEach(model => {
+        if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
+          const regionData = model.filter_by_region.find(r => r.region_id === selectedRegion);
+          if (regionData) {
+            totalContracts += parseInt(regionData.total_contracts || 0);
+            totalAmount += parseInt(regionData.total_price || 0);
+          }
         }
-      }
-    });
+      });
+    } else {
+      // Иначе суммируем по всем регионам
+      apiData.forEach(model => {
+        if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
+          model.filter_by_region.forEach(region => {
+            totalContracts += parseInt(region.total_contracts || 0);
+            totalAmount += parseInt(region.total_price || 0);
+          });
+        }
+      });
+    }
     
     // Вычисляем среднюю стоимость
     const average = totalContracts > 0 ? Math.round(totalAmount / totalContracts) : 0;
@@ -2519,144 +2335,9 @@ const getStats = () => {
         average: promotionsCount > 0 ? Math.round(promotionsAmount / promotionsCount) : 0
       };
     }
-  }
-  
-  // Если нет специальных фильтров (ни модель, ни регион), или для остальных случаев
-  if (apiData && Array.isArray(apiData)) {
-    // Инициализируем суммы
-    let totalContracts = 0;
-    let totalAmount = 0;
     
-    // Обходим все модели и суммируем контракты и суммы
-    apiData.forEach(model => {
-      // Суммируем контракты по регионам
-      if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
-        model.filter_by_region.forEach(region => {
-          totalContracts += parseInt(region.total_contracts || 0);
-          totalAmount += parseInt(region.total_price || 0);
-        });
-      }
-    });
-    
-    // Вычисляем среднюю стоимость
-    const average = totalContracts > 0 ? Math.round(totalAmount / totalContracts) : 0;
-    
-    // Возвращаем статистику для активной вкладки
-    if (activeTab === 'contracts') {
-      return {
-        count: totalContracts,
-        amount: totalAmount,
-        average: average
-      };
-    } else if (activeTab === 'sales') {
-      // Для других вкладок используем те же суммы, так как API не предоставляет
-      // отдельные данные для продаж, остатка и т.д.
-      return {
-        count: totalContracts,
-        amount: totalAmount,
-        average: average
-      };
-    } else if (activeTab === 'stock') {
-      // Для склада используем примерно 20% от общего количества как оценку
-      const stockCount = Math.round(totalContracts * 0.2);
-      const stockAmount = Math.round(totalAmount * 0.2);
-      return {
-        count: stockCount,
-        amount: stockAmount,
-        average: stockCount > 0 ? Math.round(stockAmount / stockCount) : 0
-      };
-    } else if (activeTab === 'retail') {
-      // Для розницы используем примерно 70% от общего количества
-      const retailCount = Math.round(totalContracts * 0.7);
-      const retailAmount = Math.round(totalAmount * 0.7);
-      return {
-        count: retailCount,
-        amount: retailAmount,
-        average: retailCount > 0 ? Math.round(retailAmount / retailCount) : 0
-      };
-    } else if (activeTab === 'wholesale') {
-      // Для оптовых продаж используем примерно 30% от общего количества
-      const wholesaleCount = Math.round(totalContracts * 0.3);
-      const wholesaleAmount = Math.round(totalAmount * 0.3);
-      return {
-        count: wholesaleCount,
-        amount: wholesaleAmount,
-        average: wholesaleCount > 0 ? Math.round(wholesaleAmount / wholesaleCount) : 0
-      };
-    } else if (activeTab === 'promotions') {
-      // Для акционных продаж используем примерно 10% от общего количества
-      const promotionsCount = Math.round(totalContracts * 0.1);
-      const promotionsAmount = Math.round(totalAmount * 0.1);
-      return {
-        count: promotionsCount,
-        amount: promotionsAmount,
-        average: promotionsCount > 0 ? Math.round(promotionsAmount / promotionsCount) : 0
-      };
-    }
-  }
-  
-  // Если данных API нет или для табов где нет реальных данных из API, используем тестовые данные
-  const { monthlyData } = getFilteredData();
-  
-  if (activeTab === 'contracts') {
-    const totalContracts = monthlyData.reduce((sum, item) => sum + item.contracts, 0);
-    const totalAmount = monthlyData.reduce((sum, item) => sum + item.amount, 0);
-    
-    return {
-      count: totalContracts,
-      amount: totalAmount,
-      average: Math.round(totalAmount / totalContracts)
-    };
-  } else if (activeTab === 'sales') {
-    const totalSales = monthlyData.reduce((sum, item) => sum + (item.sales || 0), 0);
-    const totalAmount = monthlyData.reduce((sum, item) => sum + item.amount, 0);
-    
-    return {
-      count: totalSales,
-      amount: totalAmount,
-      average: totalSales > 0 ? Math.round(totalAmount / totalSales) : 0
-    };
-  } else if (activeTab === 'stock') {
-    // Для вкладки остатка берем среднее значение по месяцам, так как это не сумма, а состояние
-    const totalStock = monthlyData.reduce((sum, item) => sum + (item.stock || 0), 0) / Math.max(1, monthlyData.length);
-    const totalAmount = monthlyData.reduce((sum, item) => sum + item.amount, 0) / Math.max(1, monthlyData.length);
-    
-    return {
-      count: Math.round(totalStock),
-      amount: totalAmount,
-      average: totalStock > 0 ? Math.round(totalAmount / totalStock) : 0
-    };
-  } else if (activeTab === 'retail') {
-    const totalRetail = monthlyData.reduce((sum, item) => sum + (item.retail || 0), 0);
-    const totalAmount = monthlyData.reduce((sum, item) => sum + item.amount, 0);
-    
-    return {
-      count: totalRetail,
-      amount: totalAmount,
-      average: totalRetail > 0 ? Math.round(totalAmount / totalRetail) : 0
-    };
-  } else if (activeTab === 'wholesale') {
-    const totalWholesale = monthlyData.reduce((sum, item) => sum + (item.wholesale || 0), 0);
-    const totalAmount = monthlyData.reduce((sum, item) => sum + item.amount, 0);
-    
-    return {
-      count: totalWholesale,
-      amount: totalAmount,
-      average: totalWholesale > 0 ? Math.round(totalAmount / totalWholesale) : 0
-    };
-  } else if (activeTab === 'promotions') {
-    const totalPromotions = monthlyData.reduce((sum, item) => sum + (item.promotions || 0), 0);
-    const totalAmount = monthlyData.reduce((sum, item) => sum + item.amount, 0);
-    
-    return {
-      count: totalPromotions,
-      amount: totalAmount,
-      average: totalPromotions > 0 ? Math.round(totalAmount / totalPromotions) : 0
-    };
-  }
-  
-  return { count: 0, amount: 0, average: 0 };
-};
+    return { count: 0, amount: 0, average: 0 };
+  };
 
 // Получаем детальное описание выбранных фильтров
 const getFilterDescription = () => {
@@ -2673,6 +2354,48 @@ const getFilterDescription = () => {
   }
   
   return description || 'Все данные';
+};
+  
+  
+  const StatisticsCards = () => {
+  const stats = getStats();
+  
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="text-lg font-medium text-white">
+              {activeTab === 'contracts' ? 'Общее количество контрактов' : 
+               activeTab === 'sales' ? 'Общий объем продаж' : 
+               activeTab === 'stock' ? 'Общий остаток' :
+               activeTab === 'retail' ? 'Всего розничных продаж' :
+               activeTab === 'wholesale' ? 'Всего оптовых продаж' :
+               activeTab === 'promotions' ? 'Всего акционных продаж' : ''}
+            </h3>
+            <p className="text-gray-400 text-sm mt-1">За выбранный период</p>
+          </div>
+          <p className="text-2xl font-bold">{stats.count.toLocaleString('ru-RU')}</p>
+        </div>
+        <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
+          <div className="bg-blue-500 h-full rounded-full" style={{ width: '70%' }}></div>
+        </div>
+      </div>
+      
+      <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="text-lg font-medium text-white">Общая сумма</h3>
+            <p className="text-gray-400 text-sm mt-1">За выбранный период</p>
+          </div>
+          <p className="text-2xl font-bold">{formatCurrency(stats.amount)}</p>
+        </div>
+        <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
+          <div className="bg-green-500 h-full rounded-full" style={{ width: '65%' }}></div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // Компонент миниатюры авто
@@ -2713,37 +2436,21 @@ const stats = getStats();
     
     {/* Filter Panel */}
     <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8 flex flex-wrap gap-4 justify-between items-center">
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center">
-          <span className="text-gray-400 mr-2">Регион:</span>
-          <select 
-            value={selectedRegion}
-            onChange={(e) => setSelectedRegion(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white min-w-[200px]"
-          >
-            <option value="all">Все регионы</option>
-            {regions.map(region => (
-              <option key={region.id} value={region.id}>{region.name}</option>
-            ))}
-          </select>
+    <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center">
+            <span className="text-gray-400 mr-2">Регион:</span>
+            <select 
+              value={selectedRegion}
+              onChange={(e) => setSelectedRegion(e.target.value)}
+              className="bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white min-w-[200px]"
+            >
+              <option value="all">Все регионы</option>
+              {regionsList.map(region => (
+                <option key={region.id} value={region.id}>{region.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        
-        <div className="flex items-center">
-          <span className="text-gray-400 mr-2">Модель:</span>
-          <select 
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white min-w-[200px]"
-          >
-            <option value="all">Все модели</option>
-            {carModels.map(model => (
-              <option key={model.id} value={model.id}>
-                {model.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
       
 <div className="flex items-center gap-4">
   <div className="flex items-center">
@@ -2890,40 +2597,7 @@ const stats = getStats();
     </div>
     
     {/* Summary Cards */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-      <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h3 className="text-lg font-medium text-white">
-              {activeTab === 'contracts' ? 'Общее количество контрактов' : 
-               activeTab === 'sales' ? 'Общий объем продаж' : 
-               activeTab === 'stock' ? 'Общий остаток' :
-               activeTab === 'retail' ? 'Всего розничных продаж' :
-               activeTab === 'wholesale' ? 'Всего оптовых продаж' :
-               activeTab === 'promotions' ? 'Всего акционных продаж' : ''}
-            </h3>
-            <p className="text-gray-400 text-sm mt-1">За выбранный период</p>
-          </div>
-          <p className="text-2xl font-bold">{stats.count.toLocaleString('ru-RU')}</p>
-        </div>
-        <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
-          <div className="bg-blue-500 h-full rounded-full" style={{ width: '70%' }}></div>
-        </div>
-      </div>
-      
-      <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h3 className="text-lg font-medium text-white">Общая сумма</h3>
-            <p className="text-gray-400 text-sm mt-1">За выбранный период</p>
-          </div>
-          <p className="text-2xl font-bold">{formatCurrency(stats.amount)}</p>
-        </div>
-        <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
-          <div className="bg-green-500 h-full rounded-full" style={{ width: '65%' }}></div>
-        </div>
-      </div>
-    </div>
+ <StatisticsCards/>
     
  {selectedModel === 'all' && (
   <div className="mb-8">
