@@ -2755,26 +2755,26 @@ const CarModelThumbnail = ({ model, isSelected, onClick }) => {
       
       <div className="p-4 flex flex-col h-full">
         {/* Изображение с эффектом наведения и индикатором выбора */}
-        <div className="relative w-full h-40 flex items-center justify-center bg-gradient-to-b from-gray-700/30 to-gray-800/40 rounded-lg mb-4 p-2 overflow-hidden group">
-          {/* Фоновый градиент для контраста */}
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-700/10 to-transparent z-0"></div>
-          
-          <img 
-            src={model.img}
-            alt={model.name}
-            className="max-h-36 max-w-full object-contain z-10 transition-all duration-300 group-hover:scale-110 drop-shadow-lg"
-          />
-          
-          {/* Блик на изображении для эффекта глянца */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          
-          {/* Индикатор выбора с анимацией */}
-          {isSelected && (
-            <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs font-bold py-1 px-2 rounded-full shadow-lg z-30 animate-pulse">
-              Выбрано
-            </div>
-          )}
-        </div>
+<div className="relative w-full h-[160px] flex items-center justify-center bg-gradient-to-b from-gray-700/30 to-gray-800/40 rounded-lg mb-4 p-2 overflow-hidden group">
+  {/* Фоновый градиент для контраста */}
+  <div className="absolute inset-0 bg-gradient-to-br from-gray-700/10 to-transparent z-0"></div>
+  
+  <img 
+    src={model.img}
+    alt={model.name}
+    className="max-h-[140px] w-auto object-contain z-10 transition-all duration-300 group-hover:scale-110 drop-shadow-lg"
+  />
+  
+  {/* Блик на изображении для эффекта глянца */}
+  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+  
+  {/* Индикатор выбора с анимацией */}
+  {isSelected && (
+    <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs font-bold py-1 px-2 rounded-full shadow-lg z-30 animate-pulse">
+      Выбрано
+    </div>
+  )}
+</div>
         
         {/* Информация о модели с улучшенной типографикой */}
         <div className="flex flex-col flex-grow">
