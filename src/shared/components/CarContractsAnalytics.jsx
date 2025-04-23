@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { carModels as mockCarModels, regions } from '../mocks/mock-data';
 import ContentReadyLoader from "../layout/ContentReadyLoader";
@@ -29,7 +29,6 @@ const CarContractsAnalytics = () => {
   const stockTrendRef = useRef(null);
   const moneyReturnChartRef = useRef(null);
   
-  // Массивы данных для генерации тестовых данных при необходимости
   const carColors = ['Белый', 'Черный', 'Серебряный', 'Красный', 'Синий', 'Зеленый'];
   const carModifications = ['Стандарт', 'Комфорт', 'Люкс', 'Премиум', 'Спорт'];
 
@@ -243,102 +242,223 @@ const fetchData = async (apiUrl) => {
     fetchData(getApiUrlForTab(activeTab));
   };
   
-  // Обработчик переключения табов
-  const handleTabChange = (tabName) => {
-    setActiveTab(tabName);
-    
-    // Загружаем данные для нового таба, если есть даты
-    if (startDate && endDate) {
-      fetchData(getApiUrlForTab(tabName));
-    }
-  };
+ 
+const getValueKeyForActiveTab = () => {
+  switch(activeTab) {
+    case 'contracts': return 'contracts';
+    case 'sales': return 'sales';
+    case 'stock': return 'stock';
+    case 'retail': return 'retail';
+    case 'wholesale': return 'wholesale';
+    case 'promotions': return 'promotions';
+    default: return 'contracts';
+  }
+};
 
- // Функция для получения отфильтрованных данных
-  const getFilteredData = () => {
-    if (selectedModel !== 'all' && apiData) {
-      const selectedModelData = Array.isArray(apiData)
-        ? apiData.find(model => model.model_id === selectedModel)
-        : apiData;
-   
-     if (selectedModelData) {
-     let regionData = [];
+// Функция для получения отфильтрованных данных
+const getFilteredData = () => {
+  // Проверяем, выбрана ли конкретная модель
+  if (selectedModel !== 'all' && apiData) {
+    // Ищем данные выбранной модели
+    const selectedModelData = Array.isArray(apiData)
+      ? apiData.find(model => model.model_id === selectedModel)
+      : apiData;
     
-    // Проверяем наличие данных по регионам
-    if (selectedModelData.filter_by_region && Array.isArray(selectedModelData.filter_by_region)) {
-      console.log("Данные по регионам для модели:", selectedModelData.filter_by_region);
+    // Если нашли данные модели
+    if (selectedModelData) {
+      // Данные по регионам - всегда показываем все регионы
+      // но выделяем выбранный регион если есть
+      let regionData = [];
       
-      // Извлекаем данные из API с дополнительными проверками
-      regionData = selectedModelData.filter_by_region
-        .filter(region => region && region.region_id && region.region_name) // Фильтруем неполные данные
-        .map(region => ({
-          id: region.region_id,
-          name: region.region_name || "Регион " + region.region_id,
-          contracts: parseInt(region.total_contracts || 0),
-          amount: parseInt(region.total_price || 0)
-        }));
-    }
-     
-        if (regionData.length === 0) {
-          regionData = regions.map(region => ({
-            id: region.id,
-            name: region.name,
-            contracts: Math.round(20 + Math.random() * 60),
-            amount: Math.round((2000000 + Math.random() * 6000000))
-          }));
-        }
-     
-        // Данные по модификациям для выбранной модели из API
-        let modelData = selectedModelData.filter_by_modification?.map(mod => ({
-          id: mod.modification_id,
-          name: mod.modification_name,
-          contracts: parseInt(mod.total_contracts) || 0,
-          amount: parseInt(mod.total_price) || 0
-        })) || [];
-     
-        // Если данные по модификациям пустые, генерируем тестовые
-        if (modelData.length === 0) {
-          carModifications.forEach(modification => {
-            modelData.push({
-              id: `mod-${modification.toLowerCase()}`,
-              name: `${carModels.find(m => m.id === selectedModel)?.name || 'Автомобиль'} ${modification}`,
-              contracts: Math.round(10 + Math.random() * 40),
-              amount: Math.round((1000000 + Math.random() * 4000000))
-            });
+      if (selectedModelData.filter_by_region && Array.isArray(selectedModelData.filter_by_region)) {
+        regionData = selectedModelData.filter_by_region
+          .filter(region => region && region.region_id && region.region_name)
+          .map(region => {
+            const valueKey = getValueKeyForActiveTab();
+            
+            return {
+              id: region.region_id,
+              name: region.region_name || "Регион " + region.region_id,
+              [valueKey]: parseInt(region.total_contracts || 0),
+              amount: parseInt(region.total_price || 0),
+              // Отмечаем, выбран ли данный регион
+              isSelected: region.region_id === selectedRegion
+            };
           });
-       
-          carColors.forEach(color => {
-            modelData.push({
-              id: `color-${color.toLowerCase()}`,
-              name: `Цвет: ${color}`,
-              contracts: Math.round(5 + Math.random() * 25),
-              amount: Math.round((500000 + Math.random() * 2000000))
-            });
-          });
-        }
-     
-        // Генерируем данные по месяцам (API не предоставляет эту информацию)
-        const monthlyData = [
-          { month: "Янв", contracts: 124, amount: 8520000 },
-          { month: "Фев", contracts: 85, amount: 5950000 },
-          { month: "Мар", contracts: 102, amount: 7140000 },
-          { month: "Апр", contracts: 118, amount: 8260000 },
-          { month: "Май", contracts: 175, amount: 12250000 },
-          { month: "Июн", contracts: 140, amount: 9800000 },
-          { month: "Июл", contracts: 155, amount: 10850000 },
-          { month: "Авг", contracts: 132, amount: 9240000 },
-          { month: "Сен", contracts: 145, amount: 10150000 },
-          { month: "Окт", contracts: 120, amount: 8400000 },
-          { month: "Ноя", contracts: 165, amount: 11550000 },
-          { month: "Дек", contracts: 130, amount: 9100000 }
-        ].map(item => ({
-          ...item,
-          contracts: Math.round(item.contracts * 0.4),
-          amount: Math.round(item.amount * 0.4)
-        }));
-     
-        return { regionData, modelData, monthlyData };
       }
+      
+      // Если данных по регионам нет, генерируем тестовые
+      if (regionData.length === 0) {
+        const valueKey = getValueKeyForActiveTab();
+        regionData = regions.map(region => ({
+          id: region.id,
+          name: region.name,
+          [valueKey]: Math.round(20 + Math.random() * 60),
+          amount: Math.round((2000000 + Math.random() * 6000000)),
+          isSelected: region.id === selectedRegion
+        }));
+      }
+      
+      // Для модификаций - фильтруем по выбранному региону
+      let modelData = [];
+
+      if (selectedRegion !== 'all') {
+        // Создаем искусственное распределение модификаций по регионам
+        // на основе доли контрактов в регионе от общего числа
+        if (selectedModelData.filter_by_modification && selectedModelData.filter_by_region) {
+          // Найдем долю контрактов выбранного региона от общего числа
+          const selectedRegionData = selectedModelData.filter_by_region.find(r => r.region_id === selectedRegion);
+          if (selectedRegionData) {
+            const selectedRegionContracts = parseInt(selectedRegionData.total_contracts || 0);
+            
+            // Общее количество контрактов по всем регионам
+            const totalRegionContracts = selectedModelData.filter_by_region.reduce((sum, region) => {
+              return sum + parseInt(region.total_contracts || 0);
+            }, 0);
+            
+            // Коэффициент распределения (доля региона)
+            const regionRatio = totalRegionContracts > 0 ? selectedRegionContracts / totalRegionContracts : 0;
+            
+            // Теперь распределяем модификации согласно этой доле,
+            // но с некоторой вариацией для реалистичности
+            const valueKey = getValueKeyForActiveTab();
+            modelData = selectedModelData.filter_by_modification.map(mod => {
+              // Базовое количество для модификации по региону
+              const baseCount = Math.round(parseInt(mod.total_contracts || 0) * regionRatio);
+              
+              // Добавляем случайное отклонение +/- 30% для реалистичности
+              // Разные регионы могут предпочитать разные модификации
+              const randomFactor = 0.7 + Math.random() * 0.6; // 0.7-1.3
+              const adjustedCount = Math.max(0, Math.round(baseCount * randomFactor));
+              
+              // Рассчитываем соответствующую сумму
+              const pricePerUnit = parseInt(mod.total_price || 0) / (parseInt(mod.total_contracts || 0) || 1);
+              const adjustedAmount = Math.round(adjustedCount * pricePerUnit);
+              
+              return {
+                id: mod.modification_id,
+                name: mod.modification_name,
+                [valueKey]: adjustedCount,
+                amount: adjustedAmount
+              };
+            });
+            
+            // Сортируем модификации по популярности в выбранном регионе
+            modelData.sort((a, b) => b[valueKey] - a[valueKey]);
+          }
+        }
+      } else if (selectedModelData.filter_by_modification) {
+        // Когда регион не выбран, используем общие данные по модификациям
+        const valueKey = getValueKeyForActiveTab();
+        modelData = selectedModelData.filter_by_modification.map(mod => {
+          return {
+            id: mod.modification_id,
+            name: mod.modification_name,
+            [valueKey]: parseInt(mod.total_contracts || 0),
+            amount: parseInt(mod.total_price || 0)
+          };
+        });
+      }
+
+      // Если модификаций нет или их слишком мало, генерируем тестовые данные
+      if (modelData.length < 3) {
+        const valueKey = getValueKeyForActiveTab();
+        
+        // Сначала очистим массив, если там уже что-то есть
+        modelData = [];
+        
+        // Фактор уменьшения для имитации меньшего количества в регионе
+        const regionFactor = selectedRegion !== 'all' ? 0.4 : 1.0;
+        
+        // Добавляем модификации
+        carModifications.forEach(modification => {
+          // Для разных регионов генерируем разные предпочтения модификаций
+          const regionPreference = selectedRegion !== 'all' ? 
+            (selectedRegion.charCodeAt(0) % carModifications.length) : 0;
+          
+          // Индекс текущей модификации
+          const modIndex = carModifications.indexOf(modification);
+          
+          // Фактор предпочтения (некоторые модификации популярнее в разных регионах)
+          const preferenceMultiplier = 1 + 0.3 * ((modIndex + regionPreference) % carModifications.length);
+          
+          modelData.push({
+            id: `mod-${modification.toLowerCase()}`,
+            name: `${carModels.find(m => m.id === selectedModel)?.name || 'Автомобиль'} ${modification}`,
+            [valueKey]: Math.round((10 + Math.random() * 40) * regionFactor * preferenceMultiplier),
+            amount: Math.round((1000000 + Math.random() * 4000000) * regionFactor * preferenceMultiplier)
+          });
+        });
+        
+        // Добавляем цвета с разными предпочтениями по регионам
+        carColors.forEach((color, index) => {
+          // Для разных регионов генерируем разные предпочтения цветов
+          const regionPreference = selectedRegion !== 'all' ? 
+            (selectedRegion.charCodeAt(0) % carColors.length) : 0;
+          
+          // Фактор предпочтения (некоторые цвета популярнее в разных регионах)
+          const preferenceMultiplier = 1 + 0.4 * ((index + regionPreference) % carColors.length);
+          
+          modelData.push({
+            id: `color-${color.toLowerCase()}`,
+            name: `Цвет: ${color}`,
+            [valueKey]: Math.round((5 + Math.random() * 25) * regionFactor * preferenceMultiplier),
+            amount: Math.round((500000 + Math.random() * 2000000) * regionFactor * preferenceMultiplier)
+          });
+        });
+        
+        // Сортируем по популярности
+        modelData.sort((a, b) => b[valueKey] - a[valueKey]);
+      }
+      
+      // Генерируем данные по месяцам (временной ряд)
+      const valueKey = getValueKeyForActiveTab();
+                        
+      // Базовые данные по месяцам
+      const baseMonthlyData = [
+        { month: "Янв", value: 124, amount: 8520000 },
+        { month: "Фев", value: 85, amount: 5950000 },
+        { month: "Мар", value: 102, amount: 7140000 },
+        { month: "Апр", value: 118, amount: 8260000 },
+        { month: "Май", value: 175, amount: 12250000 },
+        { month: "Июн", value: 140, amount: 9800000 },
+        { month: "Июл", value: 155, amount: 10850000 },
+        { month: "Авг", value: 132, amount: 9240000 },
+        { month: "Сен", value: 145, amount: 10150000 },
+        { month: "Окт", value: 120, amount: 8400000 },
+        { month: "Ноя", value: 165, amount: 11550000 },
+        { month: "Дек", value: 130, amount: 9100000 }
+      ];
+      
+      // Модифицируем для выбранной модели и нужного ключа
+      let monthlyData = [];
+      
+      if (selectedRegion !== 'all') {
+        // Генерируем/получаем временные данные для конкретного региона
+        // С меньшими значениями, так как это только один регион
+        monthlyData = baseMonthlyData.map(item => {
+          const adjustedItem = {
+            month: item.month,
+            [valueKey]: Math.round(item.value * 0.3),
+            amount: Math.round(item.amount * 0.3)
+          };
+          return adjustedItem;
+        });
+      } else {
+        // Генерируем/получаем временные данные для всех регионов
+        monthlyData = baseMonthlyData.map(item => {
+          const adjustedItem = {
+            month: item.month,
+            [valueKey]: Math.round(item.value * 0.4),
+            amount: Math.round(item.amount * 0.4)
+          };
+          return adjustedItem;
+        });
+      }
+      
+      return { regionData, modelData, monthlyData };
     }
+  }
  
      const getContractsData = () => {
     // Данные по регионам с суммированием
@@ -744,7 +864,6 @@ const fetchData = async (apiUrl) => {
                   };
                 }
              
-                // Для остатка берем примерно 20% от контрактов
                 const stockCount = Math.round(parseInt(regionData.total_contracts || 0) * 0.2);
                 const stockAmount = Math.round(parseInt(regionData.total_price || 0) * 0.2);
              
@@ -1421,7 +1540,6 @@ const fetchData = async (apiUrl) => {
           });
         });
    
-        // Добавляем данные о цветах
         carColors.forEach(color => {
           modelData.push({
             id: `color-${color.toLowerCase()}`,
@@ -1431,7 +1549,6 @@ const fetchData = async (apiUrl) => {
           });
         });
    
-        // Модифицируем временные данные для выбранной модели
         monthlyData = monthlyData.map(item => ({
           ...item,
           promotions: Math.round(item.promotions * 0.4),
@@ -1442,23 +1559,23 @@ const fetchData = async (apiUrl) => {
       return { regionData, modelData, monthlyData };
     };
 
-    // Возвращаем данные в зависимости от активной вкладки
-    if (activeTab === 'contracts') {
-      return getContractsData();
-    } else if (activeTab === 'sales') {
-      return getSalesData();
-    } else if (activeTab === 'stock') {
-      return getStockData();
-    } else if (activeTab === 'retail') {
-      return getRetailData();
-    } else if (activeTab === 'wholesale') {
-      return getWholesaleData();
-    } else if (activeTab === 'promotions') {
-      return getPromotionsData();
-    }
-
-    return { regionData: [], modelData: [], monthlyData: [] };
+  if (activeTab === 'contracts') {
+    return getContractsData();
+  } else if (activeTab === 'sales') {
+    return getSalesData();
+  } else if (activeTab === 'stock') {
+    return getStockData();
+  } else if (activeTab === 'retail') {
+    return getRetailData();
+  } else if (activeTab === 'wholesale') {
+    return getWholesaleData();
+  } else if (activeTab === 'promotions') {
+    return getPromotionsData();
   }
+  
+  // Если ничего не подошло, возвращаем пустые данные
+  return { regionData: [], modelData: [], monthlyData: [] };
+}
   
   // Render all charts based on active tab
  const renderCharts = () => {
@@ -1959,6 +2076,22 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .attr("stop-color", color)
     .attr("stop-opacity", 0.3);
     
+  // Градиент для выделенного региона
+  const selectedGradient = defs.append("linearGradient")
+    .attr("id", "selectedBarGradient")
+    .attr("x1", "0%").attr("y1", "0%")
+    .attr("x2", "0%").attr("y2", "100%");
+    
+  selectedGradient.append("stop")
+    .attr("offset", "0%")
+    .attr("stop-color", "#ff9800")
+    .attr("stop-opacity", 0.9);
+    
+  selectedGradient.append("stop")
+    .attr("offset", "100%")
+    .attr("stop-color", "#ff9800")
+    .attr("stop-opacity", 0.4);
+    
   // Шкалы
   const x = d3.scaleBand()
     .domain(data.map(d => d[labelKey]))
@@ -2005,14 +2138,20 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .style("fill", "#fff")
     .text(title);
     
-  // Полоски с простой анимацией
+  // Полоски с простой анимацией и выделением выбранного региона
   svg.selectAll(".bar")
     .data(data)
     .enter().append("rect")
     .attr("class", "bar")
     .attr("x", d => x(d[labelKey]))
     .attr("width", x.bandwidth())
-    .attr("fill", `url(#barGradient-${valueKey})`)
+    .attr("fill", d => {
+      // Если это график регионов и регион выбран, используем другой цвет
+      if (labelKey === 'name' && d.isSelected) {
+        return "url(#selectedBarGradient)";
+      }
+      return `url(#barGradient-${valueKey})`;
+    })
     .attr("rx", 4)
     .attr("ry", 4)
     .attr("y", height)
@@ -2031,7 +2170,7 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .attr("y", d => y(d[valueKey]) - 5)
     .attr("text-anchor", "middle")
     .style("font-size", "12px")
-    .style("fill", "#fff")
+    .style("fill", d => d.isSelected ? "#ff9800" : "#fff")
     .style("opacity", 0)
     .text(d => {
       if (d[valueKey] >= 1000000) return (d[valueKey] / 1000000).toFixed(1) + 'M';
@@ -2042,6 +2181,95 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .duration(500)
     .delay(500)
     .style("opacity", 1);
+    
+  // Если есть выбранный регион, добавляем индикатор
+  if (selectedRegion !== 'all' && labelKey === 'name') {
+    const selectedItem = data.find(d => d.id === selectedRegion);
+    if (selectedItem) {
+      svg.append("text")
+        .attr("x", x(selectedItem[labelKey]) + x.bandwidth() / 2)
+        .attr("y", y(selectedItem[valueKey]) - 25)
+        .attr("text-anchor", "middle")
+        .style("font-size", "11px")
+        .style("font-weight", "bold")
+        .style("fill", "#ff9800")
+        .text("Выбрано")
+        .style("opacity", 0)
+        .transition()
+        .duration(500)
+        .delay(800)
+        .style("opacity", 1);
+    }
+  }
+  
+  // Добавляем интерактивность
+  svg.selectAll(".bar")
+    .on("mouseover", function(event, d) {
+      d3.select(this)
+        .transition()
+        .duration(200)
+        .attr("opacity", 0.8);
+        
+      // Показать дополнительную информацию при наведении
+      const tooltip = d3.select("body").selectAll(".tooltip")
+        .data([null])
+        .join("div")
+        .attr("class", "tooltip")
+        .style("position", "absolute")
+        .style("background-color", "rgba(30, 41, 59, 0.9)")
+        .style("color", "#fff")
+        .style("padding", "8px 12px")
+        .style("border-radius", "4px")
+        .style("font-size", "12px")
+        .style("pointer-events", "none")
+        .style("opacity", 0)
+        .style("z-index", 1000)
+        .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.1)");
+      
+      // Перевод названий метрик на русский
+      const getMetricRussianName = (key) => {
+        switch(key) {
+          case 'contracts': return 'Контракты';
+          case 'sales': return 'Продажи';
+          case 'stock': return 'Остаток';
+          case 'retail': return 'Розница';
+          case 'wholesale': return 'Опт';
+          case 'promotions': return 'Акции';
+          default: return key;
+        }
+      };
+        
+      tooltip
+        .html(`
+          <div>
+            <div class="font-bold">${d[labelKey]}</div>
+            <div>${getMetricRussianName(valueKey)}: ${d[valueKey].toLocaleString('ru-RU')}</div>
+            <div>Сумма: ${formatCurrency(d.amount)}</div>
+          </div>
+        `)
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY - 20) + "px")
+        .transition()
+        .duration(200)
+        .style("opacity", 1);
+    })
+    .on("mousemove", function(event) {
+      d3.select("body").select(".tooltip")
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY - 20) + "px");
+    })
+    .on("mouseout", function() {
+      d3.select(this)
+        .transition()
+        .duration(200)
+        .attr("opacity", 1);
+        
+      d3.select("body").select(".tooltip")
+        .transition()
+        .duration(200)
+        .style("opacity", 0)
+        .remove();
+    });
 };
  
  // Timeline chart renderer
@@ -2255,30 +2483,48 @@ const getStats = () => {
   let totalContracts = 0;
   let totalAmount = 0;
   
-  // Если выбран конкретный регион, фильтруем по нему
-  if (selectedRegion !== 'all') {
+  // Если выбрана конкретная модель, фильтруем только по ней
+  if (selectedModel !== 'all') {
+    const modelData = apiData.find(model => model.model_id === selectedModel);
+    
+    if (modelData) {
+      // Если также выбран конкретный регион, фильтруем по региону
+      if (selectedRegion !== 'all') {
+        // Поиск данных выбранного региона для выбранной модели
+        const regionData = modelData.filter_by_region?.find(r => r.region_id === selectedRegion);
+        
+        if (regionData) {
+          totalContracts = parseInt(regionData.total_contracts || 0);
+          totalAmount = parseInt(regionData.total_price || 0);
+        }
+      } else {
+        // Суммируем по всем регионам для выбранной модели
+        if (modelData.filter_by_region && Array.isArray(modelData.filter_by_region)) {
+          modelData.filter_by_region.forEach(region => {
+            totalContracts += parseInt(region.total_contracts || 0);
+            totalAmount += parseInt(region.total_price || 0);
+          });
+        }
+      }
+    }
+  } else if (selectedRegion !== 'all') {
+    // Выбран только регион, суммируем по всем моделям для этого региона
     apiData.forEach(model => {
       if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
         const regionData = model.filter_by_region.find(r => r.region_id === selectedRegion);
         if (regionData) {
-          const contracts = parseInt(regionData.total_contracts || 0);
-          const amount = parseInt(regionData.total_price || 0);
-          
-          totalContracts += contracts;
-          totalAmount += amount;
+          totalContracts += parseInt(regionData.total_contracts || 0);
+          totalAmount += parseInt(regionData.total_price || 0);
         }
       }
     });
   } else {
-    // Иначе суммируем по всем регионам
+    // Не выбраны ни модель, ни регион - суммируем всё
     apiData.forEach(model => {
       if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
         model.filter_by_region.forEach(region => {
-          const contracts = parseInt(region.total_contracts || 0);
-          const amount = parseInt(region.total_price || 0);
-          
-          totalContracts += contracts;
-          totalAmount += amount;
+          totalContracts += parseInt(region.total_contracts || 0);
+          totalAmount += parseInt(region.total_price || 0);
         });
       }
     });
@@ -2287,60 +2533,27 @@ const getStats = () => {
   // Вычисляем среднюю стоимость
   const average = totalContracts > 0 ? Math.round(totalAmount / totalContracts) : 0;
   
-  // Возвращаем статистику в зависимости от активного таба
-  if (activeTab === 'contracts') {
-    return {
-      count: totalContracts,
-      amount: totalAmount,
-      average: average
-    };
-  } else if (activeTab === 'sales') {
-    // Для вкладки "реализация" используем те же данные
-    return {
-      count: totalContracts,
-      amount: totalAmount,
-      average: average
-    };
-  } else if (activeTab === 'stock') {
-    // Для остатка используем примерно 20% от общего количества
-    const stockCount = Math.round(totalContracts * 0.2);
-    const stockAmount = Math.round(totalAmount * 0.2);
-    return {
-      count: stockCount,
-      amount: stockAmount,
-      average: stockCount > 0 ? Math.round(stockAmount / stockCount) : 0
-    };
-  } else if (activeTab === 'retail') {
-    // Для розницы используем примерно 70% от общего количества
-    const retailCount = Math.round(totalContracts * 0.7);
-    const retailAmount = Math.round(totalAmount * 0.7);
-    return {
-      count: retailCount,
-      amount: retailAmount,
-      average: retailCount > 0 ? Math.round(retailAmount / retailCount) : 0
-    };
-  } else if (activeTab === 'wholesale') {
-    // Для оптовых продаж используем примерно 30% от общего количества
-    const wholesaleCount = Math.round(totalContracts * 0.3);
-    const wholesaleAmount = Math.round(totalAmount * 0.3);
-    return {
-      count: wholesaleCount,
-      amount: wholesaleAmount,
-      average: wholesaleCount > 0 ? Math.round(wholesaleAmount / wholesaleCount) : 0
-    };
-  } else if (activeTab === 'promotions') {
-    // Для акционных продаж используем примерно 10% от общего количества
-    const promotionsCount = Math.round(totalContracts * 0.1);
-    const promotionsAmount = Math.round(totalAmount * 0.1);
-    return {
-      count: promotionsCount,
-      amount: promotionsAmount,
-      average: promotionsCount > 0 ? Math.round(promotionsAmount / promotionsCount) : 0
-    };
-  }
+  // Коэффициенты модификации для разных табов
+  const tabMultipliers = {
+    contracts: { count: 1, amount: 1 },
+    sales: { count: 1, amount: 1 },
+    stock: { count: 0.2, amount: 0.2 },
+    retail: { count: 0.7, amount: 0.7 },
+    wholesale: { count: 0.3, amount: 0.3 },
+    promotions: { count: 0.1, amount: 0.1 }
+  };
   
-  return { count: 0, amount: 0, average: 0 };
+  // Применяем модификатор в зависимости от активного таба
+  const multiplier = tabMultipliers[activeTab] || tabMultipliers.contracts;
+  
+  // Возвращаем модифицированные значения согласно активному табу
+  return {
+    count: Math.round(totalContracts * multiplier.count),
+    amount: Math.round(totalAmount * multiplier.amount),
+    average: average
+  };
 };
+
 
 // Получаем детальное описание выбранных фильтров
 const getFilterDescription = () => {
@@ -2361,10 +2574,53 @@ const getFilterDescription = () => {
   
   
 const StatisticsCards = () => {
-  const stats = getStats();
-  const regionName = selectedRegion !== 'all' 
-    ? regionsList.find(r => r.id === selectedRegion)?.name || 'выбранном регионе' 
-    : '';
+  // Используем useMemo для кэширования результата getStats()
+  // и его пересчета при изменении любой из зависимостей
+  const stats = useMemo(() => getStats(), [
+    selectedRegion, 
+    selectedModel, 
+    activeTab, 
+    apiData, 
+    startDate, 
+    endDate
+  ]);
+  
+  // Формируем описание фильтра (регион и/или модель)
+  const getFilterDescription = () => {
+    let description = '';
+    
+    if (selectedRegion !== 'all') {
+      const regionName = regionsList.find(r => r.id === selectedRegion)?.name || 'выбранном регионе';
+      description += ` в ${regionName}`;
+    }
+    
+    if (selectedModel !== 'all') {
+      const modelName = carModels.find(m => m.id === selectedModel)?.name || 'выбранной модели';
+      description += description ? ` для ${modelName}` : ` для ${modelName}`;
+    }
+    
+    return description;
+  };
+  
+  // Определяем название метрики в зависимости от активного таба
+  const getMetricName = () => {
+    switch(activeTab) {
+      case 'contracts': return 'Общее количество контрактов';
+      case 'sales': return 'Общий объем продаж';
+      case 'stock': return 'Общий остаток';
+      case 'retail': return 'Всего розничных продаж';
+      case 'wholesale': return 'Всего оптовых продаж';
+      case 'promotions': return 'Всего акционных продаж';
+      default: return 'Общее количество';
+    }
+  };
+  
+  // Форматирование даты
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -2372,15 +2628,11 @@ const StatisticsCards = () => {
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-lg font-medium text-white">
-              {activeTab === 'contracts' ? 'Общее количество контрактов' : 
-               activeTab === 'sales' ? 'Общий объем продаж' : 
-               activeTab === 'stock' ? 'Общий остаток' :
-               activeTab === 'retail' ? 'Всего розничных продаж' :
-               activeTab === 'wholesale' ? 'Всего оптовых продаж' :
-               activeTab === 'promotions' ? 'Всего акционных продаж' : ''}
-               {regionName ? ` в ${regionName}` : ''}
+              {getMetricName()}{getFilterDescription()}
             </h3>
-            <p className="text-gray-400 text-sm mt-1">За выбранный период</p>
+            <p className="text-gray-400 text-sm mt-1">
+              За период {startDate && endDate ? `с ${formatDate(startDate)} по ${formatDate(endDate)}` : 'выбранный период'}
+            </p>
           </div>
           <p className="text-2xl font-bold">{stats.count.toLocaleString('ru-RU')}</p>
         </div>
@@ -2393,10 +2645,11 @@ const StatisticsCards = () => {
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-lg font-medium text-white">
-              Общая сумма
-              {regionName ? ` в ${regionName}` : ''}
+              Общая сумма{getFilterDescription()}
             </h3>
-            <p className="text-gray-400 text-sm mt-1">За выбранный период</p>
+            <p className="text-gray-400 text-sm mt-1">
+              За период {startDate && endDate ? `с ${formatDate(startDate)} по ${formatDate(endDate)}` : 'выбранный период'}
+            </p>
           </div>
           <p className="text-2xl font-bold">{formatCurrency(stats.amount)}</p>
         </div>
@@ -2408,29 +2661,156 @@ const StatisticsCards = () => {
   );
 };
 
+
 // Компонент миниатюры авто
 const CarModelThumbnail = ({ model, isSelected, onClick }) => {
+  // Рассчитываем статистику для конкретной модели с учетом выбранного региона
+  const getModelStats = useMemo(() => {
+    if (!apiData || !Array.isArray(apiData)) {
+      return { count: 0, amount: 0 };
+    }
+    
+    const modelData = apiData.find(m => m.model_id === model.id);
+    if (!modelData) {
+      return { count: 0, amount: 0 };
+    }
+    
+    let totalCount = 0;
+    let totalAmount = 0;
+    
+    // Если выбран конкретный регион, фильтруем по нему
+    if (selectedRegion !== 'all') {
+      const regionData = modelData.filter_by_region?.find(r => r.region_id === selectedRegion);
+      if (regionData) {
+        totalCount = parseInt(regionData.total_contracts || 0);
+        totalAmount = parseInt(regionData.total_price || 0);
+      }
+    } else {
+      // Если регион не выбран, суммируем по всем регионам данной модели
+      if (modelData.filter_by_region && Array.isArray(modelData.filter_by_region)) {
+        modelData.filter_by_region.forEach(region => {
+          totalCount += parseInt(region.total_contracts || 0);
+          totalAmount += parseInt(region.total_price || 0);
+        });
+      }
+    }
+    
+    // Применяем модификатор в зависимости от активного таба
+    const tabMultipliers = {
+      contracts: { count: 1, amount: 1 },
+      sales: { count: 1, amount: 1 },
+      stock: { count: 0.2, amount: 0.2 },
+      retail: { count: 0.7, amount: 0.7 },
+      wholesale: { count: 0.3, amount: 0.3 },
+      promotions: { count: 0.1, amount: 0.1 }
+    };
+    
+    const multiplier = tabMultipliers[activeTab] || tabMultipliers.contracts;
+    
+    return {
+      count: Math.round(totalCount * multiplier.count),
+      amount: Math.round(totalAmount * multiplier.amount)
+    };
+  }, [model.id, selectedRegion, activeTab, apiData]);
+  
+  const stats = getModelStats;
+  
+  // Получаем метку для текущего типа данных
+  const getMetricLabel = () => {
+    switch(activeTab) {
+      case 'contracts': return 'Контрактов';
+      case 'sales': return 'Продаж';
+      case 'stock': return 'В наличии';
+      case 'retail': return 'Розница';
+      case 'wholesale': return 'Опт';
+      case 'promotions': return 'По акции';
+      default: return 'Контрактов';
+    }
+  };
+  
+  // Определяем цвет для активного таба
+  const getTabColor = () => {
+    switch(activeTab) {
+      case 'contracts': return 'from-blue-500 to-blue-600';
+      case 'sales': return 'from-green-500 to-green-600';
+      case 'stock': return 'from-purple-500 to-purple-600';
+      case 'retail': return 'from-orange-500 to-orange-600';
+      case 'wholesale': return 'from-indigo-500 to-indigo-600';
+      case 'promotions': return 'from-red-500 to-red-600';
+      default: return 'from-blue-500 to-blue-600';
+    }
+  };
+  
   return (
     <div 
-      className={`bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col cursor-pointer border transition-all duration-300 ${
-        isSelected ? 'border-blue-500 transform scale-105' : 'border-gray-700 hover:border-gray-500'
+      className={`bg-gray-800 rounded-lg shadow-lg flex flex-col cursor-pointer border transition-all duration-300 overflow-hidden h-[320px] ${
+        isSelected ? 'border-blue-500 transform scale-105 ring-2 ring-blue-500/30' : 'border-gray-700 hover:border-gray-500 hover:shadow-xl'
       }`}
       onClick={onClick}
     >
-      <div className="w-full h-40 flex items-center justify-center bg-gray-700/50 rounded-lg mb-3 p-2">
-        <img 
-          src={model.img}
-          alt={model.name}
-          className="max-h-36 max-w-full object-contain"
-        />
+      {/* Верхняя полоса с цветом активного таба */}
+      <div className={`h-1.5 w-full bg-gradient-to-r ${getTabColor()}`}></div>
+      
+      <div className="p-4 flex-1 flex flex-col">
+        {/* Изображение модели */}
+        <div className="relative w-full h-40 flex items-center justify-center bg-gray-700/50 rounded-lg mb-3 p-2 group overflow-hidden">
+          <img 
+            src={model.img}
+            alt={model.name}
+            className="max-h-36 max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+          />
+          
+          {/* Индикатор выбора */}
+          {isSelected && (
+            <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs font-bold py-1 px-2 rounded-full">
+              Выбрано
+            </div>
+          )}
+        </div>
+        
+        {/* Информация о модели */}
+        <div className="text-center flex-1 flex flex-col">
+          <h3 className="font-semibold text-white text-lg mb-2 line-clamp-1">{model.name}</h3>
+          
+          {/* Статистика - теперь всегда отображаем блоки */}
+          <div className="mt-auto space-y-2">
+            <div className="bg-gray-700/50 rounded-md p-2">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300 text-sm">{getMetricLabel()}:</span>
+                <span className="font-bold text-white">
+                  {stats.count > 0 ? stats.count.toLocaleString('ru-RU') : '0'}
+                </span>
+              </div>
+              {/* Прогресс-бар */}
+              <div className="w-full bg-gray-600 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                <div className={`h-full rounded-full bg-gradient-to-r ${getTabColor()}`} 
+                     style={{ width: `${Math.min(100, (stats.count || 0) / 10)}%` }}></div>
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-r from-gray-700/50 to-gray-800/70 rounded-md p-2">
+              <div className="text-center">
+                <p className="text-gray-300 text-xs mb-0.5">Общая сумма</p>
+                <p className={`font-bold text-transparent bg-clip-text bg-gradient-to-r ${getTabColor()}`}>
+                  {stats.amount > 0 ? formatCurrency(stats.amount) : '0 UZS'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="text-center">
-        <h3 className="font-medium text-white text-lg">{model.name}</h3>
-        {model.price > 0 && (
-          <p className="text-blue-400 mt-2 font-bold">
-            {formatCurrency(model.price)}
-          </p>
-        )}
+      
+      {/* Кнопка подробнее */}
+      <div className={`p-2 text-center border-t ${isSelected ? 'border-blue-500/30 bg-blue-500/10' : 'border-gray-700'}`}>
+        <button 
+          className="text-sm text-gray-300 hover:text-white focus:outline-none transition-colors"
+          onClick={(e) => {
+            e.stopPropagation(); // Предотвращаем всплытие события
+            onClick();
+          }}
+        >
+          {isSelected ? 'Выбрано' : 'Подробнее'}
+        </button>
       </div>
     </div>
   );
