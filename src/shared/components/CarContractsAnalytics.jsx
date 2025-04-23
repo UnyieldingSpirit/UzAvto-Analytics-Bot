@@ -16,7 +16,8 @@ const CarContractsAnalytics = () => {
   const [carModels, setCarModels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingComponent, setLoadingComponent] = useState(true);
- const [regionsList, setRegionsList] = useState([]);
+  const [regionsList, setRegionsList] = useState([]);
+  const [viewMode, setViewMode] = useState('cards');
   // Refs для графиков
   const regionContractsRef = useRef(null);
   const modelContractsRef = useRef(null);
@@ -2979,59 +2980,95 @@ const stats = getStats();
     
 {selectedModel === 'all' && (
   <div className="mb-8">
-    <div className="flex justify-between items-center mb-6">
-      <h3 className="text-xl font-semibold">Модельный ряд</h3>
+    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
+      <div className="flex items-center">
+        <h3 className="text-xl font-semibold mr-4">Модельный ряд</h3>
+        
+        {/* Табы для переключения режимов просмотра */}
+        <div className="bg-gray-800 rounded-lg p-1 flex items-center border border-gray-700">
+          <button 
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+              viewMode === 'cards' 
+                ? 'bg-blue-600 text-white shadow-md' 
+                : 'text-gray-400 hover:text-white'
+            }`}
+            onClick={() => setViewMode('cards')}
+          >
+            <div className="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+              Плитка
+            </div>
+          </button>
+          <button 
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+              viewMode === 'list' 
+                ? 'bg-blue-600 text-white shadow-md' 
+                : 'text-gray-400 hover:text-white'
+            }`}
+            onClick={() => setViewMode('list')}
+          >
+            <div className="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+              Список
+            </div>
+          </button>
+        </div>
+      </div>
       
       <div className="flex items-center space-x-4">
         <div className="flex items-center bg-gray-800 rounded-lg px-3 py-2 border border-gray-700">
           <span className="text-gray-400 mr-2 text-sm">Сортировать:</span>
           <select 
             className="bg-gray-800 text-white border-none focus:outline-none text-sm"
-       onChange={(e) => {
-  const sortModels = [...carModels];
-  
-  if (e.target.value === 'price-high') {
-    sortModels.sort((a, b) => b.price - a.price);
-  } else if (e.target.value === 'price-low') {
-    sortModels.sort((a, b) => a.price - b.price);
-  } else if (e.target.value === 'contracts-high') {
-  sortModels.sort((a, b) => {
-    // Ищем модели в оригинальных данных API
-    const modelA = apiData.find(m => m.model_id === a.id);
-    const modelB = apiData.find(m => m.model_id === b.id);
-    
-    // Вычисляем общее количество контрактов для каждой модели
-    const countA = modelA && modelA.filter_by_region 
-      ? modelA.filter_by_region.reduce((sum, region) => sum + parseInt(region.total_contracts || '0', 10), 0) 
-      : 0;
-    
-    const countB = modelB && modelB.filter_by_region 
-      ? modelB.filter_by_region.reduce((sum, region) => sum + parseInt(region.total_contracts || '0', 10), 0) 
-      : 0;
-    
-    return countB - countA;
-  });
-}else if (e.target.value === 'contracts-low') {
-  sortModels.sort((a, b) => {
-    // Ищем модели в оригинальных данных API
-    const modelA = apiData.find(m => m.model_id === a.id);
-    const modelB = apiData.find(m => m.model_id === b.id);
-    
-    // Вычисляем общее количество контрактов для каждой модели
-    const countA = modelA && modelA.filter_by_region 
-      ? modelA.filter_by_region.reduce((sum, region) => sum + parseInt(region.total_contracts || '0', 10), 0) 
-      : 0;
-    
-    const countB = modelB && modelB.filter_by_region 
-      ? modelB.filter_by_region.reduce((sum, region) => sum + parseInt(region.total_contracts || '0', 10), 0) 
-      : 0;
-    
-    return countA - countB; // Здесь меняем порядок сравнения для сортировки по возрастанию
-  });
-}
-  
-  setCarModels(sortModels);
-}}
+            onChange={(e) => {
+              const sortModels = [...carModels];
+              
+              if (e.target.value === 'price-high') {
+                sortModels.sort((a, b) => b.price - a.price);
+              } else if (e.target.value === 'price-low') {
+                sortModels.sort((a, b) => a.price - b.price);
+              } else if (e.target.value === 'contracts-high') {
+                sortModels.sort((a, b) => {
+                  // Ищем модели в оригинальных данных API
+                  const modelA = apiData.find(m => m.model_id === a.id);
+                  const modelB = apiData.find(m => m.model_id === b.id);
+                  
+                  // Вычисляем общее количество контрактов для каждой модели
+                  const countA = modelA && modelA.filter_by_region 
+                    ? modelA.filter_by_region.reduce((sum, region) => sum + parseInt(region.total_contracts || '0', 10), 0) 
+                    : 0;
+                  
+                  const countB = modelB && modelB.filter_by_region 
+                    ? modelB.filter_by_region.reduce((sum, region) => sum + parseInt(region.total_contracts || '0', 10), 0) 
+                    : 0;
+                  
+                  return countB - countA;
+                });
+              } else if (e.target.value === 'contracts-low') {
+                sortModels.sort((a, b) => {
+                  // Ищем модели в оригинальных данных API
+                  const modelA = apiData.find(m => m.model_id === a.id);
+                  const modelB = apiData.find(m => m.model_id === b.id);
+                  
+                  // Вычисляем общее количество контрактов для каждой модели
+                  const countA = modelA && modelA.filter_by_region 
+                    ? modelA.filter_by_region.reduce((sum, region) => sum + parseInt(region.total_contracts || '0', 10), 0) 
+                    : 0;
+                  
+                  const countB = modelB && modelB.filter_by_region 
+                    ? modelB.filter_by_region.reduce((sum, region) => sum + parseInt(region.total_contracts || '0', 10), 0) 
+                    : 0;
+                  
+                  return countA - countB;
+                });
+              }
+              
+              setCarModels(sortModels);
+            }}
           >
             <option value="default">По умолчанию</option>
             <option value="price-high">По сумме (убывание)</option>
@@ -3057,30 +3094,68 @@ const stats = getStats();
       </div>
     </div>
     
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-      {carModels.length > 0 ? (
-        // Отображаем список моделей из API
-        carModels.map(model => (
-          <CarModelThumbnail 
-            key={model.id} 
-            model={model} 
-            isSelected={selectedModel === model.id}
-            onClick={() => setSelectedModel(model.id)}
-          />
-        ))
-      ) : (
-        // Показываем сообщение, если список пуст
-        <div className="col-span-full p-6 bg-gray-800 rounded-lg text-center">
-          <div className="flex flex-col items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-gray-400 mb-2">Нет доступных моделей</p>
-            <p className="text-gray-500 text-sm">Выберите период и нажмите "Применить"</p>
+    {viewMode === 'cards' ? (
+      // Режим отображения карточек
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        {carModels.length > 0 ? (
+          // Отображаем список моделей из API
+          carModels.map(model => (
+            <CarModelThumbnail 
+              key={model.id} 
+              model={model} 
+              isSelected={selectedModel === model.id}
+              onClick={() => setSelectedModel(model.id)}
+            />
+          ))
+        ) : (
+          // Показываем сообщение, если список пуст
+          <div className="col-span-full p-6 bg-gray-800 rounded-lg text-center">
+            <div className="flex flex-col items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-gray-400 mb-2">Нет доступных моделей</p>
+              <p className="text-gray-500 text-sm">Выберите период и нажмите "Применить"</p>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    ) : (
+  <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+    {carModels.length > 0 ? (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 divide-gray-700">
+        {carModels.map((model, index) => (
+          <div 
+            key={model.id}
+            className={`py-2 px-3 border-b border-gray-700 sm:border-r transition-colors duration-200 ${
+              selectedModel === model.id 
+                ? 'bg-blue-600/20 border-l-2 border-l-blue-500' 
+                : 'hover:bg-gray-700/30'
+            }`}
+            onClick={() => setSelectedModel(model.id)}
+          >
+            <div className="flex items-center cursor-pointer truncate">
+              <span className="text-gray-500 text-xs mr-2 w-5 flex-shrink-0">{index + 1}.</span>
+              <span className="text-sm font-medium text-white truncate">{model.name}</span>
+              
+              {selectedModel === model.id && (
+                <span className="ml-auto pl-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div className="p-4 text-center">
+        <p className="text-gray-400 text-sm">Нет доступных моделей</p>
+      </div>
+    )}
+  </div>
+    )}
     
     {carModels.length > 0 && (
       <div className="mt-4 text-center text-gray-400 text-sm">
@@ -3089,6 +3164,8 @@ const stats = getStats();
     )}
   </div>
 )}
+      
+
 {selectedModel !== 'all' && apiData && (
   <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-2 rounded-lg shadow-lg mb-6 border border-gray-700">
     <div className="flex flex-row items-center gap-6">
