@@ -2254,90 +2254,101 @@ const formatCurrency = (value) => {
   }).format(value);
 };
 
-  const getStats = () => {
-    if (!apiData || !Array.isArray(apiData)) {
-      return { count: 0, amount: 0, average: 0 };
-    }
-    
-    // Инициализируем счетчики
-    let totalContracts = 0;
-    let totalAmount = 0;
-    
-    // Если выбран конкретный регион, фильтруем по нему
-    if (selectedRegion !== 'all') {
-      apiData.forEach(model => {
-        if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
-          const regionData = model.filter_by_region.find(r => r.region_id === selectedRegion);
-          if (regionData) {
-            totalContracts += parseInt(regionData.total_contracts || 0);
-            totalAmount += parseInt(regionData.total_price || 0);
-          }
-        }
-      });
-    } else {
-      // Иначе суммируем по всем регионам
-      apiData.forEach(model => {
-        if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
-          model.filter_by_region.forEach(region => {
-            totalContracts += parseInt(region.total_contracts || 0);
-            totalAmount += parseInt(region.total_price || 0);
-          });
-        }
-      });
-    }
-    
-    // Вычисляем среднюю стоимость
-    const average = totalContracts > 0 ? Math.round(totalAmount / totalContracts) : 0;
-    
-    // Возвращаем статистику для активной вкладки
-    if (activeTab === 'contracts') {
-      return {
-        count: totalContracts,
-        amount: totalAmount,
-        average: average
-      };
-    } else if (activeTab === 'sales') {
-      return {
-        count: totalContracts,
-        amount: totalAmount,
-        average: average
-      };
-    } else if (activeTab === 'stock') {
-      const stockCount = Math.round(totalContracts * 0.2);
-      const stockAmount = Math.round(totalAmount * 0.2);
-      return {
-        count: stockCount,
-        amount: stockAmount,
-        average: stockCount > 0 ? Math.round(stockAmount / stockCount) : 0
-      };
-    } else if (activeTab === 'retail') {
-      const retailCount = Math.round(totalContracts * 0.7);
-      const retailAmount = Math.round(totalAmount * 0.7);
-      return {
-        count: retailCount,
-        amount: retailAmount,
-        average: retailCount > 0 ? Math.round(retailAmount / retailCount) : 0
-      };
-    } else if (activeTab === 'wholesale') {
-      const wholesaleCount = Math.round(totalContracts * 0.3);
-      const wholesaleAmount = Math.round(totalAmount * 0.3);
-      return {
-        count: wholesaleCount,
-        amount: wholesaleAmount,
-        average: wholesaleCount > 0 ? Math.round(wholesaleAmount / wholesaleCount) : 0
-      };
-    } else if (activeTab === 'promotions') {
-      const promotionsCount = Math.round(totalContracts * 0.1);
-      const promotionsAmount = Math.round(totalAmount * 0.1);
-      return {
-        count: promotionsCount,
-        amount: promotionsAmount,
-        average: promotionsCount > 0 ? Math.round(promotionsAmount / promotionsCount) : 0
-      };
-    }
-    
+const getStats = () => {
+  if (!apiData || !Array.isArray(apiData)) {
     return { count: 0, amount: 0, average: 0 };
-  };
+  }
+  
+  // Инициализируем счетчики
+  let totalContracts = 0;
+  let totalAmount = 0;
+  
+  // Если выбран конкретный регион, фильтруем по нему
+  if (selectedRegion !== 'all') {
+    apiData.forEach(model => {
+      if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
+        const regionData = model.filter_by_region.find(r => r.region_id === selectedRegion);
+        if (regionData) {
+          const contracts = parseInt(regionData.total_contracts || 0);
+          const amount = parseInt(regionData.total_price || 0);
+          
+          totalContracts += contracts;
+          totalAmount += amount;
+        }
+      }
+    });
+  } else {
+    // Иначе суммируем по всем регионам
+    apiData.forEach(model => {
+      if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
+        model.filter_by_region.forEach(region => {
+          const contracts = parseInt(region.total_contracts || 0);
+          const amount = parseInt(region.total_price || 0);
+          
+          totalContracts += contracts;
+          totalAmount += amount;
+        });
+      }
+    });
+  }
+  
+  // Вычисляем среднюю стоимость
+  const average = totalContracts > 0 ? Math.round(totalAmount / totalContracts) : 0;
+  
+  // Возвращаем статистику в зависимости от активного таба
+  if (activeTab === 'contracts') {
+    return {
+      count: totalContracts,
+      amount: totalAmount,
+      average: average
+    };
+  } else if (activeTab === 'sales') {
+    // Для вкладки "реализация" используем те же данные
+    return {
+      count: totalContracts,
+      amount: totalAmount,
+      average: average
+    };
+  } else if (activeTab === 'stock') {
+    // Для остатка используем примерно 20% от общего количества
+    const stockCount = Math.round(totalContracts * 0.2);
+    const stockAmount = Math.round(totalAmount * 0.2);
+    return {
+      count: stockCount,
+      amount: stockAmount,
+      average: stockCount > 0 ? Math.round(stockAmount / stockCount) : 0
+    };
+  } else if (activeTab === 'retail') {
+    // Для розницы используем примерно 70% от общего количества
+    const retailCount = Math.round(totalContracts * 0.7);
+    const retailAmount = Math.round(totalAmount * 0.7);
+    return {
+      count: retailCount,
+      amount: retailAmount,
+      average: retailCount > 0 ? Math.round(retailAmount / retailCount) : 0
+    };
+  } else if (activeTab === 'wholesale') {
+    // Для оптовых продаж используем примерно 30% от общего количества
+    const wholesaleCount = Math.round(totalContracts * 0.3);
+    const wholesaleAmount = Math.round(totalAmount * 0.3);
+    return {
+      count: wholesaleCount,
+      amount: wholesaleAmount,
+      average: wholesaleCount > 0 ? Math.round(wholesaleAmount / wholesaleCount) : 0
+    };
+  } else if (activeTab === 'promotions') {
+    // Для акционных продаж используем примерно 10% от общего количества
+    const promotionsCount = Math.round(totalContracts * 0.1);
+    const promotionsAmount = Math.round(totalAmount * 0.1);
+    return {
+      count: promotionsCount,
+      amount: promotionsAmount,
+      average: promotionsCount > 0 ? Math.round(promotionsAmount / promotionsCount) : 0
+    };
+  }
+  
+  return { count: 0, amount: 0, average: 0 };
+};
 
 // Получаем детальное описание выбранных фильтров
 const getFilterDescription = () => {
@@ -2357,8 +2368,11 @@ const getFilterDescription = () => {
 };
   
   
-  const StatisticsCards = () => {
+const StatisticsCards = () => {
   const stats = getStats();
+  const regionName = selectedRegion !== 'all' 
+    ? regionsList.find(r => r.id === selectedRegion)?.name || 'выбранном регионе' 
+    : '';
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -2372,6 +2386,7 @@ const getFilterDescription = () => {
                activeTab === 'retail' ? 'Всего розничных продаж' :
                activeTab === 'wholesale' ? 'Всего оптовых продаж' :
                activeTab === 'promotions' ? 'Всего акционных продаж' : ''}
+               {regionName ? ` в ${regionName}` : ''}
             </h3>
             <p className="text-gray-400 text-sm mt-1">За выбранный период</p>
           </div>
@@ -2385,7 +2400,10 @@ const getFilterDescription = () => {
       <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h3 className="text-lg font-medium text-white">Общая сумма</h3>
+            <h3 className="text-lg font-medium text-white">
+              Общая сумма
+              {regionName ? ` в ${regionName}` : ''}
+            </h3>
             <p className="text-gray-400 text-sm mt-1">За выбранный период</p>
           </div>
           <p className="text-2xl font-bold">{formatCurrency(stats.amount)}</p>
