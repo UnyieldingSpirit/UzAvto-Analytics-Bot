@@ -2665,53 +2665,53 @@ const StatisticsCards = () => {
 // Компонент миниатюры авто
 const CarModelThumbnail = ({ model, isSelected, onClick }) => {
   // Рассчитываем статистику для конкретной модели с учетом выбранного региона
-const getModelStats = useCallback((modelId) => {
-  if (!apiData || !Array.isArray(apiData)) {
-    return { count: 0, amount: 0 };
-  }
-  
-  const modelData = apiData.find(m => m.model_id === modelId);
-  if (!modelData) {
-    return { count: 0, amount: 0 };
-  }
-  
-  let totalCount = 0;
-  let totalAmount = 0;
-  
-  // Если выбран конкретный регион, фильтруем по нему
-  if (selectedRegion !== 'all') {
-    const regionData = modelData.filter_by_region?.find(r => r.region_id === selectedRegion);
-    if (regionData) {
-      totalCount = parseInt(regionData.total_contracts || 0);
-      totalAmount = parseInt(regionData.total_price || 0);
+  const getModelStats = useMemo(() => {
+    if (!apiData || !Array.isArray(apiData)) {
+      return { count: 0, amount: 0 };
     }
-  } else {
-    // Если регион не выбран, суммируем по всем регионам данной модели
-    if (modelData.filter_by_region && Array.isArray(modelData.filter_by_region)) {
-      modelData.filter_by_region.forEach(region => {
-        totalCount += parseInt(region.total_contracts || 0);
-        totalAmount += parseInt(region.total_price || 0);
-      });
+    
+    const modelData = apiData.find(m => m.model_id === model.id);
+    if (!modelData) {
+      return { count: 0, amount: 0 };
     }
-  }
-  
-  // Применяем модификатор в зависимости от активного таба
-  const tabMultipliers = {
-    contracts: { count: 1, amount: 1 },
-    sales: { count: 1, amount: 1 },
-    stock: { count: 0.2, amount: 0.2 },
-    retail: { count: 0.7, amount: 0.7 },
-    wholesale: { count: 0.3, amount: 0.3 },
-    promotions: { count: 0.1, amount: 0.1 }
-  };
-  
-  const multiplier = tabMultipliers[activeTab] || tabMultipliers.contracts;
-  
-  return {
-    count: Math.round(totalCount * multiplier.count),
-    amount: Math.round(totalAmount * multiplier.amount)
-  };
-}, [apiData, selectedRegion, activeTab]);
+    
+    let totalCount = 0;
+    let totalAmount = 0;
+    
+    // Если выбран конкретный регион, фильтруем по нему
+    if (selectedRegion !== 'all') {
+      const regionData = modelData.filter_by_region?.find(r => r.region_id === selectedRegion);
+      if (regionData) {
+        totalCount = parseInt(regionData.total_contracts || 0);
+        totalAmount = parseInt(regionData.total_price || 0);
+      }
+    } else {
+      // Если регион не выбран, суммируем по всем регионам данной модели
+      if (modelData.filter_by_region && Array.isArray(modelData.filter_by_region)) {
+        modelData.filter_by_region.forEach(region => {
+          totalCount += parseInt(region.total_contracts || 0);
+          totalAmount += parseInt(region.total_price || 0);
+        });
+      }
+    }
+    
+    // Применяем модификатор в зависимости от активного таба
+    const tabMultipliers = {
+      contracts: { count: 1, amount: 1 },
+      sales: { count: 1, amount: 1 },
+      stock: { count: 0.2, amount: 0.2 },
+      retail: { count: 0.7, amount: 0.7 },
+      wholesale: { count: 0.3, amount: 0.3 },
+      promotions: { count: 0.1, amount: 0.1 }
+    };
+    
+    const multiplier = tabMultipliers[activeTab] || tabMultipliers.contracts;
+    
+    return {
+      count: Math.round(totalCount * multiplier.count),
+      amount: Math.round(totalAmount * multiplier.amount)
+    };
+  }, [model.id, selectedRegion, activeTab, apiData]);
   
   const stats = getModelStats;
   
@@ -3030,29 +3030,51 @@ const stats = getStats();
           <span className="text-gray-400 mr-2 text-sm">Сортировать:</span>
           <select 
             className="bg-gray-800 text-white border-none focus:outline-none text-sm"
-            onChange={(e) => {
-              const sortModels = [...carModels];
-              
-              if (e.target.value === 'price-high') {
-                sortModels.sort((a, b) => b.price - a.price);
-              } else if (e.target.value === 'price-low') {
-                sortModels.sort((a, b) => a.price - b.price);
-              } else if (e.target.value === 'contracts-high') {
-                sortModels.sort((a, b) => {
-                  const statsA = getModelStats(a.id);
-                  const statsB = getModelStats(b.id);
-                  return statsB.count - statsA.count;
-                });
-              } else if (e.target.value === 'contracts-low') {
-                sortModels.sort((a, b) => {
-                  const statsA = getModelStats(a.id);
-                  const statsB = getModelStats(b.id);
-                  return statsA.count - statsB.count;
-                });
-              }
-              
-              setCarModels(sortModels);
-            }}
+       onChange={(e) => {
+  const sortModels = [...carModels];
+  
+  if (e.target.value === 'price-high') {
+    sortModels.sort((a, b) => b.price - a.price);
+  } else if (e.target.value === 'price-low') {
+    sortModels.sort((a, b) => a.price - b.price);
+  } else if (e.target.value === 'contracts-high') {
+  sortModels.sort((a, b) => {
+    // Ищем модели в оригинальных данных API
+    const modelA = apiData.find(m => m.model_id === a.id);
+    const modelB = apiData.find(m => m.model_id === b.id);
+    
+    // Вычисляем общее количество контрактов для каждой модели
+    const countA = modelA && modelA.filter_by_region 
+      ? modelA.filter_by_region.reduce((sum, region) => sum + parseInt(region.total_contracts || '0', 10), 0) 
+      : 0;
+    
+    const countB = modelB && modelB.filter_by_region 
+      ? modelB.filter_by_region.reduce((sum, region) => sum + parseInt(region.total_contracts || '0', 10), 0) 
+      : 0;
+    
+    return countB - countA;
+  });
+}else if (e.target.value === 'contracts-low') {
+  sortModels.sort((a, b) => {
+    // Ищем модели в оригинальных данных API
+    const modelA = apiData.find(m => m.model_id === a.id);
+    const modelB = apiData.find(m => m.model_id === b.id);
+    
+    // Вычисляем общее количество контрактов для каждой модели
+    const countA = modelA && modelA.filter_by_region 
+      ? modelA.filter_by_region.reduce((sum, region) => sum + parseInt(region.total_contracts || '0', 10), 0) 
+      : 0;
+    
+    const countB = modelB && modelB.filter_by_region 
+      ? modelB.filter_by_region.reduce((sum, region) => sum + parseInt(region.total_contracts || '0', 10), 0) 
+      : 0;
+    
+    return countA - countB; // Здесь меняем порядок сравнения для сортировки по возрастанию
+  });
+}
+  
+  setCarModels(sortModels);
+}}
           >
             <option value="default">По умолчанию</option>
             <option value="price-high">По сумме (убывание)</option>
