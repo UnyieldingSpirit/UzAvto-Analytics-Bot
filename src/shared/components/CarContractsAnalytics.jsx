@@ -346,23 +346,29 @@ useEffect(() => {
 
  // Функция для получения отфильтрованных данных
   const getFilteredData = () => {
-    // Проверяем, есть ли у нас данные API для выбранной модели
     if (selectedModel !== 'all' && apiData) {
-      // Находим объект модели в данных API
       const selectedModelData = Array.isArray(apiData)
         ? apiData.find(model => model.model_id === selectedModel)
         : apiData;
    
-      if (selectedModelData) {
-        // Данные по регионам для выбранной модели из API
-        let regionData = selectedModelData.filter_by_region?.map(region => ({
+     if (selectedModelData) {
+     let regionData = [];
+    
+    // Проверяем наличие данных по регионам
+    if (selectedModelData.filter_by_region && Array.isArray(selectedModelData.filter_by_region)) {
+      console.log("Данные по регионам для модели:", selectedModelData.filter_by_region);
+      
+      // Извлекаем данные из API с дополнительными проверками
+      regionData = selectedModelData.filter_by_region
+        .filter(region => region && region.region_id && region.region_name) // Фильтруем неполные данные
+        .map(region => ({
           id: region.region_id,
-          name: region.region_name,
-          contracts: parseInt(region.total_contracts) || 0,
-          amount: parseInt(region.total_price) || 0
-        })) || [];
+          name: region.region_name || "Регион " + region.region_id,
+          contracts: parseInt(region.total_contracts || 0),
+          amount: parseInt(region.total_price || 0)
+        }));
+    }
      
-        // Если данные по регионам пустые, используем тестовые данные
         if (regionData.length === 0) {
           regionData = regions.map(region => ({
             id: region.id,
@@ -2022,6 +2028,7 @@ const renderMoneyReturnChart = () => {
    .style('font-size', '12px')
    .style('fill', '#d1d5db');
 };
+
 const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
   if (!ref.current) return;
   
@@ -2031,6 +2038,14 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
   // Проверяем наличие данных
   if (!data || data.length === 0) {
     container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">Нет данных для отображения</div>';
+    return;
+  }
+  
+  // Фильтруем данные, исключая записи с отсутствующими значениями
+  data = data.filter(d => d[labelKey] && d[valueKey] !== undefined && d[valueKey] !== null);
+  
+  if (data.length === 0) {
+    container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">Нет данных для отображения после фильтрации</div>';
     return;
   }
   
@@ -2071,7 +2086,8 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     
   const y = d3.scaleLinear()
     .domain([0, d3.max(data, d => d[valueKey]) * 1.1])
-    .range([height, 0]);
+    .range([height, 0])
+    .nice();
     
   // Сетка
   svg.append("g")
@@ -2136,114 +2152,15 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .style("font-size", "12px")
     .style("fill", "#fff")
     .style("opacity", 0)
-    .text(d => d[valueKey])
+    .text(d => {
+      if (d[valueKey] >= 1000000) return (d[valueKey] / 1000000).toFixed(1) + 'M';
+      if (d[valueKey] >= 1000) return (d[valueKey] / 1000).toFixed(0) + 'K';
+      return d[valueKey];
+    })
     .transition()
     .duration(500)
     .delay(500)
     .style("opacity", 1);
-  
-  // Создаем тултип в теле документа, а не в контейнере
-  // Удаляем старые тултипы, если они есть
-  d3.select("body").selectAll(`.tooltip-${valueKey}`).remove();
-  
-  const tooltip = d3.select("body")
-    .append("div")
-    .attr("class", `tooltip-${valueKey}`)
-    .style("position", "absolute")
-    .style("background-color", "rgba(40, 40, 40, 0.9)")
-    .style("color", "#fff")
-    .style("padding", "10px")
-    .style("border-radius", "5px")
-    .style("font-size", "14px")
-    .style("pointer-events", "none")
-    .style("opacity", 0)
-    .style("z-index", "1000");
-  
-  // Добавляем интерактивность к полоскам
-  const bars = svg.selectAll(".bar").nodes();
-  
-  svg.selectAll(".bar-overlay")
-    .data(data)
-    .enter().append("rect")
-    .attr("class", "bar-overlay")
-    .attr("x", d => x(d[labelKey]))
-    .attr("width", x.bandwidth())
-    .attr("y", 0)
-    .attr("height", height)
-    .attr("fill", "transparent")
-    .on("mouseover", function(event, d) {
-      // Находим соответствующую полоску
-      const index = Array.from(this.parentNode.querySelectorAll('.bar-overlay')).indexOf(this);
-      const bar = bars[index];
-      
-      // Подсвечиваем полоску
-      d3.select(bar).attr("opacity", 0.8);
-      
-      // Показываем тултип
-      tooltip
-        .style("opacity", 0.9)
-        .html(`
-          <strong>${d[labelKey]}</strong><br>
-          ${valueKey === 'contracts' ? 'Контрактов: ' : 
-            valueKey === 'sales' ? 'Продаж: ' : 
-            valueKey === 'stock' ? 'Остаток: ' :
-            valueKey === 'retail' ? 'Розница: ' :
-            valueKey === 'wholesale' ? 'Опт: ' :
-            valueKey === 'promotions' ? 'Акции: ' : ''}
-          <strong>${d[valueKey]}</strong><br>
-          Сумма: <strong>${formatCurrency(d.amount)}</strong>
-        `);
-      
-      // Правильно позиционируем относительно курсора
-      const tooltipWidth = tooltip.node().getBoundingClientRect().width;
-      const tooltipHeight = tooltip.node().getBoundingClientRect().height;
-      
-      // Проверяем, выходит ли тултип за правый край экрана
-      let left = event.pageX + 10;
-      if (left + tooltipWidth > window.innerWidth) {
-        left = event.pageX - tooltipWidth - 10;
-      }
-      
-      // Проверяем, выходит ли тултип за нижний край экрана
-      let top = event.pageY - tooltipHeight - 10;
-      if (top < 0) {
-        top = event.pageY + 10;
-      }
-      
-      tooltip
-        .style("left", `${left}px`)
-        .style("top", `${top}px`);
-    })
-    .on("mousemove", function(event) {
-      // Обновляем позицию при движении мыши
-      const tooltipWidth = tooltip.node().getBoundingClientRect().width;
-      const tooltipHeight = tooltip.node().getBoundingClientRect().height;
-      
-      let left = event.pageX + 10;
-      if (left + tooltipWidth > window.innerWidth) {
-        left = event.pageX - tooltipWidth - 10;
-      }
-      
-      let top = event.pageY - tooltipHeight - 10;
-      if (top < 0) {
-        top = event.pageY + 10;
-      }
-      
-      tooltip
-        .style("left", `${left}px`)
-        .style("top", `${top}px`);
-    })
-    .on("mouseout", function() {
-      // Находим соответствующую полоску
-      const index = Array.from(this.parentNode.querySelectorAll('.bar-overlay')).indexOf(this);
-      const bar = bars[index];
-      
-      // Возвращаем полоске нормальное состояние
-      d3.select(bar).attr("opacity", 1);
-      
-      // Скрываем тултип
-      tooltip.style("opacity", 0);
-    });
 };
  
  // Timeline chart renderer
