@@ -2022,14 +2022,19 @@ const renderMoneyReturnChart = () => {
    .style('font-size', '12px')
    .style('fill', '#d1d5db');
 };
-
 const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
   if (!ref.current) return;
   
   const container = ref.current;
   container.innerHTML = '';
   
-  // Увеличиваем нижний отступ для меток
+  // Проверяем наличие данных
+  if (!data || data.length === 0) {
+    container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">Нет данных для отображения</div>';
+    return;
+  }
+  
+  // Используем стандартные отступы
   const margin = { top: 30, right: 30, bottom: 100, left: 60 };
   const width = container.clientWidth - margin.left - margin.right;
   const height = container.clientHeight - margin.top - margin.bottom;
@@ -2041,7 +2046,7 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
     
-  // Добавляем градиент для полосок
+  // Простой градиент
   const defs = svg.append("defs");
   const gradient = defs.append("linearGradient")
     .attr("id", `barGradient-${valueKey}`)
@@ -2086,22 +2091,8 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .style("text-anchor", "end")
     .attr("dx", "-.8em")
     .attr("dy", ".15em")
-    .attr("transform", "rotate(-45)")  // Увеличиваем угол поворота для лучшей читаемости
-    .style("fill", "#999")
-    .style("font-size", "10px")  // Уменьшаем размер шрифта
-    .each(function(d, i) {
-      // Ограничиваем длину метки, если она слишком длинная
-      const text = d3.select(this);
-      const textContent = text.text();
-      if (textContent.length > 20) {
-        text.text(textContent.substring(0, 20) + '...');
-        
-        // Добавляем всплывающую подсказку при наведении
-        const tooltip = svg.append("title")
-          .text(textContent);
-        text.append(() => tooltip.node());
-      }
-    });
+    .attr("transform", "rotate(-45)")
+    .style("fill", "#999");
     
   svg.append("g")
     .call(d3.axisLeft(y))
@@ -2117,7 +2108,7 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .style("fill", "#fff")
     .text(title);
     
-  // Полоски с анимацией
+  // Полоски с простой анимацией
   svg.selectAll(".bar")
     .data(data)
     .enter().append("rect")
@@ -2130,8 +2121,7 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .attr("y", height)
     .attr("height", 0)
     .transition()
-    .duration(1000)
-    .delay((d, i) => i * 50)
+    .duration(500)
     .attr("y", d => y(d[valueKey]))
     .attr("height", d => height - y(d[valueKey]));
   
@@ -2149,13 +2139,16 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .text(d => d[valueKey])
     .transition()
     .duration(500)
-    .delay((d, i) => 1000 + i * 50)
+    .delay(500)
     .style("opacity", 1);
-    
-  // Создаем и настраиваем всплывающую подсказку
-  const tooltip = d3.select("body").append("div")
+  
+  // Создаем тултип в теле документа, а не в контейнере
+  // Удаляем старые тултипы, если они есть
+  d3.select("body").selectAll(`.tooltip-${valueKey}`).remove();
+  
+  const tooltip = d3.select("body")
+    .append("div")
     .attr("class", `tooltip-${valueKey}`)
-    .style("opacity", 0)
     .style("position", "absolute")
     .style("background-color", "rgba(40, 40, 40, 0.9)")
     .style("color", "#fff")
@@ -2163,103 +2156,93 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .style("border-radius", "5px")
     .style("font-size", "14px")
     .style("pointer-events", "none")
-    .style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)")
-    .style("z-index", "10")
-    .style("max-width", "250px");
-    
-  // Функция для расчета оптимальной позиции всплывающей подсказки
-  const calculateTooltipPosition = (event, tooltip) => {
-    // Размеры окна просмотра
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
-    // Получаем реальные размеры подсказки
-    const tooltipNode = tooltip.node();
-    const tooltipRect = tooltipNode.getBoundingClientRect();
-    const tooltipWidth = tooltipRect.width;
-    const tooltipHeight = tooltipRect.height;
-    
-    // Рассчитываем позицию по умолчанию (справа от курсора)
-    let left = event.pageX + 15;
-    let top = event.pageY - 28;
-    
-    // Проверяем, не выходит ли подсказка за правый край экрана
-    if (left + tooltipWidth > viewportWidth) {
-      // Если выходит, перемещаем влево от курсора
-      left = Math.max(10, event.pageX - tooltipWidth - 10);
-    }
-    
-    // Проверяем, не выходит ли подсказка за нижний край экрана
-    if (top + tooltipHeight > viewportHeight) {
-      // Если выходит, перемещаем выше курсора
-      top = Math.max(10, event.pageY - tooltipHeight - 10);
-    }
-    
-    return { left, top };
-  };
-    
-  svg.selectAll(".bar-hover-area")
+    .style("opacity", 0)
+    .style("z-index", "1000");
+  
+  // Добавляем интерактивность к полоскам
+  const bars = svg.selectAll(".bar").nodes();
+  
+  svg.selectAll(".bar-overlay")
     .data(data)
     .enter().append("rect")
-    .attr("class", "bar-hover-area")
+    .attr("class", "bar-overlay")
     .attr("x", d => x(d[labelKey]))
     .attr("width", x.bandwidth())
     .attr("y", 0)
     .attr("height", height)
     .attr("fill", "transparent")
     .on("mouseover", function(event, d) {
-      d3.select(this.parentNode.querySelector(`.bar:nth-child(${Array.from(this.parentNode.querySelectorAll('.bar-hover-area')).indexOf(this) + 1})`))
-        .transition()
-        .duration(200)
-        .attr("opacity", 0.8);
-        
-      tooltip.transition()
-        .duration(200)
-        .style("opacity", 1);
-        
-      tooltip.html(`
-        <strong>${d[labelKey]}</strong><br>
-        ${valueKey === 'contracts' ? 'Контрактов: ' : 
-          valueKey === 'sales' ? 'Продаж: ' : 
-          valueKey === 'stock' ? 'Остаток: ' :
-          valueKey === 'retail' ? 'Розница: ' :
-          valueKey === 'wholesale' ? 'Опт: ' :
-          valueKey === 'promotions' ? 'Акции: ' : ''}
-        <strong>${d[valueKey]}</strong><br>
-        Сумма: <strong>${formatCurrency(d.amount)}</strong>
-      `);
+      // Находим соответствующую полоску
+      const index = Array.from(this.parentNode.querySelectorAll('.bar-overlay')).indexOf(this);
+      const bar = bars[index];
       
-      // Сначала размещаем подсказку для измерения её размеров
+      // Подсвечиваем полоску
+      d3.select(bar).attr("opacity", 0.8);
+      
+      // Показываем тултип
       tooltip
-        .style("left", "0")
-        .style("top", "0")
-        .style("opacity", 0);
+        .style("opacity", 0.9)
+        .html(`
+          <strong>${d[labelKey]}</strong><br>
+          ${valueKey === 'contracts' ? 'Контрактов: ' : 
+            valueKey === 'sales' ? 'Продаж: ' : 
+            valueKey === 'stock' ? 'Остаток: ' :
+            valueKey === 'retail' ? 'Розница: ' :
+            valueKey === 'wholesale' ? 'Опт: ' :
+            valueKey === 'promotions' ? 'Акции: ' : ''}
+          <strong>${d[valueKey]}</strong><br>
+          Сумма: <strong>${formatCurrency(d.amount)}</strong>
+        `);
       
-      // Затем рассчитываем и устанавливаем оптимальную позицию
-      setTimeout(() => {
-        const position = calculateTooltipPosition(event, tooltip);
-        tooltip
-          .style("left", `${position.left}px`)
-          .style("top", `${position.top}px`)
-          .style("opacity", 1);
-      }, 0);
+      // Правильно позиционируем относительно курсора
+      const tooltipWidth = tooltip.node().getBoundingClientRect().width;
+      const tooltipHeight = tooltip.node().getBoundingClientRect().height;
+      
+      // Проверяем, выходит ли тултип за правый край экрана
+      let left = event.pageX + 10;
+      if (left + tooltipWidth > window.innerWidth) {
+        left = event.pageX - tooltipWidth - 10;
+      }
+      
+      // Проверяем, выходит ли тултип за нижний край экрана
+      let top = event.pageY - tooltipHeight - 10;
+      if (top < 0) {
+        top = event.pageY + 10;
+      }
+      
+      tooltip
+        .style("left", `${left}px`)
+        .style("top", `${top}px`);
     })
-    .on("mousemove", function(event, d) {
+    .on("mousemove", function(event) {
       // Обновляем позицию при движении мыши
-      const position = calculateTooltipPosition(event, tooltip);
+      const tooltipWidth = tooltip.node().getBoundingClientRect().width;
+      const tooltipHeight = tooltip.node().getBoundingClientRect().height;
+      
+      let left = event.pageX + 10;
+      if (left + tooltipWidth > window.innerWidth) {
+        left = event.pageX - tooltipWidth - 10;
+      }
+      
+      let top = event.pageY - tooltipHeight - 10;
+      if (top < 0) {
+        top = event.pageY + 10;
+      }
+      
       tooltip
-        .style("left", `${position.left}px`)
-        .style("top", `${position.top}px`);
+        .style("left", `${left}px`)
+        .style("top", `${top}px`);
     })
     .on("mouseout", function() {
-      d3.select(this.parentNode.querySelector(`.bar:nth-child(${Array.from(this.parentNode.querySelectorAll('.bar-hover-area')).indexOf(this) + 1})`))
-        .transition()
-        .duration(200)
-        .attr("opacity", 1);
-        
-      tooltip.transition()
-        .duration(500)
-        .style("opacity", 0);
+      // Находим соответствующую полоску
+      const index = Array.from(this.parentNode.querySelectorAll('.bar-overlay')).indexOf(this);
+      const bar = bars[index];
+      
+      // Возвращаем полоске нормальное состояние
+      d3.select(bar).attr("opacity", 1);
+      
+      // Скрываем тултип
+      tooltip.style("opacity", 0);
     });
 };
  
