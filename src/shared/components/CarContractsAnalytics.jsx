@@ -2713,7 +2713,7 @@ const CarModelThumbnail = ({ model, isSelected, onClick }) => {
     };
   }, [model.id, selectedRegion, activeTab, apiData]);
   
-  const stats = getModelStats;
+  const modelStats = getModelStats;
   
   // Получаем метку для текущего типа данных
   const getMetricLabel = () => {
@@ -2742,108 +2742,65 @@ const CarModelThumbnail = ({ model, isSelected, onClick }) => {
   };
   
   return (
-    <div 
-      className={`bg-gray-800 rounded-lg shadow-lg transition-all duration-300 overflow-hidden h-[320px] cursor-pointer transform hover:translate-y-[-5px] ${
-        isSelected 
-          ? 'ring-2 ring-blue-500 border-blue-600' 
-          : 'border border-gray-700 hover:border-gray-500 hover:shadow-xl'
-      }`}
-      onClick={onClick}
-    >
-      {/* Индикатор активного таба */}
-      <div className={`h-1.5 w-full bg-gradient-to-r ${getTabColor()}`}></div>
+  <div 
+  className={`bg-gray-800 rounded-lg shadow-lg transition-all duration-300 overflow-hidden flex flex-col cursor-pointer transform hover:translate-y-[-5px] ${
+    isSelected 
+      ? 'ring-2 ring-blue-500 border-blue-600' 
+      : 'border border-gray-700 hover:border-gray-500 hover:shadow-xl'
+  }`}
+  onClick={onClick}
+>
+  {/* Индикатор активного таба */}
+  <div className={`h-1.5 w-full bg-gradient-to-r ${getTabColor()}`}></div>
+  
+  <div className="p-4 flex flex-col flex-grow">
+    {/* Изображение с эффектом наведения */}
+    <div className="relative w-full aspect-[4/3] mb-4 bg-gradient-to-b from-gray-700/30 to-gray-800/40 rounded-lg overflow-hidden group">
+      {/* Контейнер с пропорциями */}
+      <div className="absolute inset-0 flex items-center justify-center p-3">
+        <img 
+          src={model.img}
+          alt={model.name}
+          className="max-w-full max-h-full object-contain z-10 transition-transform duration-300 group-hover:scale-110 drop-shadow-lg"
+          loading="lazy"
+          onError={(e) => {
+            e.target.src = 'https://telegra.ph/file/e54ca862bac1f2187ddde.png';
+          }}
+        />
+      </div>
       
-      <div className="p-4 flex flex-col h-full">
-        {/* Изображение с эффектом наведения и индикатором выбора */}
-<div className="relative w-full h-[160px] flex items-center justify-center bg-gradient-to-b from-gray-700/30 to-gray-800/40 rounded-lg mb-4 p-2 overflow-hidden group">
-  {/* Фоновый градиент для контраста */}
-  <div className="absolute inset-0 bg-gradient-to-br from-gray-700/10 to-transparent z-0"></div>
-  
-  <img 
-    src={model.img}
-    alt={model.name}
-    className="max-h-[140px] w-auto object-contain z-10 transition-all duration-300 group-hover:scale-110 drop-shadow-lg"
-  />
-  
-  {/* Блик на изображении для эффекта глянца */}
-  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-  
-  {/* Индикатор выбора с анимацией */}
-  {isSelected && (
-    <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs font-bold py-1 px-2 rounded-full shadow-lg z-30 animate-pulse">
-      Выбрано
+      {/* Блик на изображении для эффекта глянца */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
     </div>
-  )}
-</div>
-        
-        {/* Информация о модели с улучшенной типографикой */}
-        <div className="flex flex-col flex-grow">
-          <h3 className="font-semibold text-white text-lg mb-2 line-clamp-1 text-center">{model.name}</h3>
-          
-          {/* Статистика со стильными индикаторами */}
-          <div className="mt-auto space-y-3">
-            <div className="bg-gray-700/50 rounded-md p-3 transition-all duration-300 hover:bg-gray-700/80">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300 text-sm">{getMetricLabel()}:</span>
-                <span className="font-bold text-white">
-                  {stats.count > 0 ? stats.count.toLocaleString('ru-RU') : '0'}
-                </span>
-              </div>
-              
-            </div>
-            
-            {/* Красивое отображение суммы с градиентным текстом */}
-            <div className="bg-gradient-to-r from-gray-700/50 to-gray-700/30 rounded-md p-3 transition-all duration-300 hover:from-gray-700/70 hover:to-gray-700/50">
-              <div className="text-center">
-                <p className="text-gray-400 text-xs mb-1 uppercase tracking-wider">Общая сумма</p>
-                <p className={`font-bold text-transparent bg-clip-text bg-gradient-to-r ${getTabColor()} text-lg`}>
-                  {stats.amount > 0 
-                    ? new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'UZS', maximumFractionDigits: 0 }).format(stats.amount)
-                    : '0 UZS'
-                  }
-                </p>
-              </div>
-            </div>
-          </div>
+    
+    {/* Информация о модели */}
+    <h3 className="font-semibold text-white text-lg mb-3 line-clamp-1 text-center">{model.name}</h3>
+    
+    {/* Статистика */}
+    <div className="mt-auto space-y-3">
+      <div className="bg-gray-700/50 rounded-md p-3 transition-all duration-300 hover:bg-gray-700/80">
+        <div className="flex justify-between items-center">
+          <span className="text-gray-300 text-sm">{getMetricLabel()}:</span>
+          <span className="font-bold text-white">
+            {modelStats.count > 0 ? modelStats.count.toLocaleString('ru-RU') : '0'}
+          </span>
         </div>
       </div>
       
-      {/* Нижняя панель действий */}
-      <div 
-        className={`px-4 py-2 text-center border-t transition-all duration-300 
-          ${isSelected 
-            ? 'border-blue-500/30 bg-blue-500/20 hover:bg-blue-500/30' 
-            : 'border-gray-700 bg-gray-800/80 hover:bg-gray-700/50'
-          }`
-        }
-      >
-        <button 
-          className={`text-sm focus:outline-none transition-colors 
-            ${isSelected 
-              ? 'text-blue-300 hover:text-blue-200' 
-              : 'text-gray-400 hover:text-white'
-            }`
-          }
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick();
-          }}
-        >
-          {isSelected ? 'Выбрано' : 'Подробнее'}
-        </button>
+      <div className="bg-gradient-to-r from-gray-700/50 to-gray-700/30 rounded-md p-3 transition-all duration-300 hover:from-gray-700/70 hover:to-gray-700/50">
+        <div className="text-center">
+          <p className="text-gray-400 text-xs mb-1 uppercase tracking-wider">Общая сумма</p>
+          <p className={`font-bold text-transparent bg-clip-text bg-gradient-to-r ${getTabColor()} text-lg`}>
+            {modelStats.amount > 0 
+              ? new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'UZS', maximumFractionDigits: 0 }).format(modelStats.amount)
+              : '0 UZS'
+            }
+          </p>
+        </div>
       </div>
-      
-      {/* CSS для анимации пульсации прогресс-бара */}
-      <style jsx global>{`
-        @keyframes pulseX {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(200%); }
-        }
-        .animate-pulse-x {
-          animation: pulseX 2s ease-in-out infinite;
-        }
-      `}</style>
     </div>
+  </div>
+</div>
   );
 };
 
