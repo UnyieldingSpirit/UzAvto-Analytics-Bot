@@ -115,13 +115,12 @@ const fetchData = async () => {
       
       // Сохраняем полный ответ API
       setApiData(response.data);
-      
 const modelsList = response.data.map(model => {
-  // Суммируем стоимость всех модификаций для данной модели
+  // Суммируем ОБЩУЮ СТОИМОСТЬ всех модификаций для данной модели
   let totalPrice = 0;
   if (model.filter_by_modification && Array.isArray(model.filter_by_modification)) {
     totalPrice = model.filter_by_modification.reduce((sum, mod) => {
-      const modPrice = parseInt(mod.average_cost) || 0;
+      const modPrice = parseInt(mod.total_price) || 0;
       return sum + modPrice;
     }, 0);
   }
@@ -217,12 +216,12 @@ const applyDateFilter = async () => {
       setApiData(response.data);
       
       // Преобразуем массив моделей из API в формат для нашего компонента
-   const modelsList = response.data.map(model => {
-  // Суммируем стоимость всех модификаций для данной модели
+const modelsList = response.data.map(model => {
+  // Суммируем ОБЩУЮ СТОИМОСТЬ всех модификаций для данной модели
   let totalPrice = 0;
   if (model.filter_by_modification && Array.isArray(model.filter_by_modification)) {
     totalPrice = model.filter_by_modification.reduce((sum, mod) => {
-      const modPrice = parseInt(mod.average_cost) || 0;
+      const modPrice = parseInt(mod.total_price) || 0;
       return sum + modPrice;
     }, 0);
   }
@@ -2024,120 +2023,245 @@ const renderMoneyReturnChart = () => {
    .style('fill', '#d1d5db');
 };
 
- const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
-   if (!ref.current) return;
-   
-   const container = ref.current;
-   container.innerHTML = '';
-   
-   const margin = { top: 30, right: 30, bottom: 60, left: 60 };
-   const width = container.clientWidth - margin.left - margin.right;
-   const height = container.clientHeight - margin.top - margin.bottom;
-   
-   const svg = d3.select(container)
-     .append("svg")
-     .attr("width", width + margin.left + margin.right)
-     .attr("height", height + margin.top + margin.bottom)
-     .append("g")
-     .attr("transform", `translate(${margin.left},${margin.top})`);
-     
-   // Add gradient for bars
-   const defs = svg.append("defs");
-   const gradient = defs.append("linearGradient")
-     .attr("id", `barGradient-${valueKey}`)
-     .attr("x1", "0%").attr("y1", "0%")
-     .attr("x2", "0%").attr("y2", "100%");
-     
-   gradient.append("stop")
-     .attr("offset", "0%")
-     .attr("stop-color", color)
-     .attr("stop-opacity", 0.8);
-     
-   gradient.append("stop")
-     .attr("offset", "100%")
-     .attr("stop-color", color)
-     .attr("stop-opacity", 0.3);
-     
-   // Scales
-   const x = d3.scaleBand()
-     .domain(data.map(d => d[labelKey]))
-     .range([0, width])
-     .padding(0.3);
-     
-   const y = d3.scaleLinear()
-     .domain([0, d3.max(data, d => d[valueKey]) * 1.1])
-     .range([height, 0]);
-     
-   // Grid lines
-   svg.append("g")
-     .attr("class", "grid")
-     .call(d3.axisLeft(y)
-       .tickSize(-width)
-       .tickFormat("")
-     )
-     .style("stroke", "#333")
-     .style("stroke-opacity", "0.1");
-     
-   // Axes
-   svg.append("g")
-     .attr("transform", `translate(0,${height})`)
-     .call(d3.axisBottom(x))
-     .selectAll("text")
-     .style("text-anchor", "end")
-     .attr("dx", "-.8em")
-     .attr("dy", ".15em")
-     .attr("transform", "rotate(-45)")
-     .style("fill", "#999");
-     
-   svg.append("g")
-     .call(d3.axisLeft(y))
-     .selectAll("text")
-     .style("fill", "#999");
-   
-   // Title
-   svg.append("text")
-     .attr("x", width / 2)
-     .attr("y", -10)
-     .attr("text-anchor", "middle")
-     .style("font-size", "14px")
-     .style("fill", "#fff")
-     .text(title);
-     
-   // Bars with animation
-   svg.selectAll(".bar")
-     .data(data)
-     .enter().append("rect")
-     .attr("class", "bar")
-     .attr("x", d => x(d[labelKey]))
-     .attr("width", x.bandwidth())
-     .attr("fill", `url(#barGradient-${valueKey})`)
-     .attr("rx", 4)
-     .attr("ry", 4)
-     .attr("y", height)
-     .attr("height", 0)
-     .transition()
-     .duration(1000)
-     .delay((d, i) => i * 50)
-     .attr("y", d => y(d[valueKey]))
-     .attr("height", d => height - y(d[valueKey]));
-   
-   // Value labels
-   svg.selectAll(".label")
-     .data(data)
-     .enter().append("text")
-     .attr("class", "label")
-     .attr("x", d => x(d[labelKey]) + x.bandwidth() / 2)
-     .attr("y", d => y(d[valueKey]) - 5)
-     .attr("text-anchor", "middle")
-     .style("font-size", "12px")
-     .style("fill", "#fff")
-     .style("opacity", 0)
-     .text(d => d[valueKey])
-     .transition()
-     .duration(500)
-     .delay((d, i) => 1000 + i * 50)
-     .style("opacity", 1);
- };
+const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
+  if (!ref.current) return;
+  
+  const container = ref.current;
+  container.innerHTML = '';
+  
+  // Увеличиваем нижний отступ для меток
+  const margin = { top: 30, right: 30, bottom: 100, left: 60 };
+  const width = container.clientWidth - margin.left - margin.right;
+  const height = container.clientHeight - margin.top - margin.bottom;
+  
+  const svg = d3.select(container)
+    .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+    
+  // Добавляем градиент для полосок
+  const defs = svg.append("defs");
+  const gradient = defs.append("linearGradient")
+    .attr("id", `barGradient-${valueKey}`)
+    .attr("x1", "0%").attr("y1", "0%")
+    .attr("x2", "0%").attr("y2", "100%");
+    
+  gradient.append("stop")
+    .attr("offset", "0%")
+    .attr("stop-color", color)
+    .attr("stop-opacity", 0.8);
+    
+  gradient.append("stop")
+    .attr("offset", "100%")
+    .attr("stop-color", color)
+    .attr("stop-opacity", 0.3);
+    
+  // Шкалы
+  const x = d3.scaleBand()
+    .domain(data.map(d => d[labelKey]))
+    .range([0, width])
+    .padding(0.3);
+    
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(data, d => d[valueKey]) * 1.1])
+    .range([height, 0]);
+    
+  // Сетка
+  svg.append("g")
+    .attr("class", "grid")
+    .call(d3.axisLeft(y)
+      .tickSize(-width)
+      .tickFormat("")
+    )
+    .style("stroke", "#333")
+    .style("stroke-opacity", "0.1");
+    
+  // Оси
+  svg.append("g")
+    .attr("transform", `translate(0,${height})`)
+    .call(d3.axisBottom(x))
+    .selectAll("text")
+    .style("text-anchor", "end")
+    .attr("dx", "-.8em")
+    .attr("dy", ".15em")
+    .attr("transform", "rotate(-45)")  // Увеличиваем угол поворота для лучшей читаемости
+    .style("fill", "#999")
+    .style("font-size", "10px")  // Уменьшаем размер шрифта
+    .each(function(d, i) {
+      // Ограничиваем длину метки, если она слишком длинная
+      const text = d3.select(this);
+      const textContent = text.text();
+      if (textContent.length > 20) {
+        text.text(textContent.substring(0, 20) + '...');
+        
+        // Добавляем всплывающую подсказку при наведении
+        const tooltip = svg.append("title")
+          .text(textContent);
+        text.append(() => tooltip.node());
+      }
+    });
+    
+  svg.append("g")
+    .call(d3.axisLeft(y))
+    .selectAll("text")
+    .style("fill", "#999");
+  
+  // Заголовок
+  svg.append("text")
+    .attr("x", width / 2)
+    .attr("y", -10)
+    .attr("text-anchor", "middle")
+    .style("font-size", "14px")
+    .style("fill", "#fff")
+    .text(title);
+    
+  // Полоски с анимацией
+  svg.selectAll(".bar")
+    .data(data)
+    .enter().append("rect")
+    .attr("class", "bar")
+    .attr("x", d => x(d[labelKey]))
+    .attr("width", x.bandwidth())
+    .attr("fill", `url(#barGradient-${valueKey})`)
+    .attr("rx", 4)
+    .attr("ry", 4)
+    .attr("y", height)
+    .attr("height", 0)
+    .transition()
+    .duration(1000)
+    .delay((d, i) => i * 50)
+    .attr("y", d => y(d[valueKey]))
+    .attr("height", d => height - y(d[valueKey]));
+  
+  // Метки значений
+  svg.selectAll(".label")
+    .data(data)
+    .enter().append("text")
+    .attr("class", "label")
+    .attr("x", d => x(d[labelKey]) + x.bandwidth() / 2)
+    .attr("y", d => y(d[valueKey]) - 5)
+    .attr("text-anchor", "middle")
+    .style("font-size", "12px")
+    .style("fill", "#fff")
+    .style("opacity", 0)
+    .text(d => d[valueKey])
+    .transition()
+    .duration(500)
+    .delay((d, i) => 1000 + i * 50)
+    .style("opacity", 1);
+    
+  // Создаем и настраиваем всплывающую подсказку
+  const tooltip = d3.select("body").append("div")
+    .attr("class", `tooltip-${valueKey}`)
+    .style("opacity", 0)
+    .style("position", "absolute")
+    .style("background-color", "rgba(40, 40, 40, 0.9)")
+    .style("color", "#fff")
+    .style("padding", "10px")
+    .style("border-radius", "5px")
+    .style("font-size", "14px")
+    .style("pointer-events", "none")
+    .style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)")
+    .style("z-index", "10")
+    .style("max-width", "250px");
+    
+  // Функция для расчета оптимальной позиции всплывающей подсказки
+  const calculateTooltipPosition = (event, tooltip) => {
+    // Размеры окна просмотра
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Получаем реальные размеры подсказки
+    const tooltipNode = tooltip.node();
+    const tooltipRect = tooltipNode.getBoundingClientRect();
+    const tooltipWidth = tooltipRect.width;
+    const tooltipHeight = tooltipRect.height;
+    
+    // Рассчитываем позицию по умолчанию (справа от курсора)
+    let left = event.pageX + 15;
+    let top = event.pageY - 28;
+    
+    // Проверяем, не выходит ли подсказка за правый край экрана
+    if (left + tooltipWidth > viewportWidth) {
+      // Если выходит, перемещаем влево от курсора
+      left = Math.max(10, event.pageX - tooltipWidth - 10);
+    }
+    
+    // Проверяем, не выходит ли подсказка за нижний край экрана
+    if (top + tooltipHeight > viewportHeight) {
+      // Если выходит, перемещаем выше курсора
+      top = Math.max(10, event.pageY - tooltipHeight - 10);
+    }
+    
+    return { left, top };
+  };
+    
+  svg.selectAll(".bar-hover-area")
+    .data(data)
+    .enter().append("rect")
+    .attr("class", "bar-hover-area")
+    .attr("x", d => x(d[labelKey]))
+    .attr("width", x.bandwidth())
+    .attr("y", 0)
+    .attr("height", height)
+    .attr("fill", "transparent")
+    .on("mouseover", function(event, d) {
+      d3.select(this.parentNode.querySelector(`.bar:nth-child(${Array.from(this.parentNode.querySelectorAll('.bar-hover-area')).indexOf(this) + 1})`))
+        .transition()
+        .duration(200)
+        .attr("opacity", 0.8);
+        
+      tooltip.transition()
+        .duration(200)
+        .style("opacity", 1);
+        
+      tooltip.html(`
+        <strong>${d[labelKey]}</strong><br>
+        ${valueKey === 'contracts' ? 'Контрактов: ' : 
+          valueKey === 'sales' ? 'Продаж: ' : 
+          valueKey === 'stock' ? 'Остаток: ' :
+          valueKey === 'retail' ? 'Розница: ' :
+          valueKey === 'wholesale' ? 'Опт: ' :
+          valueKey === 'promotions' ? 'Акции: ' : ''}
+        <strong>${d[valueKey]}</strong><br>
+        Сумма: <strong>${formatCurrency(d.amount)}</strong>
+      `);
+      
+      // Сначала размещаем подсказку для измерения её размеров
+      tooltip
+        .style("left", "0")
+        .style("top", "0")
+        .style("opacity", 0);
+      
+      // Затем рассчитываем и устанавливаем оптимальную позицию
+      setTimeout(() => {
+        const position = calculateTooltipPosition(event, tooltip);
+        tooltip
+          .style("left", `${position.left}px`)
+          .style("top", `${position.top}px`)
+          .style("opacity", 1);
+      }, 0);
+    })
+    .on("mousemove", function(event, d) {
+      // Обновляем позицию при движении мыши
+      const position = calculateTooltipPosition(event, tooltip);
+      tooltip
+        .style("left", `${position.left}px`)
+        .style("top", `${position.top}px`);
+    })
+    .on("mouseout", function() {
+      d3.select(this.parentNode.querySelector(`.bar:nth-child(${Array.from(this.parentNode.querySelectorAll('.bar-hover-area')).indexOf(this) + 1})`))
+        .transition()
+        .duration(200)
+        .attr("opacity", 1);
+        
+      tooltip.transition()
+        .duration(500)
+        .style("opacity", 0);
+    });
+};
  
  // Timeline chart renderer
  const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
@@ -2342,6 +2466,162 @@ const formatCurrency = (value) => {
 };
 
 const getStats = () => {
+  // Если выбрана конкретная модель
+  if (selectedModel !== 'all' && apiData) {
+    // Находим данные выбранной модели
+    const selectedModelData = Array.isArray(apiData) 
+      ? apiData.find(model => model.model_id === selectedModel)
+      : apiData;
+      
+    if (selectedModelData) {
+      // Инициализируем счетчики
+      let totalContracts = 0;
+      let totalAmount = 0;
+      
+      // Суммируем контракты и суммы по регионам для выбранной модели
+      if (selectedModelData.filter_by_region && Array.isArray(selectedModelData.filter_by_region)) {
+        // Если выбран конкретный регион, учитываем только его
+        if (selectedRegion !== 'all') {
+          const regionData = selectedModelData.filter_by_region.find(r => r.region_id === selectedRegion);
+          if (regionData) {
+            totalContracts += parseInt(regionData.total_contracts || 0);
+            totalAmount += parseInt(regionData.total_price || 0);
+          }
+        } else {
+          // Иначе суммируем по всем регионам
+          selectedModelData.filter_by_region.forEach(region => {
+            totalContracts += parseInt(region.total_contracts || 0);
+            totalAmount += parseInt(region.total_price || 0);
+          });
+        }
+      }
+      
+      // Вычисляем среднюю стоимость
+      const average = totalContracts > 0 ? Math.round(totalAmount / totalContracts) : 0;
+      
+      // Возвращаем статистику в зависимости от активной вкладки
+      if (activeTab === 'contracts') {
+        return {
+          count: totalContracts,
+          amount: totalAmount,
+          average: average
+        };
+      } else if (activeTab === 'sales') {
+        // Для продаж возвращаем те же данные, что и для контрактов
+        return {
+          count: totalContracts,
+          amount: totalAmount,
+          average: average
+        };
+      } else if (activeTab === 'stock') {
+        // Для остатка используем примерно 20% от общего количества
+        const stockCount = Math.round(totalContracts * 0.2);
+        const stockAmount = Math.round(totalAmount * 0.2);
+        return {
+          count: stockCount,
+          amount: stockAmount,
+          average: stockCount > 0 ? Math.round(stockAmount / stockCount) : 0
+        };
+      } else if (activeTab === 'retail') {
+        // Для розницы используем примерно 70% от общего количества
+        const retailCount = Math.round(totalContracts * 0.7);
+        const retailAmount = Math.round(totalAmount * 0.7);
+        return {
+          count: retailCount,
+          amount: retailAmount,
+          average: retailCount > 0 ? Math.round(retailAmount / retailCount) : 0
+        };
+      } else if (activeTab === 'wholesale') {
+        // Для оптовых продаж используем примерно 30% от общего количества
+        const wholesaleCount = Math.round(totalContracts * 0.3);
+        const wholesaleAmount = Math.round(totalAmount * 0.3);
+        return {
+          count: wholesaleCount,
+          amount: wholesaleAmount,
+          average: wholesaleCount > 0 ? Math.round(wholesaleAmount / wholesaleCount) : 0
+        };
+      } else if (activeTab === 'promotions') {
+        // Для акционных продаж используем примерно 10% от общего количества
+        const promotionsCount = Math.round(totalContracts * 0.1);
+        const promotionsAmount = Math.round(totalAmount * 0.1);
+        return {
+          count: promotionsCount,
+          amount: promotionsAmount,
+          average: promotionsCount > 0 ? Math.round(promotionsAmount / promotionsCount) : 0
+        };
+      }
+    }
+  }
+  
+  // Если выбран конкретный регион, но не выбрана конкретная модель
+  if (selectedRegion !== 'all' && apiData && Array.isArray(apiData)) {
+    // Инициализируем счетчики
+    let totalContracts = 0;
+    let totalAmount = 0;
+    
+    // Суммируем контракты и суммы по всем моделям для выбранного региона
+    apiData.forEach(model => {
+      if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
+        const regionData = model.filter_by_region.find(r => r.region_id === selectedRegion);
+        if (regionData) {
+          totalContracts += parseInt(regionData.total_contracts || 0);
+          totalAmount += parseInt(regionData.total_price || 0);
+        }
+      }
+    });
+    
+    // Вычисляем среднюю стоимость
+    const average = totalContracts > 0 ? Math.round(totalAmount / totalContracts) : 0;
+    
+    // Возвращаем статистику для активной вкладки
+    if (activeTab === 'contracts') {
+      return {
+        count: totalContracts,
+        amount: totalAmount,
+        average: average
+      };
+    } else if (activeTab === 'sales') {
+      return {
+        count: totalContracts,
+        amount: totalAmount,
+        average: average
+      };
+    } else if (activeTab === 'stock') {
+      const stockCount = Math.round(totalContracts * 0.2);
+      const stockAmount = Math.round(totalAmount * 0.2);
+      return {
+        count: stockCount,
+        amount: stockAmount,
+        average: stockCount > 0 ? Math.round(stockAmount / stockCount) : 0
+      };
+    } else if (activeTab === 'retail') {
+      const retailCount = Math.round(totalContracts * 0.7);
+      const retailAmount = Math.round(totalAmount * 0.7);
+      return {
+        count: retailCount,
+        amount: retailAmount,
+        average: retailCount > 0 ? Math.round(retailAmount / retailCount) : 0
+      };
+    } else if (activeTab === 'wholesale') {
+      const wholesaleCount = Math.round(totalContracts * 0.3);
+      const wholesaleAmount = Math.round(totalAmount * 0.3);
+      return {
+        count: wholesaleCount,
+        amount: wholesaleAmount,
+        average: wholesaleCount > 0 ? Math.round(wholesaleAmount / wholesaleCount) : 0
+      };
+    } else if (activeTab === 'promotions') {
+      const promotionsCount = Math.round(totalContracts * 0.1);
+      const promotionsAmount = Math.round(totalAmount * 0.1);
+      return {
+        count: promotionsCount,
+        amount: promotionsAmount,
+        average: promotionsCount > 0 ? Math.round(promotionsAmount / promotionsCount) : 0
+      };
+    }
+  }
+  
+  // Если нет специальных фильтров (ни модель, ни регион), или для остальных случаев
   if (apiData && Array.isArray(apiData)) {
     // Инициализируем суммы
     let totalContracts = 0;
@@ -2499,23 +2779,22 @@ const getFilterDescription = () => {
 const CarModelThumbnail = ({ model, isSelected, onClick }) => {
   return (
     <div 
-      className={`bg-gray-800 p-3 rounded-lg shadow-lg flex items-center cursor-pointer border transition-all duration-300 ${
+      className={`bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col cursor-pointer border transition-all duration-300 ${
         isSelected ? 'border-blue-500 transform scale-105' : 'border-gray-700 hover:border-gray-500'
       }`}
       onClick={onClick}
     >
-      <img 
-        src={model.img}
-        alt={model.name}
-        className="w-14 h-14 object-contain mr-3"
-      />
-      <div>
-        <h3 className="font-medium text-white">{model.name}</h3>
-        {/* <p className="text-sm text-gray-400 capitalize">
-          {model.code ? `Код: ${model.code}` : model.category || 'Автомобиль'}
-        </p> */}
+      <div className="w-full h-40 flex items-center justify-center bg-gray-700/50 rounded-lg mb-3 p-2">
+        <img 
+          src={model.img}
+          alt={model.name}
+          className="max-h-36 max-w-full object-contain"
+        />
+      </div>
+      <div className="text-center">
+        <h3 className="font-medium text-white text-lg">{model.name}</h3>
         {model.price > 0 && (
-          <p className="text-xs text-blue-400 mt-1">
+          <p className="text-blue-400 mt-2 font-bold">
             {formatCurrency(model.price)}
           </p>
         )}
@@ -2596,8 +2875,7 @@ const stats = getStats();
   </button>
 </div>
     </div>
-    
-    {/* Active Filters */}
+
     {(selectedRegion !== 'all' || selectedModel !== 'all') && (
       <div className="bg-blue-900/20 border-l-4 border-blue-500 p-3 rounded-r-lg mb-6 flex justify-between items-center">
         <div className="flex items-center">
@@ -2771,47 +3049,35 @@ const stats = getStats();
   </div>
 )}
 {selectedModel !== 'all' && apiData && (
-  <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
-    <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+  <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-2 rounded-lg shadow-lg mb-6 border border-gray-700">
+    <div className="flex flex-row items-center gap-6">
       <img 
-        src={apiData.photo_sha ? 
-         `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400` : 
-         'https://telegra.ph/file/e54ca862bac1f2187ddde.png'} 
-        alt={apiData.model_name}
-        className="w-32 h-32 object-contain"
+        src={Array.isArray(apiData) 
+          ? (apiData.find(m => m.model_id === selectedModel)?.photo_sha 
+             ? `https://uzavtosalon.uz/b/core/m$load_image?sha=${apiData.find(m => m.model_id === selectedModel).photo_sha}&width=400&height=400` 
+             : 'https://telegra.ph/file/e54ca862bac1f2187ddde.png')
+          : (apiData.photo_sha 
+             ? `https://uzavtosalon.uz/b/core/m$load_image?sha=${apiData.photo_sha}&width=400&height=400` 
+             : 'https://telegra.ph/file/e54ca862bac1f2187ddde.png')}
+        alt="Автомобиль"
+        className="w-52 h-40 object-contain"
       />
-      <div>
-        <h3 className="text-xl font-bold text-white mb-2">
-          {apiData.model_name}
+      
+      <div className="flex flex-col justify-between h-full py-2">
+        <h3 className="text-2xl font-bold text-white mb-2">
+          {Array.isArray(apiData) 
+            ? apiData.find(m => m.model_id === selectedModel)?.model_name 
+            : apiData.model_name || "Выбранная модель"}
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <p className="text-gray-400 text-sm">Код модели:</p>
-            <p className="text-white font-medium">
-              {apiData.model_code || 'Н/Д'}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-400 text-sm">Всего контрактов:</p>
-            <p className="text-white font-medium">
-              {apiData.filter_by_region?.reduce((sum, r) => sum + parseInt(r.total_contracts || 0), 0) || 0}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-400 text-sm">Средняя стоимость:</p>
-            <p className="text-white font-medium">
-              {formatCurrency(apiData.filter_by_modification?.[0]?.average_cost || 0)}
-            </p>
-          </div>
-        </div>
+        
         <button 
-          className="mt-4 text-blue-400 text-sm flex items-center"
+          className="mt-auto text-blue-400 hover:text-white transition-all duration-200 flex items-center text-sm px-4 py-2 bg-blue-600/20 hover:bg-blue-600/40 rounded-md border border-blue-500/30 shadow-sm w-fit"
           onClick={() => setSelectedModel('all')}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
           </svg>
-          Вернуться ко всем моделям
+          Вернуться к модельному ряду
         </button>
       </div>
     </div>
