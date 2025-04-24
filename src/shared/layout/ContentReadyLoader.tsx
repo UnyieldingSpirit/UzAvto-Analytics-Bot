@@ -3,73 +3,42 @@ import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
+interface ContentReadyLoaderProps {
+  isLoading?: boolean; // Внешнее состояние загрузки (опционально)
+  setIsLoading?: (loading: boolean) => void; // Функция для обновления состояния (опционально)
+}
+
 /**
  * Компонент улучшенного базового лоадера без лишних деталей
  */
-export default function ContentReadyLoader() {
+export default function ContentReadyLoader({ 
+  isLoading: externalLoading, 
+  setIsLoading: setExternalLoading 
+}: ContentReadyLoaderProps) {
   const pathname = usePathname();
-  const [isLoading, setIsLoading] = useState(true);
+  // Используем внутреннее состояние, если внешнее не предоставлено
+  const [internalLoading, setInternalLoading] = useState(true);
+  
+  // Определяем, какое состояние и функцию обновления использовать
+  const isLoading = externalLoading !== undefined ? externalLoading : internalLoading;
+  const setIsLoading = setExternalLoading || setInternalLoading;
   
   useEffect(() => {
-    // При смене маршрута, показываем лоадер
-    setIsLoading(true);
-    
-    // Определяем, какую задержку применить для конкретного маршрута
-    const getRouteDelay = (path: string) => {
-      // Для страниц с большим количеством компонентов или тяжелой графикой
-      if (path.includes('/journal')) {
-        return 1000; // 1 секунда дополнительной задержки для страницы журнала
-      }
-      // Для страниц с графиками и данными
-      if (path.includes('/workout') || path.includes('/analytics')) {
-        return 800; // 800мс для страниц с графиками
-      }
-      // Для обычных страниц
-      return 600; // 600мс для стандартных страниц
-    };
-    
-    // Используем requestAnimationFrame для проверки, когда контент будет готов
-    let checkCount = 0;
-    
-    const checkContentReady = () => {
-      checkCount++; // Инкрементируем счетчик проверок
+    // Если используется внутреннее состояние, настраиваем базовый автоматический таймер
+    if (setExternalLoading === undefined) {
+      setInternalLoading(true);
       
-      // Ищем основной контент-контейнер
-      const contentContainer = document.querySelector('.content-scroll-container');
+      // Базовая задержка в 2 секунды, если управление не передано извне
+      const baseTimer = setTimeout(() => {
+        setInternalLoading(false);
+      }, 2000);
       
-      // Проверяем, есть ли в контейнере фактический контент
-      if (contentContainer && contentContainer.children.length > 0) {
-        // Получаем соответствующую задержку для текущего маршрута
-        const routeSpecificDelay = getRouteDelay(pathname);
-        
-        // Добавляем значительную задержку для гарантии завершения рендеринга всех блоков
-        setTimeout(() => {
-          setIsLoading(false);
-        }, routeSpecificDelay);
-      } else if (checkCount < 20) { // Ограничиваем количество проверок
-        // Если контент еще не готов, проверяем снова через requestAnimationFrame
-        requestAnimationFrame(checkContentReady);
-      } else {
-        // Если после 20 проверок контент все еще не готов, 
-        // скрываем лоадер принудительно через 2 секунды
-        setTimeout(() => {
-          setIsLoading(false);
-        }, 2000);
-      }
-    };
-    
-    // Запускаем первую проверку в следующем кадре анимации
-    requestAnimationFrame(checkContentReady);
-    
-    // Принудительно скрываем лоадер через 5 секунд (защита от зависания)
-    const safetyTimer = setTimeout(() => {
-      setIsLoading(false);
-    }, 5000);
-    
-    return () => {
-      clearTimeout(safetyTimer);
-    };
-  }, [pathname]);
+      return () => {
+        clearTimeout(baseTimer);
+      };
+    }
+    // Если используется внешнее состояние, не делаем ничего в этом эффекте
+  }, [pathname, setExternalLoading]);
 
   return (
     <AnimatePresence>
