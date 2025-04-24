@@ -255,6 +255,14 @@ const fetchData = async (apiUrl) => {
     if (response.data && Array.isArray(response.data)) {
       console.log(`Получены данные с ${apiUrl}:`, response.data);
       
+      // Проверяем наличие данных по месяцам
+      const hasMonthlyData = response.data.some(model => model.filter_by_month && model.filter_by_month.length > 0);
+      if (hasMonthlyData) {
+        console.log("Обнаружены данные по месяцам в ответе API");
+      } else {
+        console.log("Данные по месяцам отсутствуют в ответе API");
+      }
+      
       // Преобразуем массив моделей из API
       const modelsList = response.data.map(model => {
         // Суммируем ОБЩУЮ СТОИМОСТЬ всех модификаций для данной модели
@@ -476,9 +484,23 @@ const getFilteredData = () => {
         modelData.sort((a, b) => b[valueKey] - a[valueKey]);
       }
       
-      // Генерируем данные по месяцам (временной ряд)
       const valueKey = getValueKeyForActiveTab();
-                        
+
+      if (selectedModelData.filter_by_month) {
+        regionData = selectedModelData.filter_by_month
+          .map(region => {
+            const valueKey = getValueKeyForActiveTab();
+           
+            return {
+              id: region.region_id,
+              name: region.region_name || "Регион " + region.region_id,
+              [valueKey]: parseInt(region.total_contracts || 0),
+              amount: parseInt(region.total_price || 0),
+              // Отмечаем, выбран ли данный регион
+              isSelected: region.region_id === selectedRegion
+            };
+          });
+      }     
       // Базовые данные по месяцам
       const baseMonthlyData = [
         { month: "Янв", value: 124, amount: 8520000 },
@@ -495,27 +517,26 @@ const getFilteredData = () => {
         { month: "Дек", value: 130, amount: 9100000 }
       ];
       
-      // Модифицируем для выбранной модели и нужного ключа
       let monthlyData = [];
       
       if (selectedRegion !== 'all') {
-        // Генерируем/получаем временные данные для конкретного региона
-        // С меньшими значениями, так как это только один регион
-        monthlyData = baseMonthlyData.map(item => {
+        monthlyData = selectedModelData.filter_by_month.map(item => {
           const adjustedItem = {
             month: item.month,
             [valueKey]: Math.round(item.value * 0.3),
-            amount: Math.round(item.amount * 0.3)
+            amount: item.month,
+            total_price: item.total_price
           };
           return adjustedItem;
         });
       } else {
         // Генерируем/получаем временные данные для всех регионов
-        monthlyData = baseMonthlyData.map(item => {
+       monthlyData = selectedModelData.filter_by_month.map(item => {
           const adjustedItem = {
             month: item.month,
-            [valueKey]: Math.round(item.value * 0.4),
-            amount: Math.round(item.amount * 0.4)
+            [valueKey]: Math.round(item.value * 0.3),
+            amount: item.month,
+            total_price: item.total_price
           };
           return adjustedItem;
         });
@@ -2355,7 +2376,6 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
      .append("g")
      .attr("transform", `translate(${margin.left},${margin.top})`);
      
-   // Add gradient for area
    const defs = svg.append("defs");
    const areaGradient = defs.append("linearGradient")
      .attr("id", `areaGradient-${valueKey}`)
@@ -2530,7 +2550,6 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     });
 };
 
-// Format currency for display
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('ru-RU', {
     style: 'currency',
