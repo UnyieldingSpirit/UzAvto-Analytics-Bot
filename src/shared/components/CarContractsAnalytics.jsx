@@ -14,8 +14,8 @@ const CarContractsAnalytics = () => {
   const [endDate, setEndDate] = useState('');
   const [apiData, setApiData] = useState(null);
   const [carModels, setCarModels] = useState([]);
-const [loading, setLoading] = useState(true);
-const [loadingComponent, setLoadingComponent] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [loadingComponent, setLoadingComponent] = useState(true);
   const [regionsList, setRegionsList] = useState([]);
   const [viewMode, setViewMode] = useState('cards');
   // Refs для графиков
@@ -89,68 +89,19 @@ const [loadingComponent, setLoadingComponent] = useState(true);
       
       // Перерисовываем графики с новыми данными
       renderCharts();
-      // setLoadingComponent(false);
+      setLoadingComponent(false);
     }
   }, [apiData]);
 
   // Перерисовываем графики при изменении фильтров и загружаем данные при смене таба
-// Эффект для отслеживания изменений активного таба
-useEffect(() => {
-  // Показываем лоадер при изменении таба
-  setLoadingComponent(true);
-  console.log("Активирован лоадер при смене таба:", activeTab);
-  
-  // Минимальное время показа лоадера при смене таба - 5 секунд
-  const minLoaderTime = 5000;
-  
-  // Запоминаем время активации лоадера
-  const startTime = Date.now();
-  
-  // Рендерим графики
-  renderCharts();
-  
-  // Если переключились на другой таб и есть даты, загружаем соответствующие данные
-  if (startDate && endDate) {
-    fetchData(getApiUrlForTab(activeTab));
-  } else {
-    // Если даты не установлены, вводим искусственную задержку
+  useEffect(() => {
+    renderCharts();
     
-    // Первая фаза - даем время на инициализацию
-    setTimeout(() => {
-      renderCharts();
-      renderMoneyReturnChart();
-      
-      // Вторая фаза - даем время на вычисления
-      setTimeout(() => {
-        renderCharts(); // Перерисовываем еще раз
-        
-        // Третья фаза - проверяем минимальное время
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, minLoaderTime - elapsedTime);
-        
-        // Дополнительная задержка для соблюдения минимального времени
-        setTimeout(() => {
-          console.log("Деактивирован лоадер для таба:", activeTab);
-          setLoadingComponent(false);
-        }, remainingTime);
-      }, 2000);
-    }, 1500);
-  }
-  
-  // Защита от преждевременного скрытия лоадера
-  // Гарантируем минимальное время отображения
-  const safetyTimer = setTimeout(() => {
-    const elapsedTime = Date.now() - startTime;
-    if (elapsedTime < minLoaderTime) {
-      const remainingTime = minLoaderTime - elapsedTime;
-      setTimeout(() => {
-        setLoadingComponent(false);
-      }, remainingTime);
+    // Если переключились на другой таб и есть даты, загружаем соответствующие данные
+    if (startDate && endDate) {
+      fetchData(getApiUrlForTab(activeTab));
     }
-  }, 1000);
-  
-  return () => clearTimeout(safetyTimer);
-}, [activeTab]); // Отслеживаем только изменения вкладки
+  }, [activeTab, selectedRegion, selectedModel]);
   
   // Функция для получения URL API в зависимости от таба
   const getApiUrlForTab = (tab) => {
@@ -207,27 +158,22 @@ useEffect(() => {
     renderMoneyReturnChart();
     
     // Скрываем индикатор загрузки
-    // setLoadingComponent(false);
+    setLoadingComponent(false);
   }
 }, [apiData]);
   
 
-// Полный метод fetchData
 const fetchData = async (apiUrl) => {
   try {
-    // Показываем индикатор загрузки при начале запроса
     setLoading(true);
-    setLoadingComponent(true);
-    
-    // Запоминаем время начала запроса
-    const startTime = Date.now();
+    setLoadingComponent(true); // Показываем индикатор загрузки
     
     if (!startDate || !endDate) {
       console.log('Даты не установлены, устанавливаем значения по умолчанию');
       const today = new Date();
       setStartDate(today.toISOString().substring(0, 10));
       setEndDate(today.toISOString().substring(0, 10));
-      return;
+      return; // Выходим, так как useEffect сработает снова с установленными датами
     }
     
     const formattedStartDate = formatDateForAPI(startDate);
@@ -271,58 +217,18 @@ const fetchData = async (apiUrl) => {
       // Обновляем список моделей
       setCarModels(modelsList);
       
-      // Минимальное время показа лоадера - 3 секунды
-      const minLoaderTime = 3000;
-      
-      // Добавляем первую задержку для обработки полученных данных
-      setTimeout(() => {
-        // Сохраняем полный ответ API
-        setApiData(response.data);
-        
-        // Вычисляем, сколько времени прошло с начала запроса
-        const elapsedTime = Date.now() - startTime;
-        
-        // Вычисляем дополнительную задержку для минимального времени
-        const additionalDelay = Math.max(0, minLoaderTime - elapsedTime);
-        
-        // Добавляем вторую задержку, чтобы обеспечить минимальное время лоадера
-        // и дать время для вычислений после установки apiData
-        setTimeout(() => {
-          // Принудительно запускаем рендеринг графиков
-          renderCharts();
-          renderMoneyReturnChart();
-          
-          // Отключаем индикатор загрузки запроса
-          setLoading(false);
-          
-          // Добавляем третью задержку в 2 секунды для окончательных вычислений
-          setTimeout(() => {
-            // Выполняем рендеринг еще раз перед скрытием лоадера
-            renderCharts();
-            renderMoneyReturnChart();
-            
-            // Наконец скрываем основной лоадер компонента
-            setLoadingComponent(false);
-          }, 2000); // 2 секунды дополнительно для вычислений
-        }, additionalDelay);
-      }, 500); // 500мс для обработки полученных данных
+      // Сохраняем полный ответ API - это вызовет срабатывание useEffect выше,
+      // который выполнит перерисовку графиков
+      setApiData(response.data);
     }
   } catch (error) {
     console.error(`Ошибка при отправке запроса на ${apiUrl}:`, error);
     console.log('Продолжаем с использованием тестовых данных');
-    
     // В случае ошибки продолжаем с mock-данными
     setCarModels(mockCarModels);
-    
-    // Обеспечиваем минимальное время показа лоадера в 3 секунды
-    setTimeout(() => {
-      setLoading(false);
-      
-      // Дополнительная задержка перед скрытием лоадера компонента
-      setTimeout(() => {
-        setLoadingComponent(false);
-      }, 2000); // 2 секунды для финальных вычислений
-    }, 3000);
+    setLoadingComponent(false);
+  } finally {
+    setLoading(false);
   }
 };
   
