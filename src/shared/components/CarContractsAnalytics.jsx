@@ -489,33 +489,16 @@ const getFilteredData = () => {
       if (selectedModelData.filter_by_month) {
         regionData = selectedModelData.filter_by_month
           .map(region => {
-            const valueKey = getValueKeyForActiveTab();
            
             return {
               id: region.region_id,
               name: region.region_name || "Регион " + region.region_id,
               [valueKey]: parseInt(region.total_contracts || 0),
               amount: parseInt(region.total_price || 0),
-              // Отмечаем, выбран ли данный регион
               isSelected: region.region_id === selectedRegion
             };
           });
       }     
-      // Базовые данные по месяцам
-      const baseMonthlyData = [
-        { month: "Янв", value: 124, amount: 8520000 },
-        { month: "Фев", value: 85, amount: 5950000 },
-        { month: "Мар", value: 102, amount: 7140000 },
-        { month: "Апр", value: 118, amount: 8260000 },
-        { month: "Май", value: 175, amount: 12250000 },
-        { month: "Июн", value: 140, amount: 9800000 },
-        { month: "Июл", value: 155, amount: 10850000 },
-        { month: "Авг", value: 132, amount: 9240000 },
-        { month: "Сен", value: 145, amount: 10150000 },
-        { month: "Окт", value: 120, amount: 8400000 },
-        { month: "Ноя", value: 165, amount: 11550000 },
-        { month: "Дек", value: 130, amount: 9100000 }
-      ];
       
       let monthlyData = [];
       
@@ -523,18 +506,15 @@ const getFilteredData = () => {
         monthlyData = selectedModelData.filter_by_month.map(item => {
           const adjustedItem = {
             month: item.month,
-            [valueKey]: Math.round(item.value * 0.3),
             amount: item.month,
             total_price: item.total_price
           };
           return adjustedItem;
         });
       } else {
-        // Генерируем/получаем временные данные для всех регионов
        monthlyData = selectedModelData.filter_by_month.map(item => {
           const adjustedItem = {
             month: item.month,
-            [valueKey]: Math.round(item.value * 0.3),
             amount: item.month,
             total_price: item.total_price
           };
