@@ -2643,67 +2643,72 @@ const StatisticsCards = () => {
   const [isCalculating, setIsCalculating] = useState(true);
   const workerRef = useRef();
  
- // Инициализация воркера
- useEffect(() => {
-   if (typeof window !== 'undefined') {
-     workerRef.current = new Worker(new URL('../../../worker.js', import.meta.url));
-     workerRef.current.onmessage = (e) => {
-       if (e.data.type === 'stats_result') {
-         setStats(e.data.data);
-         setIsCalculating(false);
-       }
-     };
-     return () => workerRef.current?.terminate();
-   }
- }, []);
+  // Инициализация воркера
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      workerRef.current = new Worker(new URL('../../../worker.js', import.meta.url));
+      workerRef.current.onmessage = (e) => {
+        if (e.data.type === 'stats_result') {
+          setStats(e.data.data);
+          setIsCalculating(false);
+        }
+      };
+      return () => workerRef.current?.terminate();
+    }
+  }, []);
  
- // Запрос расчетов
- useEffect(() => {
-   if (workerRef.current && apiData) {
-     setIsCalculating(true);
-     workerRef.current.postMessage({
-       type: 'calculate_stats',
-       data: { apiData, selectedRegion, selectedModel, activeTab }
-     });
-   }
- }, [apiData, selectedRegion, selectedModel, activeTab]);
+  // Запускаем расчеты когда загрузка завершена
+  useEffect(() => {
+    if (loading) {
+      // При начале загрузки показываем индикатор
+      setIsCalculating(true);
+    } else if (apiData && !loading) {
+      // Когда загрузка завершилась, запускаем вычисления
+      if (workerRef.current) {
+        workerRef.current.postMessage({
+          type: 'calculate_stats',
+          data: { apiData, selectedRegion, selectedModel, activeTab }
+        });
+      }
+    }
+  }, [loading, apiData, selectedRegion, selectedModel, activeTab]);
 
- const formatDate = (dateString) => {
-   if (!dateString) return '';
-   const date = new Date(dateString);
-   return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
- };
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
  
- const formatDateRange = (start, end) => {
-   return start && end ? `с ${formatDate(start)} по ${formatDate(end)}` : 'выбранный период';
- };
+  const formatDateRange = (start, end) => {
+    return start && end ? `с ${formatDate(start)} по ${formatDate(end)}` : 'выбранный период';
+  };
  
- const getFilterDescription = () => {
-   let description = '';
-   if (selectedRegion !== 'all') {
-     const regionName = regionsList.find(r => r.id === selectedRegion)?.name || 'выбранном регионе';
-     description += ` в ${regionName}`;
-   }
-   if (selectedModel !== 'all') {
-     const modelName = carModels.find(m => m.id === selectedModel)?.name || 'выбранной модели';
-     description += description ? ` для ${modelName}` : ` для ${modelName}`;
-   }
-   return description;
- };
+  const getFilterDescription = () => {
+    let description = '';
+    if (selectedRegion !== 'all') {
+      const regionName = regionsList.find(r => r.id === selectedRegion)?.name || 'выбранном регионе';
+      description += ` в ${regionName}`;
+    }
+    if (selectedModel !== 'all') {
+      const modelName = carModels.find(m => m.id === selectedModel)?.name || 'выбранной модели';
+      description += description ? ` для ${modelName}` : ` для ${modelName}`;
+    }
+    return description;
+  };
  
- const getMetricName = () => {
-   switch(activeTab) {
-     case 'contracts': return 'Общее количество контрактов';
-     case 'sales': return 'Общий объем продаж';
-     case 'stock': return 'Общий остаток';
-     case 'retail': return 'Всего розничных продаж';
-     case 'wholesale': return 'Всего оптовых продаж';
-     case 'promotions': return 'Всего акционных продаж';
-     default: return 'Общее количество';
-   }
- };
+  const getMetricName = () => {
+    switch(activeTab) {
+      case 'contracts': return 'Общее количество контрактов';
+      case 'sales': return 'Общий объем продаж';
+      case 'stock': return 'Общий остаток';
+      case 'retail': return 'Всего розничных продаж';
+      case 'wholesale': return 'Всего оптовых продаж';
+      case 'promotions': return 'Всего акционных продаж';
+      default: return 'Общее количество';
+    }
+  };
  
-   const LoadingDots = () => (
+  const LoadingDots = () => (
     <span className="inline-flex items-baseline">
       <span className="animate-bounce inline-block mx-0.5" style={{animationDelay: '0ms'}}>.</span>
       <span className="animate-bounce inline-block mx-0.5" style={{animationDelay: '150ms'}}>.</span>
@@ -2711,8 +2716,8 @@ const StatisticsCards = () => {
     </span>
   );
   
- return (
-   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
       <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
         <div className="flex justify-between items-start mb-4">
           <div>
@@ -2740,44 +2745,34 @@ const StatisticsCards = () => {
         </div>
       </div>
      
-     <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-       <div className="flex justify-between items-start mb-4">
-         <div>
-           <h3 className="text-lg font-medium text-white">
-             Общая сумма{getFilterDescription()}
-           </h3>
-           <p className="text-gray-400 text-sm mt-1">
-             За период {formatDateRange(startDate, endDate)}
-           </p>
-         </div>
-         
-         <div className="relative h-9">
-           <p className={`text-2xl font-bold absolute transition-all duration-300 
-             ${isCalculating ? 'opacity-0 transform translate-y-2' : 'opacity-100 transform translate-y-0'}`}>
-             {formatCurrency(stats.amount)}
-           </p>
-           
-           {isCalculating && (
-             <div className="absolute inset-0 flex items-center">
-               <div className="bg-green-500/20 rounded-md px-3 py-1">
-                 <span className="inline-flex items-center text-green-400 text-sm font-medium">
-                   <svg className="w-4 h-4 mr-2 animate-spin" viewBox="0 0 24 24">
-                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                   </svg>
-                   Вычисление...
-                 </span>
-               </div>
-             </div>
-           )}
-         </div>
-       </div>
-       <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
-         <div className="bg-green-500 h-full rounded-full" style={{ width: '65%' }}></div>
-       </div>
-     </div>
-   </div>
- );
+      <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="text-lg font-medium text-white">
+              Общая сумма{getFilterDescription()}
+            </h3>
+            <p className="text-gray-400 text-sm mt-1">
+              За период {formatDateRange(startDate, endDate)}
+            </p>
+          </div>
+          
+          <div className="h-9 flex items-center">
+            {isCalculating ? (
+              <p className="text-xl font-medium text-green-400">
+                Загрузка<LoadingDots />
+              </p>
+            ) : (
+              <p className="text-2xl font-bold">{formatCurrency(stats.amount)}</p>
+            )}
+          </div>
+        </div>
+        <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
+          <div className={`h-full rounded-full ${isCalculating ? 'bg-green-500/50 animate-pulse' : 'bg-green-500'}`} 
+               style={{ width: '65%' }}></div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 
