@@ -33,6 +33,70 @@ const CarContractsAnalytics = () => {
   const carColors = ['Белый', 'Черный', 'Серебряный', 'Красный', 'Синий', 'Зеленый'];
   const carModifications = ['Стандарт', 'Комфорт', 'Люкс', 'Премиум', 'Спорт'];
 
+// Вспомогательные функции для оптимизации
+const filterApiData = useCallback((apiData, selectedRegion, selectedModel) => {
+  if (!apiData || !Array.isArray(apiData)) return null;
+  
+  // Фильтрация нужных данных в зависимости от выбранных фильтров
+  if (selectedModel !== 'all') {
+    // Фильтруем только выбранную модель
+    const modelData = apiData.find(model => model.model_id === selectedModel);
+    return modelData ? [modelData] : [];
+  } else if (selectedRegion !== 'all') {
+    // Фильтруем по региону, но все модели
+    return apiData.map(model => ({
+      ...model,
+      filter_by_region: model.filter_by_region ? 
+        model.filter_by_region.filter(r => r.region_id === selectedRegion) : []
+    }));
+  }
+  
+  return apiData; // Возвращаем без изменений если нет фильтров
+}, []);
+
+// Вычисление статистики из отфильтрованных данных
+const calculateStats = useCallback((filteredData, activeTab) => {
+  if (!filteredData) return { count: 0, amount: 0, average: 0 };
+  
+  let totalContracts = 0;
+  let totalAmount = 0;
+  
+  // Проходим по отфильтрованным данным
+  if (Array.isArray(filteredData)) {
+    filteredData.forEach(model => {
+      if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
+        model.filter_by_region.forEach(region => {
+          totalContracts += parseInt(region.total_contracts || 0);
+          totalAmount += parseInt(region.total_price || 0);
+        });
+      }
+    });
+  }
+  
+  // Вычисляем среднюю стоимость
+  const average = totalContracts > 0 ? Math.round(totalAmount / totalContracts) : 0;
+  
+  // Коэффициенты модификации для разных табов
+  const tabMultipliers = {
+    contracts: { count: 1, amount: 1 },
+    sales: { count: 1, amount: 1 },
+    stock: { count: 0.2, amount: 0.2 },
+    retail: { count: 0.7, amount: 0.7 },
+    wholesale: { count: 0.3, amount: 0.3 },
+    promotions: { count: 0.1, amount: 0.1 }
+  };
+  
+  // Применяем модификатор в зависимости от активного таба
+  const multiplier = tabMultipliers[activeTab] || tabMultipliers.contracts;
+  
+  // Возвращаем модифицированные значения
+  return {
+    count: Math.round(totalContracts * multiplier.count),
+    amount: Math.round(totalAmount * multiplier.amount),
+    average: average
+  };
+}, []);
+
   useEffect(() => {
     const today = new Date();
     
@@ -166,14 +230,14 @@ useEffect(() => {
 const fetchData = async (apiUrl) => {
   try {
     setLoading(true);
-    setLoadingComponent(true); // Показываем индикатор загрузки
+    setLoadingComponent(true);
     
     if (!startDate || !endDate) {
       console.log('Даты не установлены, устанавливаем значения по умолчанию');
       const today = new Date();
       setStartDate(today.toISOString().substring(0, 10));
       setEndDate(today.toISOString().substring(0, 10));
-      return; // Выходим, так как useEffect сработает снова с установленными датами
+      return;
     }
     
     const formattedStartDate = formatDateForAPI(startDate);
@@ -2575,56 +2639,80 @@ const getFilterDescription = () => {
   
   
 const StatisticsCards = () => {
-  // Используем useMemo для кэширования результата getStats()
-  // и его пересчета при изменении любой из зависимостей
-  const stats = useMemo(() => getStats(), [
-    selectedRegion, 
-    selectedModel, 
-    activeTab, 
-    apiData, 
-    startDate, 
-    endDate
-  ]);
+  const [stats, setStats] = useState({ count: 0, amount: 0, average: 0 });
+  const [isCalculating, setIsCalculating] = useState(true);
+  const workerRef = useRef();
+ 
+ // Инициализация воркера
+ useEffect(() => {
+   if (typeof window !== 'undefined') {
+     workerRef.current = new Worker(new URL('../../../worker.js', import.meta.url));
+     workerRef.current.onmessage = (e) => {
+       if (e.data.type === 'stats_result') {
+         setStats(e.data.data);
+         setIsCalculating(false);
+       }
+     };
+     return () => workerRef.current?.terminate();
+   }
+ }, []);
+ 
+ // Запрос расчетов
+ useEffect(() => {
+   if (workerRef.current && apiData) {
+     setIsCalculating(true);
+     workerRef.current.postMessage({
+       type: 'calculate_stats',
+       data: { apiData, selectedRegion, selectedModel, activeTab }
+     });
+   }
+ }, [apiData, selectedRegion, selectedModel, activeTab]);
+
+ const formatDate = (dateString) => {
+   if (!dateString) return '';
+   const date = new Date(dateString);
+   return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+ };
+ 
+ const formatDateRange = (start, end) => {
+   return start && end ? `с ${formatDate(start)} по ${formatDate(end)}` : 'выбранный период';
+ };
+ 
+ const getFilterDescription = () => {
+   let description = '';
+   if (selectedRegion !== 'all') {
+     const regionName = regionsList.find(r => r.id === selectedRegion)?.name || 'выбранном регионе';
+     description += ` в ${regionName}`;
+   }
+   if (selectedModel !== 'all') {
+     const modelName = carModels.find(m => m.id === selectedModel)?.name || 'выбранной модели';
+     description += description ? ` для ${modelName}` : ` для ${modelName}`;
+   }
+   return description;
+ };
+ 
+ const getMetricName = () => {
+   switch(activeTab) {
+     case 'contracts': return 'Общее количество контрактов';
+     case 'sales': return 'Общий объем продаж';
+     case 'stock': return 'Общий остаток';
+     case 'retail': return 'Всего розничных продаж';
+     case 'wholesale': return 'Всего оптовых продаж';
+     case 'promotions': return 'Всего акционных продаж';
+     default: return 'Общее количество';
+   }
+ };
+ 
+   const LoadingDots = () => (
+    <span className="inline-flex items-baseline">
+      <span className="animate-bounce inline-block mx-0.5" style={{animationDelay: '0ms'}}>.</span>
+      <span className="animate-bounce inline-block mx-0.5" style={{animationDelay: '150ms'}}>.</span>
+      <span className="animate-bounce inline-block mx-0.5" style={{animationDelay: '300ms'}}>.</span>
+    </span>
+  );
   
-  // Формируем описание фильтра (регион и/или модель)
-  const getFilterDescription = () => {
-    let description = '';
-    
-    if (selectedRegion !== 'all') {
-      const regionName = regionsList.find(r => r.id === selectedRegion)?.name || 'выбранном регионе';
-      description += ` в ${regionName}`;
-    }
-    
-    if (selectedModel !== 'all') {
-      const modelName = carModels.find(m => m.id === selectedModel)?.name || 'выбранной модели';
-      description += description ? ` для ${modelName}` : ` для ${modelName}`;
-    }
-    
-    return description;
-  };
-  
-  // Определяем название метрики в зависимости от активного таба
-  const getMetricName = () => {
-    switch(activeTab) {
-      case 'contracts': return 'Общее количество контрактов';
-      case 'sales': return 'Общий объем продаж';
-      case 'stock': return 'Общий остаток';
-      case 'retail': return 'Всего розничных продаж';
-      case 'wholesale': return 'Всего оптовых продаж';
-      case 'promotions': return 'Всего акционных продаж';
-      default: return 'Общее количество';
-    }
-  };
-  
-  // Форматирование даты
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  };
-  
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+ return (
+   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
       <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
         <div className="flex justify-between items-start mb-4">
           <div>
@@ -2632,34 +2720,64 @@ const StatisticsCards = () => {
               {getMetricName()}{getFilterDescription()}
             </h3>
             <p className="text-gray-400 text-sm mt-1">
-              За период {startDate && endDate ? `с ${formatDate(startDate)} по ${formatDate(endDate)}` : 'выбранный период'}
+              За период {formatDateRange(startDate, endDate)}
             </p>
           </div>
-          <p className="text-2xl font-bold">{stats.count.toLocaleString('ru-RU')}</p>
-        </div>
-        <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
-          <div className="bg-blue-500 h-full rounded-full" style={{ width: '70%' }}></div>
-        </div>
-      </div>
-      
-      <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h3 className="text-lg font-medium text-white">
-              Общая сумма{getFilterDescription()}
-            </h3>
-            <p className="text-gray-400 text-sm mt-1">
-              За период {startDate && endDate ? `с ${formatDate(startDate)} по ${formatDate(endDate)}` : 'выбранный период'}
-            </p>
+          
+          <div className="h-9 flex items-center">
+            {isCalculating ? (
+              <p className="text-xl font-medium text-blue-400">
+                Загрузка<LoadingDots />
+              </p>
+            ) : (
+              <p className="text-2xl font-bold">{stats.count.toLocaleString('ru-RU')}</p>
+            )}
           </div>
-          <p className="text-2xl font-bold">{formatCurrency(stats.amount)}</p>
         </div>
         <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
-          <div className="bg-green-500 h-full rounded-full" style={{ width: '65%' }}></div>
+          <div className={`h-full rounded-full ${isCalculating ? 'bg-blue-500/50 animate-pulse' : 'bg-blue-500'}`} 
+               style={{ width: '70%' }}></div>
         </div>
       </div>
-    </div>
-  );
+     
+     <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
+       <div className="flex justify-between items-start mb-4">
+         <div>
+           <h3 className="text-lg font-medium text-white">
+             Общая сумма{getFilterDescription()}
+           </h3>
+           <p className="text-gray-400 text-sm mt-1">
+             За период {formatDateRange(startDate, endDate)}
+           </p>
+         </div>
+         
+         <div className="relative h-9">
+           <p className={`text-2xl font-bold absolute transition-all duration-300 
+             ${isCalculating ? 'opacity-0 transform translate-y-2' : 'opacity-100 transform translate-y-0'}`}>
+             {formatCurrency(stats.amount)}
+           </p>
+           
+           {isCalculating && (
+             <div className="absolute inset-0 flex items-center">
+               <div className="bg-green-500/20 rounded-md px-3 py-1">
+                 <span className="inline-flex items-center text-green-400 text-sm font-medium">
+                   <svg className="w-4 h-4 mr-2 animate-spin" viewBox="0 0 24 24">
+                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                   </svg>
+                   Вычисление...
+                 </span>
+               </div>
+             </div>
+           )}
+         </div>
+       </div>
+       <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
+         <div className="bg-green-500 h-full rounded-full" style={{ width: '65%' }}></div>
+       </div>
+     </div>
+   </div>
+ );
 };
 
 
