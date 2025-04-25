@@ -19,7 +19,6 @@ const CarContractsAnalytics = () => {
   const [regionsList, setRegionsList] = useState([]);
   const [viewMode, setViewMode] = useState('cards');
 const [selectedYear, setSelectedYear] = useState('2025');
-const [yearlyData, setYearlyData] = useState({});
   const regionContractsRef = useRef(null);
   const modelContractsRef = useRef(null);
   const timelineContractsRef = useRef(null);
@@ -30,7 +29,9 @@ const [yearlyData, setYearlyData] = useState({});
   const modelStockRef = useRef(null);
   const stockTrendRef = useRef(null);
   const moneyReturnChartRef = useRef(null);
-  const [yearlyDataLoading, setYearlyDataLoading] = useState(false);
+
+  const [yearlyData, setYearlyData] = useState({});
+const [yearlyDataLoading, setYearlyDataLoading] = useState(false);
   const carColors = ['Белый', 'Черный', 'Серебряный', 'Красный', 'Синий', 'Зеленый'];
   const carModifications = ['Стандарт', 'Комфорт', 'Люкс', 'Премиум', 'Спорт'];
 const getYearDateRange = (year) => {
@@ -321,11 +322,11 @@ const fetchYearlyData = async (year) => {
     if (response.data && Array.isArray(response.data)) {
       console.log(`Получены данные за ${year} год:`, response.data);
       
-      // Сохраняем данные в основном хранилище API данных
-      setApiData(response.data);
+      // Преобразуем данные в формат для графика
+      const monthlyData = prepareMonthlyDataFromResponse(response.data, year);
       
-      // Перерисовываем графики
-      renderCharts();
+      // Сохраняем данные для графика
+      setYearlyChartData(monthlyData);
     }
   } catch (error) {
     console.error(`Ошибка при получении данных за ${year} год:`, error);
@@ -333,98 +334,74 @@ const fetchYearlyData = async (year) => {
     setYearlyDataLoading(false);
   }
 };
-  
-  const getMonthlyDataForYear = (year) => {
-  // Получаем данные для выбранного года
-  const yearData = yearlyData[year];
-  
-  if (!yearData) {
-    return []; // Если данных нет, возвращаем пустой массив
+
+// Функция для подготовки месячных данных из ответа API
+const prepareMonthlyDataFromResponse = (apiData, year) => {
+  if (!apiData || !Array.isArray(apiData)) {
+    return [];
   }
   
-  // Ищем данные для выбранной модели
-  let modelData;
+  // Объект для агрегации данных по месяцам
+  const monthlyDataMap = {};
+  const valueKey = getValueKeyForActiveTab();
+  
+  // Обрабатываем данные в зависимости от выбранной модели
   if (selectedModel !== 'all') {
-    modelData = yearData.find(m => m.model_id === selectedModel);
-  } else if (yearData.length > 0) {
-    // Если модель не выбрана, объединяем данные по всем моделям
-    // Создаем временный объект для хранения данных по месяцам
-    const monthlyDataMap = {};
+    // Находим данные для выбранной модели
+    const modelData = apiData.find(model => model.model_id === selectedModel);
     
-    yearData.forEach(model => {
+    if (modelData && modelData.filter_by_month && Array.isArray(modelData.filter_by_month)) {
+      // Заполняем данные по месяцам
+      modelData.filter_by_month.forEach(monthData => {
+        if (!monthData.month || !monthData.month.startsWith(year)) return;
+        
+        const yearMonth = monthData.month.split('-');
+        const monthIndex = parseInt(yearMonth[1], 10) - 1;
+        const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+        const monthName = monthNames[monthIndex];
+        
+        // Сохраняем данные с правильным ключом значения
+        monthlyDataMap[monthName] = {
+          month: monthName,
+          [valueKey]: parseInt(monthData.count || 0),
+          amount: parseInt(monthData.total_price || 0),
+          sortIndex: monthIndex
+        };
+      });
+    }
+  } else {
+    // Если модель не выбрана, агрегируем данные по всем моделям
+    apiData.forEach(model => {
       if (model.filter_by_month && Array.isArray(model.filter_by_month)) {
         model.filter_by_month.forEach(monthData => {
-          if (!monthData.month) return;
+          if (!monthData.month || !monthData.month.startsWith(year)) return;
           
-          if (!monthlyDataMap[monthData.month]) {
-            monthlyDataMap[monthData.month] = {
-              month: monthData.month,
-              count: 0,
-              total_price: 0
+          const yearMonth = monthData.month.split('-');
+          const monthIndex = parseInt(yearMonth[1], 10) - 1;
+          const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+          const monthName = monthNames[monthIndex];
+          
+          if (!monthlyDataMap[monthName]) {
+            monthlyDataMap[monthName] = {
+              month: monthName,
+              [valueKey]: 0,
+              amount: 0,
+              sortIndex: monthIndex
             };
           }
           
-          // Суммируем данные
-          monthlyDataMap[monthData.month].count += parseInt(monthData.count || 0);
-          monthlyDataMap[monthData.month].total_price += parseInt(monthData.total_price || 0);
+          monthlyDataMap[monthName][valueKey] += parseInt(monthData.count || 0);
+          monthlyDataMap[monthName].amount += parseInt(monthData.total_price || 0);
         });
       }
     });
-    
-    // Преобразуем объект в массив
-    return Object.values(monthlyDataMap)
-      .filter(item => item.month.startsWith(year))
-      .map(item => {
-        // Преобразуем формат даты
-        const yearMonth = item.month.split('-');
-        const monthIndex = parseInt(yearMonth[1], 10) - 1;
-        
-        // Названия месяцев
-        const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-        const monthName = monthNames[monthIndex];
-        
-        // Определяем ключ в зависимости от активного таба
-        const valueKey = getValueKeyForActiveTab();
-        
-        return {
-          month: monthName,
-          [valueKey]: parseInt(item.count),
-          amount: parseInt(item.total_price),
-          fullDate: item.month
-        };
-      })
-      .sort((a, b) => new Date(a.fullDate) - new Date(b.fullDate))
-      .map(({ fullDate, ...rest }) => rest);
   }
   
-  // Если выбрана конкретная модель, обрабатываем её данные
-  if (modelData && modelData.filter_by_month && Array.isArray(modelData.filter_by_month)) {
-    return modelData.filter_by_month
-      .filter(item => item.month && item.month.startsWith(year))
-      .map(item => {
-        // Преобразуем формат даты
-        const yearMonth = item.month.split('-');
-        const monthIndex = parseInt(yearMonth[1], 10) - 1;
-        
-        // Названия месяцев
-        const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-        const monthName = monthNames[monthIndex];
-        
-        // Определяем ключ в зависимости от активного таба
-        const valueKey = getValueKeyForActiveTab();
-        
-        return {
-          month: monthName,
-          [valueKey]: parseInt(item.count || 0),
-          amount: parseInt(item.total_price || 0),
-          fullDate: item.month
-        };
-      })
-      .sort((a, b) => new Date(a.fullDate) - new Date(b.fullDate))
-      .map(({ fullDate, ...rest }) => rest);
-  }
+  // Преобразуем объект в массив и сортируем по месяцам
+  const result = Object.values(monthlyDataMap).sort((a, b) => a.sortIndex - b.sortIndex);
   
-  return [];
+  // Удаляем вспомогательное поле sortIndex
+  return result.map(({ sortIndex, ...rest }) => rest);
 };
   
   // Функция для применения фильтра дат (кнопка "Применить")
@@ -2542,7 +2519,7 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
         .remove();
     });
 };
-
+const [yearlyChartData, setYearlyChartData] = useState([]);
 const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
   if (!ref.current) return;
   
@@ -2582,7 +2559,7 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
     });
   });
   
-  // Если идет загрузка, показываем индикатор
+  // Если идет загрузка годовых данных, показываем индикатор
   if (yearlyDataLoading) {
     const loadingIndicator = document.createElement('div');
     loadingIndicator.className = 'flex items-center justify-center h-64';
@@ -2591,89 +2568,26 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
     return;
   }
   
-  // Получаем данные по месяцам из API данных
-  let monthlyData = [];
+  // Используем только годовые данные
+  const displayData = yearlyChartData;
   
-  // Если есть API данные, извлекаем из них месячные данные
-  if (apiData && Array.isArray(apiData)) {
-    if (selectedModel !== 'all') {
-      // Ищем данные для выбранной модели
-      const modelData = apiData.find(m => m.model_id === selectedModel);
-      if (modelData?.filter_by_month && Array.isArray(modelData.filter_by_month)) {
-        // Фильтруем по году и форматируем
-        monthlyData = modelData.filter_by_month
-          .filter(item => item.month && item.month.startsWith(selectedYear))
-          .map(formatMonthData);
-      }
-    } else {
-      // Если модель не выбрана, собираем данные по всем моделям
-      const monthsMap = {};
-      
-      apiData.forEach(model => {
-        if (model.filter_by_month && Array.isArray(model.filter_by_month)) {
-          model.filter_by_month.forEach(item => {
-            if (!item.month || !item.month.startsWith(selectedYear)) return;
-            
-            if (!monthsMap[item.month]) {
-              monthsMap[item.month] = {
-                month: item.month,
-                count: 0,
-                total_price: 0
-              };
-            }
-            
-            // Суммируем данные
-            monthsMap[item.month].count += parseInt(item.count || 0);
-            monthsMap[item.month].total_price += parseInt(item.total_price || 0);
-          });
-        }
-      });
-      
-      // Преобразуем объект в массив и форматируем
-      monthlyData = Object.values(monthsMap).map(formatMonthData);
-    }
+  // Если нет годовых данных, запрашиваем их
+  if (displayData.length === 0) {
+    // Запрашиваем данные за выбранный год, если их еще нет
+    fetchYearlyData(selectedYear);
     
-    // Сортируем по месяцам
-    monthlyData.sort((a, b) => a.sortIndex - b.sortIndex);
-    
-    // Удаляем вспомогательное поле
-    monthlyData = monthlyData.map(({ sortIndex, ...rest }) => rest);
+    // Показываем индикатор загрузки и выходим
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'flex items-center justify-center h-64';
+    loadingIndicator.innerHTML = '<div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>';
+    container.appendChild(loadingIndicator);
+    return;
   }
   
-  // Функция для форматирования данных месяца
-  function formatMonthData(item) {
-    const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-    const yearMonth = item.month.split('-');
-    const monthIndex = parseInt(yearMonth[1], 10) - 1;
-    
-    return {
-      month: monthNames[monthIndex],
-      [valueKey]: parseInt(item.count || 0),
-      amount: parseInt(item.total_price || 0),
-      sortIndex: monthIndex
-    };
-  }
-  
-  // Используем полученные данные, если они есть, иначе проверяем переданные данные
-  const displayData = monthlyData.length > 0 ? monthlyData : (data || []);
-  
-  // Если есть данные для отображения, рисуем график
-  if (displayData.length > 0) {
-    
-    // Контейнер для графика
-    const graphContainer = document.createElement('div');
-    graphContainer.className = 'w-full h-[300px]';
-    container.appendChild(graphContainer);
-    
-    // Отрисовываем график
-    renderD3Chart(graphContainer, displayData, valueKey, labelKey, selectedYear);
-  } else {
-    // Если данных нет, отображаем сообщение
-    const emptyState = document.createElement('div');
-    emptyState.className = 'flex items-center justify-center h-64 text-gray-500';
-    emptyState.textContent = 'Нет данных для отображения';
-    container.appendChild(emptyState);
-  }
+  // Если у нас есть данные, рисуем график
+  const graphContainer = document.createElement('div');
+  graphContainer.className = 'w-full h-[300px]';
+  container.appendChild(graphContainer);
   
   // Функция для отрисовки D3.js графика
   function renderD3Chart(container, chartData, valKey, labelKey, year) {
@@ -2889,6 +2803,9 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
           .style("opacity", 0);
       });
   }
+  
+  // Вызываем функцию рендеринга D3 графика с годовыми данными
+  renderD3Chart(graphContainer, displayData, valueKey, labelKey, selectedYear);
 };
 
 const formatCurrency = (value) => {
