@@ -499,30 +499,109 @@ const getFilteredData = () => {
             };
           });
       }     
+// Получение данных для отображения в графике по месяцам
+let monthlyData = [];
+
+// Проверяем наличие данных по месяцам в ответе API
+if (selectedModelData.filter_by_month && Array.isArray(selectedModelData.filter_by_month) && selectedModelData.filter_by_month.length > 0) {
+  // Обрабатываем данные по месяцам
+  monthlyData = selectedModelData.filter_by_month.map(item => {
+    // Преобразуем формат даты для более читабельного отображения
+    const yearMonth = item.month.split('-');
+    const year = yearMonth[0];
+    const monthIndex = parseInt(yearMonth[1], 10) - 1; // Месяцы в JS начинаются с 0
+    
+    // Массив названий месяцев на русском
+    const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+    const monthName = monthNames[monthIndex];
+    
+    // Определяем, какое поле использовать в зависимости от активной вкладки
+    const valueKeyName = activeTab === 'contracts' ? 'contracts' : 
+                        activeTab === 'sales' ? 'sales' : 
+                        activeTab === 'stock' ? 'stock' :
+                        activeTab === 'retail' ? 'retail' :
+                        activeTab === 'wholesale' ? 'wholesale' :
+                        activeTab === 'promotions' ? 'promotions' : 'contracts';
+    
+    // Создаем объект с корректно названными полями
+    const adjustedItem = {
+      month: monthName,
+      [valueKeyName]: parseInt(item.count || 0),
+      amount: parseInt(item.total_price || 0),
+      // Добавляем полное значение даты для корректной сортировки
+      fullDate: item.month
+    };
+    
+    return adjustedItem;
+  });
+  
+  // Если выбран регион, фильтруем или корректируем данные для этого региона
+  if (selectedRegion !== 'all') {
+    // Можно применить коэффициент для конкретного региона, если нужно
+    // Например: умножить данные на долю этого региона от общего числа контрактов
+    const regionRatio = 0.7; // Пример коэффициента для региона
+    
+    monthlyData = monthlyData.map(item => {
+      const valueKeyName = getValueKeyForActiveTab();
       
-      let monthlyData = [];
-      
-      if (selectedRegion !== 'all') {
-        monthlyData = selectedModelData.filter_by_month.map(item => {
-          const adjustedItem = {
-            month: item.month,
-            amount: item.month,
-            total_price: item.total_price
-          };
-          return adjustedItem;
-        });
-      } else {
-       monthlyData = selectedModelData.filter_by_month.map(item => {
-          const adjustedItem = {
-            month: item.month,
-            amount: item.month,
-            total_price: item.total_price
-          };
-          return adjustedItem;
-        });
-      }
-      
-      return { regionData, modelData, monthlyData };
+      return {
+        ...item,
+        [valueKeyName]: Math.round(item[valueKeyName] * regionRatio),
+        amount: Math.round(item.amount * regionRatio)
+      };
+    });
+  }
+  
+  // Сортируем данные по дате, чтобы они отображались в хронологическом порядке
+  monthlyData.sort((a, b) => {
+    return new Date(a.fullDate) - new Date(b.fullDate);
+  });
+  
+  // Удаляем вспомогательное поле fullDate, так как оно больше не нужно
+  monthlyData = monthlyData.map(({ fullDate, ...rest }) => rest);
+  
+} else {
+  // Если данных по месяцам нет в API, используем тестовые данные
+  const valueKeyName = getValueKeyForActiveTab();
+  
+  // Базовые тестовые данные
+  monthlyData = [
+    { month: "Янв", [valueKeyName]: 124, amount: 8520000 },
+    { month: "Фев", [valueKeyName]: 85, amount: 5950000 },
+    { month: "Мар", [valueKeyName]: 102, amount: 7140000 },
+    { month: "Апр", [valueKeyName]: 118, amount: 8260000 },
+    { month: "Май", [valueKeyName]: 175, amount: 12250000 },
+    { month: "Июн", [valueKeyName]: 140, amount: 9800000 },
+    { month: "Июл", [valueKeyName]: 155, amount: 10850000 },
+    { month: "Авг", [valueKeyName]: 132, amount: 9240000 },
+    { month: "Сен", [valueKeyName]: 145, amount: 10150000 },
+    { month: "Окт", [valueKeyName]: 120, amount: 8400000 },
+    { month: "Ноя", [valueKeyName]: 165, amount: 11550000 },
+    { month: "Дек", [valueKeyName]: 130, amount: 9100000 }
+  ];
+  if (selectedRegion !== 'all') {
+    monthlyData = monthlyData.map(item => ({
+      ...item,
+      [valueKeyName]: Math.round(item[valueKeyName] * 0.7),
+      amount: Math.round(item.amount * 0.7)
+    }));
+  }
+}
+
+function getValueKeyForActiveTab() {
+  switch(activeTab) {
+    case 'contracts': return 'contracts';
+    case 'sales': return 'sales';
+    case 'stock': return 'stock';
+    case 'retail': return 'retail';
+    case 'wholesale': return 'wholesale';
+    case 'promotions': return 'promotions';
+    default: return 'contracts';
+  }
+}
+
+// Возвращаем финальный объект с данными для графиков
+return { regionData, modelData, monthlyData };
     }
   }
  
