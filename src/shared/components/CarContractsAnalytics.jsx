@@ -29,6 +29,7 @@ const [selectedYear, setSelectedYear] = useState('2025');
   const modelStockRef = useRef(null);
   const stockTrendRef = useRef(null);
   const moneyReturnChartRef = useRef(null);
+  const [yearlyChartData, setYearlyChartData] = useState([]);
 
   const [yearlyData, setYearlyData] = useState({});
 const [yearlyDataLoading, setYearlyDataLoading] = useState(false);
@@ -2519,7 +2520,13 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
         .remove();
     });
 };
-const [yearlyChartData, setYearlyChartData] = useState([]);
+  
+  useEffect(() => {
+  if (!yearlyDataLoading && yearlyChartData.length > 0) {
+    renderCharts();
+  }
+}, [yearlyChartData, yearlyDataLoading]);
+  
 const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
   if (!ref.current) return;
   
@@ -2546,7 +2553,7 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       // Обновляем состояние React
       setSelectedYear(year);
       
-      // Визуально обновляем UI
+      // Визуально обновляем UI сразу
       yearSelector.querySelectorAll('.year-btn').forEach(b => {
         b.classList.remove('bg-blue-600', 'text-white');
         b.classList.add('text-gray-400');
@@ -2554,43 +2561,100 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       btn.classList.remove('text-gray-400');
       btn.classList.add('bg-blue-600', 'text-white');
       
+      // Сразу показываем лоадер внутри функции при клике, не дожидаясь re-render
+      const graphContainer = container.querySelector('.chart-container');
+      if (graphContainer) {
+        graphContainer.innerHTML = '';
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.className = 'flex items-center justify-center h-64';
+        loadingIndicator.innerHTML = `
+          <div class="flex flex-col items-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-3"></div>
+            <p class="text-gray-400 text-sm">Загрузка данных за ${year} год...</p>
+          </div>
+        `;
+        graphContainer.appendChild(loadingIndicator);
+      }
+      
       // Запрашиваем данные за выбранный год
+      setYearlyDataLoading(true);
       fetchYearlyData(year);
     });
   });
   
-  // Если идет загрузка годовых данных, показываем индикатор
+  // Создаем основной контейнер для графика
+  const graphContainer = document.createElement('div');
+  graphContainer.className = 'chart-container w-full h-[300px]';
+  container.appendChild(graphContainer);
+
+  // Если идет загрузка годовых данных, показываем индикатор загрузки
   if (yearlyDataLoading) {
     const loadingIndicator = document.createElement('div');
     loadingIndicator.className = 'flex items-center justify-center h-64';
-    loadingIndicator.innerHTML = '<div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>';
-    container.appendChild(loadingIndicator);
+    loadingIndicator.innerHTML = `
+      <div class="flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-3"></div>
+        <p class="text-gray-400 text-sm">Загрузка данных за ${selectedYear} год...</p>
+      </div>
+    `;
+    graphContainer.appendChild(loadingIndicator);
     return;
   }
   
-  // Используем только годовые данные
-  const displayData = yearlyChartData;
+  // Определяем, какие данные использовать
+  // В приоритете используем данные из yearlyChartData, если они есть
+  const displayData = yearlyChartData.length > 0 ? yearlyChartData : data;
   
-  // Если нет годовых данных, запрашиваем их
-  if (displayData.length === 0) {
-    // Запрашиваем данные за выбранный год, если их еще нет
-    fetchYearlyData(selectedYear);
+  // Если данных нет вообще, показываем сообщение и инициируем загрузку
+  if (!displayData || displayData.length === 0) {
+    const emptyState = document.createElement('div');
+    emptyState.className = 'flex items-center justify-center h-64';
+    emptyState.innerHTML = `
+      <div class="flex flex-col items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        <p class="text-gray-400 text-center mb-1">Нет данных для отображения за ${selectedYear} год</p>
+        <button class="mt-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors flex items-center" id="retry-load-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Загрузить данные
+        </button>
+      </div>
+    `;
+    graphContainer.appendChild(emptyState);
     
-    // Показываем индикатор загрузки и выходим
-    const loadingIndicator = document.createElement('div');
-    loadingIndicator.className = 'flex items-center justify-center h-64';
-    loadingIndicator.innerHTML = '<div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>';
-    container.appendChild(loadingIndicator);
+    // Добавляем обработчик для кнопки повторной загрузки
+    const retryBtn = graphContainer.querySelector('#retry-load-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => {
+        // Показываем лоадер сразу при нажатии кнопки
+        graphContainer.innerHTML = '';
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.className = 'flex items-center justify-center h-64';
+        loadingIndicator.innerHTML = `
+          <div class="flex flex-col items-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-3"></div>
+            <p class="text-gray-400 text-sm">Загрузка данных за ${selectedYear} год...</p>
+          </div>
+        `;
+        graphContainer.appendChild(loadingIndicator);
+        
+        // Запрашиваем данные
+        setYearlyDataLoading(true);
+        fetchYearlyData(selectedYear);
+      });
+    }
+    
     return;
   }
-  
-  // Если у нас есть данные, рисуем график
-  const graphContainer = document.createElement('div');
-  graphContainer.className = 'w-full h-[300px]';
-  container.appendChild(graphContainer);
   
   // Функция для отрисовки D3.js графика
-  function renderD3Chart(container, chartData, valKey, labelKey, year) {
+  function renderD3Chart(container, chartData, valKey, labelKey, chartTitle, year) {
+    // Очищаем контейнер перед рендерингом
+    container.innerHTML = '';
+    
     const margin = { top: 20, right: 30, bottom: 40, left: 60 };
     const width = container.clientWidth - margin.left - margin.right;
     const height = container.clientHeight - margin.top - margin.bottom;
@@ -2610,6 +2674,38 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
     // Градиенты
     const defs = svg.append("defs");
     
+    // Выбираем цвета в зависимости от активного таба
+    let primaryColor, secondaryColor;
+    switch(valKey) {
+      case 'contracts':
+        primaryColor = '#3b82f6'; // Blue
+        secondaryColor = '#2563eb'; // Dark blue
+        break;
+      case 'sales':
+        primaryColor = '#10b981'; // Green
+        secondaryColor = '#059669'; // Dark green
+        break;
+      case 'stock':
+        primaryColor = '#8b5cf6'; // Purple
+        secondaryColor = '#7c3aed'; // Dark purple
+        break;
+      case 'retail':
+        primaryColor = '#f59e0b'; // Amber
+        secondaryColor = '#d97706'; // Dark amber
+        break;
+      case 'wholesale':
+        primaryColor = '#6366f1'; // Indigo
+        secondaryColor = '#4f46e5'; // Dark indigo
+        break;
+      case 'promotions':
+        primaryColor = '#ef4444'; // Red
+        secondaryColor = '#dc2626'; // Dark red
+        break;
+      default:
+        primaryColor = '#3b82f6'; // Blue
+        secondaryColor = '#2563eb'; // Dark blue
+    }
+    
     // Градиент для области
     const areaGradient = defs.append("linearGradient")
       .attr("id", areaGradientId)
@@ -2618,12 +2714,12 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       
     areaGradient.append("stop")
       .attr("offset", "0%")
-      .attr("stop-color", "#3b82f6")
+      .attr("stop-color", primaryColor)
       .attr("stop-opacity", 0.7);
       
     areaGradient.append("stop")
       .attr("offset", "100%")
-      .attr("stop-color", "#3b82f6")
+      .attr("stop-color", primaryColor)
       .attr("stop-opacity", 0.1);
     
     // Градиент для линии
@@ -2634,11 +2730,11 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       
     lineGradient.append("stop")
       .attr("offset", "0%")
-      .attr("stop-color", "#3b82f6");
+      .attr("stop-color", primaryColor);
       
     lineGradient.append("stop")
       .attr("offset", "100%")
-      .attr("stop-color", "#8b5cf6");
+      .attr("stop-color", secondaryColor);
     
     // Шкалы
     const x = d3.scaleBand()
@@ -2720,7 +2816,7 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       .attr("cx", d => x(d[labelKey]) + x.bandwidth()/2)
       .attr("cy", d => y(d[valKey]))
       .attr("r", 0)
-      .attr("fill", "#3b82f6")
+      .attr("fill", primaryColor)
       .attr("stroke", "#1e1e1e")
       .attr("stroke-width", 2)
       .transition()
@@ -2737,7 +2833,7 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       .attr("y", d => y(d[valKey]) - 10)
       .attr("text-anchor", "middle")
       .style("font-size", "10px")
-      .style("fill", "#93c5fd")
+      .style("fill", primaryColor)
       .style("opacity", 0)
       .text(d => d[valKey])
       .transition()
@@ -2751,13 +2847,23 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       .attr("y", 0)
       .attr("text-anchor", "end")
       .style("font-size", "12px")
-      .style("fill", "#93c5fd")
+      .style("fill", primaryColor)
       .style("font-weight", "bold")
       .text(`Данные за ${year} год`);
+      
+    // Добавляем заголовок графика
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", -5)
+      .attr("text-anchor", "middle")
+      .style("font-size", "14px")
+      .style("fill", "#e5e7eb")
+      .style("font-weight", "medium")
+      .text(chartTitle);
     
     // Добавляем тултипы
     const tooltip = d3.select("body").append("div")
-      .attr("class", `tooltip-${valKey}`)
+      .attr("class", `tooltip-${valKey}-${uniqueId}`)
       .style("opacity", 0)
       .style("position", "absolute")
       .style("background-color", "rgba(40, 40, 40, 0.9)")
@@ -2801,11 +2907,16 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
         tooltip.transition()
           .duration(500)
           .style("opacity", 0);
+      })
+      .on("mousemove", function(event) {
+        tooltip
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY - 28) + "px");
       });
   }
   
-  // Вызываем функцию рендеринга D3 графика с годовыми данными
-  renderD3Chart(graphContainer, displayData, valueKey, labelKey, selectedYear);
+  // Вызываем функцию рендеринга D3 графика с данными
+  renderD3Chart(graphContainer, displayData, valueKey, labelKey, title, selectedYear);
 };
 
 const formatCurrency = (value) => {
