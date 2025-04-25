@@ -18,7 +18,8 @@ const CarContractsAnalytics = () => {
   const [loadingComponent, setLoadingComponent] = useState(true);
   const [regionsList, setRegionsList] = useState([]);
   const [viewMode, setViewMode] = useState('cards');
-  // Refs для графиков
+const [selectedYear, setSelectedYear] = useState('2025');
+const [yearlyData, setYearlyData] = useState({});
   const regionContractsRef = useRef(null);
   const modelContractsRef = useRef(null);
   const timelineContractsRef = useRef(null);
@@ -32,29 +33,13 @@ const CarContractsAnalytics = () => {
   
   const carColors = ['Белый', 'Черный', 'Серебряный', 'Красный', 'Синий', 'Зеленый'];
   const carModifications = ['Стандарт', 'Комфорт', 'Люкс', 'Премиум', 'Спорт'];
+const getYearDateRange = (year) => {
+  return {
+    beginDate: `01.01.${year}`,
+    endDate: `31.12.${year}`
+  };
+};
 
-// Вспомогательные функции для оптимизации
-const filterApiData = useCallback((apiData, selectedRegion, selectedModel) => {
-  if (!apiData || !Array.isArray(apiData)) return null;
-  
-  // Фильтрация нужных данных в зависимости от выбранных фильтров
-  if (selectedModel !== 'all') {
-    // Фильтруем только выбранную модель
-    const modelData = apiData.find(model => model.model_id === selectedModel);
-    return modelData ? [modelData] : [];
-  } else if (selectedRegion !== 'all') {
-    // Фильтруем по региону, но все модели
-    return apiData.map(model => ({
-      ...model,
-      filter_by_region: model.filter_by_region ? 
-        model.filter_by_region.filter(r => r.region_id === selectedRegion) : []
-    }));
-  }
-  
-  return apiData; // Возвращаем без изменений если нет фильтров
-}, []);
-
-// Вычисление статистики из отфильтрованных данных
 const calculateStats = useCallback((filteredData, activeTab) => {
   if (!filteredData) return { count: 0, amount: 0, average: 0 };
   
@@ -198,6 +183,18 @@ const calculateStats = useCallback((filteredData, activeTab) => {
     return `${day}.${month}.${year}`;
   };
   
+
+  useEffect(() => {
+  if (activeTab && selectedYear) {
+    fetchYearlyData(selectedYear, activeTab);
+  }
+  }, [selectedYear, activeTab, selectedModel, selectedRegion]);
+  
+useEffect(() => {
+  // Загружаем данные за текущий выбранный год при первом рендере
+  fetchYearlyData(selectedYear);
+}, []);
+  
 useEffect(() => {
   if (apiData) {
     // Перерисовываем все графики сразу после обновления данных
@@ -303,6 +300,185 @@ const fetchData = async (apiUrl) => {
     setLoading(false);
   }
 };
+  
+const fetchYearlyData = async (year) => {
+  try {
+    // Показываем индикатор загрузки только для графика
+    const timelineContainer = timelineContractsRef.current || 
+                             (activeTab === 'sales' ? timelineSalesRef.current : 
+                             (activeTab === 'stock' ? stockTrendRef.current : null));
+                             
+    if (timelineContainer) {
+      timelineContainer.innerHTML = '<div class="flex items-center justify-center h-full"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>';
+    }
+    
+    // Получаем диапазон дат для года
+    const { beginDate, endDate } = getYearDateRange(year);
+    
+    // Формируем URL в зависимости от активного таба
+    const apiUrl = getApiUrlForTab(activeTab);
+    
+    // Подготавливаем данные запроса
+    const requestData = {
+      begin_date: beginDate,
+      end_date: endDate,
+      // Если нужны дополнительные параметры для конкретной модели или региона
+      model_id: selectedModel !== 'all' ? selectedModel : undefined,
+      region_id: selectedRegion !== 'all' ? selectedRegion : undefined
+    };
+    
+    console.log(`Отправка запроса на годовые данные за ${year}:`, requestData);
+    
+    const response = await axios.post(apiUrl, requestData);
+    
+    if (response.data && Array.isArray(response.data)) {
+      console.log(`Получены данные за ${year} год:`, response.data);
+      
+      // Сохраняем данные для этого года в состояние
+      setYearlyData(prevData => ({
+        ...prevData,
+        [year]: response.data
+      }));
+      
+      // Перерисовываем график с новыми данными
+      renderTimelineWithYearlyData();
+    }
+  } catch (error) {
+    console.error(`Ошибка при получении данных за ${year} год:`, error);
+    // В случае ошибки просто оставляем текущие данные
+  }
+};
+  
+  const getMonthlyDataForYear = (year) => {
+  // Получаем данные для выбранного года
+  const yearData = yearlyData[year];
+  
+  if (!yearData) {
+    return []; // Если данных нет, возвращаем пустой массив
+  }
+  
+  // Ищем данные для выбранной модели
+  let modelData;
+  if (selectedModel !== 'all') {
+    modelData = yearData.find(m => m.model_id === selectedModel);
+  } else if (yearData.length > 0) {
+    // Если модель не выбрана, объединяем данные по всем моделям
+    // Создаем временный объект для хранения данных по месяцам
+    const monthlyDataMap = {};
+    
+    yearData.forEach(model => {
+      if (model.filter_by_month && Array.isArray(model.filter_by_month)) {
+        model.filter_by_month.forEach(monthData => {
+          if (!monthData.month) return;
+          
+          if (!monthlyDataMap[monthData.month]) {
+            monthlyDataMap[monthData.month] = {
+              month: monthData.month,
+              count: 0,
+              total_price: 0
+            };
+          }
+          
+          // Суммируем данные
+          monthlyDataMap[monthData.month].count += parseInt(monthData.count || 0);
+          monthlyDataMap[monthData.month].total_price += parseInt(monthData.total_price || 0);
+        });
+      }
+    });
+    
+    // Преобразуем объект в массив
+    return Object.values(monthlyDataMap)
+      .filter(item => item.month.startsWith(year))
+      .map(item => {
+        // Преобразуем формат даты
+        const yearMonth = item.month.split('-');
+        const monthIndex = parseInt(yearMonth[1], 10) - 1;
+        
+        // Названия месяцев
+        const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+        const monthName = monthNames[monthIndex];
+        
+        // Определяем ключ в зависимости от активного таба
+        const valueKey = getValueKeyForActiveTab();
+        
+        return {
+          month: monthName,
+          [valueKey]: parseInt(item.count),
+          amount: parseInt(item.total_price),
+          fullDate: item.month
+        };
+      })
+      .sort((a, b) => new Date(a.fullDate) - new Date(b.fullDate))
+      .map(({ fullDate, ...rest }) => rest);
+  }
+  
+  // Если выбрана конкретная модель, обрабатываем её данные
+  if (modelData && modelData.filter_by_month && Array.isArray(modelData.filter_by_month)) {
+    return modelData.filter_by_month
+      .filter(item => item.month && item.month.startsWith(year))
+      .map(item => {
+        // Преобразуем формат даты
+        const yearMonth = item.month.split('-');
+        const monthIndex = parseInt(yearMonth[1], 10) - 1;
+        
+        // Названия месяцев
+        const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+        const monthName = monthNames[monthIndex];
+        
+        // Определяем ключ в зависимости от активного таба
+        const valueKey = getValueKeyForActiveTab();
+        
+        return {
+          month: monthName,
+          [valueKey]: parseInt(item.count || 0),
+          amount: parseInt(item.total_price || 0),
+          fullDate: item.month
+        };
+      })
+      .sort((a, b) => new Date(a.fullDate) - new Date(b.fullDate))
+      .map(({ fullDate, ...rest }) => rest);
+  }
+  
+  return [];
+};
+
+  const renderTimelineWithYearlyData = () => {
+  // Получаем данные для выбранного года
+  const monthlyData = getMonthlyDataForYear(selectedYear);
+  
+  // Если данных недостаточно, генерируем тестовые
+  const finalMonthlyData = monthlyData.length >= 3 ? monthlyData : generateTestMonthlyData(selectedYear);
+  
+  // Определяем контейнер для графика в зависимости от активного таба
+  let container;
+  switch(activeTab) {
+    case 'sales':
+      container = timelineSalesRef.current;
+      break;
+    case 'stock':
+      container = stockTrendRef.current;
+      break;
+    case 'retail':
+    case 'wholesale':
+    case 'promotions':
+      container = timelineContractsRef.current; // Используем тот же контейнер для новых табов
+      break;
+    default:
+      container = timelineContractsRef.current;
+  }
+  
+  // Рендерим график с данными
+  if (container) {
+    renderTimelineChartWithYearSelector(
+      container, 
+      finalMonthlyData, 
+      getValueKeyForActiveTab(), 
+      'month', 
+      getTimelineChartTitle()
+    );
+  }
+};
+
   
   // Функция для применения фильтра дат (кнопка "Применить")
   const applyDateFilter = () => {
@@ -579,6 +755,8 @@ if (selectedModelData.filter_by_month && Array.isArray(selectedModelData.filter_
     { month: "Ноя", [valueKeyName]: 165, amount: 11550000 },
     { month: "Дек", [valueKeyName]: 130, amount: 9100000 }
   ];
+  
+  // Если выбран регион, корректируем тестовые данные
   if (selectedRegion !== 'all') {
     monthlyData = monthlyData.map(item => ({
       ...item,
@@ -588,6 +766,7 @@ if (selectedModelData.filter_by_month && Array.isArray(selectedModelData.filter_
   }
 }
 
+// Функция-помощник для получения ключа значения в зависимости от активной вкладки
 function getValueKeyForActiveTab() {
   switch(activeTab) {
     case 'contracts': return 'contracts';
@@ -2416,197 +2595,419 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
         .remove();
     });
 };
- 
- // Timeline chart renderer
- const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
-   if (!ref.current) return;
-   
-   const container = ref.current;
-   container.innerHTML = '';
-   
-   const margin = { top: 30, right: 30, bottom: 40, left: 60 };
-   const width = container.clientWidth - margin.left - margin.right;
-   const height = container.clientHeight - margin.top - margin.bottom;
-   
-   const svg = d3.select(container)
-     .append("svg")
-     .attr("width", width + margin.left + margin.right)
-     .attr("height", height + margin.top + margin.bottom)
-     .append("g")
-     .attr("transform", `translate(${margin.left},${margin.top})`);
-     
-   const defs = svg.append("defs");
-   const areaGradient = defs.append("linearGradient")
-     .attr("id", `areaGradient-${valueKey}`)
-     .attr("x1", "0%").attr("y1", "0%")
-     .attr("x2", "0%").attr("y2", "100%");
-     
-   areaGradient.append("stop")
-     .attr("offset", "0%")
-     .attr("stop-color", "#3b82f6")
-     .attr("stop-opacity", 0.7);
-     
-   areaGradient.append("stop")
-     .attr("offset", "100%")
-     .attr("stop-color", "#3b82f6")
-     .attr("stop-opacity", 0.1);
-   
-   // Add gradient for line
-   const lineGradient = defs.append("linearGradient")
-     .attr("id", `lineGradient-${valueKey}`)
-     .attr("x1", "0%").attr("y1", "0%")
-     .attr("x2", "100%").attr("y2", "0%");
-     
-   lineGradient.append("stop")
-     .attr("offset", "0%")
-     .attr("stop-color", "#3b82f6");
-     
-   lineGradient.append("stop")
-     .attr("offset", "100%")
-     .attr("stop-color", "#8b5cf6");
-     
-   // Scales
-   const x = d3.scaleBand()
-     .domain(data.map(d => d[labelKey]))
-     .range([0, width])
-     .padding(1);
-     
-   const y = d3.scaleLinear()
-     .domain([0, d3.max(data, d => d[valueKey]) * 1.2])
-     .range([height, 0]);
-     
-   // Grid
-   svg.append("g")
-     .attr("class", "grid")
-     .call(d3.axisLeft(y)
-       .tickSize(-width)
-       .tickFormat("")
-     )
-     .style("stroke", "#333")
-     .style("stroke-opacity", "0.1");
-     
-   // Axes
-   svg.append("g")
-     .attr("transform", `translate(0,${height})`)
-     .call(d3.axisBottom(x))
-     .selectAll("text")
-     .style("fill", "#999");
-     
-   svg.append("g")
-     .call(d3.axisLeft(y))
-     .selectAll("text")
-     .style("fill", "#999");
-   
-   // Title
-   svg.append("text")
-     .attr("x", width / 2)
-     .attr("y", -10)
-     .attr("text-anchor", "middle")
-     .style("font-size", "14px")
-     .style("fill", "#fff")
-     .text(title);
-     
-   // Create line
-   const line = d3.line()
-     .x(d => x(d[labelKey]) + x.bandwidth()/2)
-     .y(d => y(d[valueKey]))
-     .curve(d3.curveMonotoneX);
-     
-   // Create area
-   const area = d3.area()
-     .x(d => x(d[labelKey]) + x.bandwidth()/2)
-     .y0(height)
-     .y1(d => y(d[valueKey]))
-     .curve(d3.curveMonotoneX);
-     
-   // Add area
-   svg.append("path")
-     .datum(data)
-     .attr("class", "area")
-     .attr("d", area)
-     .attr("fill", `url(#areaGradient-${valueKey})`);
-     
-   // Add line with animation
-   const path = svg.append("path")
-     .datum(data)
-     .attr("class", "line")
-     .attr("d", line)
-     .attr("stroke", `url(#lineGradient-${valueKey})`)
-     .attr("stroke-width", 3)
-     .attr("fill", "none");
-   
-   // Animate line
-   const totalLength = path.node().getTotalLength();
-   path
-     .attr("stroke-dasharray", totalLength)
-     .attr("stroke-dashoffset", totalLength)
-     .transition()
-     .duration(1500)
-     .attr("stroke-dashoffset", 0);
-     
-// Add dots
-  svg.selectAll(".dot")
-    .data(data)
-    .enter().append("circle")
-    .attr("class", "dot")
-    .attr("cx", d => x(d[labelKey]) + x.bandwidth()/2)
-    .attr("cy", d => y(d[valueKey]))
-    .attr("r", 0)
-    .attr("fill", "#3b82f6")
-    .attr("stroke", "#1e1e1e")
-    .attr("stroke-width", 2)
-    .transition()
-    .delay((d, i) => 1500 + i * 50)
-    .duration(300)
-    .attr("r", 5);
-    
-  // Add tooltips
-  const tooltip = d3.select("body").append("div")
-    .attr("class", `tooltip-${valueKey}`)
-    .style("opacity", 0)
-    .style("position", "absolute")
-    .style("background-color", "rgba(40, 40, 40, 0.9)")
-    .style("color", "#fff")
-    .style("padding", "10px")
-    .style("border-radius", "5px")
-    .style("font-size", "14px")
-    .style("pointer-events", "none")
-    .style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)")
-    .style("z-index", "10");
-    
-  svg.selectAll(".dot")
-    .on("mouseover", function(event, d) {
-      d3.select(this).transition()
-        .duration(200)
-        .attr("r", 8);
-        
-      tooltip.transition()
-        .duration(200)
-        .style("opacity", 1);
-        
-  tooltip.html(`
-        <strong>${d[labelKey]}</strong><br>
-        ${valueKey === 'contracts' ? 'Контрактов: ' : 
-          valueKey === 'sales' ? 'Продаж: ' : 
-          valueKey === 'stock' ? 'Остаток: ' :
-          valueKey === 'retail' ? 'Розница: ' :
-          valueKey === 'wholesale' ? 'Опт: ' :
-          valueKey === 'promotions' ? 'Акции: ' : ''}
-        <strong>${d[valueKey]}</strong><br>
-        Сумма: <strong>${formatCurrency(d.amount)}</strong>
-      `)
-        .style("left", (event.pageX + 10) + "px")
-        .style("top", (event.pageY - 28) + "px");
-    })
-    .on("mouseout", function() {
-      d3.select(this).transition()
-        .duration(200)
-        .attr("r", 5);
-        
-      tooltip.transition()
-        .duration(500)
-        .style("opacity", 0);
+
+const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
+  if (!ref.current) return;
+  
+  const container = ref.current;
+  container.innerHTML = '';
+  
+  // Селектор года (добавляем до основного графика)
+  const yearSelector = document.createElement('div');
+  yearSelector.className = 'flex justify-end mb-2';
+  yearSelector.innerHTML = `
+    <div class="bg-gray-700 rounded-lg p-1 flex items-center border border-gray-700">
+      <span class="text-gray-400 mr-2 text-sm px-2">Год:</span>
+      <button class="year-btn ${selectedYear === '2023' ? 'bg-blue-600 text-white' : 'text-gray-400'} px-3 py-1 text-sm font-medium rounded-md" data-year="2023">2023</button>
+      <button class="year-btn ${selectedYear === '2024' ? 'bg-blue-600 text-white' : 'text-gray-400'} px-3 py-1 text-sm font-medium rounded-md" data-year="2024">2024</button>
+      <button class="year-btn ${selectedYear === '2025' ? 'bg-blue-600 text-white' : 'text-gray-400'} px-3 py-1 text-sm font-medium rounded-md" data-year="2025">2025</button>
+    </div>
+  `;
+  container.appendChild(yearSelector);
+  
+  // Добавляем обработчики для кнопок годов
+  yearSelector.querySelectorAll('.year-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const year = btn.getAttribute('data-year');
+      
+      // Обновляем состояние React
+      setSelectedYear(year);
+      
+      // Визуально обновляем UI
+      yearSelector.querySelectorAll('.year-btn').forEach(b => {
+        b.classList.remove('bg-blue-600', 'text-white');
+        b.classList.add('text-gray-400');
+      });
+      btn.classList.remove('text-gray-400');
+      btn.classList.add('bg-blue-600', 'text-white');
+      
+      // Запрашиваем данные за выбранный год
+      fetchYearData(year);
     });
+  });
+  
+  // Функция для запроса данных за определенный год
+  function fetchYearData(year) {
+    // Показываем индикатор загрузки
+    container.innerHTML = '';
+    container.appendChild(yearSelector); // Сохраняем селектор
+    
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'flex items-center justify-center h-64';
+    loadingIndicator.innerHTML = '<div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>';
+    container.appendChild(loadingIndicator);
+    
+    // Формируем запрос
+    const startDate = `01.01.${year}`;
+    const endDate = `31.12.${year}`;
+    
+    const apiUrl = getApiUrlForTab(activeTab);
+    
+    axios.post(apiUrl, {
+      begin_date: startDate,
+      end_date: endDate,
+      model_id: selectedModel !== 'all' ? selectedModel : undefined,
+      region_id: selectedRegion !== 'all' ? selectedRegion : undefined
+    })
+    .then(response => {
+      if (response.data && Array.isArray(response.data)) {
+        // Обрабатываем данные
+        let monthlyData = extractMonthlyData(response.data, year, valueKey);
+        
+        // Перерисовываем график с новыми данными
+        container.innerHTML = '';
+        container.appendChild(yearSelector); // Восстанавливаем селектор годов
+        
+        if (monthlyData.length > 0) {
+          // Заголовок
+          const titleElement = document.createElement('h3');
+          titleElement.className = 'text-xl font-semibold mb-4';
+          titleElement.textContent = title;
+          container.appendChild(titleElement);
+          
+          // Контейнер для графика
+          const graphContainer = document.createElement('div');
+          graphContainer.className = 'w-full h-[300px]';
+          container.appendChild(graphContainer);
+          
+          // Рисуем график с данными за выбранный год
+          drawD3Chart(graphContainer, monthlyData, valueKey, labelKey, year);
+        } else {
+          const emptyState = document.createElement('div');
+          emptyState.className = 'flex items-center justify-center h-64 text-gray-500';
+          emptyState.textContent = 'Нет данных за выбранный год';
+          container.appendChild(emptyState);
+        }
+      }
+    })
+    .catch(error => {
+      console.error('Ошибка при загрузке данных:', error);
+      
+      container.innerHTML = '';
+      container.appendChild(yearSelector);
+      
+      const errorElement = document.createElement('div');
+      errorElement.className = 'flex items-center justify-center h-64 text-red-500';
+      errorElement.textContent = 'Ошибка при загрузке данных';
+      container.appendChild(errorElement);
+    });
+  }
+  
+  // Функция для извлечения данных по месяцам
+  function extractMonthlyData(apiData, year, valKey) {
+    const monthlyItems = [];
+    
+    if (selectedModel !== 'all') {
+      // Ищем данные для выбранной модели
+      const modelData = apiData.find(m => m.model_id === selectedModel);
+      if (modelData?.filter_by_month && Array.isArray(modelData.filter_by_month)) {
+        // Добавляем данные по месяцам
+        modelData.filter_by_month.forEach(item => {
+          if (item.month && item.month.startsWith(year)) {
+            monthlyItems.push(item);
+          }
+        });
+      }
+    } else {
+      // Объединяем данные по всем моделям
+      const monthsMap = {};
+      
+      apiData.forEach(model => {
+        if (model.filter_by_month && Array.isArray(model.filter_by_month)) {
+          model.filter_by_month.forEach(item => {
+            if (!item.month || !item.month.startsWith(year)) return;
+            
+            if (!monthsMap[item.month]) {
+              monthsMap[item.month] = {
+                month: item.month,
+                count: 0,
+                total_price: 0
+              };
+            }
+            
+            monthsMap[item.month].count += parseInt(item.count || 0);
+            monthsMap[item.month].total_price += parseInt(item.total_price || 0);
+          });
+        }
+      });
+      
+      // Преобразуем объект в массив
+      Object.values(monthsMap).forEach(item => {
+        monthlyItems.push(item);
+      });
+    }
+    
+    // Форматируем данные для графика
+    const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+    const formattedData = monthlyItems.map(item => {
+      const yearMonth = item.month.split('-');
+      const monthIndex = parseInt(yearMonth[1], 10) - 1;
+      
+      return {
+        month: monthNames[monthIndex],
+        [valKey]: parseInt(item.count || 0),
+        amount: parseInt(item.total_price || 0),
+        sortIndex: monthIndex // Для правильной сортировки
+      };
+    });
+    
+    // Сортируем по месяцам
+    formattedData.sort((a, b) => a.sortIndex - b.sortIndex);
+    
+    // Удаляем вспомогательное поле
+    return formattedData.map(({ sortIndex, ...rest }) => rest);
+  }
+  
+  // Функция для отрисовки D3.js графика
+  function drawD3Chart(container, data, valKey, labelKey, year) {
+    const margin = { top: 20, right: 30, bottom: 40, left: 60 };
+    const width = container.clientWidth - margin.left - margin.right;
+    const height = container.clientHeight - margin.top - margin.bottom;
+    
+    const svg = d3.select(container)
+      .append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+      
+    // Остальная часть функции отрисовки D3 графика (без изменений)
+    // ... (ваш существующий код для отрисовки графика)
+    
+    // Шкалы
+    const x = d3.scaleBand()
+      .domain(data.map(d => d[labelKey]))
+      .range([0, width])
+      .padding(1);
+      
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(data, d => d[valKey]) * 1.2 || 10])
+      .range([height, 0]);
+      
+    // Сетка
+    svg.append("g")
+      .attr("class", "grid")
+      .call(d3.axisLeft(y)
+        .tickSize(-width)
+        .tickFormat("")
+      )
+      .style("stroke", "#333")
+      .style("stroke-opacity", "0.1");
+      
+    // Оси
+    svg.append("g")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(x))
+      .selectAll("text")
+      .style("fill", "#999");
+      
+    svg.append("g")
+      .call(d3.axisLeft(y))
+      .selectAll("text")
+      .style("fill", "#999");
+    
+    // Создаем градиенты
+    const areaGradientId = `areaGradient-${Date.now()}`;
+    const lineGradientId = `lineGradient-${Date.now()}`;
+    
+    const defs = svg.append("defs");
+    
+    // Градиент для области
+    defs.append("linearGradient")
+      .attr("id", areaGradientId)
+      .attr("x1", "0%").attr("y1", "0%")
+      .attr("x2", "0%").attr("y2", "100%")
+      .selectAll("stop")
+      .data([
+        { offset: "0%", color: "#3b82f6", opacity: 0.7 },
+        { offset: "100%", color: "#3b82f6", opacity: 0.1 }
+      ])
+      .enter().append("stop")
+      .attr("offset", d => d.offset)
+      .attr("stop-color", d => d.color)
+      .attr("stop-opacity", d => d.opacity);
+    
+    // Градиент для линии
+    defs.append("linearGradient")
+      .attr("id", lineGradientId)
+      .attr("x1", "0%").attr("y1", "0%")
+      .attr("x2", "100%").attr("y2", "0%")
+      .selectAll("stop")
+      .data([
+        { offset: "0%", color: "#3b82f6" },
+        { offset: "100%", color: "#8b5cf6" }
+      ])
+      .enter().append("stop")
+      .attr("offset", d => d.offset)
+      .attr("stop-color", d => d.color);
+    
+    // Линия
+    const line = d3.line()
+      .x(d => x(d[labelKey]) + x.bandwidth()/2)
+      .y(d => y(d[valKey]))
+      .curve(d3.curveMonotoneX);
+      
+    // Область
+    const area = d3.area()
+      .x(d => x(d[labelKey]) + x.bandwidth()/2)
+      .y0(height)
+      .y1(d => y(d[valKey]))
+      .curve(d3.curveMonotoneX);
+      
+    // Добавляем область
+    svg.append("path")
+      .datum(data)
+      .attr("class", "area")
+      .attr("fill", `url(#${areaGradientId})`)
+      .attr("d", area);
+      
+    // Добавляем линию
+    const path = svg.append("path")
+      .datum(data)
+      .attr("class", "line")
+      .attr("fill", "none")
+      .attr("stroke", `url(#${lineGradientId})`)
+      .attr("stroke-width", 3)
+      .attr("d", line);
+    
+    // Анимация линии
+    if (path.node() && typeof path.node().getTotalLength === 'function') {
+      const totalLength = path.node().getTotalLength();
+      path
+        .attr("stroke-dasharray", totalLength)
+        .attr("stroke-dashoffset", totalLength)
+        .transition()
+        .duration(1500)
+        .attr("stroke-dashoffset", 0);
+    }
+    
+    // Добавляем точки
+    svg.selectAll(".dot")
+      .data(data)
+      .enter().append("circle")
+      .attr("class", "dot")
+      .attr("cx", d => x(d[labelKey]) + x.bandwidth()/2)
+      .attr("cy", d => y(d[valKey]))
+      .attr("r", 0)
+      .attr("fill", "#3b82f6")
+      .attr("stroke", "#1e1e1e")
+      .attr("stroke-width", 2)
+      .transition()
+      .delay((d, i) => 1500 + i * 50)
+      .duration(300)
+      .attr("r", 5);
+      
+    // Добавляем метки значений
+    svg.selectAll(".value-label")
+      .data(data)
+      .enter().append("text")
+      .attr("class", "value-label")
+      .attr("x", d => x(d[labelKey]) + x.bandwidth()/2)
+      .attr("y", d => y(d[valKey]) - 10)
+      .attr("text-anchor", "middle")
+      .style("font-size", "10px")
+      .style("fill", "#93c5fd")
+      .style("opacity", 0)
+      .text(d => d[valKey])
+      .transition()
+      .delay((d, i) => 1800 + i * 50)
+      .duration(300)
+      .style("opacity", 1);
+      
+    // Добавляем индикатор года
+    svg.append("text")
+      .attr("x", width)
+      .attr("y", 0)
+      .attr("text-anchor", "end")
+      .style("font-size", "12px")
+      .style("fill", "#93c5fd")
+      .style("font-weight", "bold")
+      .text(`Данные за ${year} год`);
+    
+    // Добавляем тултипы
+    // Удаляем существующий тултип, если он есть
+    d3.select("body").select(`.tooltip-${valKey}`).remove();
+    
+    const tooltip = d3.select("body").append("div")
+      .attr("class", `tooltip-${valKey}`)
+      .style("opacity", 0)
+      .style("position", "absolute")
+      .style("background-color", "rgba(40, 40, 40, 0.9)")
+      .style("color", "#fff")
+      .style("padding", "10px")
+      .style("border-radius", "5px")
+      .style("font-size", "14px")
+      .style("pointer-events", "none")
+      .style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)")
+      .style("z-index", "10");
+      
+    svg.selectAll(".dot")
+      .on("mouseover", function(event, d) {
+        d3.select(this).transition()
+          .duration(200)
+          .attr("r", 8);
+          
+        tooltip.transition()
+          .duration(200)
+          .style("opacity", 1);
+          
+        tooltip.html(`
+          <strong>${d[labelKey]} ${year}</strong><br>
+          ${valKey === 'contracts' ? 'Контрактов: ' : 
+            valKey === 'sales' ? 'Продаж: ' : 
+            valKey === 'stock' ? 'Остаток: ' :
+            valKey === 'retail' ? 'Розница: ' :
+            valKey === 'wholesale' ? 'Опт: ' :
+            valKey === 'promotions' ? 'Акции: ' : ''}
+          <strong>${d[valKey]}</strong><br>
+          Сумма: <strong>${formatCurrency(d.amount)}</strong>
+        `)
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY - 28) + "px");
+      })
+      .on("mouseout", function() {
+        d3.select(this).transition()
+          .duration(200)
+          .attr("r", 5);
+          
+        tooltip.transition()
+          .duration(500)
+          .style("opacity", 0);
+      });
+  }
+  
+  // Если есть данные, рисуем график
+  if (data && data.length > 0) {
+    // Заголовок
+    const titleElement = document.createElement('h3');
+    titleElement.className = 'text-xl font-semibold mb-4';
+    titleElement.textContent = title;
+    container.appendChild(titleElement);
+    
+    // Контейнер для графика
+    const graphContainer = document.createElement('div');
+    graphContainer.className = 'w-full h-[300px]';
+    container.appendChild(graphContainer);
+    
+    // Отрисовываем график с существующими данными
+    drawD3Chart(graphContainer, data, valueKey, labelKey, selectedYear);
+  } else {
+    // Если данных нет, отображаем сообщение
+    const emptyState = document.createElement('div');
+    emptyState.className = 'flex items-center justify-center h-64 text-gray-500';
+    emptyState.textContent = 'Нет данных для отображения';
+    container.appendChild(emptyState);
+  }
 };
 
 const formatCurrency = (value) => {
@@ -3414,7 +3815,7 @@ const stats = getStats();
         </div>
         
         <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
-          <h3 className="text-xl font-semibold mb-4">{getTimelineChartTitle()}</h3>
+            <h3 className="text-xl font-semibold mb-4">{getTimelineChartTitle()}</h3>
           <div 
             ref={timelineContractsRef} 
             className="w-full h-[300px]"
