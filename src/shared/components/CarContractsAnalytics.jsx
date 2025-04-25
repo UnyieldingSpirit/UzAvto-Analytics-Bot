@@ -426,44 +426,6 @@ const fetchYearlyData = async (year) => {
   
   return [];
 };
-
-  const renderTimelineWithYearlyData = () => {
-  // Получаем данные для выбранного года
-  const monthlyData = getMonthlyDataForYear(selectedYear);
-  
-  // Если данных недостаточно, генерируем тестовые
-  const finalMonthlyData = monthlyData.length >= 3 ? monthlyData : generateTestMonthlyData(selectedYear);
-  
-  // Определяем контейнер для графика в зависимости от активного таба
-  let container;
-  switch(activeTab) {
-    case 'sales':
-      container = timelineSalesRef.current;
-      break;
-    case 'stock':
-      container = stockTrendRef.current;
-      break;
-    case 'retail':
-    case 'wholesale':
-    case 'promotions':
-      container = timelineContractsRef.current; // Используем тот же контейнер для новых табов
-      break;
-    default:
-      container = timelineContractsRef.current;
-  }
-  
-  // Рендерим график с данными
-  if (container) {
-    renderTimelineChartWithYearSelector(
-      container, 
-      finalMonthlyData, 
-      getValueKeyForActiveTab(), 
-      'month', 
-      getTimelineChartTitle()
-    );
-  }
-};
-
   
   // Функция для применения фильтра дат (кнопка "Применить")
   const applyDateFilter = () => {
