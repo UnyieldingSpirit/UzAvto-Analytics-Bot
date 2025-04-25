@@ -2587,49 +2587,37 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
   const container = ref.current;
   container.innerHTML = '';
   
-  // Контейнер, содержащий заголовок и селектор года на одном уровне
-  const headerContainer = document.createElement('div');
-  headerContainer.className = 'flex justify-between items-center mb-4';
-  container.appendChild(headerContainer);
-  
-  // Заголовок графика
-  const titleElement = document.createElement('h3');
-  titleElement.className = 'text-xl font-semibold';
-  titleElement.textContent = title;
-  headerContainer.appendChild(titleElement);
-  
-  // Селектор года
+  // Селектор года (добавляем до основного графика)
   const yearSelector = document.createElement('div');
-  yearSelector.className = 'flex bg-gray-700 rounded-lg p-1 items-center border border-gray-700';
-  headerContainer.appendChild(yearSelector);
+  yearSelector.className = 'flex justify-end mb-2';
+  yearSelector.innerHTML = `
+    <div class="bg-gray-700 rounded-lg p-1 flex items-center border border-gray-700">
+      <button class="year-btn ${selectedYear === '2023' ? 'bg-blue-600 text-white' : 'text-gray-400'} px-3 py-1 text-sm font-medium rounded-md" data-year="2023">2023</button>
+      <button class="year-btn ${selectedYear === '2024' ? 'bg-blue-600 text-white' : 'text-gray-400'} px-3 py-1 text-sm font-medium rounded-md" data-year="2024">2024</button>
+      <button class="year-btn ${selectedYear === '2025' ? 'bg-blue-600 text-white' : 'text-gray-400'} px-3 py-1 text-sm font-medium rounded-md" data-year="2025">2025</button>
+    </div>
+  `;
+  container.appendChild(yearSelector);
   
-  // Добавляем кнопки для годов
-  ['2023', '2024', '2025'].forEach(year => {
-    const btn = document.createElement('button');
-    btn.className = `px-3 py-1 text-sm font-medium rounded-md transition-all duration-200 ${
-      selectedYear === year 
-        ? 'bg-blue-600 text-white shadow-md' 
-        : 'text-gray-400 hover:text-white'
-    }`;
-    btn.textContent = year;
-    
+  // Добавляем обработчики для кнопок годов
+  yearSelector.querySelectorAll('.year-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      const year = btn.getAttribute('data-year');
+      
       // Обновляем состояние React
       setSelectedYear(year);
       
       // Визуально обновляем UI
-      yearSelector.querySelectorAll('button').forEach(b => {
-        b.classList.remove('bg-blue-600', 'text-white', 'shadow-md');
-        b.classList.add('text-gray-400', 'hover:text-white');
+      yearSelector.querySelectorAll('.year-btn').forEach(b => {
+        b.classList.remove('bg-blue-600', 'text-white');
+        b.classList.add('text-gray-400');
       });
-      btn.classList.remove('text-gray-400', 'hover:text-white');
-      btn.classList.add('bg-blue-600', 'text-white', 'shadow-md');
+      btn.classList.remove('text-gray-400');
+      btn.classList.add('bg-blue-600', 'text-white');
       
       // Запрашиваем данные за выбранный год
       fetchYearlyData(year);
     });
-    
-    yearSelector.appendChild(btn);
   });
   
   // Если идет загрузка, показываем индикатор
@@ -2709,6 +2697,7 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
   
   // Если есть данные для отображения, рисуем график
   if (displayData.length > 0) {
+    
     // Контейнер для графика
     const graphContainer = document.createElement('div');
     graphContainer.className = 'w-full h-[300px]';
@@ -2891,9 +2880,6 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       .text(`Данные за ${year} год`);
     
     // Добавляем тултипы
-    // Удаляем существующий тултип, если он есть
-    d3.select("body").select(`.tooltip-${valKey}`).remove();
-    
     const tooltip = d3.select("body").append("div")
       .attr("class", `tooltip-${valKey}`)
       .style("opacity", 0)
