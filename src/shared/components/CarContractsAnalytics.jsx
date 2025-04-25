@@ -42,6 +42,37 @@ const getYearDateRange = (year) => {
   };
 };
 
+useEffect(() => {
+  const fetchAutoReturnData = async () => {
+    try {
+      const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
+      const autoReturnUrl = `${baseUrl}&auto_return`;
+      
+      // Получаем текущий год
+      const currentYear = new Date().getFullYear();
+      
+      // Формируем даты начала и конца года
+      const beginDate = formatDateForAPI(`${currentYear}-01-01`); // 01.01.текущий_год
+      const endDate = formatDateForAPI(`${currentYear}-12-31`);   // 31.12.текущий_год
+      
+      const requestData = {
+        begin_date: beginDate,
+        end_date: endDate,
+      };
+      
+      console.log(`Отправка запроса auto_return за весь ${currentYear} год:`, requestData);
+      
+      const response = await axios.post(autoReturnUrl, requestData);
+      
+      console.log('Данные о возврате автомобилей за год (auto_return):', response.data);
+    } catch (error) {
+      console.error('Ошибка при запросе данных auto_return за год:', error);
+    }
+  };
+  
+  fetchAutoReturnData();
+}, []);
+
 const calculateStats = useCallback((filteredData, activeTab) => {
   if (!filteredData) return { count: 0, amount: 0, average: 0 };
   
@@ -130,8 +161,7 @@ const calculateStats = useCallback((filteredData, activeTab) => {
           });
         }
       });
-      
-      // Преобразуем Map в массив и сортируем по имени
+     
       const regionArray = Array.from(uniqueRegions.values()).sort((a, b) => 
         a.name.localeCompare(b.name, 'ru-RU')
       );
@@ -175,7 +205,7 @@ const calculateStats = useCallback((filteredData, activeTab) => {
     }
   };
   
-  // Функция для форматирования даты в формат DD.MM.YYYY
+
   const formatDateForAPI = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -197,7 +227,6 @@ useEffect(() => {
     // Перерисовываем все графики сразу после обновления данных
     renderCharts();
     
-    // Если активный таб относится к конкретным типам графиков, рендерим соответствующие графики
     if (activeTab === 'contracts') {
       renderContractsCharts();
     } else if (activeTab === 'sales') {
@@ -245,6 +274,8 @@ const fetchData = async (apiUrl) => {
     console.log(`Отправка запроса на ${apiUrl} с данными:`, requestData);
     
     const response = await axios.post(apiUrl, requestData);
+    
+
     
     if (response.data && Array.isArray(response.data)) {
       console.log(`Получены данные с ${apiUrl}:`, response.data);
@@ -438,9 +469,8 @@ const getFilteredData = () => {
       ? apiData.find(model => model.model_id === selectedModel)
       : apiData;
     
-    // Если нашли данные модели
     if (selectedModelData) {
-      // Данные по регионам - всегда показываем все регионы
+      // Данные по регионам - всегда поазываем все регионы
       // но выделяем выбранный регион если есть
       let regionData = [];
       
@@ -449,18 +479,16 @@ const getFilteredData = () => {
           .filter(region => region && region.region_id && region.region_name)
           .map(region => {
             const valueKey = getValueKeyForActiveTab();
-            
             return {
               id: region.region_id,
               name: region.region_name || "Регион " + region.region_id,
               [valueKey]: parseInt(region.total_contracts || 0),
               amount: parseInt(region.total_price || 0),
-              // Отмечаем, выбран ли данный регион
               isSelected: region.region_id === selectedRegion
             };
           });
       }
-      
+
       // Если данных по регионам нет, генерируем тестовые
       if (regionData.length === 0) {
         const valueKey = getValueKeyForActiveTab();
@@ -473,11 +501,9 @@ const getFilteredData = () => {
         }));
       }
       
-      // Для модификаций - фильтруем по выбранному региону
       let modelData = [];
 
       if (selectedRegion !== 'all') {
-        // Создаем искусственное распределение модификаций по регионам
         // на основе доли контрактов в регионе от общего числа
         if (selectedModelData.filter_by_modification && selectedModelData.filter_by_region) {
           // Найдем долю контрактов выбранного региона от общего числа
@@ -534,7 +560,6 @@ const getFilteredData = () => {
         });
       }
 
-      // Если модификаций нет или их слишком мало, генерируем тестовые данные
       if (modelData.length < 3) {
         const valueKey = getValueKeyForActiveTab();
         
@@ -581,42 +606,40 @@ const getFilteredData = () => {
           });
         });
         
-        // Сортируем по популярности
         modelData.sort((a, b) => b[valueKey] - a[valueKey]);
       }
-      
       const valueKey = getValueKeyForActiveTab();
 
-      if (selectedModelData.filter_by_month) {
-        regionData = selectedModelData.filter_by_month
-          .map(region => {
-           
-            return {
-              id: region.region_id,
-              name: region.region_name || "Регион " + region.region_id,
-              [valueKey]: parseInt(region.total_contracts || 0),
-              amount: parseInt(region.total_price || 0),
-              isSelected: region.region_id === selectedRegion
-            };
-          });
-      }     
-// Получение данных для отображения в графике по месяцам
+   if (selectedModelData.filter_by_region && Array.isArray(selectedModelData.filter_by_region)) {
+  regionData = selectedModelData.filter_by_region
+    .filter(region => 
+      region && 
+      region.region_id && 
+      region.region_name
+    )
+    .map(region => {
+      const valueKey = getValueKeyForActiveTab();
+      return {
+        id: region.region_id,
+        name: region.region_name,
+        [valueKey]: parseInt(region.total_contracts || 0),
+        amount: parseInt(region.total_price || 0),
+        isSelected: region.region_id === selectedRegion
+      };
+    });
+} 
+      
 let monthlyData = [];
 
-// Проверяем наличие данных по месяцам в ответе API
 if (selectedModelData.filter_by_month && Array.isArray(selectedModelData.filter_by_month) && selectedModelData.filter_by_month.length > 0) {
-  // Обрабатываем данные по месяцам
   monthlyData = selectedModelData.filter_by_month.map(item => {
-    // Преобразуем формат даты для более читабельного отображения
     const yearMonth = item.month.split('-');
-    const year = yearMonth[0];
-    const monthIndex = parseInt(yearMonth[1], 10) - 1; // Месяцы в JS начинаются с 0
+    const monthIndex = parseInt(yearMonth[1], 10) - 1;
     
     // Массив названий месяцев на русском
     const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
     const monthName = monthNames[monthIndex];
     
-    // Определяем, какое поле использовать в зависимости от активной вкладки
     const valueKeyName = activeTab === 'contracts' ? 'contracts' : 
                         activeTab === 'sales' ? 'sales' : 
                         activeTab === 'stock' ? 'stock' :
@@ -624,23 +647,18 @@ if (selectedModelData.filter_by_month && Array.isArray(selectedModelData.filter_
                         activeTab === 'wholesale' ? 'wholesale' :
                         activeTab === 'promotions' ? 'promotions' : 'contracts';
     
-    // Создаем объект с корректно названными полями
     const adjustedItem = {
       month: monthName,
       [valueKeyName]: parseInt(item.count || 0),
       amount: parseInt(item.total_price || 0),
-      // Добавляем полное значение даты для корректной сортировки
       fullDate: item.month
     };
     
     return adjustedItem;
   });
   
-  // Если выбран регион, фильтруем или корректируем данные для этого региона
   if (selectedRegion !== 'all') {
-    // Можно применить коэффициент для конкретного региона, если нужно
-    // Например: умножить данные на долю этого региона от общего числа контрактов
-    const regionRatio = 0.7; // Пример коэффициента для региона
+    const regionRatio = 0.7;
     
     monthlyData = monthlyData.map(item => {
       const valueKeyName = getValueKeyForActiveTab();
@@ -1826,8 +1844,9 @@ return { regionData, modelData, monthlyData };
   return { regionData: [], modelData: [], monthlyData: [] };
 }
   
-  // Render all charts based on active tab
- const renderCharts = () => {
+  
+  
+const renderCharts = () => {
   if (activeTab === 'contracts') {
     renderContractsCharts();
   } else if (activeTab === 'sales') {
@@ -1843,14 +1862,18 @@ return { regionData, modelData, monthlyData };
   }
 };
   
-  // Render contracts section charts
-  const renderContractsCharts = () => {
-    const { regionData, modelData, monthlyData } = getFilteredData();
-    
+const renderContractsCharts = () => {
+  const { regionData, modelData, monthlyData } = getFilteredData();
+  
+  // Проверьте данные перед отрисовкой
+  console.log("Contracts region data:", regionData);
+  console.log("Contracts model data:", modelData);
+  console.log("Contracts monthly data:", monthlyData);
+
     renderBarChart(regionContractsRef, regionData, 'contracts', 'name', getRegionChartTitle(), '#4CAF50');
     renderBarChart(modelContractsRef, modelData, 'contracts', 'name', getModelChartTitle(), '#2196F3');
     renderTimelineChart(timelineContractsRef, monthlyData, 'contracts', 'month', getTimelineChartTitle());
-  };
+};
   
   // Render sales section charts
 const renderSalesCharts = () => {
@@ -1908,14 +1931,14 @@ const renderSalesCharts = () => {
     renderTimelineChart(stockTrendRef, monthlyData, 'stock', 'month', getTimelineChartTitle());
   };
 
-  // Новые функции для рендеринга графиков
- const renderRetailCharts = () => {
-   const { regionData, modelData, monthlyData } = getFilteredData();
-   
-   renderBarChart(regionContractsRef, regionData, 'retail', 'name', getRegionChartTitle(), '#FF5722');
-   renderBarChart(modelContractsRef, modelData, 'retail', 'name', getModelChartTitle(), '#03A9F4');
-   renderTimelineChart(timelineContractsRef, monthlyData, 'retail', 'month', getTimelineChartTitle());
- };
+// Создайте отдельные референсы для каждого таба или переиспользуйте корректно
+const renderRetailCharts = () => {
+  const { regionData, modelData, monthlyData } = getFilteredData();
+  
+  renderBarChart(regionSalesRef, regionData, 'retail', 'name', getRegionChartTitle(), '#FF5722');
+  renderBarChart(modelSalesRef, modelData, 'retail', 'name', getModelChartTitle(), '#03A9F4');
+  renderTimelineChart(timelineSalesRef, monthlyData, 'retail', 'month', getTimelineChartTitle());
+};
 
  const renderWholesaleCharts = () => {
    const { regionData, modelData, monthlyData } = getFilteredData();
@@ -2915,7 +2938,6 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       });
   }
   
-  // Вызываем функцию рендеринга D3 графика с данными
   renderD3Chart(graphContainer, displayData, valueKey, labelKey, title, selectedYear);
 };
 
