@@ -72,11 +72,9 @@ const extractMonthlyReturnData = (apiData, year) => {
         return;
       }
       
-      // Проверяем наличие данных по месяцам
       if (!model.filter_by_month || !Array.isArray(model.filter_by_month)) {
         return;
       }
-      
       
       model.filter_by_month.forEach(monthData => {
         if (!monthData.month || !monthData.month.startsWith(year)) {
@@ -3345,8 +3343,7 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
             valKey === 'retail' ? 'Розница: ' :
             valKey === 'wholesale' ? 'Опт: ' :
             valKey === 'promotions' ? 'Акции: ' : ''}
-          <strong>${d[valKey]}</strong><br>
-          Сумма: <strong>${formatCurrency(d.amount)}</strong>
+          <strong>${d[valKey]}</strong>
         `;
         
         // Добавляем информацию о регионе в тултип, если он выбран

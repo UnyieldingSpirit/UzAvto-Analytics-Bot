@@ -1,4 +1,3 @@
-// worker.js - создайте этот файл в src/
 self.addEventListener('message', function (e) {
     const { type, data } = e.data;
 
@@ -17,7 +16,6 @@ function calculateStats(apiData, selectedRegion, selectedModel, activeTab) {
     let totalContracts = 0;
     let totalAmount = 0;
 
-    // Если выбрана конкретная модель, фильтруем только по ней
     if (selectedModel !== 'all') {
         const modelData = apiData.find(model => model.model_id === selectedModel);
 
