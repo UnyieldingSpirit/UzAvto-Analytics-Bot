@@ -42,6 +42,100 @@ const getYearDateRange = (year) => {
   };
 };
 
+const extractMonthlyReturnData = (apiData, year) => {
+  const months = [
+    { month: 'Янв', value: 0 },
+    { month: 'Фев', value: 0 },
+    { month: 'Мар', value: 0 },
+    { month: 'Апр', value: 0 },
+    { month: 'Май', value: 0 },
+    { month: 'Июн', value: 0 },
+    { month: 'Июл', value: 0 },
+    { month: 'Авг', value: 0 },
+    { month: 'Сен', value: 0 },
+    { month: 'Окт', value: 0 },
+    { month: 'Ноя', value: 0 },
+    { month: 'Дек', value: 0 }
+  ];
+  
+  if (!apiData || !Array.isArray(apiData)) {
+    return months;
+  }
+  
+  const monthlyTotals = Array(12).fill(0);
+  
+  try {
+    apiData.forEach(model => {
+      if (!model) return;
+      
+      if (selectedModel !== 'all' && model.model_id !== selectedModel) {
+        return;
+      }
+      
+      // Проверяем наличие данных по месяцам
+      if (!model.filter_by_month || !Array.isArray(model.filter_by_month)) {
+        return;
+      }
+      
+      
+      model.filter_by_month.forEach(monthData => {
+        if (!monthData.month || !monthData.month.startsWith(year)) {
+          return;
+        }
+        
+        const monthNum = parseInt(monthData.month.split('-')[1]);
+        if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+          return;
+        }
+        
+        // Индекс в массиве (0-11)
+        const monthIndex = monthNum - 1;
+        
+        
+        // Проверяем наличие данных регионов
+        if (!monthData.regions || !Array.isArray(monthData.regions)) {
+          return;
+        }
+        
+        // Суммируем данные по регионам
+        if (selectedRegion !== 'all') {
+          // Если выбран конкретный регион, ищем его данные
+          const regionData = monthData.regions.find(r => r.region_id === selectedRegion);
+          if (regionData) {
+            // Проверяем наличие поля amount
+            if (regionData.amount !== undefined) {
+              const amount = parseInt(regionData.amount || 0);
+              if (!isNaN(amount)) {
+                monthlyTotals[monthIndex] += amount;
+              }
+            }
+          }
+        } else {
+          // Если не выбран конкретный регион, суммируем по всем
+          monthData.regions.forEach(region => {
+            if (region.amount !== undefined) {
+              const amount = parseInt(region.amount || 0);
+              if (!isNaN(amount)) {
+                monthlyTotals[monthIndex] += amount;
+              }
+            }
+          });
+        }
+      });
+    });
+    
+    // Заполняем массив месяцев данными
+    for (let i = 0; i < 12; i++) {
+      months[i].value = monthlyTotals[i];
+    }
+    
+    return months;
+    
+  } catch (error) {
+    return months;
+  }
+};
+  
 const fetchAutoReturnData = async () => {
   try {
     setLoadingComponent(true);
@@ -400,7 +494,7 @@ const prepareMonthlyDataFromResponse = (apiData, year) => {
     return [];
   }
   
-  // Объект для агрегации данных по месяцам
+  // Объект для агрегации данных только по месяцам выбранного года
   const monthlyDataMap = {};
   const valueKey = getValueKeyForActiveTab();
   
@@ -410,8 +504,9 @@ const prepareMonthlyDataFromResponse = (apiData, year) => {
     const modelData = apiData.find(model => model.model_id === selectedModel);
     
     if (modelData && modelData.filter_by_month && Array.isArray(modelData.filter_by_month)) {
-      // Заполняем данные по месяцам
+      // Заполняем данные по месяцам, фильтруя только по выбранному году
       modelData.filter_by_month.forEach(monthData => {
+        // Проверяем, что месяц соответствует выбранному году
         if (!monthData.month || !monthData.month.startsWith(year)) return;
         
         const yearMonth = monthData.month.split('-');
@@ -419,22 +514,81 @@ const prepareMonthlyDataFromResponse = (apiData, year) => {
         const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
         const monthName = monthNames[monthIndex];
         
-        // Сохраняем данные с правильным ключом значения
-        monthlyDataMap[monthName] = {
-          month: monthName,
-          [valueKey]: parseInt(monthData.count || 0),
-          amount: parseInt(monthData.total_price || 0),
-          sortIndex: monthIndex
-        };
+        // Обрабатываем данные по регионам, если они есть
+        if (monthData.regions && Array.isArray(monthData.regions)) {
+          // Если выбран конкретный регион, фильтруем данные по нему
+          if (selectedRegion !== 'all') {
+            const regionData = monthData.regions.find(r => r.region_id === selectedRegion);
+            if (regionData) {
+              // Извлекаем значения и суммы из данных региона
+              let count = parseInt(regionData.all_count || regionData.count || 0);
+              let amount = parseInt(regionData.amount || 0);
+              
+              // Преобразуем отрицательные значения в положительные
+              count = Math.abs(count);
+              amount = Math.abs(amount);
+              
+              // Сохраняем данные с правильным ключом значения
+              monthlyDataMap[monthName] = {
+                month: monthName,
+                [valueKey]: count,
+                amount: amount,
+                sortIndex: monthIndex
+              };
+            }
+          } else {
+            // Если регион не выбран, суммируем данные по всем регионам
+            let totalCount = 0;
+            let totalAmount = 0;
+            
+            monthData.regions.forEach(region => {
+              let count = parseInt(region.all_count || region.count || 0);
+              let amount = parseInt(region.amount || 0);
+              
+              // Преобразуем отрицательные значения в положительные
+              count = Math.abs(count);
+              amount = Math.abs(amount);
+              
+              totalCount += count;
+              totalAmount += amount;
+            });
+            
+            // Сохраняем сумму по всем регионам
+            monthlyDataMap[monthName] = {
+              month: monthName,
+              [valueKey]: totalCount,
+              amount: totalAmount,
+              sortIndex: monthIndex
+            };
+          }
+        } else {
+          // Если данных по регионам нет, используем общие данные месяца
+          let count = parseInt(monthData.count || 0);
+          let amount = parseInt(monthData.total_price || 0);
+          
+          // Преобразуем отрицательные значения в положительные
+          count = Math.abs(count);
+          amount = Math.abs(amount);
+          
+          monthlyDataMap[monthName] = {
+            month: monthName,
+            [valueKey]: count,
+            amount: amount,
+            sortIndex: monthIndex
+          };
+        }
       });
     }
   } else {
     // Если модель не выбрана, агрегируем данные по всем моделям
     apiData.forEach(model => {
       if (model.filter_by_month && Array.isArray(model.filter_by_month)) {
-        model.filter_by_month.forEach(monthData => {
-          if (!monthData.month || !monthData.month.startsWith(year)) return;
-          
+        // Фильтруем только месяцы из выбранного года
+        const yearMonths = model.filter_by_month.filter(monthData => 
+          monthData.month && monthData.month.startsWith(year)
+        );
+        
+        yearMonths.forEach(monthData => {
           const yearMonth = monthData.month.split('-');
           const monthIndex = parseInt(yearMonth[1], 10) - 1;
           const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
@@ -449,12 +603,65 @@ const prepareMonthlyDataFromResponse = (apiData, year) => {
             };
           }
           
-          monthlyDataMap[monthName][valueKey] += parseInt(monthData.count || 0);
-          monthlyDataMap[monthName].amount += parseInt(monthData.total_price || 0);
+          // Обрабатываем данные по регионам, если они есть
+          if (monthData.regions && Array.isArray(monthData.regions)) {
+            // Если выбран конкретный регион, фильтруем данные по нему
+            if (selectedRegion !== 'all') {
+              const regionData = monthData.regions.find(r => r.region_id === selectedRegion);
+              if (regionData) {
+                let count = parseInt(regionData.all_count || regionData.count || 0);
+                let amount = parseInt(regionData.amount || 0);
+                
+                // Преобразуем отрицательные значения в положительные
+                count = Math.abs(count);
+                amount = Math.abs(amount);
+                
+                monthlyDataMap[monthName][valueKey] += count;
+                monthlyDataMap[monthName].amount += amount;
+              }
+            } else {
+              // Если регион не выбран, суммируем данные по всем регионам
+              monthData.regions.forEach(region => {
+                let count = parseInt(region.all_count || region.count || 0);
+                let amount = parseInt(region.amount || 0);
+                
+                // Преобразуем отрицательные значения в положительные
+                count = Math.abs(count);
+                amount = Math.abs(amount);
+                
+                monthlyDataMap[monthName][valueKey] += count;
+                monthlyDataMap[monthName].amount += amount;
+              });
+            }
+          } else {
+            // Если данных по регионам нет, используем общие данные месяца
+            let count = parseInt(monthData.count || 0);
+            let amount = parseInt(monthData.total_price || 0);
+            
+            // Преобразуем отрицательные значения в положительные
+            count = Math.abs(count);
+            amount = Math.abs(amount);
+            
+            monthlyDataMap[monthName][valueKey] += count;
+            monthlyDataMap[monthName].amount += amount;
+          }
         });
       }
     });
   }
+  
+  // Создаем структуру для всех месяцев года (даже если нет данных)
+  const allMonths = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+  allMonths.forEach((month, index) => {
+    if (!monthlyDataMap[month]) {
+      monthlyDataMap[month] = {
+        month: month,
+        [valueKey]: 0,
+        amount: 0,
+        sortIndex: index
+      };
+    }
+  });
   
   // Преобразуем объект в массив и сортируем по месяцам
   const result = Object.values(monthlyDataMap).sort((a, b) => a.sortIndex - b.sortIndex);
@@ -2050,118 +2257,227 @@ const renderRetailCharts = () => {
          activeTab === 'promotions' ? 'акционных продаж' : ''}`;
  };
  
-  const extractMonthlyReturnData = (apiData, year) => {
-  console.log(`Начинаем извлечение данных за ${year} год`);
+
   
-  // Базовая структура для всех месяцев
-  const months = [
-    { month: 'Янв', value: 0 },
-    { month: 'Фев', value: 0 },
-    { month: 'Мар', value: 0 },
-    { month: 'Апр', value: 0 },
-    { month: 'Май', value: 0 },
-    { month: 'Июн', value: 0 },
-    { month: 'Июл', value: 0 },
-    { month: 'Авг', value: 0 },
-    { month: 'Сен', value: 0 },
-    { month: 'Окт', value: 0 },
-    { month: 'Ноя', value: 0 },
-    { month: 'Дек', value: 0 }
-  ];
-  
-  // Если нет данных, возвращаем пустую структуру
-  if (!apiData || !Array.isArray(apiData)) {
-    console.log("Нет данных API или неверный формат");
-    return months;
+const renderChart = (container, data, year) => {
+  // Очищаем контейнер
+  container.innerHTML = '';
+
+  // Создаем SVG контейнер
+  const margin = {top: 20, right: 30, bottom: 40, left: 60};
+  const width = container.clientWidth - margin.left - margin.right;
+  const height = 280 - margin.top - margin.bottom;
+
+  const svg = d3.select(container)
+    .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+  // Шкалы
+  const x = d3.scaleBand()
+    .domain(data.map(d => d.month))
+    .range([0, width])
+    .padding(1);  // Используем padding 1 как в графике динамики
+
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(data, d => d.value) * 1.2 || 10])
+    .range([height, 0])
+    .nice();
+
+  // Сетка
+  svg.append("g")
+    .attr("class", "grid")
+    .call(d3.axisLeft(y)
+      .tickSize(-width)
+      .tickFormat("")
+    )
+    .style("stroke", "#333")
+    .style("stroke-opacity", "0.1");
+
+  // Оси
+  svg.append("g")
+    .attr("transform", `translate(0,${height})`)
+    .call(d3.axisBottom(x))
+    .selectAll("text")
+    .style("fill", "#999");
+
+  svg.append("g")
+    .call(d3.axisLeft(y))
+    .selectAll("text")
+    .style("fill", "#999");
+
+  // Уникальные ID для градиентов
+  const uniqueId = Date.now();
+  const areaGradientId = `areaGradient-${uniqueId}`;
+  const lineGradientId = `lineGradient-${uniqueId}`;
+
+  // Градиенты
+  const defs = svg.append("defs");
+
+  // Градиент для области
+  const areaGradient = defs.append("linearGradient")
+    .attr("id", areaGradientId)
+    .attr("x1", "0%").attr("y1", "0%")
+    .attr("x2", "0%").attr("y2", "100%");
+
+  areaGradient.append("stop")
+    .attr("offset", "0%")
+    .attr("stop-color", "#3b82f6")
+    .attr("stop-opacity", 0.7);
+
+  areaGradient.append("stop")
+    .attr("offset", "100%")
+    .attr("stop-color", "#3b82f6")
+    .attr("stop-opacity", 0.1);
+
+  // Градиент для линии
+  const lineGradient = defs.append("linearGradient")
+    .attr("id", lineGradientId)
+    .attr("x1", "0%").attr("y1", "0%")
+    .attr("x2", "100%").attr("y2", "0%");
+
+  lineGradient.append("stop")
+    .attr("offset", "0%")
+    .attr("stop-color", "#3b82f6");
+
+  lineGradient.append("stop")
+    .attr("offset", "100%")
+    .attr("stop-color", "#2563eb");
+
+  // Линия
+  const line = d3.line()
+    .x(d => x(d.month) + x.bandwidth()/2)
+    .y(d => y(d.value))
+    .curve(d3.curveMonotoneX);
+
+  // Область
+  const area = d3.area()
+    .x(d => x(d.month) + x.bandwidth()/2)
+    .y0(height)
+    .y1(d => y(d.value))
+    .curve(d3.curveMonotoneX);
+
+  // Добавляем область
+  svg.append("path")
+    .datum(data)
+    .attr("class", "area")
+    .attr("fill", `url(#${areaGradientId})`)
+    .attr("d", area);
+
+  // Добавляем линию с анимацией
+  const path = svg.append("path")
+    .datum(data)
+    .attr("class", "line")
+    .attr("fill", "none")
+    .attr("stroke", `url(#${lineGradientId})`)
+    .attr("stroke-width", 3)
+    .attr("d", line);
+
+  // Анимация линии
+  if (path.node() && typeof path.node().getTotalLength === 'function') {
+    const totalLength = path.node().getTotalLength();
+    path
+      .attr("stroke-dasharray", totalLength)
+      .attr("stroke-dashoffset", totalLength)
+      .transition()
+      .duration(1500)
+      .attr("stroke-dashoffset", 0);
   }
-  
-  console.log(`Всего моделей в данных: ${apiData.length}`);
-  
-  // Создаем объект для агрегации данных по месяцам
-  const monthlyTotals = Array(12).fill(0);
-  
-  try {
-    // Проходим по всем элементам данных (моделям)
-    apiData.forEach(model => {
-      if (!model) return;
-      
-      console.log(`Обрабатываем модель: ${model.model_name || 'Без имени'} (ID: ${model.model_id || 'Нет ID'})`);
-      
-      // Пропускаем, если не подходит под фильтр модели
-      if (selectedModel !== 'all' && model.model_id !== selectedModel) {
-        console.log(`Модель ${model.model_id} не соответствует выбранному фильтру ${selectedModel}`);
-        return;
-      }
-      
-      // Проверяем наличие данных по месяцам
-      if (!model.filter_by_month || !Array.isArray(model.filter_by_month)) {
-        console.log(`У модели ${model.model_id} нет данных по месяцам`);
-        return;
-      }
-      
-      console.log(`Количество месяцев у модели: ${model.filter_by_month.length}`);
-      
-      // Проходим по месяцам
-      model.filter_by_month.forEach(monthData => {
-        // Проверяем соответствие году
-        if (!monthData.month || !monthData.month.startsWith(year)) {
-          return;
-        }
-        
-        // Получаем номер месяца (1-12)
-        const monthNum = parseInt(monthData.month.split('-')[1]);
-        if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
-          console.log(`Некорректный номер месяца: ${monthData.month}`);
-          return;
-        }
-        
-        // Индекс в массиве (0-11)
-        const monthIndex = monthNum - 1;
-        
-        console.log(`Обрабатываем месяц: ${monthData.month} (индекс: ${monthIndex})`);
-        
-        // Проверяем наличие данных регионов
-        if (!monthData.regions || !Array.isArray(monthData.regions)) {
-          console.log(`У месяца ${monthData.month} нет данных по регионам`);
-          return;
-        }
-        
-        // Суммируем данные по регионам
-        if (selectedRegion !== 'all') {
-          // Если выбран конкретный регион, ищем его данные
-          const regionData = monthData.regions.find(r => r.region_id === selectedRegion);
-          if (regionData) {
-            const amount = parseInt(regionData.amount || 0);
-            if (!isNaN(amount)) {
-              monthlyTotals[monthIndex] += amount;
-              console.log(`Добавлено ${amount} для месяца ${monthNum}, текущая сумма: ${monthlyTotals[monthIndex]}`);
-            }
-          }
-        } else {
-          // Если не выбран конкретный регион, суммируем по всем
-          monthData.regions.forEach(region => {
-            const amount = parseInt(region.amount || 0);
-            if (!isNaN(amount)) {
-              monthlyTotals[monthIndex] += amount;
-            }
-          });
-          console.log(`Общая сумма для месяца ${monthNum}: ${monthlyTotals[monthIndex]}`);
-        }
-      });
+
+  // Добавляем точки
+  svg.selectAll(".dot")
+    .data(data)
+    .enter().append("circle")
+    .attr("class", "dot")
+    .attr("cx", d => x(d.month) + x.bandwidth()/2)
+    .attr("cy", d => y(d.value))
+    .attr("r", 0)
+    .attr("fill", "#3b82f6")
+    .attr("stroke", "#1e1e2e")
+    .attr("stroke-width", 2)
+    .transition()
+    .delay((d, i) => 1500 + i * 50)
+    .duration(300)
+    .attr("r", 5);
+
+  // Добавляем метки значений
+  svg.selectAll(".value-label")
+    .data(data)
+    .enter().append("text")
+    .attr("class", "value-label")
+    .attr("x", d => x(d.month) + x.bandwidth()/2)
+    .attr("y", d => y(d.value) - 10)
+    .attr("text-anchor", "middle")
+    .style("font-size", "10px")
+    .style("fill", "#ccc")
+    .style("opacity", 0)
+    .text(d => {
+      if (d.value === 0) return "";
+      if (d.value >= 1000000) return (d.value / 1000000).toFixed(1) + 'M';
+      if (d.value >= 1000) return (d.value / 1000).toFixed(0) + 'K';
+      return d.value;
+    })
+    .transition()
+    .delay((d, i) => 1800 + i * 50)
+    .duration(300)
+    .style("opacity", 1);
+
+  // Заголовок
+  svg.append("text")
+    .attr("x", width / 2)
+    .attr("y", -5)
+    .attr("text-anchor", "middle")
+    .style("font-size", "14px")
+    .style("fill", "#e5e7eb")
+    .text(`Динамика возврата денежных средств ${year}`);
+
+  // Добавляем интерактивность
+  const tooltip = d3.select("body").append("div")
+    .attr("class", `tooltip-return-${uniqueId}`)
+    .style("opacity", 0)
+    .style("position", "absolute")
+    .style("background-color", "rgba(40, 40, 40, 0.9)")
+    .style("color", "#fff")
+    .style("padding", "10px")
+    .style("border-radius", "5px")
+    .style("font-size", "14px")
+    .style("pointer-events", "none")
+    .style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)")
+    .style("z-index", "10");
+
+  svg.selectAll(".dot")
+    .on("mouseover", function(event, d) {
+      d3.select(this).transition()
+        .duration(200)
+        .attr("r", 8);
+
+      tooltip.transition()
+        .duration(200)
+        .style("opacity", 1);
+
+      tooltip.html(`
+        <strong>${d.month} ${year}</strong><br>
+        Сумма возврата: <strong>${formatCurrency(d.value)}</strong>
+      `)
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY - 28) + "px");
+    })
+    .on("mouseout", function() {
+      d3.select(this).transition()
+        .duration(200)
+        .attr("r", 5);
+
+      tooltip.transition()
+        .duration(500)
+        .style("opacity", 0);
+    })
+    .on("mousemove", function(event) {
+      tooltip
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY - 28) + "px");
     });
-    
-    // Заполняем массив месяцев данными
-    for (let i = 0; i < 12; i++) {
-      months[i].value = monthlyTotals[i];
-    }
-    
-    console.log("Итоговые данные по месяцам:", months);
-    return months;
-    
-  } catch (error) {
-    console.error('Ошибка при обработке данных:', error);
-    return months;
-  }
 };
 
   
@@ -2302,8 +2618,10 @@ const renderMoneyReturnChart = () => {
         }
         
         // Обрабатываем данные API
-        const monthlyData = extractMonthlyReturnData(response.data, year);
-        const hasData = monthlyData.some(d => d.value > 0);
+        let monthlyData = extractMonthlyReturnData(response.data, year);
+        
+        // Проверяем наличие данных (с учетом абсолютных значений)
+        const hasData = monthlyData.some(d => Math.abs(d.value) > 0);
         
         if (!hasData) {
           chartDiv.innerHTML = `
@@ -2317,8 +2635,15 @@ const renderMoneyReturnChart = () => {
           return;
         }
         
-        // Рисуем график с данными
-        renderChart(chartDiv, monthlyData, year);
+        // Преобразуем отрицательные значения в положительные
+        const positiveData = monthlyData.map(item => ({
+          ...item,
+          originalValue: item.value, // Сохраняем оригинальное значение для отладки
+          value: Math.abs(item.value)
+        }));
+        
+        // Рисуем график с положительными данными
+        renderChart(chartDiv, positiveData, year);
       })
       .catch(error => {
         console.error('Ошибка при запросе данных о возврате:', error);
@@ -2744,6 +3069,15 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
     return;
   }
   
+  // Преобразуем данные перед отрисовкой (удаляем отрицательные значения)
+  const processedData = displayData.map(item => {
+    const value = item[valueKey] !== undefined ? item[valueKey] : 0;
+    return {
+      ...item,
+      [valueKey]: Math.abs(value) // Преобразуем в положительные значения
+    };
+  });
+  
   // Функция для отрисовки D3.js графика
   function renderD3Chart(container, chartData, valKey, labelKey, chartTitle, year) {
     // Очищаем контейнер перед рендерингом
@@ -2829,6 +3163,19 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
     lineGradient.append("stop")
       .attr("offset", "100%")
       .attr("stop-color", secondaryColor);
+    
+    // Проверяем наличие данных и их формат
+    const hasValue = chartData.some(d => d[valKey] !== undefined && d[valKey] > 0);
+    if (!hasValue) {
+      svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", height / 2)
+        .attr("text-anchor", "middle")
+        .style("font-size", "14px")
+        .style("fill", "#999")
+        .text("Нет данных для отображения");
+      return;
+    }
     
     // Шкалы
     const x = d3.scaleBand()
@@ -2929,7 +3276,12 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       .style("font-size", "10px")
       .style("fill", primaryColor)
       .style("opacity", 0)
-      .text(d => d[valKey])
+      .text(d => {
+        if (d[valKey] === 0) return "";
+        if (d[valKey] >= 1000000) return (d[valKey] / 1000000).toFixed(1) + 'M';
+        if (d[valKey] >= 1000) return (d[valKey] / 1000).toFixed(0) + 'K';
+        return d[valKey];
+      })
       .transition()
       .delay((d, i) => 1800 + i * 50)
       .duration(300)
@@ -3040,8 +3392,8 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
     container.insertBefore(regionHeader, graphContainer);
   }
   
-  // Вызываем функцию рендеринга графика
-  renderD3Chart(graphContainer, displayData, valueKey, labelKey, title, selectedYear);
+  // Вызываем функцию рендеринга графика с обработанными данными
+  renderD3Chart(graphContainer, processedData, valueKey, labelKey, title, selectedYear);
 };
 
 const formatCurrency = (value) => {
