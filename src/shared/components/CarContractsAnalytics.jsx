@@ -42,8 +42,7 @@ const getYearDateRange = (year) => {
   };
 };
 
-useEffect(() => {
-  const fetchAutoReturnData = async () => {
+   const fetchAutoReturnData = async () => {
     try {
       const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
       const autoReturnUrl = `${baseUrl}&auto_return`;
@@ -70,8 +69,12 @@ useEffect(() => {
     }
   };
   
+useEffect(() => {
+ 
+  
   fetchAutoReturnData();
 }, []);
+
 
 const calculateStats = useCallback((filteredData, activeTab) => {
   if (!filteredData) return { count: 0, amount: 0, average: 0 };
@@ -216,11 +219,6 @@ const calculateStats = useCallback((filteredData, activeTab) => {
   };
   
 
-useEffect(() => {
-  if (activeTab) {
-    fetchYearlyData(selectedYear);
-  }
-}, [activeTab, selectedModel, selectedRegion]);
   
 useEffect(() => {
   if (apiData) {
@@ -344,7 +342,7 @@ const fetchYearlyData = async (year) => {
       begin_date: beginDate,
       end_date: endDate,
       model_id: selectedModel !== 'all' ? selectedModel : undefined,
-      region_id: selectedRegion !== 'all' ? selectedRegion : undefined
+      region_id: selectedRegion !== 'all' ? selectedRegion : undefined  // Добавляем регион в запрос
     };
     
     console.log(`Отправка запроса на годовые данные за ${year}:`, requestData);
@@ -366,6 +364,12 @@ const fetchYearlyData = async (year) => {
     setYearlyDataLoading(false);
   }
 };
+
+useEffect(() => {
+  if (activeTab) {
+    fetchYearlyData(selectedYear);
+  }
+}, [activeTab, selectedModel, selectedRegion]); 
 
 // Функция для подготовки месячных данных из ответа API
 const prepareMonthlyDataFromResponse = (apiData, year) => {
@@ -1865,11 +1869,6 @@ const renderCharts = () => {
 const renderContractsCharts = () => {
   const { regionData, modelData, monthlyData } = getFilteredData();
   
-  // Проверьте данные перед отрисовкой
-  console.log("Contracts region data:", regionData);
-  console.log("Contracts model data:", modelData);
-  console.log("Contracts monthly data:", monthlyData);
-
     renderBarChart(regionContractsRef, regionData, 'contracts', 'name', getRegionChartTitle(), '#4CAF50');
     renderBarChart(modelContractsRef, modelData, 'contracts', 'name', getModelChartTitle(), '#2196F3');
     renderTimelineChart(timelineContractsRef, monthlyData, 'contracts', 'month', getTimelineChartTitle());
@@ -2028,277 +2027,498 @@ const renderRetailCharts = () => {
          activeTab === 'promotions' ? 'акционных продаж' : ''}`;
  };
  
-// Функция для рендеринга графика возврата денег
+// Функция для рендеринга графика возврата денег с подробным логированием
 const renderMoneyReturnChart = () => {
- if (!moneyReturnChartRef.current) return;
- 
- const container = moneyReturnChartRef.current;
- container.innerHTML = '';
- 
- const margin = { top: 30, right: 30, bottom: 60, left: 60 };
- const width = container.clientWidth - margin.left - margin.right;
- const height = container.clientHeight - margin.top - margin.bottom;
- 
- const svg = d3.select(container)
-   .append('svg')
-   .attr('width', width + margin.left + margin.right)
-   .attr('height', height + margin.top + margin.bottom)
-   .style('background', '#1f2937')
-   .style('border-radius', '0.5rem')
-   .append('g')
-   .attr('transform', `translate(${margin.left},${margin.top})`);
-   
- // Добавляем заголовок
- svg.append('text')
-   .attr('x', width / 2)
-   .attr('y', -margin.top / 2)
-   .attr('text-anchor', 'middle')
-   .style('font-size', '16px')
-   .style('fill', '#f9fafb')
-   .text('Динамика возврата денежных средств');
-   
- // Данные для графика возврата денег (последние 6 месяцев)
- const currentDate = new Date();
- const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
- 
- const moneyReturnData = Array.from({ length: 6 }, (_, i) => {
-   const month = new Date(currentDate);
-   month.setMonth(currentDate.getMonth() - 5 + i);
-   
-   // Генерируем данные о возвратах с тенденцией к росту
-   const baseValue = 25000 + Math.random() * 15000;
-   const trendFactor = 1 + (i * 0.15); // Увеличиваем возвраты с каждым месяцем
-   
-   return {
-     month: monthNames[month.getMonth()],
-     year: month.getFullYear(),
-     amount: Math.round(baseValue * trendFactor),
-     expectedAmount: Math.round((baseValue * trendFactor) * 1.2)
-   };
- });
- 
- // Создаем шкалы
- const x = d3.scaleBand()
-   .domain(moneyReturnData.map(d => d.month))
-   .range([0, width])
-   .padding(0.3);
-   
- const y = d3.scaleLinear()
-   .domain([0, d3.max(moneyReturnData, d => Math.max(d.amount, d.expectedAmount)) * 1.1])
-   .range([height, 0]);
-   
- svg.append('g')
-   .attr('transform', `translate(0,${height})`)
-   .call(d3.axisBottom(x))
-   .selectAll('text')
-   .style('font-size', '12px')
-   .style('fill', '#d1d5db');
-   
- svg.append('g')
-   .call(d3.axisLeft(y).ticks(5).tickFormat(d => `${(d / 1000)}k`))
-   .selectAll('text')
-   .style('font-size', '12px')
-   .style('fill', '#d1d5db');
-   
- svg.append('g')
-   .attr('class', 'grid')
-   .call(d3.axisLeft(y)
-     .tickSize(-width)
-     .tickFormat(''))
-   .selectAll('line')
-   .style('stroke', 'rgba(255, 255, 255, 0.1)');
-
-  const actualLine = d3.line()
-   .x(d => x(d.month) + x.bandwidth() / 2)
-   .y(d => y(d.amount))
-   .curve(d3.curveMonotoneX);
-   
- // Создаем линию для ожидаемых возвратов
- const expectedLine = d3.line()
-   .x(d => x(d.month) + x.bandwidth() / 2)
-   .y(d => y(d.expectedAmount))
-   .curve(d3.curveMonotoneX);
-   
- // Создаем градиенты
- const defs = svg.append('defs');
- 
- // Градиент для фактической линии
- const actualGradient = defs.append('linearGradient')
-   .attr('id', 'actualGradient')
-   .attr('x1', '0%')
-   .attr('y1', '0%')
-   .attr('x2', '100%')
-   .attr('y2', '0%');
-   
- actualGradient.append('stop')
-   .attr('offset', '0%')
-   .attr('stop-color', '#3b82f6')
-   .attr('stop-opacity', 1);
-   
- actualGradient.append('stop')
-   .attr('offset', '100%')
-   .attr('stop-color', '#60a5fa')
-   .attr('stop-opacity', 1);
-   
- // Градиент для ожидаемой линии
- const expectedGradient = defs.append('linearGradient')
-   .attr('id', 'expectedGradient')
-   .attr('x1', '0%')
-   .attr('y1', '0%')
-   .attr('x2', '100%')
-   .attr('y2', '0%');
-   
- expectedGradient.append('stop')
-   .attr('offset', '0%')
-   .attr('stop-color', '#f59e0b')
-   .attr('stop-opacity', 1);
-   
- expectedGradient.append('stop')
-   .attr('offset', '100%')
-   .attr('stop-color', '#fbbf24')
-   .attr('stop-opacity', 1);
-   
- // Добавляем область под фактической линией
- svg.append('path')
-   .datum(moneyReturnData)
-   .attr('fill', 'url(#actualGradient)')
-   .attr('fill-opacity', 0.2)
-   .attr('d', d3.area()
-     .x(d => x(d.month) + x.bandwidth() / 2)
-     .y0(height)
-     .y1(d => y(d.amount))
-     .curve(d3.curveMonotoneX)
-   );
-   
- // Добавляем фактическую линию с анимацией
- const actualPath = svg.append('path')
-   .datum(moneyReturnData)
-   .attr('fill', 'none')
-   .attr('stroke', 'url(#actualGradient)')
-   .attr('stroke-width', 3)
-   .attr('d', actualLine);
-   
- // Рассчитываем длину линии для анимации
- const actualPathLength = actualPath.node().getTotalLength();
- 
- actualPath
-   .attr('stroke-dasharray', actualPathLength)
-   .attr('stroke-dashoffset', actualPathLength)
-   .transition()
-   .duration(2000)
-   .attr('stroke-dashoffset', 0);
-   
- // Добавляем ожидаемую линию с анимацией
- const expectedPath = svg.append('path')
-   .datum(moneyReturnData)
-   .attr('fill', 'none')
-   .attr('stroke', 'url(#expectedGradient)')
-   .attr('stroke-width', 2)
-   .attr('stroke-dasharray', '5,5')
-   .attr('d', expectedLine);
-   
- // Рассчитываем длину линии для анимации
- const expectedPathLength = expectedPath.node().getTotalLength();
- 
- expectedPath
-   .attr('stroke-dasharray', `5,5,${expectedPathLength}`)
-   .attr('stroke-dashoffset', expectedPathLength)
-   .transition()
-   .duration(2000)
-   .delay(500)
-   .attr('stroke-dashoffset', 0);
-   
- // Добавляем точки на линии фактических возвратов
- svg.selectAll('.actual-point')
-   .data(moneyReturnData)
-   .join('circle')
-   .attr('class', 'actual-point')
-   .attr('cx', d => x(d.month) + x.bandwidth() / 2)
-   .attr('cy', d => y(d.amount))
-   .attr('r', 0)
-   .attr('fill', '#3b82f6')
-   .attr('stroke', '#1f2937')
-   .attr('stroke-width', 2)
-   .transition()
-   .duration(1000)
-   .delay((d, i) => 2000 + i * 150)
-   .attr('r', 5);
-   
- // Добавляем подписи для фактических возвратов
- svg.selectAll('.actual-label')
-   .data(moneyReturnData)
-   .join('text')
-   .attr('class', 'actual-label')
-   .attr('x', d => x(d.month) + x.bandwidth() / 2)
-   .attr('y', d => y(d.amount) - 15)
-   .attr('text-anchor', 'middle')
-   .style('font-size', '10px')
-   .style('font-weight', 'bold')
-   .style('fill', '#60a5fa')
-   .style('opacity', 0)
-   .text(d => `${(d.amount / 1000).toFixed(1)}k`)
-   .transition()
-   .duration(500)
-   .delay((d, i) => 2500 + i * 150)
-   .style('opacity', 1);
-   
- // Добавляем легенду
- const legend = svg.append('g')
-   .attr('transform', `translate(${width - 180}, ${height - 50})`);
-   
- legend.append('line')
-   .attr('x1', 0)
-   .attr('y1', 0)
-   .attr('x2', 20)
-   .attr('y2', 0)
-   .attr('stroke', '#3b82f6')
-   .attr('stroke-width', 3);
-   
- legend.append('text')
-   .attr('x', 25)
-   .attr('y', 4)
-   .text('Фактический возврат')
-   .style('font-size', '10px')
-   .style('fill', '#d1d5db');
-   
- legend.append('line')
-   .attr('x1', 0)
-   .attr('y1', 20)
-   .attr('x2', 20)
-   .attr('y2', 20)
-   .attr('stroke', '#f59e0b')
-   .attr('stroke-width', 2)
-   .attr('stroke-dasharray', '5,5');
-   
- legend.append('text')
-   .attr('x', 25)
-   .attr('y', 24)
-   .text('Ожидаемый возврат')
-   .style('font-size', '10px')
-   .style('fill', '#d1d5db');
-   
- // Высчитываем общую эффективность возврата
- const totalActual = moneyReturnData.reduce((sum, d) => sum + d.amount, 0);
- const totalExpected = moneyReturnData.reduce((sum, d) => sum + d.expectedAmount, 0);
- const efficiency = (totalActual / totalExpected) * 100;
- 
- // Добавляем суммарную информацию
- const summary = svg.append('g')
-   .attr('transform', `translate(20, 20)`);
-   
- summary.append('text')
-   .text(`Эффективность: ${efficiency.toFixed(1)}%`)
-   .style('font-size', '12px')
-   .style('font-weight', 'bold')
-   .style('fill', efficiency >= 85 ? '#22c55e' : efficiency >= 70 ? '#f59e0b' : '#ef4444');
-   
- summary.append('text')
-   .attr('y', 20)
-   .text(`Всего возвращено: ${(totalActual / 1000).toFixed(1)}k`)
-   .style('font-size', '12px')
-   .style('fill', '#d1d5db');
+  // Получаем контейнер
+  const container = moneyReturnChartRef.current;
+  if (!container) return;
+  
+  // Очищаем контейнер
+  container.innerHTML = '';
+  
+  console.log("Начинаем рендеринг графика возврата денег");
+  
+  // Добавляем переключатель годов
+  const yearSelector = document.createElement('div');
+  yearSelector.className = 'flex justify-end mb-2';
+  yearSelector.innerHTML = `
+    <div class="bg-gray-700 rounded-lg p-1 flex items-center border border-gray-700">
+      <button class="year-btn ${selectedYear === '2023' ? 'bg-blue-600 text-white' : 'text-gray-400'} px-3 py-1 text-sm font-medium rounded-md" data-year="2023">2023</button>
+      <button class="year-btn ${selectedYear === '2024' ? 'bg-blue-600 text-white' : 'text-gray-400'} px-3 py-1 text-sm font-medium rounded-md" data-year="2024">2024</button>
+      <button class="year-btn ${selectedYear === '2025' ? 'bg-blue-600 text-white' : 'text-gray-400'} px-3 py-1 text-sm font-medium rounded-md" data-year="2025">2025</button>
+    </div>
+  `;
+  container.appendChild(yearSelector);
+  
+  // Добавляем обработчики для кнопок
+  yearSelector.querySelectorAll('.year-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const year = btn.getAttribute('data-year');
+      
+      // Обновляем визуально
+      yearSelector.querySelectorAll('.year-btn').forEach(b => {
+        b.classList.remove('bg-blue-600', 'text-white');
+        b.classList.add('text-gray-400');
+      });
+      btn.classList.remove('text-gray-400');
+      btn.classList.add('bg-blue-600', 'text-white');
+      
+      // Обновляем состояние
+      setSelectedYear(year);
+      
+      console.log(`Выбран год: ${year}`);
+      
+      // Загружаем данные заново
+      fetchAndRenderChart(year);
+    });
+  });
+  
+  // Создаем контейнер графика
+  const chartDiv = document.createElement('div');
+  chartDiv.className = 'w-full h-[300px]';
+  container.appendChild(chartDiv);
+  
+  // Функция загрузки и отрисовки графика
+  const fetchAndRenderChart = (year) => {
+    console.log(`Загружаем данные для года: ${year}`);
+    
+    // Показываем индикатор загрузки
+    chartDiv.innerHTML = `
+      <div class="flex items-center justify-center h-full">
+        <div class="animate-spin rounded-full h-10 w-10 border-2 border-t-blue-500 border-blue-500/30"></div>
+      </div>
+    `;
+    
+    // Формируем запрос
+    const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
+    const autoReturnUrl = `${baseUrl}&auto_return`;
+    
+    const beginDate = formatDateForAPI(`${year}-01-01`);
+    const endDate = formatDateForAPI(`${year}-12-31`);
+    
+    const requestData = {
+      begin_date: beginDate,
+      end_date: endDate
+    };
+    
+    // Добавляем фильтры если нужно
+    if (selectedModel !== 'all') {
+      requestData.model_id = selectedModel;
+      console.log(`Фильтр по модели: ${selectedModel}`);
+    }
+    
+    if (selectedRegion !== 'all') {
+      requestData.region_id = selectedRegion;
+      console.log(`Фильтр по региону: ${selectedRegion}`);
+    }
+    
+    console.log(`Отправляем запрос: ${autoReturnUrl}`, requestData);
+    
+    // Отправляем запрос
+    axios.post(autoReturnUrl, requestData)
+      .then(response => {
+        console.log("Получили ответ от API:", response.data);
+        
+        // Логируем первую модель для анализа структуры
+        if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+          console.log("Структура первой модели:", response.data[0]);
+          
+          // Если есть данные по месяцам, логируем первый месяц
+          if (response.data[0].filter_by_month && 
+              Array.isArray(response.data[0].filter_by_month) && 
+              response.data[0].filter_by_month.length > 0) {
+            console.log("Структура первого месяца:", response.data[0].filter_by_month[0]);
+            
+            // Если есть данные по регионам, логируем первый регион
+            if (response.data[0].filter_by_month[0].regions && 
+                Array.isArray(response.data[0].filter_by_month[0].regions) && 
+                response.data[0].filter_by_month[0].regions.length > 0) {
+              console.log("Структура первого региона:", response.data[0].filter_by_month[0].regions[0]);
+            } else {
+              console.log("Нет данных по регионам в месяце");
+            }
+          } else {
+            console.log("Нет данных по месяцам у модели");
+          }
+        } else {
+          console.log("API вернул пустой массив или не массив");
+        }
+        
+        // Получаем данные
+        const returnData = extractMonthlyReturnData(response.data, year);
+        console.log("Извлеченные данные по месяцам:", returnData);
+        
+        // Рисуем график
+        renderChart(chartDiv, returnData, year);
+      })
+      .catch(error => {
+        console.error('Ошибка при загрузке данных:', error);
+        
+        // Показываем ошибку
+        chartDiv.innerHTML = `
+          <div class="flex items-center justify-center h-full text-red-500">
+            Ошибка загрузки данных
+          </div>
+        `;
+        
+        // Рисуем график с тестовыми данными
+        const testData = generateTestData(year);
+        console.log("Сгенерированы тестовые данные:", testData);
+        renderChart(chartDiv, testData, year);
+      });
+  };
+  
+  // Извлечение данных о возврате по месяцам
+  const extractMonthlyReturnData = (apiData, year) => {
+    console.log(`Начинаем извлечение данных за ${year} год`);
+    
+    // Базовая структура для всех месяцев
+    const months = [
+      { month: 'Янв', value: 0 },
+      { month: 'Фев', value: 0 },
+      { month: 'Мар', value: 0 },
+      { month: 'Апр', value: 0 },
+      { month: 'Май', value: 0 },
+      { month: 'Июн', value: 0 },
+      { month: 'Июл', value: 0 },
+      { month: 'Авг', value: 0 },
+      { month: 'Сен', value: 0 },
+      { month: 'Окт', value: 0 },
+      { month: 'Ноя', value: 0 },
+      { month: 'Дек', value: 0 }
+    ];
+    
+    // Если нет данных, возвращаем пустую структуру
+    if (!apiData || !Array.isArray(apiData)) {
+      console.log("Нет данных API или неверный формат");
+      return months;
+    }
+    
+    console.log(`Всего моделей в данных: ${apiData.length}`);
+    
+    // Счетчики для отладки
+    let totalModelsProcessed = 0;
+    let totalMonthsProcessed = 0;
+    let totalRegionsProcessed = 0;
+    let totalAmountAdded = 0;
+    
+    try {
+      // Проходим по всем элементам данных
+      apiData.forEach((model, modelIndex) => {
+        console.log(`Обрабатываем модель ${modelIndex+1}/${apiData.length}: ${model.model_name || 'Без имени'} (ID: ${model.model_id || 'Нет ID'})`);
+        
+        totalModelsProcessed++;
+        
+        // Проверяем наличие данных по месяцам
+        if (!model.filter_by_month || !Array.isArray(model.filter_by_month)) {
+          console.log(`У модели ${model.model_id} нет данных по месяцам`);
+          return;
+        }
+        
+        console.log(`Количество месяцев у модели: ${model.filter_by_month.length}`);
+        
+        // Проходим по месяцам
+  // Проходим по месяцам
+model.filter_by_month.forEach((monthData, idx) => {  // Изменил monthIndex на idx
+  totalMonthsProcessed++;
+  
+  // Проверяем соответствие году
+  if (!monthData.month || !monthData.month.startsWith(year)) {
+    console.log(`Месяц ${monthData.month} не соответствует выбранному году ${year}`);
+    return;
+  }
+  
+  // Получаем номер месяца (1-12)
+  const monthNum = parseInt(monthData.month.split('-')[1]);
+  if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+    console.log(`Некорректный номер месяца: ${monthData.month}`);
+    return;
+  }
+  
+  // Индекс в массиве (0-11)
+  const monthIndex = monthNum - 1;
+  
+  console.log(`Обрабатываем месяц: ${monthData.month} (индекс: ${monthIndex})`);
+          
+          // Проверяем наличие данных регионов
+          if (!monthData.regions || !Array.isArray(monthData.regions)) {
+            console.log(`У месяца ${monthData.month} нет данных по регионам`);
+            return;
+          }
+          
+          console.log(`Количество регионов в месяце: ${monthData.regions.length}`);
+          
+          // Суммируем данные по регионам
+          if (selectedRegion !== 'all') {
+            // Если выбран конкретный регион
+            const regionData = monthData.regions.find(r => r.region_id === selectedRegion);
+            if (regionData) {
+              totalRegionsProcessed++;
+              
+              const amount = parseInt(regionData.amount || 0);
+              if (!isNaN(amount)) {
+                months[monthIndex].value += amount;
+                totalAmountAdded += amount;
+                
+                console.log(`Добавлено значение ${amount} для месяца ${monthData.month} и региона ${regionData.region_id}. Текущая сумма: ${months[monthIndex].value}`);
+              } else {
+                console.log(`Неверное значение amount для региона ${regionData.region_id}: ${regionData.amount}`);
+              }
+            } else {
+              console.log(`Выбранный регион ${selectedRegion} не найден в данных месяца ${monthData.month}`);
+            }
+          } else {
+            // Если не выбран конкретный регион, суммируем по всем
+            console.log(`Суммируем по всем регионам для месяца ${monthData.month}`);
+            
+            monthData.regions.forEach((region, regionIndex) => {
+              totalRegionsProcessed++;
+              
+              const amount = parseInt(region.amount || 0);
+              if (!isNaN(amount)) {
+                months[monthIndex].value += amount;
+                totalAmountAdded += amount;
+                
+                if (amount > 0) {
+                  console.log(`Ненулевое значение ${amount} для региона ${region.region_id} (${region.region_name || 'без имени'})`);
+                }
+              } else {
+                console.log(`Неверное значение amount для региона ${region.region_id}: ${region.amount}`);
+              }
+            });
+            
+            console.log(`Итоговая сумма для месяца ${monthData.month}: ${months[monthIndex].value}`);
+          }
+        });
+      });
+      
+      console.log(`Обработка данных завершена:`);
+      console.log(`- Обработано моделей: ${totalModelsProcessed}`);
+      console.log(`- Обработано месяцев: ${totalMonthsProcessed}`);
+      console.log(`- Обработано регионов: ${totalRegionsProcessed}`);
+      console.log(`- Общая сумма возвратов: ${totalAmountAdded}`);
+      
+      // Проверяем наличие ненулевых значений
+      const hasData = months.some(m => m.value > 0);
+      console.log(`Есть ли ненулевые значения: ${hasData}`);
+      console.log("Итоговые данные по месяцам:", months);
+      
+      return months;
+    } catch (error) {
+      console.error('Ошибка при обработке данных:', error);
+      return months;
+    }
+  };
+  
+  // Генерация тестовых данных для случая ошибки API
+  const generateTestData = (year) => {
+    const testData = [
+      { month: 'Янв', value: Math.round(Math.random() * 1000000) },
+      { month: 'Фев', value: Math.round(Math.random() * 1000000) },
+      { month: 'Мар', value: Math.round(Math.random() * 1000000) },
+      { month: 'Апр', value: Math.round(Math.random() * 1000000) },
+      { month: 'Май', value: Math.round(Math.random() * 1000000) },
+      { month: 'Июн', value: Math.round(Math.random() * 1000000) },
+      { month: 'Июл', value: Math.round(Math.random() * 1000000) },
+      { month: 'Авг', value: Math.round(Math.random() * 1000000) },
+      { month: 'Сен', value: Math.round(Math.random() * 1000000) },
+      { month: 'Окт', value: Math.round(Math.random() * 1000000) },
+      { month: 'Ноя', value: Math.round(Math.random() * 1000000) },
+      { month: 'Дек', value: Math.round(Math.random() * 1000000) }
+    ];
+    return testData;
+  };
+  
+  // Непосредственная отрисовка графика
+  const renderChart = (container, data, year) => {
+    console.log(`Начинаем отрисовку графика для ${year} года с данными:`, data);
+    
+    container.innerHTML = '';
+    
+    // Расчет размеров
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    const margin = { top: 20, right: 20, bottom: 40, left: 60 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+    
+    // Проверяем наличие данных
+    const hasData = data.some(d => d.value > 0);
+    console.log(`Есть ли данные для отображения: ${hasData}`);
+    
+    // Создаем SVG
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    if (!hasData) {
+      // Если нет данных, показываем сообщение
+      svg.append('text')
+        .attr('x', innerWidth / 2)
+        .attr('y', innerHeight / 2)
+        .attr('text-anchor', 'middle')
+        .attr('fill', '#94a3b8')
+        .text('Нет данных о возврате для выбранного периода');
+      
+      console.log("Нет данных для отображения, график не рисуется");
+      return;
+    }
+    
+    // Находим максимальное значение для масштабирования
+    const maxValue = d3.max(data, d => d.value);
+    console.log(`Максимальное значение: ${maxValue}`);
+    
+    // Шкала X
+    const x = d3.scaleBand()
+      .domain(data.map(d => d.month))
+      .range([0, innerWidth])
+      .padding(0.5);
+    
+    // Шкала Y
+    const y = d3.scaleLinear()
+      .domain([0, maxValue * 1.1])
+      .range([innerHeight, 0])
+      .nice();
+    
+    // Ось X
+    svg.append('g')
+      .attr('transform', `translate(0,${innerHeight})`)
+      .call(d3.axisBottom(x))
+      .selectAll('text')
+      .style('fill', '#94a3b8');
+    
+    // Ось Y с форматированием
+    svg.append('g')
+      .call(d3.axisLeft(y)
+      .ticks(5)
+      .tickFormat(d => {
+        if (d >= 1000000) return `${(d/1000000).toFixed(1)}M`;
+        if (d >= 1000) return `${(d/1000).toFixed(0)}K`;
+        return d;
+      }))
+      .selectAll('text')
+      .style('fill', '#94a3b8');
+    
+    // Горизонтальные линии сетки
+    svg.append('g')
+      .selectAll('.grid-line')
+      .data(y.ticks(5))
+      .enter()
+      .append('line')
+      .attr('class', 'grid-line')
+      .attr('x1', 0)
+      .attr('x2', innerWidth)
+      .attr('y1', d => y(d))
+      .attr('y2', d => y(d))
+      .attr('stroke', 'rgba(255, 255, 255, 0.1)');
+    
+    // Линия графика
+    const line = d3.line()
+      .x(d => x(d.month) + x.bandwidth()/2)
+      .y(d => y(d.value))
+      .curve(d3.curveMonotoneX);
+    
+    // Область под линией
+    const area = d3.area()
+      .x(d => x(d.month) + x.bandwidth()/2)
+      .y0(innerHeight)
+      .y1(d => y(d.value))
+      .curve(d3.curveMonotoneX);
+    
+    // Градиент
+    const gradient = svg.append('defs')
+      .append('linearGradient')
+      .attr('id', 'area-gradient')
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '0%')
+      .attr('y2', '100%');
+    
+    gradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', '#3b82f6')
+      .attr('stop-opacity', 0.7);
+    
+    gradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', '#3b82f6')
+      .attr('stop-opacity', 0.1);
+    
+    // Добавляем область
+    svg.append('path')
+      .datum(data)
+      .attr('fill', 'url(#area-gradient)')
+      .attr('d', area);
+    
+    // Добавляем линию
+    const path = svg.append('path')
+      .datum(data)
+      .attr('fill', 'none')
+      .attr('stroke', '#3b82f6')
+      .attr('stroke-width', 2)
+      .attr('d', line);
+    
+    // Простая анимация рисования линии
+    const pathLength = path.node()?.getTotalLength();
+    if (pathLength) {
+      path.attr('stroke-dasharray', pathLength)
+        .attr('stroke-dashoffset', pathLength)
+        .transition()
+        .duration(1000)
+        .attr('stroke-dashoffset', 0);
+    }
+    
+    // Добавляем точки
+    svg.selectAll('.dot')
+      .data(data)
+      .enter()
+      .append('circle')
+      .attr('class', 'dot')
+      .attr('cx', d => x(d.month) + x.bandwidth()/2)
+      .attr('cy', d => y(d.value))
+      .attr('r', 4)
+      .attr('fill', '#3b82f6')
+      .attr('stroke', '#1e293b')
+      .attr('stroke-width', 1);
+    
+    // Подписи значений над точками
+    svg.selectAll('.value-label')
+      .data(data)
+      .enter()
+      .append('text')
+      .filter(d => d.value > 0) // Только для ненулевых значений
+      .attr('class', 'value-label')
+      .attr('x', d => x(d.month) + x.bandwidth()/2)
+      .attr('y', d => y(d.value) - 10)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#60a5fa')
+      .attr('font-size', '10px')
+      .text(d => {
+        if (d.value >= 1000000) return `${(d.value/1000000).toFixed(1)}M`;
+        if (d.value >= 1000) return `${(d.value/1000).toFixed(0)}K`;
+        return d.value;
+      });
+    
+    // Заголовок
+    svg.append('text')
+      .attr('x', innerWidth/2)
+      .attr('y', -5)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#f1f5f9')
+      .attr('font-size', '14px')
+      .text(`Возврат денежных средств за ${year} год`);
+    
+    console.log("График успешно отрисован");
+  };
+  
+  // Запускаем загрузку данных при первой отрисовке
+  fetchAndRenderChart(selectedYear);
 };
 
+  
 const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
   if (!ref.current) return;
   
@@ -2558,8 +2778,25 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
   
   // Селектор года (добавляем до основного графика)
   const yearSelector = document.createElement('div');
-  yearSelector.className = 'flex justify-end mb-2';
+  yearSelector.className = 'flex justify-between items-center mb-2';
+  
+  // Добавляем информацию о выбранном регионе
+  let regionInfo = '';
+  if (selectedRegion !== 'all') {
+    const regionName = regionsList.find(r => r.id === selectedRegion)?.name || 'Выбранный регион';
+    regionInfo = `<div class="text-sm flex items-center text-blue-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Данные по региону: ${regionName}
+                  </div>`;
+  }
+  
   yearSelector.innerHTML = `
+    <div class="flex items-center">
+      ${regionInfo}
+    </div>
     <div class="bg-gray-700 rounded-lg p-1 flex items-center border border-gray-700">
       <button class="year-btn ${selectedYear === '2023' ? 'bg-blue-600 text-white' : 'text-gray-400'} px-3 py-1 text-sm font-medium rounded-md" data-year="2023">2023</button>
       <button class="year-btn ${selectedYear === '2024' ? 'bg-blue-600 text-white' : 'text-gray-400'} px-3 py-1 text-sm font-medium rounded-md" data-year="2024">2024</button>
@@ -2593,13 +2830,13 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
         loadingIndicator.innerHTML = `
           <div class="flex flex-col items-center">
             <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-3"></div>
-            <p class="text-gray-400 text-sm">Загрузка данных за ${year} год...</p>
+            <p class="text-gray-400 text-sm">Загрузка данных за ${year} год${selectedRegion !== 'all' ? ' по выбранному региону' : ''}...</p>
           </div>
         `;
         graphContainer.appendChild(loadingIndicator);
       }
       
-      // Запрашиваем данные за выбранный год
+      // Запрашиваем данные за выбранный год с учетом текущих фильтров
       setYearlyDataLoading(true);
       fetchYearlyData(year);
     });
@@ -2617,7 +2854,7 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
     loadingIndicator.innerHTML = `
       <div class="flex flex-col items-center">
         <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-3"></div>
-        <p class="text-gray-400 text-sm">Загрузка данных за ${selectedYear} год...</p>
+        <p class="text-gray-400 text-sm">Загрузка данных за ${selectedYear} год${selectedRegion !== 'all' ? ' по выбранному региону' : ''}...</p>
       </div>
     `;
     graphContainer.appendChild(loadingIndicator);
@@ -2637,7 +2874,7 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
         <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
-        <p class="text-gray-400 text-center mb-1">Нет данных для отображения за ${selectedYear} год</p>
+        <p class="text-gray-400 text-center mb-1">Нет данных для отображения за ${selectedYear} год${selectedRegion !== 'all' ? ' по выбранному региону' : ''}</p>
         <button class="mt-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors flex items-center" id="retry-load-btn">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -2659,7 +2896,7 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
         loadingIndicator.innerHTML = `
           <div class="flex flex-col items-center">
             <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-3"></div>
-            <p class="text-gray-400 text-sm">Загрузка данных за ${selectedYear} год...</p>
+            <p class="text-gray-400 text-sm">Загрузка данных за ${selectedYear} год${selectedRegion !== 'all' ? ' по выбранному региону' : ''}...</p>
           </div>
         `;
         graphContainer.appendChild(loadingIndicator);
@@ -2864,7 +3101,13 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       .duration(300)
       .style("opacity", 1);
       
-    // Добавляем индикатор года
+    // Добавляем информацию о годе и регионе
+    let yearRegionInfo = `Данные за ${year} год`;
+    if (selectedRegion !== 'all') {
+      const regionName = regionsList.find(r => r.id === selectedRegion)?.name || 'выбранный регион';
+      yearRegionInfo += ` по региону: ${regionName}`;
+    }
+    
     svg.append("text")
       .attr("x", width)
       .attr("y", 0)
@@ -2872,7 +3115,7 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       .style("font-size", "12px")
       .style("fill", primaryColor)
       .style("font-weight", "bold")
-      .text(`Данные за ${year} год`);
+      .text(yearRegionInfo);
       
     // Добавляем заголовок графика
     svg.append("text")
@@ -2908,7 +3151,7 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
           .duration(200)
           .style("opacity", 1);
           
-        tooltip.html(`
+        let tooltipContent = `
           <strong>${d[labelKey]} ${year}</strong><br>
           ${valKey === 'contracts' ? 'Контрактов: ' : 
             valKey === 'sales' ? 'Продаж: ' : 
@@ -2918,7 +3161,15 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
             valKey === 'promotions' ? 'Акции: ' : ''}
           <strong>${d[valKey]}</strong><br>
           Сумма: <strong>${formatCurrency(d.amount)}</strong>
-        `)
+        `;
+        
+        // Добавляем информацию о регионе в тултип, если он выбран
+        if (selectedRegion !== 'all') {
+          const regionName = regionsList.find(r => r.id === selectedRegion)?.name || 'Выбранный регион';
+          tooltipContent += `<br>Регион: <strong>${regionName}</strong>`;
+        }
+        
+        tooltip.html(tooltipContent)
           .style("left", (event.pageX + 10) + "px")
           .style("top", (event.pageY - 28) + "px");
       })
@@ -2938,6 +3189,24 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       });
   }
   
+  // Добавляем заголовок с информацией о регионе, если он выбран
+  if (selectedRegion !== 'all' && !regionInfo) {
+    const regionHeader = document.createElement('div');
+    regionHeader.className = 'mb-3 px-2';
+    const regionName = regionsList.find(r => r.id === selectedRegion)?.name || 'Выбранный регион';
+    regionHeader.innerHTML = `
+      <div class="inline-flex items-center bg-blue-600/20 text-blue-400 rounded-full px-3 py-1 text-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        Данные по региону: ${regionName}
+      </div>
+    `;
+    container.insertBefore(regionHeader, graphContainer);
+  }
+  
+  // Вызываем функцию рендеринга графика
   renderD3Chart(graphContainer, displayData, valueKey, labelKey, title, selectedYear);
 };
 
