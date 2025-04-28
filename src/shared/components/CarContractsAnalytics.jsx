@@ -4151,7 +4151,6 @@ const stats = getStats();
       </button>
     </div>
     
-    {/* Summary Cards */}
  <StatisticsCards/>
     
 {selectedModel === 'all' && (
