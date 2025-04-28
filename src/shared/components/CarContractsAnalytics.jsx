@@ -214,10 +214,8 @@ const calculateStats = useCallback((filteredData, activeTab) => {
     });
   }
   
-  // Вычисляем среднюю стоимость
   const average = totalContracts > 0 ? Math.round(totalAmount / totalContracts) : 0;
   
-  // Коэффициенты модификации для разных табов
   const tabMultipliers = {
     contracts: { count: 1, amount: 1 },
     sales: { count: 1, amount: 1 },
@@ -467,18 +465,21 @@ const fetchYearlyData = async (year) => {
       begin_date: beginDate,
       end_date: endDate,
       model_id: selectedModel !== 'all' ? selectedModel : undefined,
-      region_id: selectedRegion !== 'all' ? selectedRegion : undefined  // Добавляем регион в запрос
+      region_id: selectedRegion !== 'all' ? selectedRegion : undefined
     };
-    
-    console.log(`Отправка запроса на годовые данные за ${year}:`, requestData);
     
     const response = await axios.post(apiUrl, requestData);
     
     if (response.data && Array.isArray(response.data)) {
-      console.log(`Получены данные за ${year} год:`, response.data);
-      
       // Преобразуем данные в формат для графика
       const monthlyData = prepareMonthlyDataFromResponse(response.data, year);
+      
+      // Подсчет общего количества контрактов
+      const totalContracts = calculateTotalContracts(response.data);
+      
+      // Вывод информации в лог
+      console.log(`Всего контрактов за ${year} год: ${totalContracts}`);
+      console.log(`Запрос данных для динамики ${activeTab} за период: ${beginDate} - ${endDate}`);
       
       // Сохраняем данные для графика
       setYearlyChartData(monthlyData);
@@ -488,6 +489,58 @@ const fetchYearlyData = async (year) => {
   } finally {
     setYearlyDataLoading(false);
   }
+};
+
+// Функция для подсчета общего количества контрактов из данных API
+const calculateTotalContracts = (apiData) => {
+  let totalContracts = 0;
+  
+  try {
+    // Если выбрана конкретная модель
+    if (selectedModel !== 'all') {
+      const modelData = apiData.find(model => model.model_id === selectedModel);
+      if (modelData && modelData.filter_by_region) {
+        if (selectedRegion !== 'all') {
+          // Если выбран и регион, и модель
+          const regionData = modelData.filter_by_region.find(r => r.region_id === selectedRegion);
+          if (regionData) {
+            totalContracts = parseInt(regionData.total_contracts || 0);
+          }
+        } else {
+          // Если выбрана только модель, суммируем по всем регионам
+          modelData.filter_by_region.forEach(region => {
+            totalContracts += parseInt(region.total_contracts || 0);
+          });
+        }
+      }
+    } else {
+      // Если модель не выбрана
+      if (selectedRegion !== 'all') {
+        // Если выбран только регион, суммируем по всем моделям для этого региона
+        apiData.forEach(model => {
+          if (model.filter_by_region) {
+            const regionData = model.filter_by_region.find(r => r.region_id === selectedRegion);
+            if (regionData) {
+              totalContracts += parseInt(regionData.total_contracts || 0);
+            }
+          }
+        });
+      } else {
+        // Если не выбраны ни модель, ни регион, суммируем все
+        apiData.forEach(model => {
+          if (model.filter_by_region) {
+            model.filter_by_region.forEach(region => {
+              totalContracts += parseInt(region.total_contracts || 0);
+            });
+          }
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Ошибка при расчете общего количества контрактов:", error);
+  }
+  
+  return totalContracts;
 };
 
 useEffect(() => {
@@ -4023,7 +4076,7 @@ const stats = getStats();
         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
-        Контракты/Реализация
+        Контракты
       </button>
       
       <button
@@ -4080,7 +4133,7 @@ const stats = getStats();
         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M3 7h18" />
         </svg>
-        Опт
+        Оптовые
       </button>
       
       <button

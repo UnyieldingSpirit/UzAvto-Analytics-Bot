@@ -20,9 +20,7 @@ function calculateStats(apiData, selectedRegion, selectedModel, activeTab) {
         const modelData = apiData.find(model => model.model_id === selectedModel);
 
         if (modelData) {
-            // Если также выбран конкретный регион, фильтруем по региону
             if (selectedRegion !== 'all') {
-                // Поиск данных выбранного региона для выбранной модели
                 const regionData = modelData.filter_by_region?.find(r => r.region_id === selectedRegion);
 
                 if (regionData) {
@@ -30,7 +28,6 @@ function calculateStats(apiData, selectedRegion, selectedModel, activeTab) {
                     totalAmount = parseInt(regionData.total_price || 0);
                 }
             } else {
-                // Суммируем по всем регионам для выбранной модели
                 if (modelData.filter_by_region && Array.isArray(modelData.filter_by_region)) {
                     modelData.filter_by_region.forEach(region => {
                         totalContracts += parseInt(region.total_contracts || 0);
@@ -40,7 +37,6 @@ function calculateStats(apiData, selectedRegion, selectedModel, activeTab) {
             }
         }
     } else if (selectedRegion !== 'all') {
-        // Выбран только регион, суммируем по всем моделям для этого региона
         apiData.forEach(model => {
             if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
                 const regionData = model.filter_by_region.find(r => r.region_id === selectedRegion);
@@ -51,7 +47,6 @@ function calculateStats(apiData, selectedRegion, selectedModel, activeTab) {
             }
         });
     } else {
-        // Не выбраны ни модель, ни регион - суммируем всё
         apiData.forEach(model => {
             if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
                 model.filter_by_region.forEach(region => {
@@ -62,10 +57,8 @@ function calculateStats(apiData, selectedRegion, selectedModel, activeTab) {
         });
     }
 
-    // Вычисляем среднюю стоимость
     const average = totalContracts > 0 ? Math.round(totalAmount / totalContracts) : 0;
 
-    // Коэффициенты модификации для разных табов
     const tabMultipliers = {
         contracts: { count: 1, amount: 1 },
         sales: { count: 1, amount: 1 },
@@ -75,10 +68,8 @@ function calculateStats(apiData, selectedRegion, selectedModel, activeTab) {
         promotions: { count: 1, amount: 1 }
     };
 
-    // Применяем модификатор в зависимости от активного таба
     const multiplier = tabMultipliers[activeTab] || tabMultipliers.contracts;
 
-    // Возвращаем модифицированные значения
     return {
         count: Math.round(totalContracts * multiplier.count),
         amount: Math.round(totalAmount * multiplier.amount),
