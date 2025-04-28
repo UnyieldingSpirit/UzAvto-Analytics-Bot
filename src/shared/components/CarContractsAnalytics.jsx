@@ -58,6 +58,17 @@ const extractMonthlyReturnData = (apiData, year) => {
     { month: 'Дек', value: 0 }
   ];
   
+  // Отметка будущих месяцев
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth(); // 0-11
+  
+  if (parseInt(year) === currentYear) {
+    for (let i = currentMonth + 1; i < 12; i++) {
+      months[i].isFuture = true;
+    }
+  }
+  
   if (!apiData || !Array.isArray(apiData)) {
     return months;
   }
@@ -88,7 +99,6 @@ const extractMonthlyReturnData = (apiData, year) => {
         
         // Индекс в массиве (0-11)
         const monthIndex = monthNum - 1;
-        
         
         // Проверяем наличие данных регионов
         if (!monthData.regions || !Array.isArray(monthData.regions)) {
@@ -2279,8 +2289,12 @@ const renderChart = (container, data, year) => {
     .range([0, width])
     .padding(1);  // Используем padding 1 как в графике динамики
 
+  // Проверяем, есть ли ненулевые данные для масштаба Y
+  const maxValue = d3.max(data, d => d.value);
+  
+  // Модифицированный масштаб Y, который никогда не будет с нулевым диапазоном
   const y = d3.scaleLinear()
-    .domain([0, d3.max(data, d => d.value) * 1.2 || 10])
+    .domain([0, maxValue > 0 ? maxValue * 1.2 : 100]) // Если все значения 0, используем диапазон до 100
     .range([height, 0])
     .nice();
 
@@ -2344,8 +2358,18 @@ const renderChart = (container, data, year) => {
     .attr("offset", "100%")
     .attr("stop-color", "#2563eb");
 
-  // Линия
+  // Разделяем данные на прошедшие и будущие месяцы
+  const pastData = data.filter(d => !d.isFuture);
+  const futureData = data.filter(d => d.isFuture);
+
+  // Линия для прошедших месяцев
   const line = d3.line()
+    .x(d => x(d.month) + x.bandwidth()/2)
+    .y(d => y(d.value))
+    .curve(d3.curveMonotoneX);
+
+  // Линия для будущих месяцев (пунктирная)
+  const futureLine = d3.line()
     .x(d => x(d.month) + x.bandwidth()/2)
     .y(d => y(d.value))
     .curve(d3.curveMonotoneX);
@@ -2357,36 +2381,63 @@ const renderChart = (container, data, year) => {
     .y1(d => y(d.value))
     .curve(d3.curveMonotoneX);
 
-  // Добавляем область
-  svg.append("path")
-    .datum(data)
-    .attr("class", "area")
-    .attr("fill", `url(#${areaGradientId})`)
-    .attr("d", area);
-
-  // Добавляем линию с анимацией
-  const path = svg.append("path")
-    .datum(data)
-    .attr("class", "line")
-    .attr("fill", "none")
-    .attr("stroke", `url(#${lineGradientId})`)
-    .attr("stroke-width", 3)
-    .attr("d", line);
-
-  // Анимация линии
-  if (path.node() && typeof path.node().getTotalLength === 'function') {
-    const totalLength = path.node().getTotalLength();
-    path
-      .attr("stroke-dasharray", totalLength)
-      .attr("stroke-dashoffset", totalLength)
-      .transition()
-      .duration(1500)
-      .attr("stroke-dashoffset", 0);
+  // Добавляем область только для прошедших месяцев
+  if (pastData.length > 0) {
+    svg.append("path")
+      .datum(pastData)
+      .attr("class", "area")
+      .attr("fill", `url(#${areaGradientId})`)
+      .attr("d", area);
   }
 
-  // Добавляем точки
-  svg.selectAll(".dot")
-    .data(data)
+  // Добавляем линию для прошедших месяцев с анимацией
+  if (pastData.length > 0) {
+    const path = svg.append("path")
+      .datum(pastData)
+      .attr("class", "line")
+      .attr("fill", "none")
+      .attr("stroke", `url(#${lineGradientId})`)
+      .attr("stroke-width", 3)
+      .attr("d", line);
+
+    // Анимация линии
+    if (path.node() && typeof path.node().getTotalLength === 'function') {
+      const totalLength = path.node().getTotalLength();
+      path
+        .attr("stroke-dasharray", totalLength)
+        .attr("stroke-dashoffset", totalLength)
+        .transition()
+        .duration(1500)
+        .attr("stroke-dashoffset", 0);
+    }
+  }
+
+  // Добавляем пунктирную линию для будущих месяцев, если это текущий год
+  if (futureData.length > 0) {
+    // Соединяем последний прошедший месяц с первым будущим для непрерывности
+    if (pastData.length > 0) {
+      const combinedData = [...pastData.slice(-1), ...futureData];
+      
+      svg.append("path")
+        .datum(combinedData)
+        .attr("class", "future-line")
+        .attr("fill", "none")
+        .attr("stroke", "#3b82f6")
+        .attr("stroke-width", 2)
+        .attr("stroke-dasharray", "3,3")
+        .attr("stroke-opacity", 0.5)
+        .attr("d", futureLine)
+        .style("opacity", 0)
+        .transition()
+        .delay(1800)
+        .duration(500)
+        .style("opacity", 1);
+    }
+  }
+
+  // Добавляем точки для прошедших месяцев
+  svg.selectAll(".past-dot")
+    .data(pastData)
     .enter().append("circle")
     .attr("class", "dot")
     .attr("cx", d => x(d.month) + x.bandwidth()/2)
@@ -2400,9 +2451,26 @@ const renderChart = (container, data, year) => {
     .duration(300)
     .attr("r", 5);
 
-  // Добавляем метки значений
+  // Добавляем точки для будущих месяцев с другим стилем
+  svg.selectAll(".future-dot")
+    .data(futureData)
+    .enter().append("circle")
+    .attr("class", "future-dot")
+    .attr("cx", d => x(d.month) + x.bandwidth()/2)
+    .attr("cy", d => y(d.value))
+    .attr("r", 0)
+    .attr("fill", "#666666")
+    .attr("stroke", "#1e1e2e")
+    .attr("stroke-width", 1)
+    .attr("opacity", 0.3)
+    .transition()
+    .delay((d, i) => 1800 + i * 50)
+    .duration(300)
+    .attr("r", 3);
+
+  // Добавляем метки значений только для прошедших месяцев
   svg.selectAll(".value-label")
-    .data(data)
+    .data(pastData)
     .enter().append("text")
     .attr("class", "value-label")
     .attr("x", d => x(d.month) + x.bandwidth()/2)
@@ -2412,7 +2480,7 @@ const renderChart = (container, data, year) => {
     .style("fill", "#ccc")
     .style("opacity", 0)
     .text(d => {
-      if (d.value === 0) return "";
+      if (d.value === 0) return "0";
       if (d.value >= 1000000) return (d.value / 1000000).toFixed(1) + 'M';
       if (d.value >= 1000) return (d.value / 1000).toFixed(0) + 'K';
       return d.value;
@@ -2422,6 +2490,22 @@ const renderChart = (container, data, year) => {
     .duration(300)
     .style("opacity", 1);
 
+  // Если все значения нулевые, добавим сообщение на график
+  if (maxValue === 0) {
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", height / 2)
+      .attr("text-anchor", "middle")
+      .style("font-size", "14px")
+      .style("fill", "#888")
+      .style("opacity", 0)
+      .text("Нет данных о возврате в этом периоде")
+      .transition()
+      .delay(1000)
+      .duration(500)
+      .style("opacity", 1);
+  }
+
   // Заголовок
   svg.append("text")
     .attr("x", width / 2)
@@ -2430,6 +2514,56 @@ const renderChart = (container, data, year) => {
     .style("font-size", "14px")
     .style("fill", "#e5e7eb")
     .text(`Динамика возврата денежных средств ${year}`);
+
+  // Добавление индикатора текущего месяца для текущего года
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth();
+  
+  if (parseInt(year) === currentYear && data[currentMonth]) {
+    svg.append("line")
+      .attr("x1", x(data[currentMonth].month) + x.bandwidth()/2)
+      .attr("y1", height)
+      .attr("x2", x(data[currentMonth].month) + x.bandwidth()/2)
+      .attr("y2", 0)
+      .attr("stroke", "#ff9800")
+      .attr("stroke-width", 1)
+      .attr("stroke-dasharray", "4")
+      .attr("opacity", 0)
+      .transition()
+      .delay(2000)
+      .duration(500)
+      .attr("opacity", 0.7);
+    
+    svg.append("text")
+      .attr("x", x(data[currentMonth].month) + x.bandwidth()/2)
+      .attr("y", 15)
+      .attr("text-anchor", "middle")
+      .style("font-size", "10px")
+      .style("fill", "#ff9800")
+      .style("opacity", 0)
+      .text("Текущий месяц")
+      .transition()
+      .delay(2200)
+      .duration(500)
+      .style("opacity", 1);
+  }
+  
+  // Добавление пояснения в легенду для текущего года
+  if (parseInt(year) === currentYear && futureData.length > 0) {
+    svg.append("text")
+      .attr("x", width)
+      .attr("y", 15)
+      .attr("text-anchor", "end")
+      .style("font-size", "10px")
+      .style("fill", "#888")
+      .text("* Данные доступны только по текущий месяц")
+      .style("opacity", 0)
+      .transition()
+      .delay(2400)
+      .duration(500)
+      .style("opacity", 1);
+  }
 
   // Добавляем интерактивность
   const tooltip = d3.select("body").append("div")
@@ -2445,6 +2579,7 @@ const renderChart = (container, data, year) => {
     .style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)")
     .style("z-index", "10");
 
+  // Интерактивность для прошедших месяцев
   svg.selectAll(".dot")
     .on("mouseover", function(event, d) {
       d3.select(this).transition()
@@ -2457,7 +2592,7 @@ const renderChart = (container, data, year) => {
 
       tooltip.html(`
         <strong>${d.month} ${year}</strong><br>
-        Сумма возврата: <strong>${formatCurrency(d.value)}</strong>
+        Сумма возврата: <strong>${d.value === 0 ? '0 UZS' : formatCurrency(d.value)}</strong>
       `)
         .style("left", (event.pageX + 10) + "px")
         .style("top", (event.pageY - 28) + "px");
@@ -2466,6 +2601,42 @@ const renderChart = (container, data, year) => {
       d3.select(this).transition()
         .duration(200)
         .attr("r", 5);
+
+      tooltip.transition()
+        .duration(500)
+        .style("opacity", 0);
+    })
+    .on("mousemove", function(event) {
+      tooltip
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY - 28) + "px");
+    });
+    
+  // Интерактивность для будущих месяцев
+  svg.selectAll(".future-dot")
+    .on("mouseover", function(event, d) {
+      d3.select(this).transition()
+        .duration(200)
+        .attr("r", 5)
+        .attr("opacity", 0.7);
+
+      tooltip.transition()
+        .duration(200)
+        .style("opacity", 1);
+
+      tooltip.html(`
+        <strong>${d.month} ${year}</strong><br>
+        <span style="color:#ffaa00">Будущий период</span><br>
+        Данные еще не доступны
+      `)
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY - 28) + "px");
+    })
+    .on("mouseout", function() {
+      d3.select(this).transition()
+        .duration(200)
+        .attr("r", 3)
+        .attr("opacity", 0.3);
 
       tooltip.transition()
         .duration(500)
