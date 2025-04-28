@@ -69,10 +69,10 @@ function calculateStats(apiData, selectedRegion, selectedModel, activeTab) {
     const tabMultipliers = {
         contracts: { count: 1, amount: 1 },
         sales: { count: 1, amount: 1 },
-        stock: { count: 0.2, amount: 0.2 },
-        retail: { count: 0.7, amount: 0.7 },
-        wholesale: { count: 0.3, amount: 0.3 },
-        promotions: { count: 0.1, amount: 0.1 }
+        stock: { count: 1, amount: 1 },
+        retail: { count: 1, amount: 1 },
+        wholesale: { count: 1, amount: 1 },
+        promotions: { count: 1, amount: 1 }
     };
 
     // Применяем модификатор в зависимости от активного таба
@@ -85,5 +85,3 @@ function calculateStats(apiData, selectedRegion, selectedModel, activeTab) {
         average: average
     };
 }
-
-// В компоненте StatisticsCards:
