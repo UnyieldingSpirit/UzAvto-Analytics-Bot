@@ -4270,30 +4270,53 @@ const stats = getStats();
     </div>
     
     {viewMode === 'cards' ? (
-      // Режим отображения карточек
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {carModels.length > 0 ? (
-          // Отображаем список моделей из API
-          carModels.map(model => (
-            <CarModelThumbnail 
-              key={model.id} 
-              model={model} 
-              isSelected={selectedModel === model.id}
-              onClick={() => setSelectedModel(model.id)}
-            />
-          ))
-        ) : (
-          // Показываем сообщение, если список пуст
-          <div className="col-span-full p-6 bg-gray-800 rounded-lg text-center">
-            <div className="flex flex-col items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-gray-400 mb-2">Нет доступных моделей</p>
-              <p className="text-gray-500 text-sm">Выберите период и нажмите "Применить"</p>
-            </div>
-          </div>
-        )}
+{carModels.length > 0 ? (
+  carModels
+    .filter(model => {
+      const modelData = apiData?.find(m => m.model_id === model.id);
+      if (!modelData) return false;
+      
+      let totalCount = 0;
+      let totalAmount = 0;
+      
+      if (selectedRegion !== 'all') {
+        const regionData = modelData.filter_by_region?.find(r => r.region_id === selectedRegion);
+        if (regionData) {
+          totalCount = parseInt(regionData.total_contracts || 0);
+          totalAmount = parseInt(regionData.total_price || 0);
+        }
+      } else {
+        // Суммируем по всем регионам
+        if (modelData.filter_by_region && Array.isArray(modelData.filter_by_region)) {
+          modelData.filter_by_region.forEach(region => {
+            totalCount += parseInt(region.total_contracts || 0);
+            totalAmount += parseInt(region.total_price || 0);
+          });
+        }
+      }
+      
+      return totalCount > 0 || totalAmount > 0;
+    })
+    .map(model => (
+      <CarModelThumbnail 
+        key={model.id} 
+        model={model} 
+        isSelected={selectedModel === model.id}
+        onClick={() => setSelectedModel(model.id)}
+      />
+    ))
+) : (
+  <div className="col-span-full p-6 bg-gray-800 rounded-lg text-center">
+    <div className="flex flex-col items-center justify-center">
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <p className="text-gray-400 mb-2">Нет доступных моделей</p>
+      <p className="text-gray-500 text-sm">Выберите период и нажмите "Применить"</p>
+    </div>
+  </div>
+)}
       </div>
     ) : (
   <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
@@ -4330,12 +4353,6 @@ const stats = getStats();
       </div>
     )}
   </div>
-    )}
-    
-    {carModels.length > 0 && (
-      <div className="mt-4 text-center text-gray-400 text-sm">
-        Показано {carModels.length} моделей автомобилей
-      </div>
     )}
   </div>
 )}
