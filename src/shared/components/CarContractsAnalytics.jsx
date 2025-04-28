@@ -2633,7 +2633,6 @@ const renderMoneyReturnChart = () => {
           return;
         }
         
-        // Преобразуем отрицательные значения в положительные
         const positiveData = monthlyData.map(item => ({
           ...item,
           originalValue: item.value, // Сохраняем оригинальное значение для отладки
