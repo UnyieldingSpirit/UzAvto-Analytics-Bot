@@ -1,11 +1,12 @@
 // src/components/layout/ContentReadyLoader.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ContentReadyLoaderProps {
   isLoading?: boolean; // Внешнее состояние загрузки (опционально)
   setIsLoading?: (loading: boolean) => void; // Функция для обновления состояния (опционально)
+  timeout?: number; // Таймаут автоматического закрытия в мс (опционально)
 }
 
 /**
@@ -13,7 +14,8 @@ interface ContentReadyLoaderProps {
  */
 export default function ContentReadyLoader({ 
   isLoading: externalLoading, 
-  setIsLoading: setExternalLoading 
+  setIsLoading: setExternalLoading,
+  timeout = 10000 // По умолчанию 10 секунд
 }: ContentReadyLoaderProps) {
   const pathname = usePathname();
   // Используем внутреннее состояние, если внешнее не предоставлено
@@ -23,21 +25,44 @@ export default function ContentReadyLoader({
   const isLoading = externalLoading !== undefined ? externalLoading : internalLoading;
   const setIsLoading = setExternalLoading || setInternalLoading;
   
+  // Используем ref для отслеживания таймера и его сброса при необходимости
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Эффект для автоматического закрытия лоадера через определенное время
   useEffect(() => {
-    // Если используется внутреннее состояние, настраиваем базовый автоматический таймер
+    // Если лоадер показан, запускаем таймер для его автоматического закрытия
+    if (isLoading) {
+      console.log(`⏱️ Запускаем таймер автоматического закрытия лоадера: ${timeout/1000} секунд`);
+      
+      // Очищаем предыдущий таймер, если он существует
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+      
+      // Устанавливаем новый таймер
+      timerRef.current = setTimeout(() => {
+        console.log("✅ Автоматическое закрытие лоадера по таймеру");
+        setIsLoading(false);
+      }, timeout);
+    }
+    
+    // Очистка таймера при размонтировании или изменении состояния
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [isLoading, setIsLoading, timeout]);
+  
+  // Эффект для перезапуска внутреннего лоадера при изменении маршрута
+  useEffect(() => {
+    // Если используется внутреннее состояние, перезапускаем лоадер при смене маршрута
     if (setExternalLoading === undefined) {
       setInternalLoading(true);
       
-      // Базовая задержка в 2 секунды, если управление не передано извне
-      const baseTimer = setTimeout(() => {
-        setInternalLoading(false);
-      }, 2000);
-      
-      return () => {
-        clearTimeout(baseTimer);
-      };
+      // Таймер будет создан в основном эффекте выше
     }
-    // Если используется внешнее состояние, не делаем ничего в этом эффекте
   }, [pathname, setExternalLoading]);
 
   return (

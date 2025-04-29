@@ -370,11 +370,15 @@ useEffect(() => {
   }
 }, [apiData]);
   
+
 const fetchData = async (apiUrl) => {
   try {
     // Устанавливаем состояния загрузки
     setLoading(true);
     setLoadingComponent(true);
+    
+    // Минимальное время показа лоадера (в миллисекундах)
+    const MIN_LOADER_DISPLAY_TIME = 4000; // 4 секунды минимум
     
     if (!startDate || !endDate) {
       console.log('Даты не установлены, устанавливаем значения по умолчанию');
@@ -384,12 +388,8 @@ const fetchData = async (apiUrl) => {
       return;
     }
     
-    // Фиксированная задержка в 10 секунд для лоадера
-    const FIXED_LOADER_DELAY = 10000; // 10 секунд
-    console.log(`⏱️ Установлена фиксированная задержка лоадера: ${FIXED_LOADER_DELAY/1000} секунд`);
-    
-    // Запоминаем время начала запроса
-    const requestStartTime = Date.now();
+    console.log('🕐 Начинаем запрос данных...');
+    const requestStartTime = Date.now(); // Запоминаем время начала запроса
     
     const formattedStartDate = formatDateForAPI(startDate);
     const formattedEndDate = formatDateForAPI(endDate);
@@ -399,26 +399,55 @@ const fetchData = async (apiUrl) => {
       end_date: formattedEndDate,
     };
     
-    console.log(`🚀 Отправка запроса на ${apiUrl} с данными:`, requestData);
-    
+    // Выполняем запрос
     const response = await axios.post(apiUrl, requestData);
     
     // Вычисляем, сколько времени занял запрос
-    const requestDuration = Date.now() - requestStartTime;
+    const requestEndTime = Date.now();
+    const requestDuration = requestEndTime - requestStartTime;
     console.log(`⏱️ Запрос выполнен за ${requestDuration/1000} секунд`);
+    
+    // Рассчитываем необходимую задержку
+    // Формула: чем дольше запрос, тем меньше дополнительная задержка
+    let additionalDelayTime;
+    
+    if (requestDuration < 1000) { // Запрос менее 1 секунды
+      additionalDelayTime = 5000; // +5 секунд
+      console.log('🚀 Очень быстрый запрос, добавляем 5 секунд задержки');
+    } else if (requestDuration < 3000) { // 1-3 секунды
+      additionalDelayTime = 4000; // +4 секунды
+      console.log('⚡ Быстрый запрос, добавляем 4 секунды задержки');
+    } else if (requestDuration < 5000) { // 3-5 секунд
+      additionalDelayTime = 3000; // +3 секунды
+      console.log('✓ Средний запрос, добавляем 3 секунды задержки');
+    } else if (requestDuration < 8000) { // 5-8 секунд
+      additionalDelayTime = 2000; // +2 секунды
+      console.log('⏳ Долгий запрос, добавляем 2 секунды задержки');
+    } else if (requestDuration < 12000) { // 8-12 секунд
+      additionalDelayTime = 1000; // +1 секунда
+      console.log('⌛ Очень долгий запрос, добавляем 1 секунду задержки');
+    } else { // Более 12 секунд
+      additionalDelayTime = 500; // +0.5 секунды
+      console.log('🐢 Критически долгий запрос, добавляем 0.5 секунды задержки');
+    }
+    
+    // Рассчитываем общее время, которое должен быть виден лоадер
+    const totalLoaderTime = Math.max(MIN_LOADER_DISPLAY_TIME, requestDuration + additionalDelayTime);
+    
+    // Сколько времени прошло с момента начала загрузки
+    const elapsedTime = Date.now() - requestStartTime;
+    
+    // Сколько еще нужно показывать лоадер после получения ответа
+    const remainingLoaderTime = Math.max(0, totalLoaderTime - elapsedTime);
+    
+    console.log(`🔄 Всего лоадер должен отображаться: ${totalLoaderTime/1000} секунд`);
+    console.log(`⏰ Прошло времени: ${elapsedTime/1000} секунд`);
+    console.log(`⌚ Осталось показывать лоадер: ${remainingLoaderTime/1000} секунд`);
     
     if (response.data && Array.isArray(response.data)) {
       console.log(`📊 Получены данные с ${apiUrl}`);
       
-      // Проверяем наличие данных по месяцам
-      const hasMonthlyData = response.data.some(model => model.filter_by_month && model.filter_by_month.length > 0);
-      if (hasMonthlyData) {
-        console.log("📅 Обнаружены данные по месяцам в ответе API");
-      } else {
-        console.log("⚠️ Данные по месяцам отсутствуют в ответе API");
-      }
-      
-      // Преобразуем массив моделей из API
+      // Обрабатываем данные API
       const modelsList = response.data.map(model => {
         let totalPrice = 0;
         if (model.filter_by_modification && Array.isArray(model.filter_by_modification)) {
@@ -443,39 +472,38 @@ const fetchData = async (apiUrl) => {
       // Обновляем список моделей
       setCarModels(modelsList);
       
-      // Сохраняем полный ответ API
+      // Сохраняем данные API
       setApiData(response.data);
       
       // Сохраняем информацию о времени для использования в useEffect
-      window.loaderStartTime = Date.now();
+      window.loaderTimingData = {
+        requestStartTime,
+        requestDuration,
+        remainingLoaderTime,
+        shouldHideLoaderAt: Date.now() + remainingLoaderTime
+      };
       
-      console.log(`🕒 Лоадер будет отображаться в течение ${FIXED_LOADER_DELAY/1000} секунд`);
+      console.log(`🕒 Лоадер будет скрыт в: ${new Date(window.loaderTimingData.shouldHideLoaderAt).toLocaleTimeString()}`);
       
-      // Запускаем таймер с фиксированной задержкой
-      setTimeout(() => {
-        console.log("✅ Фиксированная задержка завершена, отключаем лоадер");
-        setLoadingComponent(false);
-      }, FIXED_LOADER_DELAY);
-      
-      // НЕ выключаем лоадер здесь - он отключится по таймеру
+      // Не выключаем лоадер здесь!
     } else {
       console.error("❌ Некорректный формат данных:", response.data);
       setCarModels(mockCarModels);
       
-      // Для случая ошибки тоже используем фиксированную задержку
+      // Для случая ошибки делаем фиксированную задержку
       setTimeout(() => {
         setLoadingComponent(false);
-      }, FIXED_LOADER_DELAY);
+      }, 3000);
     }
   } catch (error) {
     console.error(`❌ Ошибка при отправке запроса на ${apiUrl}:`, error);
     console.log('Продолжаем с использованием тестовых данных');
     setCarModels(mockCarModels);
     
-    // Для случая ошибки тоже используем фиксированную задержку
+    // Для случая ошибки делаем фиксированную задержку
     setTimeout(() => {
       setLoadingComponent(false);
-    }, FIXED_LOADER_DELAY);
+    }, 3000);
   } finally {
     setLoading(false); // Отключаем только состояние API-запроса
   }
@@ -4015,7 +4043,13 @@ const stats = getStats();
   return (
   
     <div className="p-5 bg-gray-900 text-gray-100 min-h-screen">
-       {loadingComponent && <ContentReadyLoader />}
+     {loadingComponent && 
+  <ContentReadyLoader 
+    isLoading={loadingComponent} 
+    setIsLoading={setLoadingComponent} 
+    timeout={12000} // 10 секунд
+  />
+}
     <h1 className="text-3xl font-semibold mb-6">Аналитика автомобилей</h1>
     
     {/* Filter Panel */}
