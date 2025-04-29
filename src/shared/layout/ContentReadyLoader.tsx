@@ -15,7 +15,7 @@ interface ContentReadyLoaderProps {
 export default function ContentReadyLoader({ 
   isLoading: externalLoading, 
   setIsLoading: setExternalLoading,
-  timeout = 10000 // По умолчанию 10 секунд
+  timeout = 4000 
 }: ContentReadyLoaderProps) {
   const pathname = usePathname();
   // Используем внутреннее состояние, если внешнее не предоставлено
