@@ -549,186 +549,82 @@ useEffect(() => {
   }
 }, [activeTab, selectedModel, selectedRegion]); 
 
-// Функция для подготовки месячных данных из ответа API
 const prepareMonthlyDataFromResponse = (apiData, year) => {
   if (!apiData || !Array.isArray(apiData)) {
     return [];
   }
   
-  // Объект для агрегации данных только по месяцам выбранного года
+  // Объект для агрегации данных по месяцам выбранного года
   const monthlyDataMap = {};
   const valueKey = getValueKeyForActiveTab();
+  const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
   
-  // Обрабатываем данные в зависимости от выбранной модели
-  if (selectedModel !== 'all') {
-    // Находим данные для выбранной модели
-    const modelData = apiData.find(model => model.model_id === selectedModel);
+  // Инициализация всех месяцев с нулевыми значениями
+  monthNames.forEach((name, index) => {
+    monthlyDataMap[name] = {
+      month: name,
+      [valueKey]: 0,
+      amount: 0,
+      sortIndex: index
+    };
+  });
+  
+  // Проходим по всем моделям
+  apiData.forEach(model => {
+    // Пропускаем модель, если выбрана конкретная модель и это не она
+    if (selectedModel !== 'all' && model.model_id !== selectedModel) {
+      return;
+    }
     
-    if (modelData && modelData.filter_by_month && Array.isArray(modelData.filter_by_month)) {
-      // Заполняем данные по месяцам, фильтруя только по выбранному году
-      modelData.filter_by_month.forEach(monthData => {
-        // Проверяем, что месяц соответствует выбранному году
-        if (!monthData.month || !monthData.month.startsWith(year)) return;
-        
-        const yearMonth = monthData.month.split('-');
-        const monthIndex = parseInt(yearMonth[1], 10) - 1;
-        const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-        const monthName = monthNames[monthIndex];
-        
-        // Обрабатываем данные по регионам, если они есть
-        if (monthData.regions && Array.isArray(monthData.regions)) {
-          // Если выбран конкретный регион, фильтруем данные по нему
-          if (selectedRegion !== 'all') {
-            const regionData = monthData.regions.find(r => r.region_id === selectedRegion);
-            if (regionData) {
-              // Извлекаем значения и суммы из данных региона
-              let count = parseInt(regionData.all_count || regionData.count || 0);
-              let amount = parseInt(regionData.amount || 0);
-              
-              // Преобразуем отрицательные значения в положительные
-              count = Math.abs(count);
-              amount = Math.abs(amount);
-              
-              // Сохраняем данные с правильным ключом значения
-              monthlyDataMap[monthName] = {
-                month: monthName,
-                [valueKey]: count,
-                amount: amount,
-                sortIndex: monthIndex
-              };
-            }
-          } else {
-            // Если регион не выбран, суммируем данные по всем регионам
-            let totalCount = 0;
-            let totalAmount = 0;
+    // Проверяем наличие данных по месяцам
+    if (!model.filter_by_month || !Array.isArray(model.filter_by_month)) {
+      return;
+    }
+    
+    // Обрабатываем каждый месяц
+    model.filter_by_month.forEach(monthData => {
+      // Проверяем, что месяц соответствует выбранному году
+      if (!monthData.month || !monthData.month.startsWith(year)) {
+        return;
+      }
+      
+      const yearMonth = monthData.month.split('-');
+      if (yearMonth.length !== 2) return;
+      
+      const monthIndex = parseInt(yearMonth[1], 10) - 1;
+      if (monthIndex < 0 || monthIndex > 11) return;
+      
+      const monthName = monthNames[monthIndex];
+      
+      // Обрабатываем данные по регионам
+      if (monthData.regions && Array.isArray(monthData.regions)) {
+        if (selectedRegion !== 'all') {
+          // Если выбран конкретный регион, ищем его
+          const regionData = monthData.regions.find(r => r.region_id === selectedRegion);
+          if (regionData) {
+            // Используем поля contract или count в зависимости от их наличия
+            const count = Number(regionData.contract || regionData.count || 0);
+            const amount = Number(regionData.total_price || regionData.amount || 0);
             
-            monthData.regions.forEach(region => {
-              let count = parseInt(region.all_count || region.count || 0);
-              let amount = parseInt(region.amount || 0);
-              
-              // Преобразуем отрицательные значения в положительные
-              count = Math.abs(count);
-              amount = Math.abs(amount);
-              
-              totalCount += count;
-              totalAmount += amount;
-            });
-            
-            // Сохраняем сумму по всем регионам
-            monthlyDataMap[monthName] = {
-              month: monthName,
-              [valueKey]: totalCount,
-              amount: totalAmount,
-              sortIndex: monthIndex
-            };
+            monthlyDataMap[monthName][valueKey] += Math.abs(count);
+            monthlyDataMap[monthName].amount += Math.abs(amount);
           }
         } else {
-          // Если данных по регионам нет, используем общие данные месяца
-          let count = parseInt(monthData.count || 0);
-          let amount = parseInt(monthData.total_price || 0);
-          
-          // Преобразуем отрицательные значения в положительные
-          count = Math.abs(count);
-          amount = Math.abs(amount);
-          
-          monthlyDataMap[monthName] = {
-            month: monthName,
-            [valueKey]: count,
-            amount: amount,
-            sortIndex: monthIndex
-          };
+          // Если регион не выбран, суммируем по всем регионам
+          monthData.regions.forEach(region => {
+            const count = Number(region.contract || region.count || 0);
+            const amount = Number(region.total_price || region.amount || 0);
+            
+            monthlyDataMap[monthName][valueKey] += Math.abs(count);
+            monthlyDataMap[monthName].amount += Math.abs(amount);
+          });
         }
-      });
-    }
-  } else {
-    // Если модель не выбрана, агрегируем данные по всем моделям
-    apiData.forEach(model => {
-      if (model.filter_by_month && Array.isArray(model.filter_by_month)) {
-        // Фильтруем только месяцы из выбранного года
-        const yearMonths = model.filter_by_month.filter(monthData => 
-          monthData.month && monthData.month.startsWith(year)
-        );
-        
-        yearMonths.forEach(monthData => {
-          const yearMonth = monthData.month.split('-');
-          const monthIndex = parseInt(yearMonth[1], 10) - 1;
-          const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-          const monthName = monthNames[monthIndex];
-          
-          if (!monthlyDataMap[monthName]) {
-            monthlyDataMap[monthName] = {
-              month: monthName,
-              [valueKey]: 0,
-              amount: 0,
-              sortIndex: monthIndex
-            };
-          }
-          
-          // Обрабатываем данные по регионам, если они есть
-          if (monthData.regions && Array.isArray(monthData.regions)) {
-            // Если выбран конкретный регион, фильтруем данные по нему
-            if (selectedRegion !== 'all') {
-              const regionData = monthData.regions.find(r => r.region_id === selectedRegion);
-              if (regionData) {
-                let count = parseInt(regionData.all_count || regionData.count || 0);
-                let amount = parseInt(regionData.amount || 0);
-                
-                // Преобразуем отрицательные значения в положительные
-                count = Math.abs(count);
-                amount = Math.abs(amount);
-                
-                monthlyDataMap[monthName][valueKey] += count;
-                monthlyDataMap[monthName].amount += amount;
-              }
-            } else {
-              // Если регион не выбран, суммируем данные по всем регионам
-              monthData.regions.forEach(region => {
-                let count = parseInt(region.all_count || region.count || 0);
-                let amount = parseInt(region.amount || 0);
-                
-                // Преобразуем отрицательные значения в положительные
-                count = Math.abs(count);
-                amount = Math.abs(amount);
-                
-                monthlyDataMap[monthName][valueKey] += count;
-                monthlyDataMap[monthName].amount += amount;
-              });
-            }
-          } else {
-            // Если данных по регионам нет, используем общие данные месяца
-            let count = parseInt(monthData.count || 0);
-            let amount = parseInt(monthData.total_price || 0);
-            
-            // Преобразуем отрицательные значения в положительные
-            count = Math.abs(count);
-            amount = Math.abs(amount);
-            
-            monthlyDataMap[monthName][valueKey] += count;
-            monthlyDataMap[monthName].amount += amount;
-          }
-        });
       }
     });
-  }
-  
-  // Создаем структуру для всех месяцев года (даже если нет данных)
-  const allMonths = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
-  allMonths.forEach((month, index) => {
-    if (!monthlyDataMap[month]) {
-      monthlyDataMap[month] = {
-        month: month,
-        [valueKey]: 0,
-        amount: 0,
-        sortIndex: index
-      };
-    }
   });
   
   // Преобразуем объект в массив и сортируем по месяцам
-  const result = Object.values(monthlyDataMap).sort((a, b) => a.sortIndex - b.sortIndex);
-  
-  // Удаляем вспомогательное поле sortIndex
-  return result.map(({ sortIndex, ...rest }) => rest);
+  return Object.values(monthlyDataMap).sort((a, b) => a.sortIndex - b.sortIndex);
 };
   
   // Функция для применения фильтра дат (кнопка "Применить")
