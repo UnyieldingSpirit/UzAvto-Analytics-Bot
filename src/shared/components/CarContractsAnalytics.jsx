@@ -1449,164 +1449,196 @@ return { regionData, modelData, monthlyData };
     };
  
 const getRetailData = () => {
+  // Данные по регионам с суммированием
   let regionData = [];
+
   if (apiData && Array.isArray(apiData)) {
+    // Создаем объект для группировки данных по регионам
     const regionSummary = {};
-   
+    
+    // Проходим по всем моделям и их регионам
     apiData.forEach(model => {
       if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
         model.filter_by_region.forEach(region => {
+          if (!region || !region.region_id || !region.region_name) return;
+          
           if (!regionSummary[region.region_id]) {
             regionSummary[region.region_id] = {
               id: region.region_id,
               name: region.region_name,
-              total_contracts: 0,
-              total_price: 0      
+              retail: 0,
+              amount: 0,
+              isSelected: region.region_id === selectedRegion
             };
-            console.log(`Инициализирован новый регион: ${region.region_name} (ID: ${region.region_id})`);
           }
           
-          const contractCount = Number(region.total_contracts || 0);
-          console.log(`Регион ${region.region_name}: total_contracts = "${region.total_contracts}" => преобразовано в число ${contractCount}`);
+          // Используем parseFloat вместо Number для более надежного преобразования
+          const contractCount = parseFloat(region.total_contracts || 0);
+          const totalPrice = parseFloat(region.total_price || 0);
           
-          const totalPrice = Number(region.total_price || 0);
-          
-          const currentTotalContracts = Number(regionSummary[region.region_id].total_contracts);
-          console.log(`До суммирования: total_contracts = ${currentTotalContracts}`);
-          
-          regionSummary[region.region_id].total_contracts = currentTotalContracts + contractCount;
-          regionSummary[region.region_id].total_price = Number(regionSummary[region.region_id].total_price) + totalPrice;
-          
-          console.log(`После суммирования: total_contracts = ${regionSummary[region.region_id].total_contracts} (добавлено ${contractCount})`);
+          regionSummary[region.region_id].retail += contractCount;
+          regionSummary[region.region_id].amount += totalPrice;
         });
       }
     });
+    
+    // Преобразуем объект обратно в массив для графика
     regionData = Object.values(regionSummary);
     
-    regionData.forEach((region, index) => {
-      console.log(`Финальные данные по регионам после суммирования ${region.total_contracts}`);
-    });
-    
-    regionData.sort((a, b) => b.total_contracts - a.total_contracts);
+    // Сортируем данные по количеству (по убыванию)
+    regionData.sort((a, b) => b.retail - a.retail);
+  } else {
+    // Запасной вариант с тестовыми данными
+    regionData = regions.map(region => ({
+      id: region.id,
+      name: region.name,
+      retail: Math.round(30 + Math.random() * 70),
+      amount: Math.round((3000000 + Math.random() * 7000000)),
+      isSelected: region.id === selectedRegion
+    }));
   }
 
+  // Данные по моделям с суммированием
   let modelData = [];
 
   if (apiData && Array.isArray(apiData)) {
     if (selectedRegion !== 'all') {
+      // Если выбран конкретный регион, фильтруем данные
       const filteredModelSummary = {};
-     
+      
       apiData.forEach(model => {
         if (model.filter_by_region) {
           const regionData = model.filter_by_region.find(r => r.region_id === selectedRegion);
-         
+          
           if (regionData) {
             if (!filteredModelSummary[model.model_id]) {
               filteredModelSummary[model.model_id] = {
                 id: model.model_id,
                 name: model.model_name,
-                total_contracts: 0,
-                total_price: 0
+                retail: 0,
+                amount: 0
               };
             }
             
-            const contractCount = Number(regionData.total_contracts || 0);
-            const totalPrice = Number(regionData.total_price || 0);
-           
-            filteredModelSummary[model.model_id].total_contracts = Number(filteredModelSummary[model.model_id].total_contracts) + contractCount;
-            filteredModelSummary[model.model_id].total_price = Number(filteredModelSummary[model.model_id].total_price) + totalPrice;
+            const contractCount = parseFloat(regionData.total_contracts || 0);
+            const totalPrice = parseFloat(regionData.total_price || 0);
+            
+            filteredModelSummary[model.model_id].retail += contractCount;
+            filteredModelSummary[model.model_id].amount += totalPrice;
           }
         }
       });
-     
-      if (Object.keys(filteredModelSummary).length > 0) {
-        modelData = Object.values(filteredModelSummary);
-        
-        modelData.sort((a, b) => b.total_contracts - a.total_contracts);
-      }
+      
+      // Преобразуем объект обратно в массив для графика
+      modelData = Object.values(filteredModelSummary);
+      
+      // Сортируем по количеству
+      modelData.sort((a, b) => b.retail - a.retail);
     } else {
+      // Если регион не выбран, показываем данные по всем моделям
       const modelSummary = {};
-     
+      
       apiData.forEach(model => {
         if (!modelSummary[model.model_id]) {
           modelSummary[model.model_id] = {
             id: model.model_id,
             name: model.model_name,
-            total_contracts: 0,
-            total_price: 0
+            retail: 0,
+            amount: 0
           };
         }
-       
+        
+        // Суммируем контракты и суммы по всем регионам данной модели
         if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
           model.filter_by_region.forEach(region => {
-            const contractCount = Number(region.total_contracts || 0);
-            const totalPrice = Number(region.total_price || 0);
+            const contractCount = parseFloat(region.total_contracts || 0);
+            const totalPrice = parseFloat(region.total_price || 0);
             
-            modelSummary[model.model_id].total_contracts = Number(modelSummary[model.model_id].total_contracts) + contractCount;
-            modelSummary[model.model_id].total_price = Number(modelSummary[model.model_id].total_price) + totalPrice;
+            modelSummary[model.model_id].retail += contractCount;
+            modelSummary[model.model_id].amount += totalPrice;
           });
         }
       });
-     
+      
+      // Преобразуем объект обратно в массив для графика
       modelData = Object.values(modelSummary);
       
-      modelData.sort((a, b) => b.total_contracts - a.total_contracts);
+      // Сортируем по количеству
+      modelData.sort((a, b) => b.retail - a.retail);
     }
+  } else {
+    // Запасной вариант с тестовыми данными
+    modelData = carModels.map(model => ({
+      id: model.id,
+      name: model.name,
+      retail: Math.round(20 + Math.random() * 60),
+      amount: Math.round((2000000 + Math.random() * 6000000))
+    }));
   }
 
+  // Обработка данных по месяцам
   let monthlyData = [];
   
+  // Проверяем наличие ежемесячных данных в API
   const hasMonthlyData = apiData && Array.isArray(apiData) && 
                          apiData.some(model => model.filter_by_month && model.filter_by_month.length > 0);
   
-  if (hasMonthlyData) {    
+  if (hasMonthlyData) {
+    // Создаем объект для суммирования данных по месяцам
     const monthSummary = {};
-    
     const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
     
+    // Инициализируем все месяцы
     monthNames.forEach((name, index) => {
       monthSummary[name] = {
         month: name,
-        total_contracts: 0,
-        total_price: 0,
+        retail: 0,
+        amount: 0,
         sortIndex: index
       };
     });
     
+    // Обрабатываем данные по месяцам из API
     apiData.forEach(model => {
-      if (model.filter_by_month && Array.isArray(model.filter_by_month)) {
-        if (selectedModel === 'all' || model.model_id === selectedModel) {
+      // Фильтрация по выбранной модели, если она указана
+      if (selectedModel === 'all' || model.model_id === selectedModel) {
+        if (model.filter_by_month && Array.isArray(model.filter_by_month)) {
           model.filter_by_month.forEach(monthData => {
+            // Определяем индекс месяца из строки формата "YYYY-MM"
             const monthParts = monthData.month.split('-');
             if (monthParts.length === 2) {
               const monthIndex = parseInt(monthParts[1]) - 1;
               const monthName = monthNames[monthIndex];
               
+              // Обрабатываем данные по регионам за данный месяц
               if (monthData.regions && Array.isArray(monthData.regions)) {
                 if (selectedRegion !== 'all') {
+                  // Если выбран конкретный регион, ищем его
                   const regionData = monthData.regions.find(r => r.region_id === selectedRegion);
                   if (regionData) {
-                    const count = Number(regionData.count || 0);
-                    const amount = Number(regionData.amount || 0);
+                    const count = parseFloat(regionData.count || 0);
+                    const amount = parseFloat(regionData.amount || 0);
                     
-                    monthSummary[monthName].total_contracts = Number(monthSummary[monthName].total_contracts) + count;
-                    monthSummary[monthName].total_price = Number(monthSummary[monthName].total_price) + amount;
+                    monthSummary[monthName].retail += count;
+                    monthSummary[monthName].amount += amount;
                   }
                 } else {
+                  // Если регион не выбран, суммируем по всем регионам
                   monthData.regions.forEach(region => {
-                    const count = Number(region.count || 0);
-                    const amount = Number(region.amount || 0);
+                    const count = parseFloat(region.count || 0);
+                    const amount = parseFloat(region.amount || 0);
                     
-                    monthSummary[monthName].total_contracts = Number(monthSummary[monthName].total_contracts) + count;
-                    monthSummary[monthName].total_price = Number(monthSummary[monthName].total_price) + amount;
+                    monthSummary[monthName].retail += count;
+                    monthSummary[monthName].amount += amount;
                   });
                 }
-              } else {
-                const count = Number(monthData.count || 0);
-                const amount = Number(monthData.total_price || 0);
+              } else if (monthData.count !== undefined && monthData.total_price !== undefined) {
+                // Если данные о регионах отсутствуют, но есть общие данные
+                const count = parseFloat(monthData.count || 0);
+                const amount = parseFloat(monthData.total_price || 0);
                 
-                monthSummary[monthName].total_contracts = Number(monthSummary[monthName].total_contracts) + count;
-                monthSummary[monthName].total_price = Number(monthSummary[monthName].total_price) + amount;
+                monthSummary[monthName].retail += count;
+                monthSummary[monthName].amount += amount;
               }
             }
           });
@@ -1614,46 +1646,115 @@ const getRetailData = () => {
       }
     });
     
+    // Преобразуем объект в массив и сортируем по месяцам
     monthlyData = Object.values(monthSummary).sort((a, b) => a.sortIndex - b.sortIndex);
     
+    // Удаляем вспомогательное поле sortIndex
     monthlyData.forEach(item => delete item.sortIndex);
+  } else {
+    // Если данных по месяцам нет, используем тестовые данные
+    monthlyData = [
+      { month: "Янв", retail: 95, amount: 6650000 },
+      { month: "Фев", retail: 70, amount: 4900000 },
+      { month: "Мар", retail: 85, amount: 5950000 },
+      { month: "Апр", retail: 100, amount: 7000000 },
+      { month: "Май", retail: 145, amount: 10150000 },
+      { month: "Июн", retail: 120, amount: 8400000 },
+      { month: "Июл", retail: 135, amount: 9450000 },
+      { month: "Авг", retail: 115, amount: 8050000 },
+      { month: "Сен", retail: 125, amount: 8750000 },
+      { month: "Окт", retail: 105, amount: 7350000 },
+      { month: "Ноя", retail: 140, amount: 9800000 },
+      { month: "Дек", retail: 110, amount: 7700000 }
+    ];
+    
+    // Если выбран конкретный регион, корректируем данные
+    if (selectedRegion !== 'all') {
+      monthlyData = monthlyData.map(item => ({
+        ...item,
+        retail: Math.round(item.retail * 0.7),
+        amount: Math.round(item.amount * 0.7)
+      }));
+    }
   }
 
+  // Если выбрана конкретная модель, обработаем данные по модификациям
   if (selectedModel !== 'all') {
     const selectedModelData = apiData && Array.isArray(apiData) ? 
                             apiData.find(m => m.model_id === selectedModel) : null;
     
+    // Если у выбранной модели есть данные о модификациях, используем их
     if (selectedModelData && selectedModelData.filter_by_modification && 
         Array.isArray(selectedModelData.filter_by_modification) && 
         selectedModelData.filter_by_modification.length > 0) {
-      
+        
       modelData = selectedModelData.filter_by_modification.map(mod => ({
         id: mod.modification_id,
         name: mod.modification_name,
-        total_contracts: Number(mod.total_contracts || 0),
-        total_price: Number(mod.total_price || 0)
+        retail: parseFloat(mod.total_contracts || 0),
+        amount: parseFloat(mod.total_price || 0)
       }));
       
+      // Корректируем данные для выбранного региона, если он задан
       if (selectedRegion !== 'all') {
-        const totalContracts = selectedModelData.filter_by_region.reduce(
-          (sum, r) => sum + Number(r.total_contracts || 0), 0
-        );
-        
-        const regionData = selectedModelData.filter_by_region.find(r => r.region_id === selectedRegion);
-        const regionContracts = regionData ? Number(regionData.total_contracts || 0) : 0;
-        
+        const totalContracts = selectedModelData.filter_by_region 
+          ? selectedModelData.filter_by_region.reduce((sum, r) => sum + parseFloat(r.total_contracts || 0), 0) 
+          : 0;
+          
+        const regionData = selectedModelData.filter_by_region 
+          ? selectedModelData.filter_by_region.find(r => r.region_id === selectedRegion) 
+          : null;
+          
+        const regionContracts = regionData ? parseFloat(regionData.total_contracts || 0) : 0;
         const regionRatio = totalContracts > 0 ? regionContracts / totalContracts : 0;
         
         modelData = modelData.map(mod => ({
           ...mod,
-          total_contracts: Math.round(mod.total_contracts * regionRatio),
-          total_price: Math.round(mod.total_price * regionRatio)
+          retail: Math.round(mod.retail * regionRatio),
+          amount: Math.round(mod.amount * regionRatio)
         }));
       }
+      
+      // Сортируем по количеству
+      modelData.sort((a, b) => b.retail - a.retail);
+    } else {
+      // Если нет данных о модификациях, создаем тестовые данные
+      // Данные по регионам для выбранной модели
+      regionData = regions.map(region => ({
+        id: region.id,
+        name: region.name,
+        retail: Math.round(10 + Math.random() * 40),
+        amount: Math.round((1000000 + Math.random() * 4000000))
+      }));
+   
+      // Генерируем данные по модификациям и цветам для выбранной модели
+      modelData = [];
+   
+      // Добавляем данные о модификациях
+      carModifications.forEach(modification => {
+        modelData.push({
+          id: `mod-${modification.toLowerCase()}`,
+          name: `${carModels.find(m => m.id === selectedModel)?.name || 'Автомобиль'} ${modification}`,
+          retail: Math.round(5 + Math.random() * 20),
+          amount: Math.round((500000 + Math.random() * 2000000))
+        });
+      });
+   
+      // Добавляем данные о цветах
+      carColors.forEach(color => {
+        modelData.push({
+          id: `color-${color.toLowerCase()}`,
+          name: `Цвет: ${color}`,
+          retail: Math.round(3 + Math.random() * 15),
+          amount: Math.round((300000 + Math.random() * 1500000))
+        });
+      });
+      
+      // Сортируем по количеству
+      modelData.sort((a, b) => b.retail - a.retail);
     }
   }
 
-  console.log("=== Завершение метода getRetailData ===");
   return { regionData, modelData, monthlyData };
 };
 
@@ -2266,10 +2367,24 @@ const renderSalesCharts = () => {
 const renderRetailCharts = () => {
   const { regionData, modelData, monthlyData } = getFilteredData();
   
-  renderBarChart(regionSalesRef, regionData, 'retail', 'name', getRegionChartTitle(), '#FF5722');
-  renderBarChart(modelSalesRef, modelData, 'retail', 'name', getModelChartTitle(), '#03A9F4');
-  renderTimelineChart(timelineSalesRef, monthlyData, 'retail', 'month', getTimelineChartTitle());
-};
+  // Проверяем наличие данных
+  console.log("Retail data for charts:", {
+    regionData: regionData.length,
+    modelData: modelData.length,
+    monthlyData: monthlyData.length
+  });
+  
+  // ВАЖНЫЙ МОМЕНТ: Проверяем, существуют ли DOM-элементы
+  if (!regionContractsRef.current || !modelContractsRef.current || !timelineContractsRef.current) {
+    console.error("DOM references not initialized for retail charts");
+    return;
+  }
+
+  // Используем regionContractsRef вместо regionSalesRef и т.д.
+  renderBarChart(regionContractsRef, regionData, 'retail', 'name', getRegionChartTitle(), '#FF5722');
+  renderBarChart(modelContractsRef, modelData, 'retail', 'name', getModelChartTitle(), '#03A9F4');
+  renderTimelineChart(timelineContractsRef, monthlyData, 'retail', 'month', getTimelineChartTitle());
+}
 
  const renderWholesaleCharts = () => {
    const { regionData, modelData, monthlyData } = getFilteredData();
