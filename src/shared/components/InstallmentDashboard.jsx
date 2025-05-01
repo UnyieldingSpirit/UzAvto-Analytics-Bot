@@ -243,7 +243,7 @@ const InstallmentDashboard = () => {
     }
   };
   const formatNumberText = (num) => {
-      return `${num} Штук`;
+      return `${num} шт.`;
   };
 
   const formatNumberWithFullAmount = (num) => {
@@ -801,136 +801,12 @@ const renderMainChart = () => {
     .text(`Регион: ${regionName}${modelName}`);
 };
 
-  // Диаграмма по моделям (горизонтальные бары)
-  const renderModelChart = () => {
-    if (!modelChartRef.current || apiData.length === 0) return;
-    
-    const container = modelChartRef.current;
-    const width = container.clientWidth;
-    const height = 200;
-    
-    d3.select(container).selectAll("*").remove();
-    
-    const svg = d3.select(container)
-      .append('svg')
-      .attr('width', width)
-      .attr('height', height);
-    
-    // Получаем топ-модели для текущего региона
-    const models = apiData
-      .filter(model => {
-        if (selectedRegion === 'all') {
-          return model.filter_by_region.some(r => parseInt(r.contract_count || 0) > 0);
-        } else {
-          const regionData = model.filter_by_region.find(r => r.region_id === selectedRegion);
-          return regionData && parseInt(regionData.contract_count || 0) > 0;
-        }
-      })
-      .sort((a, b) => {
-        const aData = getModelRegionData(a, selectedRegion);
-        const bData = getModelRegionData(b, selectedRegion);
-        return (bData?.contract_count || 0) - (aData?.contract_count || 0);
-      })
-      .slice(0, 5); // Показываем только топ-5 моделей
-    
-    // Заголовок
-    svg.append('text')
-      .attr('x', 10)
-      .attr('y', 20)
-      .attr('fill', 'white')
-      .attr('font-size', '14px')
-      .attr('font-weight', 'bold')
-      .text('Топ моделей по количеству рассрочек');
-    
-    const margin = { top: 30, right: 20, bottom: 10, left: 100 };
-    const chartWidth = width - margin.left - margin.right;
-    const chartHeight = height - margin.top - margin.bottom;
-    
-    // Шкалы
-    const y = d3.scaleBand()
-      .domain(models.map(m => m.model_id))
-      .range([0, chartHeight])
-      .padding(0.3);
-    
-    const x = d3.scaleLinear()
-      .domain([0, d3.max(models, m => {
-        const data = getModelRegionData(m, selectedRegion);
-        return data?.contract_count || 0;
-      }) * 1.1])
-      .range([0, chartWidth]);
-    
-    const chart = svg.append('g')
-      .attr('transform', `translate(${margin.left}, ${margin.top})`);
-    
-    // Фон для баров
-    chart.selectAll('.bar-bg')
-      .data(models)
-      .join('rect')
-      .attr('class', 'bar-bg')
-    .attr('y', m => y(m.model_id))
-     .attr('height', y.bandwidth())
-     .attr('x', 0)
-     .attr('width', chartWidth)
-     .attr('fill', '#1e293b')
-     .attr('rx', 4);
-     
-   // Бары
-   chart.selectAll('.bar')
-     .data(models)
-     .join('rect')
-     .attr('class', 'bar')
-     .attr('y', m => y(m.model_id))
-     .attr('height', y.bandwidth())
-     .attr('x', 0)
-     .attr('width', 0)
-     .attr('fill', (m, i) => d3.schemeCategory10[i % 10])
-     .attr('rx', 4)
-     .transition()
-     .duration(1000)
-     .attr('width', m => {
-       const data = getModelRegionData(m, selectedRegion);
-       return x(data?.contract_count || 0);
-     });
-   
-   // Названия моделей
-   chart.selectAll('.model-name')
-     .data(models)
-     .join('text')
-     .attr('class', 'model-name')
-     .attr('y', m => y(m.model_id) + y.bandwidth() / 2)
-     .attr('x', -5)
-     .attr('text-anchor', 'end')
-     .attr('dominant-baseline', 'middle')
-     .attr('fill', 'white')
-     .attr('font-size', '12px')
-     .text(m => m.model_name.length > 12 ? m.model_name.substring(0, 12) + '...' : m.model_name);
-   
-   // Количество контрактов
-   chart.selectAll('.count')
-     .data(models)
-     .join('text')
-     .attr('class', 'count')
-     .attr('y', m => y(m.model_id) + y.bandwidth() / 2)
-     .attr('x', m => {
-       const data = getModelRegionData(m, selectedRegion);
-       return x(data?.contract_count || 0) + 5;
-     })
-     .attr('dominant-baseline', 'middle')
-     .attr('fill', 'white')
-     .attr('font-size', '12px')
-     .attr('font-weight', 'bold')
-     .text(m => {
-       const data = getModelRegionData(m, selectedRegion);
-       return formatNumberWithFullAmount(data?.contract_count || 0);
-     });
- };
-
-const renderPaymentStatus = () => {
-  if (!paymentStatusRef.current || apiData.length === 0) return;
+const renderModelChart = () => {
+  if (!modelChartRef.current || apiData.length === 0) return;
   
-  const container = paymentStatusRef.current;
+  const container = modelChartRef.current;
   const width = container.clientWidth;
-  const height = 200;
+  const height = 300;
   
   d3.select(container).selectAll("*").remove();
   
@@ -939,16 +815,255 @@ const renderPaymentStatus = () => {
     .attr('width', width)
     .attr('height', height);
   
-  // Заголовок с увеличенным размером
+  const isNarrow = width < 400;
+  
+  // Получаем топ-модели для текущего региона
+  const models = apiData
+    .filter(model => {
+      if (selectedRegion === 'all') {
+        return model.filter_by_region.some(r => parseInt(r.contract_count || 0) > 0);
+      } else {
+        const regionData = model.filter_by_region.find(r => r.region_id === selectedRegion);
+        return regionData && parseInt(regionData.contract_count || 0) > 0;
+      }
+    })
+    .sort((a, b) => {
+      const aData = getModelRegionData(a, selectedRegion);
+      const bData = getModelRegionData(b, selectedRegion);
+      return (bData?.contract_count || 0) - (aData?.contract_count || 0);
+    })
+    .slice(0, 5); // Показываем только топ-5 моделей
+  
+  // Заголовок с улучшенным стилем
   svg.append('text')
-    .attr('x', 20)
-    .attr('y', 25)
+    .attr('x', isNarrow ? width / 2 : 15)
+    .attr('y', 20)
+    .attr('text-anchor', isNarrow ? 'middle' : 'start')
     .attr('fill', 'white')
     .attr('font-size', '16px')
     .attr('font-weight', 'bold')
-    .text('Распределение платежей');
+    .text('Топ моделей по количеству рассрочек');
   
-  // Определяем, какие данные используем - для модели или региона
+  const margin = { top: 35, right: 25, bottom: 10, left: isNarrow ? 80 : 120 };
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
+  
+  // Создаем градиенты для баров
+  const defs = svg.append('defs');
+  
+  // Фильтр для теней
+  const dropShadow = defs.append('filter')
+    .attr('id', 'bar-shadow')
+    .attr('height', '130%');
+    
+  dropShadow.append('feGaussianBlur')
+    .attr('in', 'SourceAlpha')
+    .attr('stdDeviation', 3)
+    .attr('result', 'blur');
+    
+  dropShadow.append('feOffset')
+    .attr('in', 'blur')
+    .attr('dx', 1)
+    .attr('dy', 1)
+    .attr('result', 'offsetBlur');
+    
+  const feComponentTransfer = dropShadow.append('feComponentTransfer')
+    .attr('in', 'offsetBlur')
+    .attr('result', 'offsetBlur');
+    
+  feComponentTransfer.append('feFuncA')
+    .attr('type', 'linear')
+    .attr('slope', 0.2);
+    
+  const feMerge = dropShadow.append('feMerge');
+  feMerge.append('feMergeNode')
+    .attr('in', 'offsetBlur');
+  feMerge.append('feMergeNode')
+    .attr('in', 'SourceGraphic');
+  
+  // Создаем набор градиентов для баров
+  const colors = [
+    ['#3b82f6', '#60a5fa'], // Синий
+    ['#8b5cf6', '#a78bfa'], // Фиолетовый
+    ['#ec4899', '#f472b6'], // Розовый
+    ['#f59e0b', '#fbbf24'], // Оранжевый
+    ['#10b981', '#34d399']  // Зеленый
+  ];
+  
+  colors.forEach((color, i) => {
+    const gradient = defs.append('linearGradient')
+      .attr('id', `barGradient${i}`)
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '100%')
+      .attr('y2', '0%');
+      
+    gradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', color[0]);
+      
+    gradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', color[1]);
+  });
+  
+  // Шкалы
+  const y = d3.scaleBand()
+    .domain(models.map(m => m.model_id))
+    .range([0, chartHeight])
+    .padding(0.3);
+    
+  const x = d3.scaleLinear()
+    .domain([0, d3.max(models, m => {
+      const data = getModelRegionData(m, selectedRegion);
+      return data?.contract_count || 0;
+    }) * 1.1])
+    .range([0, chartWidth]);
+  
+  const chart = svg.append('g')
+    .attr('transform', `translate(${margin.left}, ${margin.top})`);
+  
+  // Создаем современный фон для графика
+  chart.append('rect')
+    .attr('width', chartWidth)
+    .attr('height', chartHeight)
+    .attr('fill', '#1e293b')
+    .attr('rx', 8)
+    .attr('opacity', 0.2)
+    .attr('filter', 'url(#bar-shadow)');
+  
+  // Линии сетки (горизонтальные)
+  chart.selectAll('.grid-line')
+    .data(y.domain())
+    .join('line')
+    .attr('class', 'grid-line')
+    .attr('x1', 0)
+    .attr('x2', chartWidth)
+    .attr('y1', d => y(d) + y.bandwidth() / 2)
+    .attr('y2', d => y(d) + y.bandwidth() / 2)
+    .attr('stroke', '#334155')
+    .attr('stroke-width', 0.5)
+    .attr('stroke-dasharray', '3,3')
+    .attr('opacity', 0.6);
+  
+  // Фон для баров
+  chart.selectAll('.bar-bg')
+    .data(models)
+    .join('rect')
+    .attr('class', 'bar-bg')
+    .attr('y', m => y(m.model_id))
+    .attr('height', y.bandwidth())
+    .attr('x', 0)
+    .attr('width', chartWidth)
+    .attr('fill', '#1e293b')
+    .attr('rx', 6)
+    .attr('opacity', 0.3);
+  
+  // Бары с градиентами и анимацией
+  chart.selectAll('.bar')
+    .data(models)
+    .join('rect')
+    .attr('class', 'bar')
+    .attr('y', m => y(m.model_id))
+    .attr('height', y.bandwidth())
+    .attr('x', 0)
+    .attr('width', 0)
+    .attr('fill', (m, i) => `url(#barGradient${i % colors.length})`)
+    .attr('rx', 6)
+    .attr('filter', 'url(#bar-shadow)')
+    .attr('cursor', 'pointer')
+    .on('click', (event, m) => handleModelSelect(m))
+    .on('mouseover', function() {
+      d3.select(this)
+        .transition()
+        .duration(200)
+        .attr('height', y.bandwidth() * 1.1)
+        .attr('y', d => y(d.model_id) - y.bandwidth() * 0.05);
+    })
+    .on('mouseout', function() {
+      d3.select(this)
+        .transition()
+        .duration(200)
+        .attr('height', y.bandwidth())
+        .attr('y', d => y(d.model_id));
+    })
+    .transition()
+    .duration(1200)
+    .delay((_, i) => i * 100)
+    .attr('width', m => {
+      const data = getModelRegionData(m, selectedRegion);
+      return x(data?.contract_count || 0);
+    });
+  
+  // Названия моделей
+  chart.selectAll('.model-name')
+    .data(models)
+    .join('text')
+    .attr('class', 'model-name')
+    .attr('y', m => y(m.model_id) + y.bandwidth() / 2)
+    .attr('x', -10)
+    .attr('text-anchor', 'end')
+    .attr('dominant-baseline', 'middle')
+    .attr('fill', 'white')
+    .attr('font-size', isNarrow ? '11px' : '12px')
+    .attr('font-weight', 'medium')
+    .text(m => {
+      const name = m.model_name;
+      const maxLength = isNarrow ? 8 : 14;
+      return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
+    });
+  
+  // Форматирование числа с единицами измерения
+  const formatNumber = (num) => {
+    return `${num} шт.`;
+  };
+  
+  // Количество контрактов (метки с анимацией)
+  chart.selectAll('.count')
+    .data(models)
+    .join('text')
+    .attr('class', 'count')
+    .attr('y', m => y(m.model_id) + y.bandwidth() / 2)
+    .attr('x', m => {
+      const data = getModelRegionData(m, selectedRegion);
+      const value = data?.contract_count || 0;
+      return x(value) + 10;
+    })
+    .attr('dominant-baseline', 'middle')
+    .attr('fill', 'white')
+    .attr('font-size', '12px')
+    .attr('font-weight', 'bold')
+    .attr('opacity', 0)
+    .text(m => {
+      const data = getModelRegionData(m, selectedRegion);
+      return formatNumber(data?.contract_count || 0);
+    })
+    .transition()
+    .duration(800)
+    .delay((_, i) => 400 + i * 100)
+    .attr('opacity', 1);
+    
+};
+
+const renderPaymentStatus = () => {
+  if (!paymentStatusRef.current || apiData.length === 0) return;
+  
+  const container = paymentStatusRef.current;
+  const width = container.clientWidth;
+  const height = 300;
+  
+  d3.select(container).selectAll("*").remove();
+  
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height);
+  
+  // Определяем режим отображения в зависимости от ширины
+  const isNarrow = width < 500;
+  const isMedium = width >= 500 && width < 700;
+  
+  // Данные для диаграммы
   let totalPrice = 0;
   let totalPaid = 0;
   let totalPrepayment = 0;
@@ -972,26 +1087,24 @@ const renderPaymentStatus = () => {
     }
   }
   
-  // Расчет компонентов для диаграммы по правильной логике
-  const paidTotal = totalPaid + totalPrepayment; // Оплаченная часть = предоплата + выплаты
-  const remaining = Math.max(0, totalPrice - paidTotal - totalOverdue); // Оставшаяся часть = полная цена - оплачено - просрочено
+  // Расчет компонентов
+  const paidTotal = totalPaid + totalPrepayment;
+  const remaining = Math.max(0, totalPrice - paidTotal - totalOverdue);
   
-  // Функция для точного вычисления процента с округлением до 2 десятичных знаков
+  // Расчет процентов
   const calculateExactPercentage = (part, total) => {
     if (!total || total === 0) return 0;
     return Math.round((part / total) * 100 * 100) / 100;
   };
   
-  // Вычисляем проценты более точно
   const paidPercentage = calculateExactPercentage(paidTotal, totalPrice);
   const overduePercentage = calculateExactPercentage(totalOverdue, totalPrice);
   const remainingPercentage = calculateExactPercentage(remaining, totalPrice);
   
-  // Проверяем, что есть какие-то ненулевые данные
+  // Проверка наличия данных
   const hasData = totalPrice > 0 && (paidTotal > 0 || totalOverdue > 0 || remaining > 0);
   
   if (!hasData) {
-    // Отображаем сообщение, если нет данных
     svg.append('text')
       .attr('x', width / 2)
       .attr('y', height / 2)
@@ -1003,58 +1116,193 @@ const renderPaymentStatus = () => {
     return;
   }
   
-  // Создаем данные для пирога с правильными значениями и процентами
+  // Создаем данные для диаграммы
   const pieData = [
-    { label: 'Оплачено', value: paidTotal > 0 ? paidTotal : 0, color: '#16a34a', percentage: paidPercentage },
-    { label: 'Просрочено', value: totalOverdue > 0 ? totalOverdue : 0, color: '#dc2626', percentage: overduePercentage },
-    { label: 'Осталось', value: remaining > 0 ? remaining : 0, color: '#334155', percentage: remainingPercentage }
-  ].filter(d => d.value > 0); // Фильтруем нулевые значения
+    { label: 'Оплачено', value: paidTotal > 0 ? paidTotal : 0, color: '#16a34a', gradientId: 'gradientPaid', percentage: paidPercentage },
+    { label: 'Просрочено', value: totalOverdue > 0 ? totalOverdue : 0, color: '#dc2626', gradientId: 'gradientOverdue', percentage: overduePercentage },
+    { label: 'Осталось', value: remaining > 0 ? remaining : 0, color: '#334155', gradientId: 'gradientRemaining', percentage: remainingPercentage }
+  ].filter(d => d.value > 0);
   
-  // Если даже после фильтрации нет данных, добавляем заглушку
   if (pieData.length === 0) {
-    pieData.push({ label: 'Нет данных', value: 1, color: '#94a3b8', percentage: 100 });
+    pieData.push({ label: 'Нет данных', value: 1, color: '#94a3b8', gradientId: 'gradientNoData', percentage: 100 });
   }
   
-  // Уменьшаем размер диаграммы
-  const radius = Math.min(width * 0.18, height * 0.45); // Уменьшаем радиус
-  const arcGenerator = d3.arc()
-    .innerRadius(radius * 0.6) // Настраиваем толщину пончика
-    .outerRadius(radius);
+  // Добавляем градиенты для более красивого отображения
+  const defs = svg.append('defs');
   
-  // Генератор пирога
-  const pieGenerator = d3.pie()
+  // Градиент для оплаченной части
+  const gradientPaid = defs.append('linearGradient')
+    .attr('id', 'gradientPaid')
+    .attr('x1', '0%')
+    .attr('y1', '0%')
+    .attr('x2', '100%')
+    .attr('y2', '100%');
+    
+  gradientPaid.append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', '#059669');
+    
+  gradientPaid.append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', '#10b981');
+  
+  // Градиент для просроченной части
+  const gradientOverdue = defs.append('linearGradient')
+    .attr('id', 'gradientOverdue')
+    .attr('x1', '0%')
+    .attr('y1', '0%')
+    .attr('x2', '100%')
+    .attr('y2', '100%');
+    
+  gradientOverdue.append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', '#b91c1c');
+    
+  gradientOverdue.append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', '#ef4444');
+  
+  // Градиент для оставшейся части
+  const gradientRemaining = defs.append('linearGradient')
+    .attr('id', 'gradientRemaining')
+    .attr('x1', '0%')
+    .attr('y1', '0%')
+    .attr('x2', '100%')
+    .attr('y2', '100%');
+    
+  gradientRemaining.append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', '#1e293b');
+    
+  gradientRemaining.append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', '#475569');
+  
+  // Градиент для "нет данных"
+  const gradientNoData = defs.append('linearGradient')
+    .attr('id', 'gradientNoData')
+    .attr('x1', '0%')
+    .attr('y1', '0%')
+    .attr('x2', '100%')
+    .attr('y2', '100%');
+    
+  gradientNoData.append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', '#64748b');
+    
+  gradientNoData.append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', '#94a3b8');
+  
+  // Определяем радиус и положение диаграммы
+  let chartRadius, chartX, chartY, legendX, legendY;
+  
+  if (isNarrow) {
+    chartX = width / 2;
+    chartY = 80;
+    chartRadius = Math.min(width * 0.25, 50);
+    legendX = width * 0.1;
+    legendY = chartY + chartRadius + 20;
+  } else if (isMedium) {
+    chartX = width * 0.28;
+    chartY = height / 2;
+    chartRadius = Math.min(width * 0.15, height * 0.35);
+    legendX = width * 0.48;
+    legendY = height / 2 - 45;
+  } else {
+    chartX = width * 0.25;
+    chartY = height / 2;
+    chartRadius = Math.min(width * 0.15, height * 0.35);
+    legendX = width * 0.45;
+    legendY = height / 2 - 45;
+  }
+  
+  // Заголовок
+  svg.append('text')
+    .attr('x', isNarrow ? width / 2 : 20)
+    .attr('y', 25)
+    .attr('text-anchor', isNarrow ? 'middle' : 'start')
+    .attr('fill', 'white')
+    .attr('font-size', '16px')
+    .attr('font-weight', 'bold')
+    .text('Распределение платежей');
+  
+  // Создаем дуги для диаграммы с более современным видом
+  const arc = d3.arc()
+    .innerRadius(chartRadius * 0.55) // Внутренний радиус (пончик)
+    .outerRadius(chartRadius) // Внешний радиус
+    .cornerRadius(4) // Скругление концов для современного вида
+    .padAngle(0.02); // Отступ между сегментами
+  
+  const pie = d3.pie()
     .value(d => d.value)
     .sort(null);
   
-  // Оптимизируем позицию диаграммы и легенды
-  const pieGroupX = width * 0.22; // Уменьшаем позицию центра диаграммы
-  const pieGroup = svg.append('g')
-    .attr('transform', `translate(${pieGroupX}, ${height/2 + 5})`);
+  // Группа для диаграммы
+  const chart = svg.append('g')
+    .attr('transform', `translate(${chartX}, ${chartY})`);
   
-  // Добавляем сегменты с анимацией
-  const arcs = pieGroup.selectAll('path')
-    .data(pieGenerator(pieData))
-    .join('path')
-    .attr('d', arcGenerator)
-    .attr('fill', d => d.data.color)
-    .attr('stroke', '#1e293b')
-    .attr('stroke-width', 1.5)
-    .style('opacity', 0.9);
+  // Добавляем тень для всей диаграммы (фильтр)
+  const filter = defs.append('filter')
+    .attr('id', 'drop-shadow')
+    .attr('height', '130%');
   
-  // Анимация появления
-  arcs.transition()
-    .duration(800)
+  filter.append('feGaussianBlur')
+    .attr('in', 'SourceAlpha')
+    .attr('stdDeviation', 3)
+    .attr('result', 'blur');
+  
+  filter.append('feOffset')
+    .attr('in', 'blur')
+    .attr('dx', 2)
+    .attr('dy', 2)
+    .attr('result', 'offsetBlur');
+  
+  const feComponentTransfer = filter.append('feComponentTransfer')
+    .attr('in', 'offsetBlur')
+    .attr('result', 'offsetBlur');
+  
+  feComponentTransfer.append('feFuncA')
+    .attr('type', 'linear')
+    .attr('slope', 0.3);
+  
+  const feMerge = filter.append('feMerge');
+  feMerge.append('feMergeNode')
+    .attr('in', 'offsetBlur');
+  feMerge.append('feMergeNode')
+    .attr('in', 'SourceGraphic');
+  
+  // Добавляем фон для диаграммы
+  chart.append('circle')
+    .attr('r', chartRadius + 2)
+    .attr('fill', '#1e293b')
+    .attr('opacity', 0.3)
+    .attr('filter', 'url(#drop-shadow)');
+  
+  // Создаем дуги
+  const path = chart.selectAll('path')
+    .data(pie(pieData))
+    .enter()
+    .append('path')
+    .attr('d', arc)
+    .attr('fill', d => `url(#${d.data.gradientId})`)
+    .attr('stroke', '#0f172a')
+    .attr('stroke-width', 1)
+    .style('filter', 'url(#drop-shadow)')
+    .style('opacity', 0);
+  
+  // Анимация появления с эффектом нарастания
+  path.transition()
+    .duration(1000)
+    .style('opacity', 1)
     .attrTween('d', function(d) {
-      const interpolate = d3.interpolate(
-        { startAngle: d.startAngle, endAngle: d.startAngle },
-        { startAngle: d.startAngle, endAngle: d.endAngle }
-      );
+      const i = d3.interpolate({startAngle: d.startAngle, endAngle: d.startAngle}, d);
       return function(t) {
-        return arcGenerator(interpolate(t));
+        return arc(i(t));
       };
     });
   
-  // Форматирование больших чисел в сокращенном виде с пробелами
+  // Форматирование больших чисел
   const formatLargeNumber = (num) => {
     if (num >= 1000000000000) {
       return `${(num / 1000000000000).toFixed(1)} трлн`;
@@ -1069,87 +1317,137 @@ const renderPaymentStatus = () => {
     }
   };
   
-  // Добавляем текст в центр с уменьшенным размером
-  pieGroup.append('text')
-    .attr('text-anchor', 'middle')
-    .attr('dy', -5)
-    .attr('fill', 'white')
-    .attr('font-size', '11px') // Уменьшен размер
-    .text('Всего');
+  // Добавляем центральный текст если диаграмма достаточно большая
+  if (chartRadius >= 35) {
+    const centerGroup = chart.append('g');
+    
+    // Фон для центрального текста
+    centerGroup.append('circle')
+      .attr('r', chartRadius * 0.5)
+      .attr('fill', '#0f172a')
+      .attr('opacity', 0.7);
+      
+    centerGroup.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('y', -chartRadius * 0.15)
+      .attr('fill', 'white')
+      .attr('font-size', `${Math.max(10, chartRadius * 0.22)}px`)
+      .text('Всего');
+      
+    centerGroup.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('y', chartRadius * 0.15)
+      .attr('fill', 'white')
+      .attr('font-size', `${Math.max(12, chartRadius * 0.25)}px`)
+      .attr('font-weight', 'bold')
+      .text(formatLargeNumber(totalPrice));
+      
+    centerGroup.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('y', chartRadius * 0.35)
+      .attr('fill', '#94a3b8')
+      .attr('font-size', `${Math.max(9, chartRadius * 0.18)}px`)
+      .text('UZS');
+  }
   
-  pieGroup.append('text')
-    .attr('text-anchor', 'middle')
-    .attr('dy', 10)
-    .attr('fill', 'white')
-    .attr('font-size', '13px') // Уменьшен размер
-    .attr('font-weight', 'bold')
-    .text(`${formatLargeNumber(totalPrice)}`);
-  
-  pieGroup.append('text')
-    .attr('text-anchor', 'middle')
-    .attr('dy', 25) // Уменьшен отступ
-    .attr('fill', '#94a3b8')
-    .attr('font-size', '10px') // Уменьшен размер
-    .text('UZS');
-  
-  // Улучшенная легенда с увеличенными элементами
-  // Смещаем легенду левее, чтобы не выходила за края при больших текстах
-  const legendX = width * 0.48; // Начинаем легенду чуть левее
+  // Создаем современную легенду
   const legend = svg.append('g')
-    .attr('transform', `translate(${legendX}, ${height/2 - 55})`);
+    .attr('transform', `translate(${legendX}, ${legendY})`);
   
-  // Заголовок легенды
-  legend.append('text')
-    .attr('x', 0)
-    .attr('y', -10)
-    .attr('fill', '#94a3b8')
-    .attr('font-size', '13px')
-    .text('Структура платежей:');
+  // Адаптивное расстояние между элементами легенды
+  const itemSpacing = isNarrow ? 30 : Math.min(45, height / (pieData.length + 1));
   
-  // Увеличиваем размер элементов легенды и расстояние между ними
+  // Не добавляем заголовок легенды в узком режиме
+  if (!isNarrow) {
+    legend.append('text')
+      .attr('x', 0)
+      .attr('y', -15)
+      .attr('fill', '#94a3b8')
+      .attr('font-size', '13px')
+      .text('Структура платежей:');
+  }
+  
+  // Добавляем элементы легенды с эффектами
   pieData.forEach((item, i) => {
     const legendItem = legend.append('g')
-      .attr('transform', `translate(0, ${i * 38})`); // Немного уменьшаем расстояние
+      .attr('transform', `translate(0, ${i * itemSpacing})`)
+      .style('opacity', 0)
+      .style('cursor', 'pointer');
     
-    // Цветной квадрат (увеличен)
+    // Анимация появления элементов легенды
+    legendItem.transition()
+      .delay(i * 100 + 300)
+      .duration(500)
+      .style('opacity', 1);
+    
+    // Взаимодействие при наведении
+    legendItem.on('mouseover', function() {
+      d3.select(this).select('rect').transition()
+        .duration(200)
+        .attr('width', 20)
+        .attr('height', 20)
+        .attr('x', -2)
+        .attr('y', -2);
+        
+      d3.select(this).select('.legend-percent').transition()
+        .duration(200)
+        .attr('font-size', '15px');
+    })
+    .on('mouseout', function() {
+      d3.select(this).select('rect').transition()
+        .duration(200)
+        .attr('width', 16)
+        .attr('height', 16)
+        .attr('x', 0)
+        .attr('y', 0);
+        
+      d3.select(this).select('.legend-percent').transition()
+        .duration(200)
+        .attr('font-size', '14px');
+    });
+    
+    // Цветной индикатор с градиентом
     legendItem.append('rect')
-      .attr('width', 16) // Немного уменьшаем
-      .attr('height', 16) // Немного уменьшаем
-      .attr('fill', item.color)
-      .attr('rx', 3);
+      .attr('width', 16)
+      .attr('height', 16)
+      .attr('rx', 4)
+      .attr('fill', `url(#${item.gradientId})`)
+      .attr('stroke', '#0f172a')
+      .attr('stroke-width', 1);
     
-    // Название и процент с увеличенным размером шрифта
+    // Название и процент
     legendItem.append('text')
-      .attr('x', 26) // Уменьшен отступ
-      .attr('y', 13) // Выровнено по центру квадрата
+      .attr('class', 'legend-percent')
+      .attr('x', 26)
+      .attr('y', 13)
       .attr('fill', 'white')
-      .attr('font-size', '14px') // Немного уменьшен шрифт
+      .attr('font-size', '14px')
       .attr('font-weight', item.label === 'Оплачено' ? 'bold' : 'normal')
       .text(`${item.label}: ${item.percentage}%`);
     
-    // Сумма с увеличенным размером шрифта
+    // Сумма
     legendItem.append('text')
       .attr('x', 26)
-      .attr('y', 30) // Уменьшен отступ
+      .attr('y', 30)
       .attr('fill', '#94a3b8')
-      .attr('font-size', '12px') // Немного уменьшен шрифт
+      .attr('font-size', '12px')
       .text(`${formatLargeNumber(item.value)} UZS`);
   });
   
-  // Добавляем обрамление вокруг легенды с учетом ширины контейнера
-  if (pieData.length > 0) {
-    // Оценка ширины легенды на основе контейнера
-    const legendWidth = Math.min(width * 0.5, 200); // Максимальная ширина легенды
-    const legendHeight = pieData.length * 38 + 15; // Высота всех элементов + отступ
+  // Добавляем фон для легенды
+  if (!isNarrow && pieData.length > 0) {
+    const legendWidth = 180;
+    const legendHeight = pieData.length * itemSpacing + 15;
     
     legend.insert('rect', ':first-child')
-      .attr('x', -12) // Отступ слева
-      .attr('y', -25) // Учитываем заголовок
+      .attr('x', -12)
+      .attr('y', -30)
       .attr('width', legendWidth)
       .attr('height', legendHeight)
+      .attr('rx', 10)
       .attr('fill', '#1e293b')
-      .attr('rx', 8)
-      .attr('opacity', 0.3);
+      .attr('opacity', 0.3)
+      .attr('filter', 'url(#drop-shadow)');
   }
 };
   
@@ -1451,7 +1749,7 @@ const RegionInfoCards = () => {
           </div>
           <div>
             <h3 className="text-sm font-medium text-blue-300">Количество рассрочек</h3>
-            <p className="text-2xl font-bold text-white">{data.contract_count} штук</p>
+            <p className="text-2xl font-bold text-white">{data.contract_count} шт.</p>
             <p className="text-blue-300/70 text-xs mt-1">Активных договоров</p>
           </div>
         </div>
@@ -1739,7 +2037,7 @@ const overduePercentage = modelData.total_price > 0
                <div className="mt-3">
                  <div className="flex justify-between text-sm mb-1">
                    <span className="text-slate-400">Рассрочка:</span>
-                   <span className="text-white font-medium">{modelData.contract_count} штук</span>
+                   <span className="text-white font-medium">{modelData.contract_count} шт.</span>
                  </div>
                  <div className="w-full bg-slate-700 rounded-full h-1.5 mb-3">
                    <div 
@@ -2068,11 +2366,11 @@ const overduePercentage = modelData.total_price > 0
        
        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
          <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
-           <div ref={modelChartRef} className="w-full h-[200px]"></div>
+           <div ref={modelChartRef} className="w-full h-[300px]"></div>
          </div>
          
          <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
-           <div ref={paymentStatusRef} className="w-full h-[200px]"></div>
+           <div ref={paymentStatusRef} className="w-full h-[300px]"></div>
          </div>
        </div>
      </div>
