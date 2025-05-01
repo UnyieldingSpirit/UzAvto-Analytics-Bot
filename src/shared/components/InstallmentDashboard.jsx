@@ -242,6 +242,9 @@ const InstallmentDashboard = () => {
       return `${new Intl.NumberFormat('ru-RU').format(num)} UZS`;
     }
   };
+  const formatNumberText = (num) => {
+      return `${num} Штук`;
+  };
 
   const formatNumberWithFullAmount = (num) => {
   // Форматирование с разделителями разрядов для полной суммы
@@ -427,6 +430,26 @@ const renderMainChart = () => {
     return Math.round((part / total) * 100 * 100) / 100;
   };
   
+  // Улучшенная функция форматирования с пробелами между числом и единицей измерения
+  const formatNumberClear = (num) => {
+    if (Math.abs(num) < 0.01) return '0';
+    
+    if (num >= 1000000000) {
+      return `${(num / 1000000000).toFixed(1)} млрд`;
+    } else if (num >= 1000000) {
+      return `${(num / 1000000).toFixed(1)} млн`;
+    } else if (num >= 1000) {
+      return `${(num / 1000).toFixed(1)} тыс`;
+    } else {
+      return num.toLocaleString('ru-RU');
+    }
+  };
+  
+  // Форматирование с добавлением валюты
+  const formatNumberWithFullAmount = (num) => {
+    return `${formatNumberClear(num)} UZS`;
+  };
+  
   // Определяем, какие данные используем - для модели или региона
   let totalPrice = 0;
   let totalPaid = 0;
@@ -460,19 +483,6 @@ const renderMainChart = () => {
   const overduePercent = calculateExactPercentage(totalOverdue, totalPrice);
   const remainingPercent = calculateExactPercentage(remaining, totalPrice);
   
-  // Проверяем, что сумма процентов примерно равна 100%
-  const totalPercent = paidPercent + overduePercent + remainingPercent;
-  console.log('Main Chart percentages:', { 
-    paidPercent, 
-    overduePercent, 
-    remainingPercent, 
-    totalPercent,
-    paidTotal,
-    totalOverdue,
-    remaining,
-    totalPrice
-  });
-  
   // Формируем данные для графика
   let data = {
     carPrice: totalPrice,
@@ -501,11 +511,14 @@ const renderMainChart = () => {
     return;
   }
     
-  // Создаем санкей-подобную диаграмму
+  // Настраиваем размеры в зависимости от ширины контейнера
+  const isSmallContainer = width < 800;
+  
+  // Параметры диаграммы
   const startX = 50;
   const endX = width - 50;
-  const boxHeight = 80;
-  const boxWidth = 120;
+  const boxHeight = isSmallContainer ? 70 : 80;
+  const boxWidth = isSmallContainer ? 100 : 120;  
   const arrowWidth = (endX - startX - 2 * boxWidth) / 3;
   
   // Информация о полной стоимости
@@ -523,7 +536,7 @@ const renderMainChart = () => {
     .attr('y', 25)
     .attr('text-anchor', 'middle')
     .attr('fill', 'white')
-    .attr('font-size', '14px')
+    .attr('font-size', isSmallContainer ? '12px' : '14px')
     .text('Полная цена');
   
   fullPriceBox.append('text')
@@ -531,9 +544,9 @@ const renderMainChart = () => {
     .attr('y', 50)
     .attr('text-anchor', 'middle')
     .attr('fill', 'white')
-    .attr('font-size', '18px')
+    .attr('font-size', isSmallContainer ? '16px' : '18px')
     .attr('font-weight', 'bold')
-    .text(`${formatNumber(data.carPrice)}`);
+    .text(`${formatNumberClear(data.carPrice)}`);
   
   // Информация о текущем статусе
   const currentStatusBox = svg.append('g')
@@ -550,7 +563,7 @@ const renderMainChart = () => {
     .attr('y', 25)
     .attr('text-anchor', 'middle')
     .attr('fill', 'white')
-    .attr('font-size', '14px')
+    .attr('font-size', isSmallContainer ? '12px' : '14px')
     .text('Остаток');
   
   currentStatusBox.append('text')
@@ -558,14 +571,14 @@ const renderMainChart = () => {
     .attr('y', 50)
     .attr('text-anchor', 'middle')
     .attr('fill', 'white')
-    .attr('font-size', '18px')
+    .attr('font-size', isSmallContainer ? '16px' : '18px')
     .attr('font-weight', 'bold')
-    .text(`${formatNumber(data.remainingAmount)}`);
+    .text(`${formatNumberClear(data.remainingAmount)}`);
 
   // Центральная область для распределения
   const middleX = startX + boxWidth + arrowWidth/2;
   const middleWidth = width - 2*(startX + boxWidth) - arrowWidth;
-  const barHeight = 40; // Увеличенная высота для лучшей видимости
+  const barHeight = isSmallContainer ? 35 : 40; // Высота для полосы прогресса
   
   // Фон для шкалы прогресса
   svg.append('rect')
@@ -641,7 +654,7 @@ const renderMainChart = () => {
       .attr('y', height/2 + 5)
       .attr('text-anchor', 'middle')
       .attr('fill', 'white')
-      .attr('font-size', '12px')
+      .attr('font-size', isSmallContainer ? '10px' : '12px')
       .attr('font-weight', 'bold')
       .text(`${data.paidPercent}%`);
   }
@@ -653,84 +666,139 @@ const renderMainChart = () => {
       .attr('y', height/2 + 5)
       .attr('text-anchor', 'middle')
       .attr('fill', 'white')
-      .attr('font-size', '12px')
+      .attr('font-size', isSmallContainer ? '10px' : '12px')
       .attr('font-weight', 'bold')
       .text(`${data.overduePercent}%`);
   }
   
   // Метки ниже полосы прогресса
-  svg.append('g')
-    .attr('transform', `translate(${middleX}, ${height/2 + barHeight/2 + 20})`)
-    .append('text')
-    .attr('x', 0)
-    .attr('y', 0)
-    .attr('text-anchor', 'start')
-    .attr('fill', '#16a34a')
-    .attr('font-size', '12px')
-    .text(`Оплачено: ${formatNumber(paidTotal)}`);
+  // Определяем, нужно ли использовать многострочный режим
+  const multilineMode = width < 700;
+  const labelYPos = height/2 + barHeight/2 + 20;
+  const labelFontSize = isSmallContainer ? '10px' : '12px';
   
-  svg.append('g')
-    .attr('transform', `translate(${middleX + middleWidth/2}, ${height/2 + barHeight/2 + 20})`)
-    .append('text')
-    .attr('x', 0)
-    .attr('y', 0)
-    .attr('text-anchor', 'middle')
-    .attr('fill', '#dc2626')
-    .attr('font-size', '12px')
-    .text(`Просрочено: ${formatNumber(totalOverdue)}`);
-  
-  svg.append('g')
-    .attr('transform', `translate(${middleX + middleWidth}, ${height/2 + barHeight/2 + 20})`)
-    .append('text')
-    .attr('x', 0)
-    .attr('y', 0)
-    .attr('text-anchor', 'end')
-    .attr('fill', '#94a3b8')
-    .attr('font-size', '12px')
-    .text(`Остаток: ${formatNumberWithFullAmount(remaining)}`);
-  
-  // Проценты под суммами
-  svg.append('g')
-    .attr('transform', `translate(${middleX}, ${height/2 + barHeight/2 + 35})`)
-    .append('text')
-    .attr('x', 0)
-    .attr('y', 0)
-    .attr('text-anchor', 'start')
-    .attr('fill', '#94a3b8')
-    .attr('font-size', '10px')
-    .text(`${data.paidPercent}%`);
-  
-  svg.append('g')
-    .attr('transform', `translate(${middleX + middleWidth/2}, ${height/2 + barHeight/2 + 35})`)
-    .append('text')
-    .attr('x', 0)
-    .attr('y', 0)
-    .attr('text-anchor', 'middle')
-    .attr('fill', '#94a3b8')
-    .attr('font-size', '10px')
-    .text(`${data.overduePercent}%`);
-  
-  svg.append('g')
-    .attr('transform', `translate(${middleX + middleWidth}, ${height/2 + barHeight/2 + 35})`)
-    .append('text')
-    .attr('x', 0)
-    .attr('y', 0)
-    .attr('text-anchor', 'end')
-    .attr('fill', '#94a3b8')
-    .attr('font-size', '10px')
-    .text(`${data.remainingPercent}%`);
+  if (multilineMode) {
+    // Для маленьких экранов используем многострочное отображение
+    // Рассчитываем положение текста
+    const line1Y = labelYPos;
+    const line2Y = labelYPos + 18;
+    const line3Y = labelYPos + 36;
+    
+    // Оплачено (первая строка)
+    svg.append('text')
+      .attr('x', middleX)
+      .attr('y', line1Y)
+      .attr('text-anchor', 'start')
+      .attr('fill', '#16a34a')
+      .attr('font-size', labelFontSize)
+      .text(`Оплачено: ${formatNumberClear(paidTotal)} UZS (${data.paidPercent}%)`);
+    
+    // Просрочено (вторая строка)
+    svg.append('text')
+      .attr('x', middleX)
+      .attr('y', line2Y)
+      .attr('text-anchor', 'start')
+      .attr('fill', '#dc2626')
+      .attr('font-size', labelFontSize)
+      .text(`Просрочено: ${formatNumberClear(totalOverdue)} UZS (${data.overduePercent}%)`);
+    
+    // Остаток (третья строка)
+    svg.append('text')
+      .attr('x', middleX)
+      .attr('y', line3Y)
+      .attr('text-anchor', 'start')
+      .attr('fill', '#94a3b8')
+      .attr('font-size', labelFontSize)
+      .text(`Остаток: ${formatNumberClear(remaining)} UZS (${data.remainingPercent}%)`);
+  } else {
+    // Стандартное отображение для широких экранов
+    svg.append('g')
+      .attr('transform', `translate(${middleX}, ${labelYPos})`)
+      .append('text')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('text-anchor', 'start')
+      .attr('fill', '#16a34a')
+      .attr('font-size', labelFontSize)
+      .text(`Оплачено: ${formatNumberClear(paidTotal)} UZS`);
+    
+    svg.append('g')
+      .attr('transform', `translate(${middleX + middleWidth/2}, ${labelYPos})`)
+      .append('text')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#dc2626')
+      .attr('font-size', labelFontSize)
+      .text(`Просрочено: ${formatNumberClear(totalOverdue)} UZS`);
+    
+    svg.append('g')
+      .attr('transform', `translate(${middleX + middleWidth}, ${labelYPos})`)
+      .append('text')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('text-anchor', 'end')
+      .attr('fill', '#94a3b8')
+      .attr('font-size', labelFontSize)
+      .text(`Остаток: ${formatNumberClear(remaining)} UZS`);
+    
+    // Проценты под суммами
+    const percentYPos = labelYPos + 15;
+    const percentFontSize = isSmallContainer ? '9px' : '10px';
+    
+    svg.append('g')
+      .attr('transform', `translate(${middleX}, ${percentYPos})`)
+      .append('text')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('text-anchor', 'start')
+      .attr('fill', '#94a3b8')
+      .attr('font-size', percentFontSize)
+      .text(`${data.paidPercent}%`);
+    
+    svg.append('g')
+      .attr('transform', `translate(${middleX + middleWidth/2}, ${percentYPos})`)
+      .append('text')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#94a3b8')
+      .attr('font-size', percentFontSize)
+      .text(`${data.overduePercent}%`);
+    
+    svg.append('g')
+      .attr('transform', `translate(${middleX + middleWidth}, ${percentYPos})`)
+      .append('text')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('text-anchor', 'end')
+      .attr('fill', '#94a3b8')
+      .attr('font-size', percentFontSize)
+      .text(`${data.remainingPercent}%`);
+  }
   
   // Добавляем подпись выбранного региона и модели
   const regionName = selectedRegion === 'all' ? 'Все регионы' : 
     getRegions().find(r => r.id === selectedRegion)?.name || 'Неизвестный регион';
+  
+  let modelName = '';
+  if (selectedModel) {
+    // Ограничиваем длину названия модели при необходимости
+    const maxLength = width < 500 ? 15 : 30;
+    modelName = selectedModel.model_name;
+    if (modelName.length > maxLength) {
+      modelName = modelName.substring(0, maxLength) + '...';
+    }
+    modelName = ` - Модель: ${modelName}`;
+  }
     
   svg.append('text')
     .attr('x', width / 2)
     .attr('y', height - 15)
     .attr('text-anchor', 'middle')
     .attr('fill', '#94a3b8')
-    .attr('font-size', '12px')
-    .text(`Регион: ${regionName}${selectedModel ? ` - Модель: ${selectedModel.model_name}` : ''}`);
+    .attr('font-size', isSmallContainer ? '10px' : '12px')
+    .text(`Регион: ${regionName}${modelName}`);
 };
 
   // Диаграмма по моделям (горизонтальные бары)
@@ -871,12 +939,12 @@ const renderPaymentStatus = () => {
     .attr('width', width)
     .attr('height', height);
   
-  // Заголовок
+  // Заголовок с увеличенным размером
   svg.append('text')
-    .attr('x', 10)
-    .attr('y', 20)
+    .attr('x', 20)
+    .attr('y', 25)
     .attr('fill', 'white')
-    .attr('font-size', '14px')
+    .attr('font-size', '16px')
     .attr('font-weight', 'bold')
     .text('Распределение платежей');
   
@@ -919,18 +987,6 @@ const renderPaymentStatus = () => {
   const overduePercentage = calculateExactPercentage(totalOverdue, totalPrice);
   const remainingPercentage = calculateExactPercentage(remaining, totalPrice);
   
-  // Отладочная информация для проверки вычислений
-  console.log('Payment status calculations:', {
-    totalPrice,
-    paidTotal: totalPaid + totalPrepayment,
-    totalOverdue,
-    remaining,
-    paidPercentage,
-    overduePercentage,
-    remainingPercentage,
-    sum: paidPercentage + overduePercentage + remainingPercentage
-  });
-  
   // Проверяем, что есть какие-то ненулевые данные
   const hasData = totalPrice > 0 && (paidTotal > 0 || totalOverdue > 0 || remaining > 0);
   
@@ -942,7 +998,7 @@ const renderPaymentStatus = () => {
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'middle')
       .attr('fill', '#94a3b8')
-      .attr('font-size', '14px')
+      .attr('font-size', '16px')
       .text('Нет данных для отображения');
     return;
   }
@@ -959,10 +1015,10 @@ const renderPaymentStatus = () => {
     pieData.push({ label: 'Нет данных', value: 1, color: '#94a3b8', percentage: 100 });
   }
   
-  // Создаем пирог с уменьшенным размером для более компактного вида
-  const radius = Math.min(width, height) / 3; // Немного уменьшаем радиус
+  // Уменьшаем размер диаграммы
+  const radius = Math.min(width * 0.18, height * 0.45); // Уменьшаем радиус
   const arcGenerator = d3.arc()
-    .innerRadius(radius * 0.6) // Делаем пончик вместо пирога
+    .innerRadius(radius * 0.6) // Настраиваем толщину пончика
     .outerRadius(radius);
   
   // Генератор пирога
@@ -970,9 +1026,10 @@ const renderPaymentStatus = () => {
     .value(d => d.value)
     .sort(null);
   
-  // Сдвигаем график влево для увеличения расстояния до легенды
+  // Оптимизируем позицию диаграммы и легенды
+  const pieGroupX = width * 0.22; // Уменьшаем позицию центра диаграммы
   const pieGroup = svg.append('g')
-    .attr('transform', `translate(${width/3 - 20}, ${height/2})`);
+    .attr('transform', `translate(${pieGroupX}, ${height/2 + 5})`);
   
   // Добавляем сегменты с анимацией
   const arcs = pieGroup.selectAll('path')
@@ -981,7 +1038,7 @@ const renderPaymentStatus = () => {
     .attr('d', arcGenerator)
     .attr('fill', d => d.data.color)
     .attr('stroke', '#1e293b')
-    .attr('stroke-width', 1)
+    .attr('stroke-width', 1.5)
     .style('opacity', 0.9);
   
   // Анимация появления
@@ -997,7 +1054,7 @@ const renderPaymentStatus = () => {
       };
     });
   
-  // Форматирование больших чисел в сокращенном виде (млрд, млн, и т.д.)
+  // Форматирование больших чисел в сокращенном виде с пробелами
   const formatLargeNumber = (num) => {
     if (num >= 1000000000000) {
       return `${(num / 1000000000000).toFixed(1)} трлн`;
@@ -1008,66 +1065,95 @@ const renderPaymentStatus = () => {
     } else if (num >= 1000) {
       return `${(num / 1000).toFixed(1)} тыс`;
     } else {
-      return num.toString();
+      return num.toLocaleString('ru-RU');
     }
   };
   
-  // Добавляем текст в центр
+  // Добавляем текст в центр с уменьшенным размером
   pieGroup.append('text')
     .attr('text-anchor', 'middle')
     .attr('dy', -5)
     .attr('fill', 'white')
-    .attr('font-size', '12px')
+    .attr('font-size', '11px') // Уменьшен размер
     .text('Всего');
   
   pieGroup.append('text')
     .attr('text-anchor', 'middle')
-    .attr('dy', 15)
+    .attr('dy', 10)
     .attr('fill', 'white')
-    .attr('font-size', '14px')
+    .attr('font-size', '13px') // Уменьшен размер
     .attr('font-weight', 'bold')
     .text(`${formatLargeNumber(totalPrice)}`);
   
   pieGroup.append('text')
     .attr('text-anchor', 'middle')
-    .attr('dy', 32)
+    .attr('dy', 25) // Уменьшен отступ
     .attr('fill', '#94a3b8')
-    .attr('font-size', '12px')
+    .attr('font-size', '10px') // Уменьшен размер
     .text('UZS');
   
-  // Компактная легенда с точными процентами - увеличенное расстояние от диаграммы
+  // Улучшенная легенда с увеличенными элементами
+  // Смещаем легенду левее, чтобы не выходила за края при больших текстах
+  const legendX = width * 0.48; // Начинаем легенду чуть левее
   const legend = svg.append('g')
-    .attr('transform', `translate(${2*width/3 - 20}, ${height/2 - 50})`); // Сдвигаем легенду правее
+    .attr('transform', `translate(${legendX}, ${height/2 - 55})`);
   
+  // Заголовок легенды
+  legend.append('text')
+    .attr('x', 0)
+    .attr('y', -10)
+    .attr('fill', '#94a3b8')
+    .attr('font-size', '13px')
+    .text('Структура платежей:');
+  
+  // Увеличиваем размер элементов легенды и расстояние между ними
   pieData.forEach((item, i) => {
     const legendItem = legend.append('g')
-      .attr('transform', `translate(0, ${i * 32})`); // Увеличиваем расстояние между элементами легенды
+      .attr('transform', `translate(0, ${i * 38})`); // Немного уменьшаем расстояние
     
-    // Цветной квадрат
+    // Цветной квадрат (увеличен)
     legendItem.append('rect')
-      .attr('width', 14)
-      .attr('height', 14)
+      .attr('width', 16) // Немного уменьшаем
+      .attr('height', 16) // Немного уменьшаем
       .attr('fill', item.color)
-      .attr('rx', 2);
+      .attr('rx', 3);
     
-    // Название и процент с точностью до 2 знаков после запятой
+    // Название и процент с увеличенным размером шрифта
     legendItem.append('text')
-      .attr('x', 22) // Немного увеличиваем отступ от цветного квадрата
-      .attr('y', 11)
+      .attr('x', 26) // Уменьшен отступ
+      .attr('y', 13) // Выровнено по центру квадрата
       .attr('fill', 'white')
-      .attr('font-size', '13px') // Увеличиваем размер шрифта
+      .attr('font-size', '14px') // Немного уменьшен шрифт
+      .attr('font-weight', item.label === 'Оплачено' ? 'bold' : 'normal')
       .text(`${item.label}: ${item.percentage}%`);
     
-    // Сумма
+    // Сумма с увеличенным размером шрифта
     legendItem.append('text')
-      .attr('x', 22)
-      .attr('y', 26)
+      .attr('x', 26)
+      .attr('y', 30) // Уменьшен отступ
       .attr('fill', '#94a3b8')
-      .attr('font-size', '11px')
+      .attr('font-size', '12px') // Немного уменьшен шрифт
       .text(`${formatLargeNumber(item.value)} UZS`);
   });
+  
+  // Добавляем обрамление вокруг легенды с учетом ширины контейнера
+  if (pieData.length > 0) {
+    // Оценка ширины легенды на основе контейнера
+    const legendWidth = Math.min(width * 0.5, 200); // Максимальная ширина легенды
+    const legendHeight = pieData.length * 38 + 15; // Высота всех элементов + отступ
+    
+    legend.insert('rect', ':first-child')
+      .attr('x', -12) // Отступ слева
+      .attr('y', -25) // Учитываем заголовок
+      .attr('width', legendWidth)
+      .attr('height', legendHeight)
+      .attr('fill', '#1e293b')
+      .attr('rx', 8)
+      .attr('opacity', 0.3);
+  }
 };
-
+  
+  
  const renderMonthlyTrends = () => {
    if (!monthlyTrendsRef.current || apiData.length === 0) return;
    const container = monthlyTrendsRef.current;
@@ -1365,7 +1451,7 @@ const RegionInfoCards = () => {
           </div>
           <div>
             <h3 className="text-sm font-medium text-blue-300">Количество рассрочек</h3>
-            <p className="text-2xl font-bold text-white">{formatNumberWithFullAmount(data.contract_count)}</p>
+            <p className="text-2xl font-bold text-white">{data.contract_count} штук</p>
             <p className="text-blue-300/70 text-xs mt-1">Активных договоров</p>
           </div>
         </div>
@@ -1553,8 +1639,9 @@ const RegionInfoCards = () => {
      .attr('fill', 'white')
      .attr('font-size', '12px')
      .attr('font-weight', 'bold')
-     .style('pointer-events', 'none') // Чтобы текст не мешал кликам
-     .text(d => formatNumberWithFullAmount(d.contractCount));
+     .style('pointer-events', 'none')
+     .text(d => formatNumberText(d.contractCount));
+   
    
    // Подсветка для выбранного региона
    if (selectedRegion !== 'all' && regions.some(r => r.id === selectedRegion)) {
@@ -1652,7 +1739,7 @@ const overduePercentage = modelData.total_price > 0
                <div className="mt-3">
                  <div className="flex justify-between text-sm mb-1">
                    <span className="text-slate-400">Рассрочка:</span>
-                   <span className="text-white font-medium">{formatNumberWithFullAmount(modelData.contract_count)}</span>
+                   <span className="text-white font-medium">{modelData.contract_count} штук</span>
                  </div>
                  <div className="w-full bg-slate-700 rounded-full h-1.5 mb-3">
                    <div 
