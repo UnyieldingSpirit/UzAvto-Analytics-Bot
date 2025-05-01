@@ -687,7 +687,7 @@ const renderMainChart = () => {
     .attr('text-anchor', 'end')
     .attr('fill', '#94a3b8')
     .attr('font-size', '12px')
-    .text(`Остаток: ${formatNumber(remaining)}`);
+    .text(`Остаток: ${formatNumberWithFullAmount(remaining)}`);
   
   // Проценты под суммами
   svg.append('g')
@@ -1753,7 +1753,7 @@ const overduePercentage = modelData.total_price > 0
            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 my-6">
              <div className="bg-slate-700/50 p-3 rounded-lg">
                <div className="text-slate-400 text-sm">Всего в рассрочке</div>
-               <div className="text-white text-xl font-bold">{formatNumber(modelData.contract_count)}</div>
+               <div className="text-white text-xl font-bold">{formatNumberWithFullAmount(modelData.contract_count)}</div>
              </div>
              
              <div className="bg-slate-700/50 p-3 rounded-lg">
@@ -1803,9 +1803,6 @@ const overduePercentage = modelData.total_price > 0
                onClick={toggleModelCompareMode}
              >
                {modelCompareMode ? 'Скрыть сравнение по регионам' : 'Сравнить по регионам'}
-             </button>
-             <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
-               График платежей
              </button>
              <button 
                className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg"
