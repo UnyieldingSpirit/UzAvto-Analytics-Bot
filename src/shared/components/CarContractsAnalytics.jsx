@@ -2380,7 +2380,6 @@ const renderRetailCharts = () => {
     return;
   }
 
-  // Используем regionContractsRef вместо regionSalesRef и т.д.
   renderBarChart(regionContractsRef, regionData, 'retail', 'name', getRegionChartTitle(), '#FF5722');
   renderBarChart(modelContractsRef, modelData, 'retail', 'name', getModelChartTitle(), '#03A9F4');
   renderTimelineChart(timelineContractsRef, monthlyData, 'retail', 'month', getTimelineChartTitle());
