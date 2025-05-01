@@ -37,24 +37,6 @@ const InstallmentDashboard = () => {
   const [viewMode, setViewMode] = useState('region'); // 'region' or 'model'
   const [activeTab, setActiveTab] = useState('contracts');
 
-  // Инициализация Worker
-  useEffect(() => {
-    // workerRef.current = new Worker('/worker.js');
-    
-    // workerRef.current.onmessage = function(e) {
-    //   const { type, data } = e.data;
-    //   if (type === 'stats_result') {
-    //     setStatsData(data);
-    //   }
-    // };
-    
-    return () => {
-      if (workerRef.current) {
-        workerRef.current.terminate();
-      }
-    };
-  }, []);
-
   // Загрузка данных API
   useEffect(() => {
     const fetchData = async () => {
@@ -87,28 +69,125 @@ const InstallmentDashboard = () => {
     fetchData();
   }, []);
 
-  // Обработка данных при изменении фильтров
-  useEffect(() => {
-    if (apiData.length > 0 && workerRef.current) {
-      workerRef.current.postMessage({
-        type: 'calculate_stats',
-        data: {
-          apiData,
-          selectedRegion,
-          selectedModel: selectedModel ? selectedModel.model_id : 'all',
-          activeTab
-        }
-      });
-    }
-  }, [apiData, selectedRegion, selectedModel, activeTab]);
+// Добавить в InstallmentDashboard.jsx после const [activeTab, setActiveTab]
+// Функция для расчета статистики (перенесена из worker.js)
+const calculateStats = (apiData, selectedRegion, selectedModelId, activeTab) => {
+  if (!apiData || !Array.isArray(apiData)) {
+    return { count: 0, amount: 0, average: 0 };
+  }
 
+  let totalContracts = 0;
+  let totalAmount = 0;
+  let totalPaid = 0;
+  let totalPrepayment = 0;
+  let totalOverdue = 0;
+
+  if (selectedModelId !== 'all') {
+    const modelData = apiData.find(model => model.model_id === selectedModelId);
+
+    if (modelData) {
+      if (selectedRegion !== 'all') {
+        const regionData = modelData.filter_by_region?.find(r => r.region_id === selectedRegion);
+
+        if (regionData) {
+          totalContracts = parseInt(regionData.contract_count || 0);
+          totalAmount = parseInt(regionData.total_price || 0);
+          totalPaid = parseInt(regionData.total_paid || 0);
+          totalPrepayment = parseInt(regionData.total_prepayment || 0);
+          totalOverdue = parseInt(regionData.total_overdue || 0);
+        }
+      } else {
+        if (modelData.filter_by_region && Array.isArray(modelData.filter_by_region)) {
+          modelData.filter_by_region.forEach(region => {
+            totalContracts += parseInt(region.contract_count || 0);
+            totalAmount += parseInt(region.total_price || 0);
+            totalPaid += parseInt(region.total_paid || 0);
+            totalPrepayment += parseInt(region.total_prepayment || 0);
+            totalOverdue += parseInt(region.total_overdue || 0);
+          });
+        }
+      }
+    }
+  } else if (selectedRegion !== 'all') {
+    apiData.forEach(model => {
+      if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
+        const regionData = model.filter_by_region.find(r => r.region_id === selectedRegion);
+        if (regionData) {
+          totalContracts += parseInt(regionData.contract_count || 0);
+          totalAmount += parseInt(regionData.total_price || 0);
+          totalPaid += parseInt(regionData.total_paid || 0);
+          totalPrepayment += parseInt(regionData.total_prepayment || 0);
+          totalOverdue += parseInt(regionData.total_overdue || 0);
+        }
+      }
+    });
+  } else {
+    apiData.forEach(model => {
+      if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
+        model.filter_by_region.forEach(region => {
+          totalContracts += parseInt(region.contract_count || 0);
+          totalAmount += parseInt(region.total_price || 0);
+          totalPaid += parseInt(region.total_paid || 0);
+          totalPrepayment += parseInt(region.total_prepayment || 0);
+          totalOverdue += parseInt(region.total_overdue || 0);
+        });
+      }
+    });
+  }
+
+  const paidTotal = totalPaid + totalPrepayment;
+  const remaining = Math.max(0, totalAmount - paidTotal - totalOverdue);
+  const paidPercentage = totalAmount > 0 ? Math.round((paidTotal / totalAmount) * 100) : 0;
+  const overduePercentage = totalAmount > 0 ? Math.round((totalOverdue / totalAmount) * 100) : 0;
+
+  const average = totalContracts > 0 ? Math.round(totalAmount / totalContracts) : 0;
+
+  const tabMultipliers = {
+    contracts: { count: 1, amount: 1 },
+    sales: { count: 1, amount: 1 },
+    stock: { count: 1, amount: 1 },
+    retail: { count: 1, amount: 1 },
+    wholesale: { count: 1, amount: 1 },
+    promotions: { count: 1, amount: 1 }
+  };
+
+  const multiplier = tabMultipliers[activeTab] || tabMultipliers.contracts;
+
+  return {
+    count: Math.round(totalContracts * multiplier.count),
+    amount: Math.round(totalAmount * multiplier.amount),
+    average: average,
+    paid: paidTotal,
+    overdue: totalOverdue,
+    remaining: remaining,
+    paidPercentage: paidPercentage,
+    overduePercentage: overduePercentage,
+    totalPaid: totalPaid,
+    totalPrepayment: totalPrepayment
+  };
+};
+
+// Добавить новый useEffect для обновления статистики
+useEffect(() => {
+  if (apiData.length > 0) {
+    const stats = calculateStats(
+      apiData, 
+      selectedRegion, 
+      selectedModel ? selectedModel.model_id : 'all', 
+      activeTab
+    );
+    setStatsData(stats);
+  }
+}, [apiData, selectedRegion, selectedModel, activeTab]);
+  
+  
   // Визуализация данных при обновлении статистики или фильтров
   useEffect(() => {
     if (!isLoading && apiData.length > 0) {
-      renderMainChart();
-      renderModelChart();
-      renderPaymentStatus();
-      renderMonthlyTrends();
+    renderMainChart();
+    renderModelChart();
+    renderPaymentStatus();
+    renderMonthlyTrends();
       renderRegionChart();
     }
   }, [statsData, selectedRegion, selectedModel, viewMode, modelCompareMode, isLoading, apiData]);
@@ -142,18 +221,17 @@ const InstallmentDashboard = () => {
   };
 
   // Форматирование чисел
- // Форматирование чисел
 const formatNumber = (num) => {
   if (num >= 1000000000000) {
-    return `${(num / 1000000000000).toFixed(1)} трлн`;
+    return `${(num / 1000000000000).toFixed(1)} трлн UZS`;
   } else if (num >= 1000000000) {
-    return `${(num / 1000000000).toFixed(1)} млрд`;
+    return `${(num / 1000000000).toFixed(1)} млрд UZS`;
   } else if (num >= 1000000) {
-    return `${(num / 1000000).toFixed(1)} млн`;
+    return `${(num / 1000000).toFixed(1)} млн UZS`;
   } else if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)} тыс`;
+    return `${(num / 1000).toFixed(1)} тыс UZS`;
   } else {
-    return new Intl.NumberFormat('ru-RU').format(num);
+    return `${new Intl.NumberFormat('ru-RU').format(num)} UZS`;
   }
 };
 
@@ -187,75 +265,55 @@ const formatNumber = (num) => {
   };
 
   // Получение данных по модели и региону
-  const getModelRegionData = (model, regionId) => {
-    if (!model || !model.filter_by_region) return null;
-    
-    if (regionId === 'all') {
-      // Суммируем данные по всем регионам для указанной модели
-      return model.filter_by_region.reduce((acc, region) => {
-        return {
-          contract_count: acc.contract_count + parseInt(region.contract_count || 0),
-          total_price: acc.total_price + parseInt(region.total_price || 0),
-          total_paid: acc.total_paid + parseInt(region.total_paid || 0),
-          total_prepayment: acc.total_prepayment + parseInt(region.total_prepayment || 0),
-          total_overdue: acc.total_overdue + parseInt(region.total_overdue || 0)
-        };
-      }, { 
-        contract_count: 0, 
-        total_price: 0, 
-        total_paid: 0, 
-        total_prepayment: 0, 
-        total_overdue: 0 
-      });
-    } else {
-      // Находим данные для конкретного региона
-      const regionData = model.filter_by_region.find(r => r.region_id === regionId);
-      if (!regionData) return null;
-      
+const getModelRegionData = (model, regionId) => {
+  if (!model || !model.filter_by_region) return null;
+  
+  if (regionId === 'all') {
+    // Суммируем данные по всем регионам для указанной модели
+    return model.filter_by_region.reduce((acc, region) => {
       return {
-        contract_count: parseInt(regionData.contract_count || 0),
-        total_price: parseInt(regionData.total_price || 0),
-        total_paid: parseInt(regionData.total_paid || 0),
-        total_prepayment: parseInt(regionData.total_prepayment || 0),
-        total_overdue: parseInt(regionData.total_overdue || 0)
+        contract_count: acc.contract_count + parseInt(region.contract_count || 0),
+        total_price: acc.total_price + parseInt(region.total_price || 0),
+        total_paid: acc.total_paid + parseInt(region.total_paid || 0),
+        total_prepayment: acc.total_prepayment + parseInt(region.total_prepayment || 0),
+        total_overdue: acc.total_overdue + parseInt(region.total_overdue || 0)
       };
-    }
-  };
+    }, { 
+      contract_count: 0, 
+      total_price: 0, 
+      total_paid: 0, 
+      total_prepayment: 0, 
+      total_overdue: 0 
+    });
+  } else {
+    // Находим данные для конкретного региона
+    const regionData = model.filter_by_region.find(r => r.region_id === regionId);
+    if (!regionData) return null;
+    
+    return {
+      contract_count: parseInt(regionData.contract_count || 0),
+      total_price: parseInt(regionData.total_price || 0),
+      total_paid: parseInt(regionData.total_paid || 0),
+      total_prepayment: parseInt(regionData.total_prepayment || 0),
+      total_overdue: parseInt(regionData.total_overdue || 0)
+    };
+  }
+};
 
   // Получение данных по региону для всех моделей
-  const getRegionData = (regionId) => {
-    if (!apiData || apiData.length === 0) return null;
-    
-    // Если выбраны все регионы, суммируем по всем моделям и всем регионам
-    if (regionId === 'all') {
-      return apiData.reduce((acc, model) => {
-        model.filter_by_region.forEach(region => {
-          acc.contract_count += parseInt(region.contract_count || 0);
-          acc.total_price += parseInt(region.total_price || 0);
-          acc.total_paid += parseInt(region.total_paid || 0);
-          acc.total_prepayment += parseInt(region.total_prepayment || 0);
-          acc.total_overdue += parseInt(region.total_overdue || 0);
-        });
-        return acc;
-      }, { 
-        contract_count: 0, 
-        total_price: 0, 
-        total_paid: 0, 
-        total_prepayment: 0, 
-        total_overdue: 0 
-      });
-    }
-    
-    // Суммируем данные по конкретному региону для всех моделей
+const getRegionData = (regionId) => {
+  if (!apiData || apiData.length === 0) return null;
+  
+  // Если выбраны все регионы, суммируем по всем моделям и всем регионам
+  if (regionId === 'all') {
     return apiData.reduce((acc, model) => {
-      const regionData = model.filter_by_region.find(r => r.region_id === regionId);
-      if (regionData) {
-        acc.contract_count += parseInt(regionData.contract_count || 0);
-        acc.total_price += parseInt(regionData.total_price || 0);
-        acc.total_paid += parseInt(regionData.total_paid || 0);
-        acc.total_prepayment += parseInt(regionData.total_prepayment || 0);
-        acc.total_overdue += parseInt(regionData.total_overdue || 0);
-      }
+      model.filter_by_region.forEach(region => {
+        acc.contract_count += parseInt(region.contract_count || 0);
+        acc.total_price += parseInt(region.total_price || 0);
+        acc.total_paid += parseInt(region.total_paid || 0);
+        acc.total_prepayment += parseInt(region.total_prepayment || 0);
+        acc.total_overdue += parseInt(region.total_overdue || 0);
+      });
       return acc;
     }, { 
       contract_count: 0, 
@@ -264,7 +322,27 @@ const formatNumber = (num) => {
       total_prepayment: 0, 
       total_overdue: 0 
     });
-  };
+  }
+  
+  // Суммируем данные по конкретному региону для всех моделей
+  return apiData.reduce((acc, model) => {
+    const regionData = model.filter_by_region.find(r => r.region_id === regionId);
+    if (regionData) {
+      acc.contract_count += parseInt(regionData.contract_count || 0);
+      acc.total_price += parseInt(regionData.total_price || 0);
+      acc.total_paid += parseInt(regionData.total_paid || 0);
+      acc.total_prepayment += parseInt(regionData.total_prepayment || 0);
+      acc.total_overdue += parseInt(regionData.total_overdue || 0);
+    }
+    return acc;
+  }, { 
+    contract_count: 0, 
+    total_price: 0, 
+    total_paid: 0, 
+    total_prepayment: 0, 
+    total_overdue: 0 
+  });
+};
 
   // Генерация месячных данных на основе общих сумм
   const generateMonthlyData = (totalPaid, totalOverdue, monthCount = 9) => {
@@ -295,20 +373,20 @@ const formatNumber = (num) => {
     });
   };
 
-const renderMainChart = () => {
+  const renderMainChart = () => {
   if (!mainChartRef.current || apiData.length === 0) return;
   
-  const container = mainChartRef.current;
-  const width = container.clientWidth;
-  const height = 300;
-  
-  d3.select(container).selectAll("*").remove();
-  
-  const svg = d3.select(container)
-    .append('svg')
-    .attr('width', width)
-    .attr('height', height);
-  
+    const container = mainChartRef.current;
+    const width = container.clientWidth;
+    const height = 300;
+    
+    d3.select(container).selectAll("*").remove();
+    
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height);
+    
   // Определяем, какие данные используем - для модели или региона
   // Используем тот же подход, что и в renderPaymentStatus
   let totalPrice = 0;
@@ -338,10 +416,10 @@ const renderMainChart = () => {
   const paidTotal = totalPaid + totalPrepayment; // Оплаченная часть = предоплата + выплаты
   const remaining = Math.max(0, totalPrice - paidTotal - totalOverdue); // Оставшаяся часть = полная цена - оплачено - просрочено
   
-  // Рассчитываем проценты
+    // Рассчитываем проценты
   const paidPercent = totalPrice > 0 ? Math.round((paidTotal / totalPrice) * 100) : 0;
   const overduePercent = totalPrice > 0 ? Math.round((totalOverdue / totalPrice) * 100) : 0;
-  const remainingPercent = 100 - paidPercent - overduePercent;
+    const remainingPercent = 100 - paidPercent - overduePercent;
   
   // Формируем данные для графика
   let data = {
@@ -367,161 +445,161 @@ const renderMainChart = () => {
       .text('Нет данных для отображения');
     return;
   }
-  
-  // Создаем санкей-подобную диаграмму
-  const startX = 50;
-  const endX = width - 50;
-  const boxHeight = 80;
-  const boxWidth = 120;
-  const arrowWidth = (endX - startX - 2 * boxWidth) / 3;
-  
-  // Информация о полной стоимости
-  const fullPriceBox = svg.append('g')
-    .attr('transform', `translate(${startX}, ${height/2 - boxHeight/2})`);
-  
-  fullPriceBox.append('rect')
-    .attr('width', boxWidth)
-    .attr('height', boxHeight)
-    .attr('fill', '#1e40af')
-    .attr('rx', 8);
-  
-  fullPriceBox.append('text')
-    .attr('x', boxWidth/2)
-    .attr('y', 25)
-    .attr('text-anchor', 'middle')
-    .attr('fill', 'white')
-    .attr('font-size', '14px')
-    .text('Полная цена');
-  
-  fullPriceBox.append('text')
-    .attr('x', boxWidth/2)
-    .attr('y', 50)
-    .attr('text-anchor', 'middle')
-    .attr('fill', 'white')
-    .attr('font-size', '18px')
-    .attr('font-weight', 'bold')
+    
+    // Создаем санкей-подобную диаграмму
+    const startX = 50;
+    const endX = width - 50;
+    const boxHeight = 80;
+    const boxWidth = 120;
+    const arrowWidth = (endX - startX - 2 * boxWidth) / 3;
+    
+    // Информация о полной стоимости
+    const fullPriceBox = svg.append('g')
+      .attr('transform', `translate(${startX}, ${height/2 - boxHeight/2})`);
+    
+    fullPriceBox.append('rect')
+      .attr('width', boxWidth)
+      .attr('height', boxHeight)
+      .attr('fill', '#1e40af')
+      .attr('rx', 8);
+    
+    fullPriceBox.append('text')
+      .attr('x', boxWidth/2)
+      .attr('y', 25)
+      .attr('text-anchor', 'middle')
+      .attr('fill', 'white')
+      .attr('font-size', '14px')
+      .text('Полная цена');
+    
+    fullPriceBox.append('text')
+      .attr('x', boxWidth/2)
+      .attr('y', 50)
+      .attr('text-anchor', 'middle')
+      .attr('fill', 'white')
+      .attr('font-size', '18px')
+      .attr('font-weight', 'bold')
     .text(`${formatNumber(data.carPrice)} UZS`);
-  
-  // Информация о текущем статусе
-  const currentStatusBox = svg.append('g')
-    .attr('transform', `translate(${endX - boxWidth}, ${height/2 - boxHeight/2})`);
-  
-  currentStatusBox.append('rect')
-    .attr('width', boxWidth)
-    .attr('height', boxHeight)
-    .attr('fill', '#0f766e')
-    .attr('rx', 8);
-  
-  currentStatusBox.append('text')
-    .attr('x', boxWidth/2)
-    .attr('y', 25)
-    .attr('text-anchor', 'middle')
-    .attr('fill', 'white')
-    .attr('font-size', '14px')
-    .text('Остаток');
-  
-  currentStatusBox.append('text')
-    .attr('x', boxWidth/2)
-    .attr('y', 50)
-    .attr('text-anchor', 'middle')
-    .attr('fill', 'white')
-    .attr('font-size', '18px')
-    .attr('font-weight', 'bold')
+    
+    // Информация о текущем статусе
+    const currentStatusBox = svg.append('g')
+      .attr('transform', `translate(${endX - boxWidth}, ${height/2 - boxHeight/2})`);
+    
+    currentStatusBox.append('rect')
+      .attr('width', boxWidth)
+      .attr('height', boxHeight)
+      .attr('fill', '#0f766e')
+      .attr('rx', 8);
+    
+    currentStatusBox.append('text')
+      .attr('x', boxWidth/2)
+      .attr('y', 25)
+      .attr('text-anchor', 'middle')
+      .attr('fill', 'white')
+      .attr('font-size', '14px')
+      .text('Остаток');
+    
+    currentStatusBox.append('text')
+      .attr('x', boxWidth/2)
+      .attr('y', 50)
+      .attr('text-anchor', 'middle')
+      .attr('fill', 'white')
+      .attr('font-size', '18px')
+      .attr('font-weight', 'bold')
     .text(`${formatNumber(data.remainingAmount)} UZS`);
 
-  // Центральная область для распределения
-  const middleX = startX + boxWidth + arrowWidth/2;
-  const middleWidth = width - 2*(startX + boxWidth) - arrowWidth;
+    // Центральная область для распределения
+    const middleX = startX + boxWidth + arrowWidth/2;
+    const middleWidth = width - 2*(startX + boxWidth) - arrowWidth;
   const barHeight = 40; // Увеличенная высота для лучшей видимости
-  
-  // Фон для шкалы прогресса
-  svg.append('rect')
-    .attr('x', middleX)
-    .attr('y', height/2 - barHeight/2)
-    .attr('width', middleWidth)
-    .attr('height', barHeight)
-    .attr('fill', '#334155')
+    
+    // Фон для шкалы прогресса
+    svg.append('rect')
+      .attr('x', middleX)
+      .attr('y', height/2 - barHeight/2)
+      .attr('width', middleWidth)
+      .attr('height', barHeight)
+      .attr('fill', '#334155')
     .attr('rx', 6);
-  
-  // Оплаченная часть
-  svg.append('rect')
-    .attr('x', middleX)
-    .attr('y', height/2 - barHeight/2)
+    
+    // Оплаченная часть
+    svg.append('rect')
+      .attr('x', middleX)
+      .attr('y', height/2 - barHeight/2)
     .attr('width', 0)
-    .attr('height', barHeight)
-    .attr('fill', '#16a34a')
+      .attr('height', barHeight)
+      .attr('fill', '#16a34a')
     .attr('rx', 6)
     .transition()
     .duration(1000)
     .attr('width', middleWidth * paidPercent / 100);
-  
-  // Просроченная часть
-  svg.append('rect')
-    .attr('x', middleX + middleWidth * paidPercent / 100)
-    .attr('y', height/2 - barHeight/2)
+    
+    // Просроченная часть
+    svg.append('rect')
+      .attr('x', middleX + middleWidth * paidPercent / 100)
+      .attr('y', height/2 - barHeight/2)
     .attr('width', 0)
-    .attr('height', barHeight)
-    .attr('fill', '#dc2626')
+      .attr('height', barHeight)
+      .attr('fill', '#dc2626')
     .transition()
     .duration(1000)
     .attr('width', middleWidth * overduePercent / 100);
-  
-  // Стрелки-соединения
-  svg.append('line')
-    .attr('x1', startX + boxWidth)
-    .attr('y1', height/2)
-    .attr('x2', middleX)
-    .attr('y2', height/2)
-    .attr('stroke', '#64748b')
-    .attr('stroke-width', 2)
-    .attr('marker-end', 'url(#arrow)');
-  
-  svg.append('line')
-    .attr('x1', middleX + middleWidth)
-    .attr('y1', height/2)
-    .attr('x2', endX - boxWidth)
-    .attr('y2', height/2)
-    .attr('stroke', '#64748b')
-    .attr('stroke-width', 2)
-    .attr('marker-end', 'url(#arrow)');
-  
-  // Маркер для стрелок
-  const defs = svg.append('defs');
-  
-  defs.append('marker')
-    .attr('id', 'arrow')
-    .attr('viewBox', '0 -5 10 10')
-    .attr('refX', 8)
-    .attr('refY', 0)
-    .attr('markerWidth', 8)
-    .attr('markerHeight', 8)
-    .attr('orient', 'auto')
-    .append('path')
-    .attr('d', 'M0,-5L10,0L0,5')
-    .attr('fill', '#64748b');
-  
-  // Добавляем подписи для шкалы прогресса
-  svg.append('text')
+    
+    // Стрелки-соединения
+    svg.append('line')
+      .attr('x1', startX + boxWidth)
+      .attr('y1', height/2)
+      .attr('x2', middleX)
+      .attr('y2', height/2)
+      .attr('stroke', '#64748b')
+      .attr('stroke-width', 2)
+      .attr('marker-end', 'url(#arrow)');
+    
+    svg.append('line')
+      .attr('x1', middleX + middleWidth)
+      .attr('y1', height/2)
+      .attr('x2', endX - boxWidth)
+      .attr('y2', height/2)
+      .attr('stroke', '#64748b')
+      .attr('stroke-width', 2)
+      .attr('marker-end', 'url(#arrow)');
+    
+    // Маркер для стрелок
+    const defs = svg.append('defs');
+    
+    defs.append('marker')
+      .attr('id', 'arrow')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 8)
+      .attr('refY', 0)
+      .attr('markerWidth', 8)
+      .attr('markerHeight', 8)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', '#64748b');
+    
+    // Добавляем подписи для шкалы прогресса
+    svg.append('text')
     .attr('x', middleX + middleWidth / 2)
     .attr('y', height/2 + 5)
     .attr('text-anchor', 'middle')
-    .attr('fill', 'white')
+      .attr('fill', 'white')
     .attr('font-size', '14px')
-    .attr('font-weight', 'bold')
+      .attr('font-weight', 'bold')
     .text(`${paidPercent}% оплачено • ${overduePercent}% просрочено`);
   
   // Добавляем подпись выбранного региона и модели
   const regionName = selectedRegion === 'all' ? 'Все регионы' : 
     getRegions().find(r => r.id === selectedRegion)?.name || 'Неизвестный регион';
-  
-  svg.append('text')
+    
+    svg.append('text')
     .attr('x', width / 2)
     .attr('y', height - 15)
-    .attr('text-anchor', 'middle')
+      .attr('text-anchor', 'middle')
     .attr('fill', '#94a3b8')
-    .attr('font-size', '12px')
+      .attr('font-size', '12px')
     .text(`Регион: ${regionName}${selectedModel ? ` - Модель: ${selectedModel.model_name}` : ''}`);
-};
+  };
 
   // Диаграмма по моделям (горизонтальные бары)
   const renderModelChart = () => {
@@ -594,8 +672,8 @@ const renderMainChart = () => {
       .attr('x', 0)
       .attr('width', chartWidth)
       .attr('fill', '#1e293b')
-      .attr('rx', 4);
-    
+        .attr('rx', 4);
+      
     // Бары
     chart.selectAll('.bar')
       .data(models)
@@ -606,9 +684,9 @@ const renderMainChart = () => {
       .attr('x', 0)
       .attr('width', 0)
       .attr('fill', (m, i) => d3.schemeCategory10[i % 10])
-      .attr('rx', 4)
-      .transition()
-      .duration(1000)
+        .attr('rx', 4)
+        .transition()
+        .duration(1000)
       .attr('width', m => {
         const data = getModelRegionData(m, selectedRegion);
         return x(data?.contract_count || 0);
@@ -623,7 +701,7 @@ const renderMainChart = () => {
       .attr('x', -5)
       .attr('text-anchor', 'end')
       .attr('dominant-baseline', 'middle')
-      .attr('fill', 'white')
+        .attr('fill', 'white')
       .attr('font-size', '12px')
       .text(m => m.model_name.length > 12 ? m.model_name.substring(0, 12) + '...' : m.model_name);
     
@@ -640,34 +718,34 @@ const renderMainChart = () => {
       .attr('dominant-baseline', 'middle')
       .attr('fill', 'white')
       .attr('font-size', '12px')
-      .attr('font-weight', 'bold')
+        .attr('font-weight', 'bold')
       .text(m => {
         const data = getModelRegionData(m, selectedRegion);
         return formatNumber(data?.contract_count || 0);
-      });
+    });
   };
 
-const renderPaymentStatus = () => {
+  const renderPaymentStatus = () => {
   if (!paymentStatusRef.current || apiData.length === 0) return;
   
-  const container = paymentStatusRef.current;
-  const width = container.clientWidth;
-  const height = 200;
-  
-  d3.select(container).selectAll("*").remove();
-  
-  const svg = d3.select(container)
-    .append('svg')
-    .attr('width', width)
-    .attr('height', height);
-  
+    const container = paymentStatusRef.current;
+    const width = container.clientWidth;
+    const height = 200;
+    
+    d3.select(container).selectAll("*").remove();
+    
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height);
+    
   // Заголовок
-  svg.append('text')
-    .attr('x', 10)
-    .attr('y', 20)
-    .attr('fill', 'white')
+    svg.append('text')
+      .attr('x', 10)
+      .attr('y', 20)
+      .attr('fill', 'white')
     .attr('font-size', '14px')
-    .attr('font-weight', 'bold')
+      .attr('font-weight', 'bold')
     .text('Распределение платежей');
   
   // Определяем, какие данные используем - для модели или региона
@@ -715,7 +793,7 @@ const renderPaymentStatus = () => {
   }
   
   // Создаем данные для пирога с правильными значениями
-  const pieData = [
+    const pieData = [
     { label: 'Оплачено', value: paidTotal > 0 ? paidTotal : 0, color: '#16a34a' },
     { label: 'Просрочено', value: totalOverdue > 0 ? totalOverdue : 0, color: '#dc2626' },
     { label: 'Осталось', value: remaining > 0 ? remaining : 0, color: '#334155' }
@@ -728,26 +806,26 @@ const renderPaymentStatus = () => {
   
   // Создаем пирог с уменьшенным размером для более компактного вида
   const radius = Math.min(width, height) / 3; // Немного уменьшаем радиус
-  const arcGenerator = d3.arc()
+    const arcGenerator = d3.arc()
     .innerRadius(radius * 0.6) // Делаем пончик вместо пирога
-    .outerRadius(radius);
-  
+      .outerRadius(radius);
+    
   // Генератор пирога
   const pieGenerator = d3.pie()
     .value(d => d.value)
     .sort(null);
   
   // Сдвигаем график влево для увеличения расстояния до легенды
-  const pieGroup = svg.append('g')
+    const pieGroup = svg.append('g')
     .attr('transform', `translate(${width/3 - 20}, ${height/2})`);
   
   // Добавляем сегменты с анимацией
   const arcs = pieGroup.selectAll('path')
     .data(pieGenerator(pieData))
-    .join('path')
-    .attr('d', arcGenerator)
-    .attr('fill', d => d.data.color)
-    .attr('stroke', '#1e293b')
+      .join('path')
+      .attr('d', arcGenerator)
+      .attr('fill', d => d.data.color)
+      .attr('stroke', '#1e293b')
     .attr('stroke-width', 1)
     .style('opacity', 0.9);
   
@@ -778,21 +856,21 @@ const renderPaymentStatus = () => {
       return num.toString();
     }
   };
-  
-  // Добавляем текст в центр
-  pieGroup.append('text')
-    .attr('text-anchor', 'middle')
-    .attr('dy', -5)
-    .attr('fill', 'white')
+    
+    // Добавляем текст в центр
+    pieGroup.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', -5)
+      .attr('fill', 'white')
     .attr('font-size', '12px')
-    .text('Всего');
-  
-  pieGroup.append('text')
-    .attr('text-anchor', 'middle')
-    .attr('dy', 15)
-    .attr('fill', 'white')
+      .text('Всего');
+    
+    pieGroup.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', 15)
+      .attr('fill', 'white')
     .attr('font-size', '14px')
-    .attr('font-weight', 'bold')
+      .attr('font-weight', 'bold')
     .text(`${formatLargeNumber(totalPrice)}`);
   
   pieGroup.append('text')
@@ -803,30 +881,30 @@ const renderPaymentStatus = () => {
     .text('UZS');
   
   // Компактная легенда с процентами - увеличенное расстояние от диаграммы
-  const legend = svg.append('g')
+    const legend = svg.append('g')
     .attr('transform', `translate(${2*width/3 - 20}, ${height/2 - 50})`); // Сдвигаем легенду правее
-  
-  pieData.forEach((item, i) => {
+    
+    pieData.forEach((item, i) => {
     // Расчет процента от общей стоимости
     const percent = totalPrice > 0 
       ? Math.round((item.value / totalPrice) * 100) 
       : 0;
     
-    const legendItem = legend.append('g')
+      const legendItem = legend.append('g')
       .attr('transform', `translate(0, ${i * 32})`); // Увеличиваем расстояние между элементами легенды
-    
+      
     // Цветной квадрат
-    legendItem.append('rect')
-      .attr('width', 14)
-      .attr('height', 14)
-      .attr('fill', item.color)
-      .attr('rx', 2);
-    
+      legendItem.append('rect')
+        .attr('width', 14)
+        .attr('height', 14)
+        .attr('fill', item.color)
+        .attr('rx', 2);
+      
     // Название и процент
-    legendItem.append('text')
+      legendItem.append('text')
       .attr('x', 22) // Немного увеличиваем отступ от цветного квадрата
       .attr('y', 11)
-      .attr('fill', 'white')
+        .attr('fill', 'white')
       .attr('font-size', '13px') // Увеличиваем размер шрифта
       .text(`${item.label}: ${percent}%`);
     
@@ -837,8 +915,8 @@ const renderPaymentStatus = () => {
       .attr('fill', '#94a3b8')
       .attr('font-size', '11px')
       .text(`${formatLargeNumber(item.value)} UZS`);
-  });
-};
+    });
+  };
 
   
   const renderMonthlyTrends = () => {
@@ -856,13 +934,13 @@ const renderPaymentStatus = () => {
       .attr('height', height);
     
     // Добавляем заголовок
-   // Добавляем заголовок
-   svg.append('text')
-     .attr('x', 10)
-     .attr('y', 20)
-     .attr('fill', 'white')
+    // Добавляем заголовок
+    svg.append('text')
+      .attr('x', 10)
+      .attr('y', 20)
+      .attr('fill', 'white')
      .attr('font-size', '14px')
-     .attr('font-weight', 'bold')
+      .attr('font-weight', 'bold')
      .text('Динамика платежей');
    
    // Получаем данные для графика
@@ -879,31 +957,31 @@ const renderPaymentStatus = () => {
        monthlyPayments = generateMonthlyData(regionData.total_paid, regionData.total_overdue, 6); // Сокращаем до 6 месяцев
      }
    }
-   
-   // Создаем шкалы
-   const x = d3.scaleBand()
+    
+    // Создаем шкалы
+    const x = d3.scaleBand()
      .domain(monthlyPayments.map(d => d.month))
-     .range([margin.left, width - margin.right])
+      .range([margin.left, width - margin.right])
      .padding(0.4);
-   
-   const y = d3.scaleLinear()
+    
+    const y = d3.scaleLinear()
      .domain([0, d3.max(monthlyPayments, d => d.paid + d.unpaid) * 1.1])
-     .nice()
-     .range([height - margin.bottom, margin.top]);
-   
-   // Добавляем оси
-   svg.append('g')
-     .attr('transform', `translate(0, ${height - margin.bottom})`)
-     .call(d3.axisBottom(x))
-     .selectAll('text')
-     .attr('fill', '#94a3b8');
-   
-   svg.append('g')
-     .attr('transform', `translate(${margin.left}, 0)`)
+      .nice()
+      .range([height - margin.bottom, margin.top]);
+    
+    // Добавляем оси
+    svg.append('g')
+      .attr('transform', `translate(0, ${height - margin.bottom})`)
+      .call(d3.axisBottom(x))
+      .selectAll('text')
+      .attr('fill', '#94a3b8');
+    
+    svg.append('g')
+      .attr('transform', `translate(${margin.left}, 0)`)
      .call(d3.axisLeft(y).ticks(5).tickFormat(d => `$${d >= 1000 ? Math.round(d/1000) + 'k' : d}`))
-     .selectAll('text')
-     .attr('fill', '#94a3b8');
-   
+      .selectAll('text')
+      .attr('fill', '#94a3b8');
+    
    // Градиент для столбцов
    const defs = svg.append('defs');
    
@@ -940,13 +1018,13 @@ const renderPaymentStatus = () => {
      .attr('stop-color', '#ef4444');
    
    // Добавляем столбцы оплаченных сумм с анимацией
-   svg.selectAll('.paid-bar')
+    svg.selectAll('.paid-bar')
      .data(monthlyPayments)
-     .join('rect')
-     .attr('class', 'paid-bar')
-     .attr('x', d => x(d.month))
+      .join('rect')
+      .attr('class', 'paid-bar')
+      .attr('x', d => x(d.month))
      .attr('y', height - margin.bottom)
-     .attr('width', x.bandwidth())
+      .attr('width', x.bandwidth())
      .attr('height', 0)
      .attr('fill', 'url(#paidGradient)')
      .attr('rx', 4)
@@ -956,13 +1034,13 @@ const renderPaymentStatus = () => {
      .attr('height', d => height - margin.bottom - y(d.paid));
    
    // Добавляем столбцы просроченных платежей с анимацией
-   svg.selectAll('.unpaid-bar')
+    svg.selectAll('.unpaid-bar')
      .data(monthlyPayments)
-     .join('rect')
-     .attr('class', 'unpaid-bar')
-     .attr('x', d => x(d.month))
+      .join('rect')
+      .attr('class', 'unpaid-bar')
+      .attr('x', d => x(d.month))
      .attr('y', height - margin.bottom)
-     .attr('width', x.bandwidth())
+      .attr('width', x.bandwidth())
      .attr('height', 0)
      .attr('fill', 'url(#unpaidGradient)')
      .attr('rx', 4)
@@ -973,18 +1051,18 @@ const renderPaymentStatus = () => {
      .attr('height', d => y(d.paid) - y(d.paid + d.unpaid));
    
    // Добавляем линию тренда с анимацией
-   const lineGenerator = d3.line()
-     .x(d => x(d.month) + x.bandwidth() / 2)
-     .y(d => y(d.paid + d.unpaid))
-     .curve(d3.curveMonotoneX);
-   
+    const lineGenerator = d3.line()
+      .x(d => x(d.month) + x.bandwidth() / 2)
+      .y(d => y(d.paid + d.unpaid))
+      .curve(d3.curveMonotoneX);
+    
    const linePath = svg.append('path')
      .datum(monthlyPayments)
-     .attr('fill', 'none')
-     .attr('stroke', '#3b82f6')
+      .attr('fill', 'none')
+      .attr('stroke', '#3b82f6')
      .attr('stroke-width', 3)
-     .attr('d', lineGenerator);
-   
+      .attr('d', lineGenerator);
+    
    // Анимация линии
    const pathLength = linePath.node().getTotalLength();
    
@@ -996,15 +1074,15 @@ const renderPaymentStatus = () => {
      .attr('stroke-dashoffset', 0);
    
    // Добавляем точки с анимацией
-   svg.selectAll('.data-point')
+    svg.selectAll('.data-point')
      .data(monthlyPayments)
-     .join('circle')
-     .attr('class', 'data-point')
-     .attr('cx', d => x(d.month) + x.bandwidth() / 2)
-     .attr('cy', d => y(d.paid + d.unpaid))
+      .join('circle')
+      .attr('class', 'data-point')
+      .attr('cx', d => x(d.month) + x.bandwidth() / 2)
+      .attr('cy', d => y(d.paid + d.unpaid))
      .attr('r', 0)
-     .attr('fill', '#3b82f6')
-     .attr('stroke', '#0f172a')
+      .attr('fill', '#3b82f6')
+      .attr('stroke', '#0f172a')
      .attr('stroke-width', 2)
      .transition()
      .duration(1000)
@@ -1012,66 +1090,66 @@ const renderPaymentStatus = () => {
      .attr('r', 5);
    
    // Компактная легенда
-   const legend = svg.append('g')
+    const legend = svg.append('g')
      .attr('transform', `translate(${width - 140}, 40)`);
-   
-   // Оплаченные платежи
-   const paidLegend = legend.append('g');
-   paidLegend.append('rect')
+    
+    // Оплаченные платежи
+    const paidLegend = legend.append('g');
+    paidLegend.append('rect')
      .attr('width', 12)
      .attr('height', 12)
-     .attr('fill', '#16a34a')
-     .attr('rx', 2);
-   
-   paidLegend.append('text')
+      .attr('fill', '#16a34a')
+      .attr('rx', 2);
+    
+    paidLegend.append('text')
      .attr('x', 18)
      .attr('y', 10)
-     .attr('fill', 'white')
+      .attr('fill', 'white')
      .attr('font-size', '11px')
-     .text('Оплачено');
-   
-   // Просроченные платежи
-   const unpaidLegend = legend.append('g')
-     .attr('transform', 'translate(0, 20)');
-   
-   unpaidLegend.append('rect')
+      .text('Оплачено');
+    
+    // Просроченные платежи
+    const unpaidLegend = legend.append('g')
+      .attr('transform', 'translate(0, 20)');
+    
+    unpaidLegend.append('rect')
      .attr('width', 12)
      .attr('height', 12)
-     .attr('fill', '#dc2626')
-     .attr('rx', 2);
-   
-   unpaidLegend.append('text')
+      .attr('fill', '#dc2626')
+      .attr('rx', 2);
+    
+    unpaidLegend.append('text')
      .attr('x', 18)
      .attr('y', 10)
-     .attr('fill', 'white')
+      .attr('fill', 'white')
      .attr('font-size', '11px')
-     .text('Просрочено');
-   
-   // Общая сумма
-   const totalLegend = legend.append('g')
-     .attr('transform', 'translate(0, 40)');
-   
-   totalLegend.append('line')
-     .attr('x1', 0)
+      .text('Просрочено');
+    
+    // Общая сумма
+    const totalLegend = legend.append('g')
+      .attr('transform', 'translate(0, 40)');
+    
+    totalLegend.append('line')
+      .attr('x1', 0)
      .attr('x2', 12)
      .attr('y1', 6)
      .attr('y2', 6)
-     .attr('stroke', '#3b82f6')
-     .attr('stroke-width', 2);
-   
+      .attr('stroke', '#3b82f6')
+      .attr('stroke-width', 2);
+    
    totalLegend.append('circle')
      .attr('cx', 6)
      .attr('cy', 6)
      .attr('r', 3)
      .attr('fill', '#3b82f6');
    
-   totalLegend.append('text')
+    totalLegend.append('text')
      .attr('x', 18)
      .attr('y', 10)
-     .attr('fill', 'white')
+      .attr('fill', 'white')
      .attr('font-size', '11px')
-     .text('Общая сумма');
- };
+      .text('Общая сумма');
+  };
 
  // Диаграмма по регионам (улучшенная версия)
  const renderRegionChart = () => {
@@ -1600,12 +1678,12 @@ const renderPaymentStatus = () => {
  };
 
  // Основной рендер компонента
- return (
-   <div className="bg-slate-900 p-4 md:p-6 text-white">
+  return (
+    <div className="bg-slate-900 p-4 md:p-6 text-white">
      <ContentReadyLoader isLoading={isLoading} />
      
-     <h1 className="text-2xl font-bold mb-6 text-center">ТАБЛИЦА РАССРОЧКИ</h1>
-     
+      <h1 className="text-2xl font-bold mb-6 text-center">ТАБЛИЦА РАССРОЧКИ</h1>
+      
      {/* Навигационные вкладки */}
      <div className="flex mb-6 border-b border-slate-700">
        <button 
@@ -1696,22 +1774,22 @@ const renderPaymentStatus = () => {
          </div>
        )}
        
-       <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
-         <div ref={mainChartRef} className="w-full h-[300px]"></div>
-       </div>
-       
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-         <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
-           <div ref={modelChartRef} className="w-full h-[200px]"></div>
-         </div>
-         
-         <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
-           <div ref={paymentStatusRef} className="w-full h-[200px]"></div>
-         </div>
-       </div>
-     </div>
-   </div>
- );
+        <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
+          <div ref={mainChartRef} className="w-full h-[300px]"></div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
+            <div ref={modelChartRef} className="w-full h-[200px]"></div>
+          </div>
+          
+          <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
+            <div ref={paymentStatusRef} className="w-full h-[200px]"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default InstallmentDashboard;
