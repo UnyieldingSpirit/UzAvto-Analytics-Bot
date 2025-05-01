@@ -243,6 +243,28 @@ const InstallmentDashboard = () => {
     }
   };
 
+  const formatNumberWithFullAmount = (num) => {
+  // Форматирование с разделителями разрядов для полной суммы
+  const fullFormatted = new Intl.NumberFormat('ru-RU').format(num);
+  
+  // Сокращенный формат для более компактного отображения
+  let shortFormat;
+  if (num >= 1000000000000) {
+    shortFormat = `${(num / 1000000000000).toFixed(1)} трлн`;
+  } else if (num >= 1000000000) {
+    shortFormat = `${(num / 1000000000).toFixed(1)} млрд`;
+  } else if (num >= 1000000) {
+    shortFormat = `${(num / 1000000).toFixed(1)} млн`;
+  } else if (num >= 1000) {
+    shortFormat = `${(num / 1000).toFixed(1)} тыс`;
+  } else {
+    return `${fullFormatted} UZS`; // Для маленьких чисел возвращаем только полный формат
+  }
+  
+  // Возвращаем сокращенный формат с полной суммой в скобках
+  return `${fullFormatted} UZS`;
+}
+
   // Получение списка регионов
   const getRegions = () => {
     if (!apiData || apiData.length === 0) return [];
@@ -831,7 +853,7 @@ const renderMainChart = () => {
      .attr('font-weight', 'bold')
      .text(m => {
        const data = getModelRegionData(m, selectedRegion);
-       return formatNumber(data?.contract_count || 0);
+       return formatNumberWithFullAmount(data?.contract_count || 0);
      });
  };
 
@@ -1343,7 +1365,7 @@ const RegionInfoCards = () => {
           </div>
           <div>
             <h3 className="text-sm font-medium text-blue-300">Количество рассрочек</h3>
-            <p className="text-2xl font-bold text-white">{formatNumber(data.contract_count)}</p>
+            <p className="text-2xl font-bold text-white">{formatNumberWithFullAmount(data.contract_count)}</p>
             <p className="text-blue-300/70 text-xs mt-1">Активных договоров</p>
           </div>
         </div>
@@ -1532,7 +1554,7 @@ const RegionInfoCards = () => {
      .attr('font-size', '12px')
      .attr('font-weight', 'bold')
      .style('pointer-events', 'none') // Чтобы текст не мешал кликам
-     .text(d => formatNumber(d.contractCount));
+     .text(d => formatNumberWithFullAmount(d.contractCount));
    
    // Подсветка для выбранного региона
    if (selectedRegion !== 'all' && regions.some(r => r.id === selectedRegion)) {
@@ -1630,7 +1652,7 @@ const overduePercentage = modelData.total_price > 0
                <div className="mt-3">
                  <div className="flex justify-between text-sm mb-1">
                    <span className="text-slate-400">Рассрочка:</span>
-                   <span className="text-white font-medium">{formatNumber(modelData.contract_count)}</span>
+                   <span className="text-white font-medium">{formatNumberWithFullAmount(modelData.contract_count)}</span>
                  </div>
                  <div className="w-full bg-slate-700 rounded-full h-1.5 mb-3">
                    <div 
@@ -1845,7 +1867,7 @@ const overduePercentage = modelData.total_price > 0
                    onClick={() => handleRegionSelect(region.id)}
                  >
                    <td className="p-2">{region.name}</td>
-                   <td className="p-2 text-right">{formatNumber(modelInRegion.contract_count)}</td>
+                   <td className="p-2 text-right">{formatNumberWithFullAmount(modelInRegion.contract_count)}</td>
                    <td className="p-2 text-right text-green-400">{paidPercentage}%</td>
                    <td className="p-2 text-right text-red-400">{overduePercentage}%</td>
                    <td className="p-2 text-right">{formatNumber(remaining)}</td>
