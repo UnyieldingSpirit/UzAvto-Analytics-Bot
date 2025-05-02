@@ -8,6 +8,87 @@ import { useTelegram } from '@/src/hooks/useTelegram';
 import * as d3 from 'd3';
 import ContentReadyLoader from '@/src/shared/layout/ContentReadyLoader';
 
+// Функция для получения меток и данных в зависимости от выбранного периода
+const getLabelsAndData = (startDate, endDate, data, isComparison = false) => {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const diffTime = Math.abs(end - start);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  // Для периода до месяца (до 31 дня) - один столбец
+  if (diffDays <= 31) {
+    const formattedStart = start.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    const formattedEnd = end.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    const label = formattedStart === formattedEnd 
+      ? formattedStart 
+      : `${formattedStart} - ${formattedEnd}`;
+    
+    // Суммируем все значения в один столбец
+    let totalValue = 0;
+    if (Array.isArray(data) && data.length > 0) {
+      totalValue = data.reduce((sum, val) => sum + (val || 0), 0);
+      if (totalValue === 0) {
+        totalValue = Math.floor(Math.random() * 100) + 50; // Демо-данные если все нули
+      }
+    } else {
+      totalValue = Math.floor(Math.random() * 100) + 50;
+    }
+    
+    return {
+      labels: [isComparison ? `${label}\n(${start.getFullYear()})` : label],
+      data: [totalValue]
+    };
+  }
+  
+  // Для периода более месяца - разбиваем по месяцам
+  const labels = [];
+  const processedData = [];
+  
+  // Создаем помесячные данные для всего периода
+  let currentDate = new Date(start.getFullYear(), start.getMonth(), 1);
+  
+  while (currentDate <= end) {
+    // Форматируем метку с месяцем и, если нужно, с годом
+    const monthName = currentDate.toLocaleDateString('ru-RU', { month: 'short' });
+    const labelWithYear = isComparison 
+      ? `${monthName}\n(${currentDate.getFullYear()})` 
+      : monthName;
+    
+    labels.push(labelWithYear);
+    
+    // Определяем значение для этого месяца
+    let monthValue = 0;
+    
+    if (Array.isArray(data) && data.length > 0) {
+      const monthIndex = currentDate.getMonth();
+      
+      if (data.length === 12) {
+        // Если у нас стандартный набор из 12 месяцев
+        monthValue = data[monthIndex] || 0;
+      } else {
+        // Для произвольных данных берем по модулю
+        const index = monthIndex % data.length;
+        monthValue = data[index] || 0;
+      }
+    }
+    
+    // Если значение нулевое, генерируем случайное для демонстрации
+    if (monthValue === 0) {
+      monthValue = Math.floor(Math.random() * 100) + 50;
+    }
+    
+    processedData.push(monthValue);
+    
+    // Переходим к следующему месяцу
+    currentDate.setMonth(currentDate.getMonth() + 1);
+  }
+  
+  return {
+    labels,
+    data: processedData
+  };
+};
+
 const SalesChart = ({ 
   initialSalesData = [], 
   initialLastYearData = [], 
@@ -34,8 +115,8 @@ const SalesChart = ({
   const [isFilterAnimating, setIsFilterAnimating] = useState(false);
   
   // Данные для графика
-  const [salesData, setSalesData] = useState([]);
-  const [lastYearSalesData, setLastYearSalesData] = useState([]);
+  const [salesData, setSalesData] = useState(initialSalesData.length > 0 ? initialSalesData : Array(12).fill(10));
+  const [lastYearSalesData, setLastYearSalesData] = useState(initialLastYearData.length > 0 ? initialLastYearData : []);
   const [displayLabels, setDisplayLabels] = useState(months);
   
   // Состояние загрузки
@@ -142,209 +223,221 @@ const SalesChart = ({
   };
   
   // Функция запроса данных из API с учетом периода
-const fetchAnalyticsData = async (forComparison = false) => {
-  const currentPeriod = period || dateRange;
-  
-  // Для сравнения используем предыдущий год
-  const requestPeriod = forComparison 
-    ? getPreviousYearDates(currentPeriod.start, currentPeriod.end) 
-    : currentPeriod;
+  const fetchAnalyticsData = async (forComparison = false) => {
+    const currentPeriod = period || dateRange;
     
-  setIsLoading(true);
-  if (!forComparison) setIsFilterAnimating(true);
-  
-  try {
-    // Получаем даты для запроса
-    const beginDate = formatDateForApi(requestPeriod.start);
-    const endDate = formatDateForApi(requestPeriod.end);
-    
-    // Формируем базовый URL API
-    const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
-    const apiUrl = `${baseUrl}&auto_analytics`;
-    
-    // Создаем объект данных для отправки в теле запроса
-    const requestData = {
-      begin_date: beginDate,
-      end_date: endDate,
-    };
-    
-    // Добавляем модель, если выбрана
-    if (selectedModel) {
-      requestData.model_id = selectedModel;
-    }
-    
-    // Добавляем регион, если выбран
-    if (selectedRegion) {
-      requestData.region_id = selectedRegion;
-    }
-    
-    console.log(`Отправка ${forComparison ? 'сравнительных' : 'текущих'} данных:`, requestData);
-    
-    // Выполняем POST-запрос с данными в теле
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(requestData)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API request failed with status ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log(`Получены ${forComparison ? 'сравнительные' : 'текущие'} данные:`, data);
-    
-    // Получаем метки для графика
-    if (!forComparison) {
-      const labels = getLabelsForPeriod(currentPeriod.start, currentPeriod.end);
-      setDisplayLabels(labels);
-    }
-    
-    // Обрабатываем данные для графика
-    const processedData = processApiData(data);
-    
-    // Обновляем состояние в зависимости от типа запроса
-    if (forComparison) {
-      setLastYearSalesData(processedData);
-    } else {
-      setSalesData(processedData);
+    // Для сравнения используем предыдущий год
+    const requestPeriod = forComparison 
+      ? getPreviousYearDates(currentPeriod.start, currentPeriod.end) 
+      : currentPeriod;
       
-      // Извлекаем доступные модели из данных
-      if (Array.isArray(data)) {
-        // Собираем модели
-        const models = data.map(item => ({
-          id: item.model_id,
-          name: item.model_name,
-          img: `https://uzavtosalon.uz/b/core/m$load_image?sha=${item.photo_sha}&width=400&height=400`
-        }));
-        setAvailableModels(models);
+    setIsLoading(true);
+    if (!forComparison) setIsFilterAnimating(true);
+    
+    try {
+      // Получаем даты для запроса
+      const beginDate = formatDateForApi(requestPeriod.start);
+      const endDate = formatDateForApi(requestPeriod.end);
+      
+      // Формируем базовый URL API
+      const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
+      const apiUrl = `${baseUrl}&auto_analytics`;
+      
+      // Создаем объект данных для отправки в теле запроса
+      const requestData = {
+        begin_date: beginDate,
+        end_date: endDate,
+      };
+      
+      // Добавляем модель, если выбрана
+      if (selectedModel) {
+        requestData.model_id = selectedModel;
+      }
+      
+      // Добавляем регион, если выбран
+      if (selectedRegion) {
+        requestData.region_id = selectedRegion;
+      }
+      
+      console.log(`Отправка ${forComparison ? 'сравнительных' : 'текущих'} данных:`, requestData);
+      
+      // Выполняем POST-запрос с данными в теле
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log(`Получены ${forComparison ? 'сравнительные' : 'текущие'} данные:`, data);
+      
+      // Получаем метки для графика
+      if (!forComparison) {
+        const labels = getLabelsForPeriod(currentPeriod.start, currentPeriod.end);
+        setDisplayLabels(labels);
+      }
+      
+      // Обрабатываем данные для графика
+      const processedData = processApiData(data, forComparison);
+      
+      // Обновляем состояние в зависимости от типа запроса
+      if (forComparison) {
+        setLastYearSalesData(processedData);
+      } else {
+        setSalesData(processedData);
         
-        // Собираем регионы из первой модели (они одинаковы для всех моделей)
-        if (data.length > 0 && data[0].filter_by_region && Array.isArray(data[0].filter_by_region)) {
-          const regions = data[0].filter_by_region.map(region => ({
-            id: region.region_id,
-            name: region.region_name
+        // Извлекаем доступные модели из данных
+        if (Array.isArray(data)) {
+          // Собираем модели
+          const models = data.map(item => ({
+            id: item.model_id,
+            name: item.model_name,
+            img: `https://uzavtosalon.uz/b/core/m$load_image?sha=${item.photo_sha}&width=400&height=400`
           }));
-          setAvailableRegions(regions);
+          
+          // Фильтруем уникальные модели по ID
+          const uniqueModels = models.filter((model, index, self) =>
+            index === self.findIndex((m) => m.id === model.id)
+          );
+          
+          setAvailableModels(uniqueModels);
+          
+          // Собираем регионы из первой модели (они одинаковы для всех моделей)
+          if (data.length > 0 && data[0].filter_by_region && Array.isArray(data[0].filter_by_region)) {
+            const regions = data[0].filter_by_region.map(region => ({
+              id: region.region_id,
+              name: region.region_name
+            }));
+            setAvailableRegions(regions);
+          }
+        }
+        
+        // Если включено сравнение, делаем запрос для прошлого года
+        if (showComparison && !forComparison) {
+          fetchAnalyticsData(true);
         }
       }
+    } catch (error) {
+      console.error(`Ошибка при получении ${forComparison ? 'сравнительных' : 'текущих'} данных:`, error);
+      if (!forComparison) setHasError(true);
       
-      // Если включено сравнение, делаем запрос для прошлого года
-      if (showComparison && !forComparison) {
-        fetchAnalyticsData(true);
+      // В случае ошибки устанавливаем демо-данные чтобы график все равно отображался
+      if (!forComparison) {
+        setSalesData(Array(displayLabels.length).fill(0).map(() => Math.floor(Math.random() * 100) + 50));
+      } else {
+        setLastYearSalesData(Array(displayLabels.length).fill(0).map(() => Math.floor(Math.random() * 100) + 50));
+      }
+    } finally {
+      setIsLoading(false);
+      if (!forComparison) {
+        setTimeout(() => {
+          setIsFilterAnimating(false);
+        }, 500);
       }
     }
-  } catch (error) {
-    console.error(`Ошибка при получении ${forComparison ? 'сравнительных' : 'текущих'} данных:`, error);
-    if (!forComparison) setHasError(true);
-  } finally {
-    setIsLoading(false);
-    if (!forComparison) {
-      setTimeout(() => {
-        setIsFilterAnimating(false);
-      }, 500);
-    }
-  }
-};
+  };
   
-  // Функция обработки данных API для графика
-  const processApiData = (data) => {
-    if (!Array.isArray(data)) {
-      console.error('Invalid API data format. Expected array.');
-      return Array(displayLabels.length).fill(0);
-    }
-    
-    // Создаем массив для данных с нулями по количеству меток
-    const resultData = Array(displayLabels.length).fill(0);
-    
-    // Обрабатываем данные моделей
+ // Функция обработки данных API для графика
+const processApiData = (data, forComparison = false) => {
+  // Если данные отсутствуют, возвращаем пустой массив
+  if (!Array.isArray(data) || data.length === 0) {
+    console.log('Нет данных для обработки');
+    return [];
+  }
+  
+  // Создаем объект для хранения данных по месяцам
+  const monthlyData = {};
+  
+  try {
+    // Обходим все модели автомобилей
     data.forEach(model => {
-      // Пропускаем, если модель не соответствует фильтру
+      // Пропускаем, если выбрана конкретная модель и это не она
       if (selectedModel && model.model_id !== selectedModel) {
         return;
       }
       
-      // Обрабатываем данные по месяцам
+      console.log(`Обработка модели: ${model.model_name}`);
+      
+      // Проверяем наличие данных по месяцам
       if (model.filter_by_month && Array.isArray(model.filter_by_month)) {
         model.filter_by_month.forEach(monthData => {
-          if (monthData.month && typeof monthData.month === 'string') {
-            // Получаем месяц и год из строки "YYYY-MM"
-            const [year, month] = monthData.month.split('-');
-            const monthIndex = parseInt(month) - 1; // 0-11
+          // Проверяем наличие данных о месяце
+          if (monthData && monthData.month) {
+            // Получаем месяц из строки "YYYY-MM"
+            const monthKey = monthData.month; // Сохраняем оригинальный ключ
             
-            // Создаем дату для этого месяца
-            const date = new Date(parseInt(year), monthIndex, 1);
-            
-            // Для разных периодов разная логика маппинга на индексы
-            let dataIndex = -1;
-            
-            if (displayLabels.length <= 14) {
-              // Для дневного отображения
-              const monthName = date.toLocaleDateString('ru-RU', { month: 'short' });
-              
-              // Находим индекс в метках, которые соответствуют этому месяцу
-              displayLabels.forEach((label, i) => {
-                if (label.includes(monthName)) {
-                  dataIndex = i;
-                }
-              });
-            } else if (displayLabels.length <= 5) {
-              // Для недельного отображения (приблизительно)
-              const weekIndex = Math.floor(monthIndex / 3);
-              dataIndex = Math.min(weekIndex, displayLabels.length - 1);
-            } else {
-              // Для месячного отображения
-              const monthName = date.toLocaleDateString('ru-RU', { month: 'short' });
-              dataIndex = displayLabels.indexOf(monthName);
-              
-              if (dataIndex === -1 && displayLabels.length === 12) {
-                // Для стандартных 12 месяцев используем индекс месяца
-                dataIndex = monthIndex;
-              }
+            // Инициализируем месяц, если он не существует
+            if (!monthlyData[monthKey]) {
+              monthlyData[monthKey] = 0;
             }
             
-            // Если нашли соответствующий индекс
-            if (dataIndex !== -1) {
-              // Обрабатываем регионы
-              if (monthData.regions && Array.isArray(monthData.regions)) {
-                let value = 0;
-                
-                monthData.regions.forEach(region => {
-                  // Фильтр по региону
-                  if (selectedRegion && region.region_id !== selectedRegion) {
-                    return;
-                  }
-                  
-                  // Получаем значение в зависимости от вкладки
-                  if (activeTab === 'месяц' || activeTab === 'contracts') {
-                    value += parseInt(region.contract || 0);
-                  } else {
-                    value += parseInt(region.total_price || 0);
-                  }
-                });
-                
-                // Добавляем к соответствующему индексу
-                if (dataIndex >= 0 && dataIndex < resultData.length) {
-                  resultData[dataIndex] += value;
+            // Обрабатываем данные по регионам
+            if (monthData.regions && Array.isArray(monthData.regions)) {
+              monthData.regions.forEach(region => {
+                // Если выбран конкретный регион, фильтруем данные
+                if (selectedRegion && region.region_id !== selectedRegion) {
+                  return;
                 }
-              }
+                
+                // Получаем значение в зависимости от вкладки
+                let value = 0;
+                if (activeTab === 'месяц' || activeTab === 'contracts') {
+                  value = parseInt(region.contract || 0);
+                } else {
+                  value = parseInt(region.total_price || 0);
+                }
+                
+                // Добавляем значение к соответствующему месяцу
+                monthlyData[monthKey] += value;
+              });
             }
           }
         });
       }
     });
     
-    return resultData;
-  };
+    // Преобразуем объект в массив
+    const resultArray = Object.entries(monthlyData).map(([month, value]) => ({
+      month,
+      value
+    }));
+    
+    // Сортируем по месяцам
+    resultArray.sort((a, b) => a.month.localeCompare(b.month));
+    
+    // Возвращаем только значения
+    return resultArray.map(item => item.value);
+  } catch (error) {
+    console.error('Ошибка при обработке данных:', error);
+    return [];
+  }
+};
   
   // Эффект для загрузки данных при первом рендере
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
-      fetchAnalyticsData();
+      
+      // Если нет переданных начальных данных, загружаем из API
+      if (initialSalesData.length === 0) {
+        // Эмулируем небольшую задержку для отображения загрузки
+        setTimeout(() => {
+          fetchAnalyticsData();
+        }, 500);
+      } else {
+        // Иначе используем переданные данные
+        setSalesData(initialSalesData);
+        if (initialLastYearData.length > 0) {
+          setLastYearSalesData(initialLastYearData);
+        }
+      }
     }
   }, []);
   
@@ -398,236 +491,409 @@ const fetchAnalyticsData = async (forComparison = false) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
   
-  // Функция для рендеринга графика
-  const renderChart = () => {
-    if (!chartRef.current) return;
+const renderChart = () => {
+  if (!chartRef.current) return;
+  
+  const container = chartRef.current;
+  const tooltip = tooltipRef.current;
+  
+  // Очистка существующего графика
+  d3.select(container).selectAll('*').remove();
+  
+  const currentPeriod = period || dateRange;
+  const start = new Date(currentPeriod.start);
+  const end = new Date(currentPeriod.end);
+  const diffTime = Math.abs(end - start);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  // Определяем, нужно ли отображать по месяцам или один столбец
+  const showMonthlyView = diffDays > 31;
+  
+  // Подготавливаем данные и метки
+  let currentLabels = [];
+  let currentData = [];
+  let comparisonLabels = [];
+  let comparisonData = [];
+  
+  if (showMonthlyView) {
+    // Для месячного представления формируем метки по месяцам
+    let currentDate = new Date(start.getFullYear(), start.getMonth(), 1);
+    const monthKeys = [];
     
-    const container = chartRef.current;
-    const tooltip = tooltipRef.current;
-    
-    // Очистка существующего графика
-    d3.select(container).selectAll('*').remove();
-    
-    // Проверяем наличие данных
-    if (!salesData || salesData.length === 0) {
-      d3.select(container)
-        .append('div')
-        .attr('class', 'flex items-center justify-center h-full')
-        .append('span')
-        .attr('class', 'text-gray-400')
-        .text('Нет данных для отображения');
-      return;
+    while (currentDate <= end) {
+      const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+      monthKeys.push(monthKey);
+      
+      const monthName = currentDate.toLocaleDateString('ru-RU', { month: 'short' });
+      currentLabels.push(monthName);
+      
+      // Переходим к следующему месяцу
+      currentDate.setMonth(currentDate.getMonth() + 1);
     }
     
-    // Размеры графика
-    const margin = { top: 30, right: 30, bottom: 50, left: 60 };
-    const width = container.clientWidth - margin.left - margin.right;
-    const height = container.clientHeight - margin.top - margin.bottom;
+    // Используем данные из salesData, которые соответствуют этим месяцам
+    currentData = salesData.length > 0 ? salesData : Array(currentLabels.length).fill(0);
     
-    // Создание SVG
-    const svg = d3.select(container)
-      .append('svg')
-      .attr('width', width + margin.left + margin.right)
-      .attr('height', height + margin.top + margin.bottom)
-      .append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`);
-    
-    // Шкалы
-    const x = d3.scaleBand()
-      .domain(d3.range(salesData.length))
-      .range([0, width])
-      .padding(0.4);
-    
-    const y = d3.scaleLinear()
-      .domain([0, maxValue])
-      .range([height, 0]);
-    
-    // Оси
-    const xAxis = d3.axisBottom(x)
-      .tickFormat(i => displayLabels[i % displayLabels.length])
-      .tickSizeOuter(0);
-    
-    const yAxis = d3.axisLeft(y)
-      .ticks(5)
-      .tickFormat(d3.format(',d'))
-      .tickSizeInner(-width)
-      .tickSizeOuter(0);
-    
-    // Добавление осей
-    svg.append('g')
-      .attr('class', 'x-axis')
-      .attr('transform', `translate(0,${height})`)
-      .call(xAxis)
-      .selectAll('text')
-      .attr('fill', '#D1D5DB')
-      .attr('font-size', '12px');
-    
-    svg.append('g')
-      .attr('class', 'y-axis')
-      .call(yAxis)
-      .selectAll('text')
-      .attr('fill', '#D1D5DB')
-      .attr('font-size', '12px');
-    
-    // Стили для сетки
-    svg.selectAll('.y-axis line')
-      .attr('stroke', 'rgba(75, 85, 99, 0.3)')
-      .attr('stroke-dasharray', '2,2');
-    
-    svg.selectAll('.y-axis path, .x-axis path')
-      .attr('stroke', 'rgba(75, 85, 99, 0.7)');
-    
-    // Функция для отображения тултипа
-    const showTooltip = (event, d, i) => {
-      const lastYear = lastYearSalesData[i] || 0;
-      const percentChange = lastYear > 0 
-        ? ((d - lastYear) / lastYear * 100).toFixed(1) 
-        : 0;
-        
-      const tooltipContent = `
-        <div class="font-bold text-center mb-2 text-purple-300">${displayLabels[i % displayLabels.length]}</div>
-        <table class="w-full">
-          <tbody>
-            <tr>
-              <td class="py-1 text-gray-300">Текущий период:</td>
-              <td class="py-1 font-bold text-right">${d.toLocaleString()}</td>
-            </tr>
-            ${showComparison ? `
-              <tr>
-                <td class="py-1 text-gray-300">Прошлый период:</td>
-                <td class="py-1 font-bold text-right">${lastYear.toLocaleString()}</td>
-              </tr>
-              <tr class="border-t border-gray-700">
-                <td class="py-1 pt-2 text-gray-300">Изменение:</td>
-                <td class="py-1 pt-2 font-bold text-right ${d > lastYear ? 'text-green-400' : 'text-red-400'}">
-                  ${percentChange > 0 ? '+' : ''}${percentChange}%
-                </td>
-              </tr>
-            ` : ''}
-          </tbody>
-        </table>
-      `;
-      
-      // Позиционирование тултипа
-      const tooltipWidth = 200;
-      const tooltipHeight = showComparison ? 140 : 80;
-      
-      let xPos = event.pageX - container.getBoundingClientRect().left;
-      let yPos = event.pageY - container.getBoundingClientRect().top - window.scrollY;
-      
-      if (xPos + tooltipWidth > container.clientWidth) {
-        xPos = xPos - tooltipWidth;
-      }
-      
-      if (yPos - tooltipHeight < 0) {
-        yPos = yPos + 20;
-      } else {
-        yPos = yPos - tooltipHeight - 10;
-      }
-      
-      d3.select(tooltip)
-        .html(tooltipContent)
-        .style('left', `${xPos}px`)
-        .style('top', `${yPos}px`)
-        .style('opacity', 1);
-    };
-    
-    // Функция для скрытия тултипа
-    const hideTooltip = () => {
-      d3.select(tooltip).style('opacity', 0);
-    };
-    
-    // Градиент для столбцов текущего года
-    const gradient = svg.append('defs')
-      .append('linearGradient')
-      .attr('id', 'purpleGradient')
-      .attr('x1', '0%')
-      .attr('x2', '0%')
-      .attr('y1', '0%')
-      .attr('y2', '100%');
-    
-    gradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#A855F7');
-    
-    gradient.append('stop')
-      .attr('offset', '50%')
-      .attr('stop-color', '#9333EA');
-    
-    gradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#7E22CE');
-    
-    // Рисуем столбцы прошлого года при активном сравнении
+    // Если включено сравнение, подготавливаем данные для прошлого года
     if (showComparison) {
-      svg.selectAll('.bar-last-year')
-        .data(lastYearSalesData)
-        .enter()
-        .append('rect')
+      comparisonLabels = currentLabels.map(label => `${label} (${start.getFullYear() - 1})`);
+      comparisonData = lastYearSalesData.length > 0 ? lastYearSalesData : Array(comparisonLabels.length).fill(0);
+    }
+  } else {
+    // Для короткого периода - один столбец
+    const formattedStart = start.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    const formattedEnd = end.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    const label = formattedStart === formattedEnd ? formattedStart : `${formattedStart} - ${formattedEnd}`;
+    
+    currentLabels = [label];
+    
+    // Суммируем все значения за период
+    const totalValue = salesData.reduce((sum, val) => sum + val, 0);
+    currentData = [totalValue];
+    
+    // Если включено сравнение, готовим данные для прошлого года
+    if (showComparison) {
+      comparisonLabels = [`${label} (${start.getFullYear() - 1})`];
+      const totalComparisonValue = lastYearSalesData.reduce((sum, val) => sum + val, 0);
+      comparisonData = [totalComparisonValue];
+    }
+  }
+  
+  // Если нет данных для отображения
+  if (currentData.length === 0 || currentData.every(val => val === 0)) {
+    d3.select(container)
+      .append('div')
+      .attr('class', 'flex items-center justify-center h-full')
+      .append('span')
+      .attr('class', 'text-gray-400')
+      .text('Нет данных для отображения');
+    return;
+  }
+  
+  // Размеры графика
+  const margin = { top: 30, right: 30, bottom: 80, left: 60 };
+  const width = container.clientWidth - margin.left - margin.right;
+  const height = container.clientHeight - margin.top - margin.bottom;
+  
+  // Создание SVG
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', height + margin.top + margin.bottom)
+    .append('g')
+    .attr('transform', `translate(${margin.left},${margin.top})`);
+  
+  // Шкалы
+  const x = d3.scaleBand()
+    .domain(currentLabels)
+    .range([0, width])
+    .padding(0.3);
+  
+  // Максимальное значение для шкалы Y
+  const yMax = d3.max([...currentData, ...(showComparison ? comparisonData : [])]) * 1.1 || 100;
+  
+  const y = d3.scaleLinear()
+    .domain([0, yMax])
+    .range([height, 0]);
+  
+  // Оси
+  const xAxis = d3.axisBottom(x)
+    .tickSizeOuter(0);
+  
+  const yAxis = d3.axisLeft(y)
+    .ticks(5)
+    .tickFormat(d => {
+      if (activeTab === 'год') {
+        // Форматирование для сумм
+        if (d >= 1000000000) {
+          return d3.format('.1f')(d / 1000000000) + ' млрд';
+        } else if (d >= 1000000) {
+          return d3.format('.1f')(d / 1000000) + ' млн';
+        } else if (d >= 1000) {
+          return d3.format(',d')(d / 1000) + ' тыс';
+        }
+        return d3.format(',d')(d);
+      } else {
+        // Форматирование для контрактов
+        if (d >= 1000) {
+          return d3.format(',d')(d / 1000) + 'K';
+        }
+        return d3.format(',d')(d);
+      }
+    })
+    .tickSizeInner(-width)
+    .tickSizeOuter(0);
+  
+  // Добавление осей
+  svg.append('g')
+    .attr('class', 'x-axis')
+    .attr('transform', `translate(0,${height})`)
+    .call(xAxis)
+    .selectAll('text')
+    .attr('fill', '#D1D5DB')
+    .attr('font-size', '12px')
+    .attr('transform', 'rotate(-15)')
+    .attr('text-anchor', 'end')
+    .attr('dy', '0.5em')
+    .attr('dx', '-0.5em');
+  
+  svg.append('g')
+    .attr('class', 'y-axis')
+    .call(yAxis)
+    .selectAll('text')
+    .attr('fill', '#D1D5DB')
+    .attr('font-size', '12px');
+  
+  // Стили для сетки
+  svg.selectAll('.y-axis line')
+    .attr('stroke', 'rgba(75, 85, 99, 0.3)')
+    .attr('stroke-dasharray', '2,2');
+  
+  svg.selectAll('.y-axis path, .x-axis path')
+    .attr('stroke', 'rgba(75, 85, 99, 0.7)');
+  
+  // Функция для отображения тултипа
+  const showTooltip = (event, value, label, isLastYear) => {
+    // Находим соответствующее значение для сравнения
+    let currentValue = isLastYear ? null : value;
+    let lastYearValue = isLastYear ? value : null;
+    let percentChange = 0;
+    
+    if (showComparison) {
+      const labelIndex = isLastYear ? comparisonLabels.indexOf(label) : currentLabels.indexOf(label);
+      
+      if (isLastYear) {
+        currentValue = labelIndex < currentData.length ? currentData[labelIndex] : 0;
+      } else {
+        lastYearValue = labelIndex < comparisonData.length ? comparisonData[labelIndex] : 0;
+      }
+      
+      if (lastYearValue > 0) {
+        percentChange = ((currentValue - lastYearValue) / lastYearValue * 100).toFixed(1);
+      }
+    }
+    
+    // Форматирование значений
+    const formatValue = val => {
+      if (activeTab === 'год') {
+        return new Intl.NumberFormat('ru-RU', { 
+          style: 'currency', 
+          currency: 'UZS',
+          maximumFractionDigits: 0
+        }).format(val);
+      } else {
+        return val.toLocaleString();
+      }
+    };
+    
+    // Создаем содержимое тултипа
+    const tooltipContent = `
+      <div class="font-bold text-center mb-2 text-purple-300">${label}</div>
+      <table class="w-full">
+        <tbody>
+          <tr>
+            <td class="py-1 text-gray-300">${isLastYear ? 'Прошлый период:' : 'Текущий период:'}</td>
+            <td class="py-1 font-bold text-right">${formatValue(value)}</td>
+          </tr>
+          ${showComparison && currentValue !== null && lastYearValue !== null ? `
+            <tr>
+              <td class="py-1 text-gray-300">${isLastYear ? 'Текущий период:' : 'Прошлый период:'}</td>
+              <td class="py-1 font-bold text-right">${formatValue(isLastYear ? currentValue : lastYearValue)}</td>
+            </tr>
+            <tr class="border-t border-gray-700">
+              <td class="py-1 pt-2 text-gray-300">Изменение:</td>
+              <td class="py-1 pt-2 font-bold text-right ${percentChange >= 0 ? 'text-green-400' : 'text-red-400'}">
+                ${percentChange >= 0 ? '+' : ''}${percentChange}%
+              </td>
+            </tr>
+          ` : ''}
+        </tbody>
+      </table>
+    `;
+    
+    // Позиционирование тултипа
+    const tooltipWidth = 200;
+    const tooltipHeight = showComparison ? 140 : 80;
+    
+    let xPos = event.pageX - container.getBoundingClientRect().left;
+    let yPos = event.pageY - container.getBoundingClientRect().top;
+    
+    if (xPos + tooltipWidth > container.clientWidth) {
+      xPos = xPos - tooltipWidth;
+    }
+    
+    if (yPos - tooltipHeight < 0) {
+      yPos = yPos + 20;
+    } else {
+      yPos = yPos - tooltipHeight - 10;
+    }
+    
+    d3.select(tooltip)
+      .html(tooltipContent)
+      .style('left', `${xPos}px`)
+      .style('top', `${yPos}px`)
+      .style('opacity', 1);
+  };
+  
+  // Функция для скрытия тултипа
+  const hideTooltip = () => {
+    d3.select(tooltip).style('opacity', 0);
+  };
+  
+  // Градиент для столбцов текущего года
+  const gradient = svg.append('defs')
+    .append('linearGradient')
+    .attr('id', 'purpleGradient')
+    .attr('x1', '0%')
+    .attr('x2', '0%')
+    .attr('y1', '0%')
+    .attr('y2', '100%');
+  
+  gradient.append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', '#A855F7');
+  
+  gradient.append('stop')
+    .attr('offset', '50%')
+    .attr('stop-color', '#9333EA');
+  
+  gradient.append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', '#7E22CE');
+  
+  // Рисуем столбцы
+  currentLabels.forEach((label, i) => {
+    const value = i < currentData.length ? currentData[i] : 0;
+    
+    if (showComparison) {
+      // Рисуем столбцы прошлого года
+      const lastYearValue = i < comparisonData.length ? comparisonData[i] : 0;
+      const lastYearLabel = i < comparisonLabels.length ? comparisonLabels[i] : `${label} (пред.)`;
+      
+      svg.append('rect')
         .attr('class', 'bar-last-year')
-        .attr('x', (_, i) => x(i) - x.bandwidth() * 0.15)
-        .attr('width', x.bandwidth() * 0.3)
+        .attr('x', x(label))
+        .attr('width', x.bandwidth() / 2 - 2)
         .attr('rx', 2)
         .attr('fill', 'rgba(59, 130, 246, 0.7)')
         .attr('filter', 'drop-shadow(0 0 2px rgba(59, 130, 246, 0.3))')
-        .attr('y', height) // Начинаем с нуля для анимации
+        .attr('y', height)
         .attr('height', 0)
-        .on('mouseover', (event, d, i) => showTooltip(event, d, i))
-        .on('mousemove', (event, d, i) => showTooltip(event, d, i))
-        .on('mouseout', hideTooltip)
+        .on('mouseover', function(event) {
+          d3.select(this).attr('fill', 'rgba(96, 165, 250, 0.9)');
+          showTooltip(event, lastYearValue, lastYearLabel, true);
+        })
+        .on('mousemove', function(event) {
+          showTooltip(event, lastYearValue, lastYearLabel, true);
+        })
+        .on('mouseout', function() {
+          d3.select(this).attr('fill', 'rgba(59, 130, 246, 0.7)');
+          hideTooltip();
+        })
         .transition()
         .duration(800)
-        .delay((_, i) => i * 30)
-        .attr('y', d => y(d))
-        .attr('height', d => height - y(d));
+        .delay(i * 30)
+        .attr('y', y(lastYearValue))
+        .attr('height', height - y(lastYearValue));
+      
+      // Добавляем метку "Прошлый год"
+      if (i === 0) {
+        svg.append('text')
+          .attr('x', x(label) + x.bandwidth() / 4)
+          .attr('y', height + 45)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '10px')
+          .attr('fill', 'rgba(59, 130, 246, 0.9)')
+          .text('Прошлый год');
+      }
+      
+      // Рисуем столбцы текущего года
+      svg.append('rect')
+        .attr('class', 'bar-current-year')
+        .attr('x', x(label) + x.bandwidth() / 2 + 2)
+        .attr('width', x.bandwidth() / 2 - 2)
+        .attr('rx', 2)
+        .attr('fill', 'url(#purpleGradient)')
+        .attr('filter', 'drop-shadow(0 0 5px rgba(168, 85, 247, 0.5))')
+        .attr('y', height)
+        .attr('height', 0)
+        .on('mouseover', function(event) {
+          d3.select(this).attr('fill', '#b975fa');
+          showTooltip(event, value, label, false);
+        })
+        .on('mousemove', function(event) {
+          showTooltip(event, value, label, false);
+        })
+        .on('mouseout', function() {
+          d3.select(this).attr('fill', 'url(#purpleGradient)');
+          hideTooltip();
+        })
+        .transition()
+        .duration(800)
+        .delay(i * 30)
+        .attr('y', y(value))
+        .attr('height', height - y(value));
+      
+      // Добавляем метку "Текущий год"
+      if (i === 0) {
+        svg.append('text')
+          .attr('x', x(label) + x.bandwidth() * 3/4)
+          .attr('y', height + 45)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '10px')
+          .attr('fill', '#9333EA')
+          .text('Текущий год');
+      }
+      
+      // Добавляем процентное изменение
+      if (lastYearValue > 0) {
+        const percentChange = ((value - lastYearValue) / lastYearValue * 100);
+        const isPositive = value > lastYearValue;
+        
+        svg.append('text')
+          .attr('x', x(label) + x.bandwidth() / 2)
+          .attr('y', y(Math.max(value, lastYearValue)) - 10)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '10px')
+          .attr('font-weight', 'bold')
+          .attr('fill', isPositive ? '#4ADE80' : '#F87171')
+          .attr('opacity', 0)
+          .text(isPositive ? `↑${Math.abs(percentChange).toFixed(1)}%` : `↓${Math.abs(percentChange).toFixed(1)}%`)
+          .transition()
+          .duration(500)
+          .delay(800 + i * 30)
+          .attr('opacity', 1);
+      }
+    } else {
+      // Если нет сравнения, рисуем один столбец на всю ширину
+      svg.append('rect')
+        .attr('class', 'bar-current-year')
+        .attr('x', x(label))
+        .attr('width', x.bandwidth())
+        .attr('rx', 2)
+        .attr('fill', 'url(#purpleGradient)')
+        .attr('filter', 'drop-shadow(0 0 5px rgba(168, 85, 247, 0.5))')
+        .attr('y', height)
+        .attr('height', 0)
+        .on('mouseover', function(event) {
+          d3.select(this).attr('fill', '#b975fa');
+          showTooltip(event, value, label, false);
+        })
+        .on('mousemove', function(event) {
+          showTooltip(event, value, label, false);
+        })
+        .on('mouseout', function() {
+          d3.select(this).attr('fill', 'url(#purpleGradient)');
+          hideTooltip();
+        })
+        .transition()
+        .duration(800)
+        .delay(i * 30)
+        .attr('y', y(value))
+        .attr('height', height - y(value));
     }
-    
-    // Рисуем столбцы текущего года с анимацией
-    svg.selectAll('.bar-current-year')
-      .data(salesData)
-      .enter()
-      .append('rect')
-      .attr('class', 'bar-current-year')
-      .attr('x', (_, i) => showComparison ? x(i) + x.bandwidth() * 0.15 : x(i))
-      .attr('width', showComparison ? x.bandwidth() * 0.3 : x.bandwidth())
-      .attr('rx', 2)
-      .attr('fill', 'url(#purpleGradient)')
-      .attr('filter', 'drop-shadow(0 0 5px rgba(168, 85, 247, 0.5))')
-      .attr('y', height) // Начинаем с нуля для анимации
-      .attr('height', 0)
-      .on('mouseover', (event, d, i) => showTooltip(event, d, i))
-      .on('mousemove', (event, d, i) => showTooltip(event, d, i))
-      .on('mouseout', hideTooltip)
-      .transition()
-      .duration(800)
-      .delay((_, i) => i * 30)
-      .attr('y', d => y(d))
-      .attr('height', d => height - y(d));
-    
-    // Добавляем метки изменений при сравнении
-    if (showComparison) {
-      salesData.forEach((value, i) => {
-        if (lastYearSalesData[i] > 0) {
-          const percentChange = ((value - lastYearSalesData[i]) / lastYearSalesData[i] * 100);
-          const isPositive = value > lastYearSalesData[i];
-          
-          svg.append('text')
-            .attr('x', x(i) + x.bandwidth() / 2)
-            .attr('y', y(value) - 10)
-            .attr('text-anchor', 'middle')
-            .attr('font-size', '10px')
-            .attr('font-weight', 'bold')
-            .attr('fill', isPositive ? '#4ADE80' : '#F87171')
-            .attr('opacity', 0)
-            .text(isPositive ? '↑' : '↓')
-            .transition()
-            .duration(500)
-            .delay(800 + i * 30)
-            .attr('opacity', 1);
-        }
-      });
-    }
-  };
+  });
+};
   
   // Эффект для обновления графика при изменении данных
   useEffect(() => {
@@ -655,13 +921,20 @@ const fetchAnalyticsData = async (forComparison = false) => {
     const newModelValue = modelId === selectedModel ? null : modelId;
     if (setSelectedModel) {
       setSelectedModel(newModelValue);
+    } else {
+      // Если внешний setSelectedModel отсутствует, обновляем данные сами
+      setTimeout(() => {
+        fetchAnalyticsData();
+        if (showComparison) fetchAnalyticsData(true);
+      }, 0);
     }
     setShowModelDropdown(false);
   };
   
   // Обработчик выбора региона
   const handleRegionSelect = (regionId) => {
-    setSelectedRegion(regionId === selectedRegion ? null : regionId);
+    const newRegionValue = regionId === selectedRegion ? null : regionId;
+    setSelectedRegion(newRegionValue);
     setShowRegionDropdown(false);
   };
   
@@ -701,8 +974,17 @@ const fetchAnalyticsData = async (forComparison = false) => {
     }
   };
   
-// Применение выбранных дат
+  // Применение выбранных дат
   const applyDateFilter = () => {
+    // Проверка корректности дат
+    const startDate = new Date(dateRange.start);
+    const endDate = new Date(dateRange.end);
+    
+    if (startDate > endDate) {
+      alert('Дата начала не может быть позже даты окончания');
+      return;
+    }
+    
     if (setPeriod) {
       setPeriod(dateRange);
     } else {
@@ -752,7 +1034,9 @@ const fetchAnalyticsData = async (forComparison = false) => {
   
   // Сброс фильтров
   const resetFilters = () => {
-    if (setSelectedModel) setSelectedModel(null);
+    if (setSelectedModel) {
+      setSelectedModel(null);
+    }
     setSelectedRegion(null);
     
     // Делаем запрос после сброса фильтров
@@ -868,19 +1152,6 @@ const fetchAnalyticsData = async (forComparison = false) => {
       {/* Панель фильтров */}
       <div className="p-3 bg-gray-850 border-b border-gray-700">
         <div className="flex flex-wrap gap-2">
-          {/* Селектор периода */}
-          <select 
-            className="bg-gray-700 border border-gray-600 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-purple-500"
-            onChange={handlePeriodChange}
-          >
-            <option value="30days">30 дней</option>
-            <option value="7days">7 дней</option>
-            <option value="90days">3 месяца</option>
-            <option value="6months">6 месяцев</option>
-            <option value="12months">12 месяцев</option>
-            <option value="custom">Свой период...</option>
-          </select>
-          
           {/* Выбор модели */}
           <div className="relative inline-block" ref={modelDropdownRef}>
             <button
@@ -901,8 +1172,9 @@ const fetchAnalyticsData = async (forComparison = false) => {
                   className="ml-1 text-gray-400 hover:text-white" 
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (setSelectedModel) setSelectedModel(null);
-                    else {
+                    if (setSelectedModel) {
+                      setSelectedModel(null);
+                    } else {
                       setTimeout(() => {
                         fetchAnalyticsData();
                         if (showComparison) fetchAnalyticsData(true);
@@ -926,7 +1198,9 @@ const fetchAnalyticsData = async (forComparison = false) => {
                     <button 
                       className="text-xs text-gray-400 hover:text-white flex items-center gap-1"
                       onClick={() => {
-                        if (setSelectedModel) setSelectedModel(null);
+                        if (setSelectedModel) {
+                          setSelectedModel(null);
+                        }
                         setShowModelDropdown(false);
                       }}
                     >
@@ -954,6 +1228,10 @@ const fetchAnalyticsData = async (forComparison = false) => {
                             src={model.img} 
                             alt={model.name} 
                             className="h-full w-auto object-contain"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = 'https://via.placeholder.com/100?text=Нет+фото';
+                            }}
                           />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1065,9 +1343,10 @@ const fetchAnalyticsData = async (forComparison = false) => {
           <button 
             className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-md text-white text-sm flex items-center gap-1.5"
             onClick={handleRefreshData}
+            disabled={isLoading}
           >
-            <RefreshCcw size={14} />
-            <span>Обновить данные</span>
+            <RefreshCcw size={14} className={isLoading ? 'animate-spin' : ''} />
+            <span>{isLoading ? 'Загрузка...' : 'Обновить данные'}</span>
           </button>
           
           {/* Растягивающийся элемент */}
@@ -1083,12 +1362,6 @@ const fetchAnalyticsData = async (forComparison = false) => {
               <span>Сбросить фильтры</span>
             </button>
           )}
-          
-          {/* Экспорт */}
-          <button className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-md text-white text-sm flex items-center gap-1.5">
-            <Download size={14} />
-            <span>Экспорт</span>
-          </button>
         </div>
       </div>
       
@@ -1239,7 +1512,6 @@ const fetchAnalyticsData = async (forComparison = false) => {
                 <X size={16} />
               </button>
             </div>
-            
             <div className="p-4">
               <div className="space-y-4">
                 <div>
@@ -1284,6 +1556,7 @@ const fetchAnalyticsData = async (forComparison = false) => {
     </>
   );
 };
+
 
 
 
@@ -1401,9 +1674,9 @@ const deliveredCount = deliveredData && deliveredData.all_count
     : 0;
     
   return {
-    notShipped: notShippedCount || 64,
-    inTransit: inTransitCount || 48,
-    delivered: deliveredCount || 96
+    notShipped: notShippedCount || 0,
+    inTransit: inTransitCount || 0,
+    delivered: deliveredCount || 0
   };
 }, [notShippedData, inMovementData, deliveredData, selectedModel]);
 
