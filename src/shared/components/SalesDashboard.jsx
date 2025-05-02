@@ -1637,29 +1637,29 @@ const renderSidebarContent = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {dealer.models.map((model, idx) => (
-                  <div key={idx} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600/50 hover:bg-gray-700/80 transition-colors">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-3 min-w-0 w-3/4"> {/* Ограничение ширины */}
-                        <div className="w-12 h-12 rounded-md overflow-hidden bg-gray-600/30 flex-shrink-0 flex items-center justify-center">
-                          <img 
-                            src={`https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400`}
-                            alt={model.photo_sha} 
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-white font-medium truncate">{carModelMap[model.id]?.name || model.name}</span>
-                          <span className="text-xs text-gray-400">{carModelMap[model.id]?.category || 'Авто'}</span>
-                        </div>
-                      </div>
-                      <div className={`px-2.5 py-1 rounded-md bg-${statusColor}-900/40 text-${statusColor}-300 flex items-center gap-1.5 border border-${statusColor}-800/30 whitespace-nowrap`}>
-                        <Car size={14} className="text-gray-400" />
-                        <span className="text-sm font-semibold">{model.count}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+               {dealer.models.map((model, idx) => (
+  <div key={idx} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600/50 hover:bg-gray-700/80 transition-colors">
+    <div className="flex justify-between items-center">
+      <div className="flex items-center gap-3 min-w-0 w-3/4">
+        <div className="w-18 h-18 rounded-md overflow-hidden bg-gray-600/30 flex-shrink-0 flex items-center justify-center">
+          <img 
+            src={`https://uzavtosalon.uz/b/core/m$load_image?sha=${model.img}&width=400&height=400`}
+            alt={model.name} 
+            className="w-full h-full object-contain"
+          />
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className="text-white font-medium truncate">{carModelMap[model.id]?.name || model.name}</span>
+          <span className="text-xs text-gray-400">{carModelMap[model.id]?.category || 'Авто'}</span>
+        </div>
+      </div>
+      <div className={`px-2.5 py-1 rounded-md bg-${statusColor}-900/40 text-${statusColor}-300 flex items-center gap-1.5 border border-${statusColor}-800/30 whitespace-nowrap`}>
+        <Car size={14} className="text-gray-400" />
+        <span className="text-sm font-semibold">{model.count}</span>
+      </div>
+    </div>
+  </div>
+))}
               </div>
             )}
           </div>
@@ -1891,28 +1891,28 @@ const renderSidebarContent = () => {
             <th className="px-3 py-2 text-center text-gray-400 font-medium">Статус</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-700">
-          {debtData.map((item, index) => (
-            <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-800/60' : 'bg-gray-850/70'} hover:bg-gray-700/70`}>
-              <td className="px-3 py-2 font-medium text-white">{item.modelName}</td>
-              <td className="px-3 py-2 text-center">
-                <div className="w-12 h-12 mx-auto rounded-md overflow-hidden bg-gray-700/70 flex items-center justify-center">
-                  <img 
-                    src={item.modelImg} 
-                    alt={item.modelName} 
-                    className="h-full w-auto object-contain"
-                  />
-                </div>
-              </td>
-              <td className="px-3 py-2 text-right text-gray-300 font-medium">{item.total_count}</td>
-              <td className="px-3 py-2 text-center">
-                <span className="inline-block px-2 py-1 rounded-full text-xs bg-red-900/30 text-red-400 border border-red-800/50">
-                  &gt; 5 дней
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
+      <tbody className="divide-y divide-gray-700">
+  {debtData.map((item, index) => (
+    <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-800/60' : 'bg-gray-850/70'} hover:bg-gray-700/70`}>
+      <td className="px-3 py-2 font-medium text-white">{item.modelName}</td>
+      <td className="px-3 py-2 text-center">
+        <div className="w-12 h-12 mx-auto rounded-md overflow-hidden bg-gray-700/70 flex items-center justify-center">
+          <img 
+            src={item.modelImg} 
+            alt={item.modelName} 
+            className="h-full w-auto object-contain"
+          />
+        </div>
+      </td>
+      <td className="px-3 py-2 text-right text-gray-300 font-medium">{item.total_count}</td>
+      <td className="px-3 py-2 text-center">
+        <span className="inline-block px-2 py-1 rounded-full text-xs bg-red-900/30 text-red-400 border border-red-800/50">
+          &gt; 5 дней
+        </span>
+      </td>
+    </tr>
+  ))}
+</tbody>
         <tfoot className="bg-gray-900/80">
           <tr>
             <td className="px-3 py-2 font-medium text-white" colSpan="2">Итого</td>
