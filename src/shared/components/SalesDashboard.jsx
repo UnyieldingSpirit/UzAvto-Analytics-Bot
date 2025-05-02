@@ -905,20 +905,16 @@ const notShippedCount = Array.isArray(notShippedData)
       return total + regionTotal;
     }, 0) : 0;
     
-    // Количество доставленных
-    const deliveredCount = Array.isArray(deliveredData) 
-      ? deliveredData.reduce((total, item) => {
-          if (selectedModel && item.model_id !== selectedModel) return total;
-          return total + parseInt(item.total_count || 0);
-        }, 0)
-      : 0;
+const deliveredCount = deliveredData && deliveredData.all_count 
+    ? parseInt(deliveredData.all_count)
+    : 0;
     
-    return {
-      notShipped: notShippedCount || 64,  // Используем заглушку, если API вернуло 0
-      inTransit: inTransitCount || 48,   // Используем заглушку, если API вернуло 0
-      delivered: deliveredCount || 96    // Используем заглушку, если API вернуло 0
-    };
-  }, [notShippedData, inMovementData, deliveredData, selectedModel]);
+  return {
+    notShipped: notShippedCount || 64,
+    inTransit: inTransitCount || 48,
+    delivered: deliveredCount || 96
+  };
+}, [notShippedData, inMovementData, deliveredData, selectedModel]);
 
   // Данные продаж по месяцам
   const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
