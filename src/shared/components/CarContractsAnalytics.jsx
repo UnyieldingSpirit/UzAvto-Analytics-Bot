@@ -299,7 +299,6 @@ const calculateStats = useCallback((filteredData, activeTab) => {
   useEffect(() => {
     renderCharts();
     
-    // Если переключились на другой таб и есть даты, загружаем соответствующие данные
     if (startDate && endDate) {
       fetchData(getApiUrlForTab(activeTab));
     }

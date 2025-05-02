@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef,useCallback } from 'react';
-import {  Clock, Download, Check, AlertTriangle, ChevronDown, Truck, MapPin, 
-  Archive, ChevronLeft, BarChart3, Users, Activity, ChevronRight,RefreshCcw, Zap, Calendar, Car, X  } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Clock, Download, Check, AlertTriangle, ChevronDown, Truck, MapPin, 
+  Archive, ChevronLeft, BarChart3, Users, Activity, ChevronRight, RefreshCcw, Zap, Calendar, Car, X } from 'lucide-react';
 import { carModels, regions } from '@/src/shared/mocks/mock-data';
 import { useTelegram } from '@/src/hooks/useTelegram';
 import * as d3 from 'd3';
+import ContentReadyLoader from '@/src/shared/layout/ContentReadyLoader';
 
 // Компонент SalesChart
 const SalesChart = ({ 
@@ -656,7 +657,7 @@ const SalesChart = ({
               )}
               {selectedRegionInfo && (
                 <div className="px-2 py-1 bg-blue-900/50 text-white text-xs rounded-full border border-blue-700 flex items-center gap-1">
-                  <MapPin size={10} className="text-blue-300" />
+                <MapPin size={10} className="text-blue-300" />
                   <span>{selectedRegionInfo.name}</span>
                 </div>
               )}
@@ -796,8 +797,6 @@ const SalesChart = ({
   );
 };
 
-
-                
 const SalesDashboard = () => {
   const [activeTab, setActiveTab] = useState('месяц');
   const [activeDetailLevel, setActiveDetailLevel] = useState(0);
@@ -805,25 +804,60 @@ const SalesDashboard = () => {
   const [selectedRegion, setSelectedRegion] = useState(null);
   const [selectedDealer, setSelectedDealer] = useState(null);
   const [showSidebar, setShowSidebar] = useState(false);
-  const [showPeriodFilter, setShowPeriodFilter] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
+  const [loading, setLoading] = useState(true);
   const { hapticFeedback } = useTelegram();
+  
+  // Данные для API
+  const [inMovementData, setInMovementData] = useState([]);
+  const [frozenData, setFrozenData] = useState([]);
+  const [notShippedData, setNotShippedData] = useState([]);
+  const [deliveredData, setDeliveredData] = useState([]);
   
   const [period, setPeriod] = useState({
     start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   });
 
+  // Загрузка данных при инициализации
+  useEffect(() => {
+    const fetchAllData = async () => {
+      setLoading(true);
+      try {
+        // Получаем данные об автомобилях в пути
+        const inMovementResponse = await fetch('https://uzavtosalon.uz/b/dashboard/infos&auto_movment');
+        const inMovementData = await inMovementResponse.json();
+        setInMovementData(inMovementData);
+        
+        // Получаем данные о замороженных контрактах
+        const frozenResponse = await fetch('https://uzavtosalon.uz/b/dashboard/infos&auto_frozen');
+        const frozenData = await frozenResponse.json();
+        setFrozenData(frozenData);
+        
+        // Получаем данные о не отгруженных автомобилях
+        const notShippedResponse = await fetch('https://uzavtosalon.uz/b/dashboard/infos&auto_shipped');
+        const notShippedData = await notShippedResponse.json();
+        setNotShippedData(notShippedData);
+        
+        // Получаем данные о доставленных автомобилях
+        const deliveredResponse = await fetch('https://uzavtosalon.uz/b/dashboard/infos&auto_delivered');
+        const deliveredData = await deliveredResponse.json();
+        setDeliveredData(deliveredData);
+      } catch (error) {
+        console.error('Ошибка загрузки данных:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchAllData();
+  }, []);
+
   // Данные продаж за прошлый год для сравнения
   const lastYearSalesData = [60, 70, 58, 82, 65, 75, 80, 68, 79, 85, 60, 70];
   const salesData = [75, 82, 65, 90, 70, 85, 92, 78, 88, 94, 65, 75];
 
-  // Вычисляем максимальное значение для графика с учетом режима сравнение 
-  const maxValue = showComparison 
-    ? Math.max(...salesData, ...lastYearSalesData) 
-    : Math.max(...salesData);
-  
   // Создаем маппинг моделей для быстрого доступа
   const carModelMap = useMemo(() => {
     return carModels.reduce((acc, model) => {
@@ -832,12 +866,47 @@ const SalesDashboard = () => {
     }, {});
   }, []);
 
-  // Данные о задолженностях по контрактам (переименовано)
-  const contractDebtData = {
-    notShipped: 64,  // Распределены, но не отгружены в течение 48 часов
-    inTransit: 48,   // В пути более 3 дней
-    delivered: 96    // Доставлены
-  };
+  // Расчет данных о задолженностях по контрактам на основе API
+  const contractDebtData = useMemo(() => {
+    // Расчет количества не отгруженных автомобилей
+    const notShippedCount = Array.isArray(notShippedData) 
+      ? notShippedData.reduce((total, item) => {
+          if (selectedModel && item.model_id !== selectedModel) return total;
+          return total + parseInt(item.total_count || 0);
+        }, 0)
+      : 0;
+    
+    // Расчет количества автомобилей в пути
+    const inTransitCount = Array.isArray(inMovementData) ? inMovementData.reduce((total, region) => {
+      let regionTotal = 0;
+      if (region.dealers && Array.isArray(region.dealers)) {
+        region.dealers.forEach(dealer => {
+          if (dealer.models && Array.isArray(dealer.models)) {
+            dealer.models.forEach(model => {
+              if (!selectedModel || model.model === selectedModel) {
+                regionTotal += parseInt(model.sold || 0);
+              }
+            });
+          }
+        });
+      }
+      return total + regionTotal;
+    }, 0) : 0;
+    
+    // Количество доставленных
+    const deliveredCount = Array.isArray(deliveredData) 
+      ? deliveredData.reduce((total, item) => {
+          if (selectedModel && item.model_id !== selectedModel) return total;
+          return total + parseInt(item.total_count || 0);
+        }, 0)
+      : 0;
+    
+    return {
+      notShipped: notShippedCount || 64,  // Используем заглушку, если API вернуло 0
+      inTransit: inTransitCount || 48,   // Используем заглушку, если API вернуло 0
+      delivered: deliveredCount || 96    // Используем заглушку, если API вернуло 0
+    };
+  }, [notShippedData, inMovementData, deliveredData, selectedModel]);
 
   // Данные продаж по месяцам
   const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
@@ -876,13 +945,27 @@ const SalesDashboard = () => {
     });
   };
 
-  // Использование данных внутри компонента
-  const debtData = useMemo(() => {
-    const data = generateDebtData();
-    return selectedModel 
-      ? data.filter(item => item.modelId === selectedModel)
-      : data;
-  }, [selectedModel]);
+const debtData = useMemo(() => {
+  if (!Array.isArray(frozenData)) return [];
+  
+  // Если выбрана модель, фильтруем данные
+  if (selectedModel) {
+    return frozenData.filter(item => item.model_id === selectedModel);
+  }
+  
+  return frozenData.map(item => ({
+    modelId: item.model_id,
+    modelName: item.model_name,
+    modelImg: `https://uzavtosalon.uz/b/core/m$load_image?sha=${item.photo_sha}&width=400&height=400`,
+    total_count: parseInt(item.total_count || 0),
+    days: 5,
+    status: 'Критический'
+  }));
+}, [frozenData, selectedModel]);
+
+const totalFrozenCount = useMemo(() => {
+  return debtData.reduce((sum, item) => sum + parseInt(item.total_count || 0), 0);
+}, [debtData]);
 
   // Расчет статистики
   const totalDebtDays = debtData.reduce((sum, item) => sum + item.days, 0);
@@ -944,6 +1027,28 @@ const SalesDashboard = () => {
 
   // Данные по регионам для каждого статуса (с учетом фильтрации по модели)
   const getRegionData = (status, modelId) => {
+    // Для данных из API
+    if (status === 'inTransit' && Array.isArray(inMovementData)) {
+      return inMovementData
+        .filter(region => region.dealers && region.dealers.length > 0)
+        .slice(0, 5)
+        .map(region => {
+          let value = 0;
+          region.dealers.forEach(dealer => {
+            dealer.models.forEach(model => {
+              if (!modelId || model.model === modelId) {
+                value += parseInt(model.sold || 0);
+              }
+            });
+          });
+          return {
+            name: region.name,
+            value: value > 0 ? value : 1 // Минимальное значение 1
+          };
+        });
+    }
+    
+    // Заглушка для других статусов
     const baseData = regions.slice(0, 5).map((region, index) => {
       // Генерация значений с учетом выбранной модели
       let value;
@@ -1007,6 +1112,40 @@ const SalesDashboard = () => {
 
   // Данные по дилерам для каждого региона и статуса
   const getDealerData = (status, regionName, selectedModelId) => {
+    // Если у нас есть регион из API и это статус автомобилей в пути
+    if (status === 'inTransit' && Array.isArray(inMovementData)) {
+      const region = inMovementData.find(r => r.name === regionName);
+      
+      if (region && region.dealers) {
+        return region.dealers.map(dealer => {
+          // Фильтруем модели по выбранной, если нужно
+          const filteredModels = dealer.models.filter(model => 
+            !selectedModelId || model.model === selectedModelId
+          );
+          
+          // Вычисляем общее количество автомобилей
+          const value = filteredModels.reduce((sum, model) => 
+            sum + parseInt(model.sold || 0), 0
+          );
+          
+          // Преобразуем в нужный формат
+          const modelDetails = filteredModels.map(model => ({
+            id: model.model,
+            name: model.model,
+            count: parseInt(model.sold || 0),
+            img: carModelMap[model.model]?.img || ''
+          }));
+          
+          return {
+            name: dealer.name.replace(/^"(.*)".*$/, '$1'), // Убираем кавычки из имени
+            value,
+            models: modelDetails
+          };
+        }).filter(dealer => dealer.value > 0);
+      }
+    }
+    
+    // Заглушка для других статусов
     const baseDealers = {
       'Ташкент': [
         { name: 'Автосалон Центральный', value: 10, models: generateModelData(3, selectedModelId) },
@@ -1167,7 +1306,7 @@ const SalesDashboard = () => {
                 >
                   <div className="flex justify-between items-center mb-1.5">
                     <div className="flex items-center gap-1.5">
-                      <MapPin size={16} className={`text-${statusColor}-400`} />
+                <MapPin size={16} className={`text-${statusColor}-400`} />
                       <span className="text-white font-medium">{region.name}</span>
                     </div>
                     <span className={`text-xs px-2 py-1 rounded-full bg-${statusColor}-900/40 text-${statusColor}-300`}>
@@ -1365,6 +1504,9 @@ const SalesDashboard = () => {
   // Общий шаблон с интерактивной боковой панелью
   return (
     <div className="bg-gradient-to-br from-gray-900 to-gray-950 p-4 font-sans text-gray-300 min-h-screen relative">
+      {/* Индикатор загрузки */}
+      {loading && <ContentReadyLoader isLoading={loading} timeout={3000} />}
+
       {/* Плавающая боковая панель */}
       <div 
         className={`fixed top-0 right-0 h-full w-80 bg-gray-850 backdrop-blur-sm border-l border-gray-700 shadow-xl transform transition-transform duration-300 z-50 
@@ -1510,6 +1652,7 @@ const SalesDashboard = () => {
               lastYearSalesData={lastYearSalesData}
               months={months}
               selectedModel={selectedModel}
+              setSelectedModel={setSelectedModel}
               activeTab={activeTab}
               setActiveTab={setActiveTab}
               period={period}
@@ -1517,8 +1660,8 @@ const SalesDashboard = () => {
             />
           </div>
           
-          {/* УЛУЧШЕННАЯ ТАБЛИЦА ЗАДОЛЖЕННОСТИ ПО КОНТРАКТАМ */}
-       <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden">
+   {/* ТАБЛИЦА ЗАДОЛЖЕННОСТИ ПО КОНТРАКТАМ */}
+<div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden">
   <div className="flex justify-between items-center p-3 border-b border-gray-700">
     <h3 className="text-base font-medium text-white flex items-center gap-2">
       <AlertTriangle size={18} className="text-yellow-400" />
@@ -1530,7 +1673,7 @@ const SalesDashboard = () => {
       )}
     </h3>
     <div className="text-sm text-yellow-300">
-      Общая просрочка: <span className="font-bold">{totalDebtDays} {getDayWord(totalDebtDays)}</span>
+      Общее количество: <span className="font-bold">{totalFrozenCount}</span>
     </div>
   </div>
   
@@ -1539,29 +1682,29 @@ const SalesDashboard = () => {
       <table className="w-full text-sm">
         <thead className="bg-gray-900/80">
           <tr>
-            <th className="px-3 py-2 text-left text-gray-400 font-medium">№ Контракта</th>
-            <th className="px-3 py-2 text-left text-gray-400 font-medium">Модель</th>
-            <th className="px-3 py-2 text-right text-gray-400 font-medium">Сумма долга (UZS)</th>
-            <th className="px-3 py-2 text-center text-gray-400 font-medium">Просрочка</th>
+            <th className="px-3 py-2 text-left text-gray-400 font-medium">Название модели</th>
+            <th className="px-3 py-2 text-center text-gray-400 font-medium">Изображение</th>
+            <th className="px-3 py-2 text-right text-gray-400 font-medium">Количество</th>
+            <th className="px-3 py-2 text-center text-gray-400 font-medium">Статус</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-700">
           {debtData.map((item, index) => (
             <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-800/60' : 'bg-gray-850/70'} hover:bg-gray-700/70`}>
-              <td className="px-3 py-2 font-medium text-white">{item.contractId}</td>
-              <td className="px-3 py-2 text-gray-300">
-                <div className="flex items-center gap-2">
-                  <span>{item.modelName}</span>
+              <td className="px-3 py-2 font-medium text-white">{item.modelName}</td>
+              <td className="px-3 py-2 text-center">
+                <div className="w-12 h-12 mx-auto rounded-md overflow-hidden bg-gray-700/70 flex items-center justify-center">
+                  <img 
+                    src={item.modelImg} 
+                    alt={item.modelName} 
+                    className="h-full w-auto object-contain"
+                  />
                 </div>
               </td>
-              <td className="px-3 py-2 text-right text-gray-300 font-medium">{item.debt.toLocaleString()}</td>
+              <td className="px-3 py-2 text-right text-gray-300 font-medium">{item.total_count}</td>
               <td className="px-3 py-2 text-center">
-                <span className={`inline-block px-2 py-1 rounded-full text-xs ${
-                  item.days > 7 ? 'bg-red-900/30 text-red-400 border border-red-800/50' :
-                  item.days > 3 ? 'bg-orange-900/30 text-orange-400 border border-orange-800/50' :
-                  'bg-yellow-900/30 text-yellow-400 border border-yellow-800/50'
-                }`}>
-                  {item.days} {getDayWord(item.days)}
+                <span className="inline-block px-2 py-1 rounded-full text-xs bg-red-900/30 text-red-400 border border-red-800/50">
+                  &gt; 5 дней
                 </span>
               </td>
             </tr>
@@ -1569,13 +1712,12 @@ const SalesDashboard = () => {
         </tbody>
         <tfoot className="bg-gray-900/80">
           <tr>
-            <td className="px-3 py-2 font-medium text-white">Итого</td>
-            <td></td>
+            <td className="px-3 py-2 font-medium text-white" colSpan="2">Итого</td>
             <td className="px-3 py-2 text-right font-medium text-white">
-              {debtData.reduce((sum, item) => sum + item.debt, 0).toLocaleString()} UZS
+              {totalFrozenCount}
             </td>
             <td className="px-3 py-2 text-center text-red-400 text-xs font-medium">
-              В среднем: {avgDebtDays} {getDayWord(avgDebtDays)}
+              Все &gt; 5 дней
             </td>
           </tr>
         </tfoot>
@@ -1584,80 +1726,6 @@ const SalesDashboard = () => {
   </div>
 </div>
         </div>
-        
-        {/* Панель моделей автомобилей - с интерактивным выбором */}
-        {/* <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden mt-5">
-          <div className="flex justify-between items-center p-3 border-b border-gray-700">
-            <h3 className="text-base font-medium text-white flex items-center gap-2">
-              <Car size={18} className="text-green-400" />
-              Популярные модели
-            </h3>
-          </div>
-          
-          <div className="p-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {modelSalesData.map((car, index) => (
-                <div 
-                  key={index} 
-                  className={`bg-gray-700/40 rounded-lg p-3 border transition-all ${
-                    selectedModel === car.id 
-                      ? 'border-green-500 bg-gray-700/70 shadow-[0_0_10px_rgba(34,197,94,0.3)]' 
-                      : 'border-gray-600/50 hover:bg-gray-700/60'
-                  }`}
-                  onClick={() => handleModelSelect(car.id)}
-                >
-                  <div className="h-32 flex items-center justify-center mb-3 bg-gradient-to-b from-gray-800/50 to-gray-900/50 rounded-lg">
-                    <img 
-                      src={car.img} 
-                      alt={car.name} 
-                      className="h-full object-contain p-2"
-                    />
-                  </div>
-                  <div className="text-center">
-                    <h4 className="text-white font-medium mb-1">{car.name}</h4>
-                    <div className="text-xs text-gray-400 mb-2">
-                      {car.category === 'suv' && 'Внедорожник'}
-                      {car.category === 'sedan' && 'Седан'}
-                      {car.category === 'minivan' && 'Минивэн'}
-                      {car.category === 'hatchback' && 'Хэтчбек'}
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-400">Продано:</span>
-                      <span className="text-sm text-white font-medium">{car.sales}</span>
-                    </div>
-                    <div className="mt-1 w-full bg-gray-800 rounded-full h-1.5">
-                      <div 
-                        className="h-1.5 rounded-full bg-green-600"
-                        style={{ width: `${car.percent}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  {selectedModel === car.id && (
-                    <div className="mt-3 flex justify-center">
-                      <button 
-                        className="w-full py-1.5 text-xs bg-gray-800 text-white rounded-md hover:bg-gray-700 transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedModel(null);
-                        }}
-                      >
-                        Сбросить фильтр
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            
-            <div className="mt-4 flex justify-center">
-              <button className="flex items-center gap-1.5 px-4 py-2 bg-gray-700 rounded-md text-sm text-white hover:bg-gray-600 transition-colors">
-                <span>Показать все модели</span>
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
-        </div> */}
       </div>
     </div>
   );
