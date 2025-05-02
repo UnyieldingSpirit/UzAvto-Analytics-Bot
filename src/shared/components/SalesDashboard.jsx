@@ -869,12 +869,24 @@ const SalesDashboard = () => {
   // Расчет данных о задолженностях по контрактам на основе API
   const contractDebtData = useMemo(() => {
     // Расчет количества не отгруженных автомобилей
-    const notShippedCount = Array.isArray(notShippedData) 
-      ? notShippedData.reduce((total, item) => {
-          if (selectedModel && item.model_id !== selectedModel) return total;
-          return total + parseInt(item.total_count || 0);
-        }, 0)
-      : 0;
+const notShippedCount = Array.isArray(notShippedData) 
+  ? notShippedData.reduce((regionTotal, region) => {
+      if (!region.dealers || !Array.isArray(region.dealers)) return regionTotal;
+      
+      const regionCount = region.dealers.reduce((dealerTotal, dealer) => {
+        if (!dealer.models || !Array.isArray(dealer.models)) return dealerTotal;
+        
+        const dealerCount = dealer.models.reduce((modelTotal, model) => {
+          if (selectedModel && model.model !== selectedModel) return modelTotal;
+          return modelTotal + parseInt(model.sold || 0);
+        }, 0);
+        
+        return dealerTotal + dealerCount;
+      }, 0);
+      
+      return regionTotal + regionCount;
+    }, 0)
+  : 0;
     
     // Расчет количества автомобилей в пути
     const inTransitCount = Array.isArray(inMovementData) ? inMovementData.reduce((total, region) => {
@@ -1025,54 +1037,77 @@ const totalFrozenCount = useMemo(() => {
     return selectedModel ? allRecentOrders.filter(order => order.model === selectedModel) : allRecentOrders;
   }, [allRecentOrders, selectedModel]);
 
-  // Данные по регионам для каждого статуса (с учетом фильтрации по модели)
-  const getRegionData = (status, modelId) => {
-    // Для данных из API
-    if (status === 'inTransit' && Array.isArray(inMovementData)) {
-      return inMovementData
-        .filter(region => region.dealers && region.dealers.length > 0)
-        .slice(0, 5)
-        .map(region => {
-          let value = 0;
-          region.dealers.forEach(dealer => {
+const formatNotShippedData = () => {
+  if (!Array.isArray(notShippedData)) return [];
+  
+  return notShippedData.map(item => {
+    return {
+      name: item.region_name || "Регион не указан",
+      value: parseInt(item.total_count || 0),
+      modelId: item.model_id,
+      modelName: item.model_name,
+      photo_sha: item.photo_sha
+    };
+  })
+  .filter(region => region.value > 0)
+  .sort((a, b) => b.value - a.value);
+};
+
+// Обновленная функция getRegionData
+const getRegionData = (status, modelId) => {
+  if (status === 'inTransit' && Array.isArray(inMovementData)) {
+    return inMovementData.map(region => {
+      let totalCount = 0;
+      
+      if (region.dealers && Array.isArray(region.dealers)) {
+        region.dealers.forEach(dealer => {
+          if (dealer.models && Array.isArray(dealer.models)) {
             dealer.models.forEach(model => {
               if (!modelId || model.model === modelId) {
-                value += parseInt(model.sold || 0);
+                totalCount += parseInt(model.sold || 0);
               }
             });
-          });
-          return {
-            name: region.name,
-            value: value > 0 ? value : 1 // Минимальное значение 1
-          };
+          }
         });
-    }
-    
-    // Заглушка для других статусов
-    const baseData = regions.slice(0, 5).map((region, index) => {
-      // Генерация значений с учетом выбранной модели
-      let value;
-      if (status === 'notShipped') {
-        value = 24 - (index * 5);
-      } else {
-        value = 15 - (index * 3);
       }
       
-      // Если выбрана модель, уменьшаем значения пропорционально
+      return {
+        name: region.name,
+        value: totalCount
+      };
+    })
+    .filter(region => region.value > 0)
+    .sort((a, b) => b.value - a.value);
+  } else if (status === 'notShipped') {
+    // Форматируем данные о не отгруженных автомобилях
+    const data = formatNotShippedData();
+    
+    // Если выбрана модель, фильтруем данные
+    if (modelId) {
+      return data.filter(item => item.modelId === modelId);
+    }
+    
+    return data;
+  } else {
+    // Заглушка для других статусов
+    const baseData = regions.slice(0, 5).map((region, index) => {
+      let value = 15 - (index * 3);
+      
       if (modelId) {
         const modelIndex = carModels.findIndex(m => m.id === modelId);
-        const factor = 0.7 - (modelIndex * 0.15); // Разные факторы для разных моделей
+        const factor = 0.7 - (modelIndex * 0.15);
         value = Math.floor(value * factor);
       }
       
       return {
         name: region.name,
-        value: value > 0 ? value : 1 // Минимальное значение 1
+        value: value > 0 ? value : 1
       };
     });
     
     return baseData;
-  };
+  }
+};
 
   const regionData = {
     notShipped: getRegionData('notShipped', selectedModel),
@@ -1110,18 +1145,18 @@ const totalFrozenCount = useMemo(() => {
     return result;
   };
 
-  // Данные по дилерам для каждого региона и статуса
-  const getDealerData = (status, regionName, selectedModelId) => {
-    // Если у нас есть регион из API и это статус автомобилей в пути
-    if (status === 'inTransit' && Array.isArray(inMovementData)) {
-      const region = inMovementData.find(r => r.name === regionName);
-      
-      if (region && region.dealers) {
-        return region.dealers.map(dealer => {
+const getDealerData = (status, regionName, selectedModelId) => {
+
+  if (status === 'inTransit' && Array.isArray(inMovementData)) {
+    const region = inMovementData.find(r => r.name === regionName);
+    
+    if (region && region.dealers) {
+      return region.dealers
+        .map(dealer => {
           // Фильтруем модели по выбранной, если нужно
-          const filteredModels = dealer.models.filter(model => 
-            !selectedModelId || model.model === selectedModelId
-          );
+          const filteredModels = dealer.models && Array.isArray(dealer.models)
+            ? dealer.models.filter(model => !selectedModelId || model.model === selectedModelId)
+            : [];
           
           // Вычисляем общее количество автомобилей
           const value = filteredModels.reduce((sum, model) => 
@@ -1131,7 +1166,7 @@ const totalFrozenCount = useMemo(() => {
           // Преобразуем в нужный формат
           const modelDetails = filteredModels.map(model => ({
             id: model.model,
-            name: model.model,
+            name: carModelMap[model.model]?.name || model.model,
             count: parseInt(model.sold || 0),
             img: carModelMap[model.model]?.img || ''
           }));
@@ -1141,41 +1176,43 @@ const totalFrozenCount = useMemo(() => {
             value,
             models: modelDetails
           };
-        }).filter(dealer => dealer.value > 0);
-      }
+        })
+        .filter(dealer => dealer.value > 0) // Отображаем только дилеров с ненулевыми значениями
+        .sort((a, b) => b.value - a.value); // Сортируем по убыванию количества
     }
-    
-    // Заглушка для других статусов
-    const baseDealers = {
-      'Ташкент': [
-        { name: 'Автосалон Центральный', value: 10, models: generateModelData(3, selectedModelId) },
-        { name: 'GM Premium', value: 8, models: generateModelData(3, selectedModelId) },
-        { name: 'Авто-Максимум', value: 6, models: generateModelData(3, selectedModelId) },
-      ],
-      'Самарканд': [
-        { name: 'GM Самарканд', value: 9, models: generateModelData(3, selectedModelId) },
-        { name: 'Авто-Самарканд', value: 6, models: generateModelData(3, selectedModelId) },
-        { name: 'Самарканд-Моторс', value: 3, models: generateModelData(3, selectedModelId) },
-      ],
-      'Бухара': [
-        { name: 'Бухара-Авто', value: 7, models: generateModelData(3, selectedModelId) },
-        { name: 'GM Бухара', value: 5, models: generateModelData(3, selectedModelId) },
-      ]
-    };
-    
-    // Если выбрана модель, корректируем значения
-    if (selectedModelId && baseDealers[regionName]) {
-      return baseDealers[regionName].map(dealer => {
-        const factor = 0.6 + (Math.random() * 0.3); // Случайный фактор между 0.6 и 0.9
-        return {
-          ...dealer,
-          value: Math.max(1, Math.floor(dealer.value * factor)), // Минимум 1
-        };
-      });
-    }
-    
-    return baseDealers[regionName] || [];
+  }
+  
+  // Заглушка для других статусов
+  const baseDealers = {
+    'Ташкент': [
+      { name: 'Автосалон Центральный', value: 10, models: generateModelData(3, selectedModelId) },
+      { name: 'GM Premium', value: 8, models: generateModelData(3, selectedModelId) },
+      { name: 'Авто-Максимум', value: 6, models: generateModelData(3, selectedModelId) },
+    ],
+    'Самарканд': [
+      { name: 'GM Самарканд', value: 9, models: generateModelData(3, selectedModelId) },
+      { name: 'Авто-Самарканд', value: 6, models: generateModelData(3, selectedModelId) },
+      { name: 'Самарканд-Моторс', value: 3, models: generateModelData(3, selectedModelId) },
+    ],
+    'Бухара': [
+      { name: 'Бухара-Авто', value: 7, models: generateModelData(3, selectedModelId) },
+      { name: 'GM Бухара', value: 5, models: generateModelData(3, selectedModelId) },
+    ]
   };
+  
+  // Если выбрана модель, корректируем значения
+  if (selectedModelId && baseDealers[regionName]) {
+    return baseDealers[regionName].map(dealer => {
+      const factor = 0.6 + (Math.random() * 0.3); // Случайный фактор между 0.6 и 0.9
+      return {
+        ...dealer,
+        value: Math.max(1, Math.floor(dealer.value * factor)), // Минимум 1
+      };
+    });
+  }
+  
+  return baseDealers[regionName] || [];
+};
 
   const dealerData = {
     notShipped: {
@@ -1266,240 +1303,408 @@ const totalFrozenCount = useMemo(() => {
     }
   }, [selectedModel]);
 
-  // Рендеринг содержимого бокового окна
-  const renderSidebarContent = () => {
-    if (activeDetailLevel === 0 || !selectedStatus) return null;
+const renderSidebarContent = () => {
+  if (activeDetailLevel === 0 || !selectedStatus) return null;
 
-    const statusTitle = selectedStatus === 'notShipped' ? 'Не отгружено >48ч' : 'В пути >3 дней';
-    const statusColor = selectedStatus === 'notShipped' ? 'blue' : 'yellow';
-    const statusIcon = selectedStatus === 'notShipped' ? <Archive size={20} /> : <Truck size={20} />;
+  const statusTitle = selectedStatus === 'notShipped' ? 'Не отгружено >48ч' : 'В пути >3 дней';
+  const statusColor = selectedStatus === 'notShipped' ? 'blue' : 'yellow';
+  const statusIcon = selectedStatus === 'notShipped' ? <Archive size={20} /> : <Truck size={20} />;
+  
+  // Получаем актуальный источник данных в зависимости от выбранного статуса
+  const sourceData = selectedStatus === 'notShipped' ? notShippedData : 
+                     selectedStatus === 'inTransit' ? inMovementData : null;
 
-    // Уровень 1: Список регионов
-    if (activeDetailLevel === 1) {
-      const regions = regionData[selectedStatus];
-      const maxRegionValue = getMaxValue(regions);
-      
-      return (
-        <div className="h-full flex flex-col">
-          <div className="flex items-center gap-2 p-3 border-b border-gray-700 bg-gray-800/70">
-            <div className={`text-${statusColor}-400`}>{statusIcon}</div>
-            <h3 className="text-lg font-medium text-white">
+  // Уровень 1: Список регионов
+  if (activeDetailLevel === 1) {
+    // Получаем данные по регионам
+    let regions = [];
+    
+    if (sourceData && Array.isArray(sourceData)) {
+      // Обрабатываем данные API для обоих статусов одинаково
+      regions = sourceData.map(region => {
+        let value = 0;
+        
+        if (region.dealers && Array.isArray(region.dealers)) {
+          region.dealers.forEach(dealer => {
+            if (dealer.models && Array.isArray(dealer.models)) {
+              dealer.models.forEach(model => {
+                if (!selectedModel || model.model === selectedModel) {
+                  value += parseInt(model.sold || 0);
+                }
+              });
+            }
+          });
+        }
+        
+        return { name: region.name, value };
+      })
+      .filter(region => region.value > 0)
+      .sort((a, b) => b.value - a.value);
+    } else {
+      // Для других статусов используем имеющиеся данные
+      regions = regionData[selectedStatus] || [];
+    }
+    
+    return (
+      <div className="h-full flex flex-col"> {/* Увеличена ширина панели */}
+        {/* Улучшенный заголовок */}
+        <div className="flex items-center gap-3 p-4 border-b border-gray-700 bg-gray-800/90">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-${statusColor}-900/40 text-${statusColor}-400`}>
+            {statusIcon}
+          </div>
+          <div>
+            <h3 className="text-lg font-medium text-white flex items-center">
               {statusTitle}
               {selectedModel && (
-                <span className="ml-2 text-sm text-gray-400">
-                  • {carModels.find(m => m.id === selectedModel)?.name}
+                <span className="ml-2 text-sm text-gray-400 flex items-center gap-1">
+                  <span>•</span>
+                  <span>{carModels.find(m => m.id === selectedModel)?.name}</span>
                 </span>
               )}
             </h3>
+            <div className="text-sm text-gray-400">
+              Всего регионов: {regions.length}
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-3">
+          <div className="text-sm text-gray-400 mb-3 px-2 flex items-center gap-2">
+            <MapPin size={14} />
+            <span>Выберите регион для детализации:</span>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-2">
-            <div className="text-sm text-gray-400 mb-3 px-2">Выберите регион для детализации:</div>
-            
-            <div className="space-y-2">
+          {regions.length === 0 ? (
+            <div className="p-6 text-center text-gray-400 bg-gray-800/40 rounded-lg border border-gray-700/50">
+              <AlertTriangle size={24} className="mx-auto mb-2 text-gray-500" />
+              <p>Нет данных для отображения</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
               {regions.map((region, index) => (
                 <div 
                   key={index} 
-                  className={`p-3 rounded-lg border ${selectedRegion === region.name ? `bg-${statusColor}-900/30 border-${statusColor}-700` : 'bg-gray-800/60 border-gray-700'} 
-                    hover:bg-gray-700/70 cursor-pointer transition-all`}
+                  className={`p-3.5 rounded-lg border transition-all duration-200 ${
+                    selectedRegion === region.name 
+                      ? `bg-${statusColor}-900/30 border-${statusColor}-700` 
+                      : 'bg-gray-800/60 border-gray-700 hover:bg-gray-700/70'
+                  } cursor-pointer`}
                   onClick={() => handleRegionSelect(region.name)}
                 >
-                  <div className="flex justify-between items-center mb-1.5">
-                    <div className="flex items-center gap-1.5">
-                <MapPin size={16} className={`text-${statusColor}-400`} />
-                      <span className="text-white font-medium">{region.name}</span>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <MapPin size={18} className={`text-${statusColor}-400`} />
+                      <span className="text-white font-medium text-base">{region.name}</span>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded-full bg-${statusColor}-900/40 text-${statusColor}-300`}>
-                      {region.value}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <div className="w-full bg-gray-700 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full bg-${statusColor}-600`}
-                        style={{ width: `${(region.value / maxRegionValue) * 100}%` }}
-                      ></div>
+                    <div className={`px-2.5 py-1 rounded-full bg-${statusColor}-900/40 text-${statusColor}-300 flex items-center gap-1.5 border border-${statusColor}-800/30`}>
+                      {statusIcon}
+                      <span className="text-sm font-semibold">{region.value}</span>
                     </div>
-                    <span className="text-xs text-gray-400 w-12 text-right">
-                      {Math.round((region.value / maxRegionValue) * 100)}%
-                    </span>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          )}
         </div>
-      );
+      </div>
+    );
+  }
+  
+  // Уровень 2: Список дилеров для выбранного региона
+  if (activeDetailLevel === 2 && selectedRegion) {
+    let dealers = [];
+    
+    if (sourceData && Array.isArray(sourceData)) {
+      // Находим выбранный регион
+      const region = sourceData.find(r => r.name === selectedRegion);
+      
+      if (region && region.dealers && Array.isArray(region.dealers)) {
+        // Фильтруем дилеров по моделям
+        dealers = region.dealers.map(dealer => {
+          let value = 0;
+          const filteredModels = [];
+          
+          if (dealer.models && Array.isArray(dealer.models)) {
+            dealer.models.forEach(model => {
+              if (!selectedModel || model.model === selectedModel) {
+                const count = parseInt(model.sold || 0);
+                value += count;
+                
+                filteredModels.push({
+                  id: model.model,
+                  name: model.model,
+                  count,
+                  img: carModelMap[model.model]?.img || ''
+                });
+              }
+            });
+          }
+          
+          return {
+            name: dealer.name.replace(/^"(.*)".*$/, '$1'), // Убираем кавычки
+            value,
+            models: filteredModels
+          };
+        })
+        .filter(dealer => dealer.value > 0)
+        .sort((a, b) => b.value - a.value);
+      }
+    } else {
+      // Для других статусов используем имеющиеся данные
+      dealers = dealerData[selectedStatus][selectedRegion] || [];
     }
     
-    // Уровень 2: Список дилеров для выбранного региона
-    if (activeDetailLevel === 2 && selectedRegion) {
-      const dealers = dealerData[selectedStatus][selectedRegion] || [];
-      const maxDealerValue = dealers.length > 0 ? getMaxValue(dealers) : 0;
-      
-      return (
-        <div className="h-full flex flex-col">
-          <div className="flex items-center gap-2 p-3 border-b border-gray-700 bg-gray-800/70">
-            <button 
-              onClick={handleBack}
-              className="p-1 rounded-full hover:bg-gray-700"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <h3 className="text-lg font-medium text-white">
-              <span className={`text-${statusColor}-400 text-sm mr-1`}>{statusTitle}</span>
-              {selectedRegion}
-              {selectedModel && (
-                <span className="ml-2 text-sm text-gray-400">
-                  • {carModels.find(m => m.id === selectedModel)?.name}
-                </span>
-              )}
+    return (
+      <div className="h-full flex flex-col"> {/* Увеличена ширина панели */}
+        {/* Улучшенный заголовок с навигацией */}
+        <div className="flex items-center gap-3 p-4 border-b border-gray-700 bg-gray-800/90">
+          <button 
+            onClick={handleBack}
+            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition-colors text-gray-400 hover:text-white"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <div>
+            <h3 className="text-lg font-medium text-white flex items-center gap-1.5">
+              <MapPin size={16} className={`text-${statusColor}-400`} />
+              <span>{selectedRegion}</span>
             </h3>
+            <div className="text-sm text-gray-400 flex items-center gap-1">
+              <span className={`text-${statusColor}-400`}>{statusTitle}</span>
+              {selectedModel && (
+                <>
+                  <span>•</span>
+                  <span>{carModels.find(m => m.id === selectedModel)?.name}</span>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="ml-auto bg-gray-800/80 px-2.5 py-1 rounded-md border border-gray-700 text-sm">
+            <span className="text-gray-400">Дилеров:</span>
+            <span className="text-white font-semibold ml-1">{dealers.length}</span>
+          </div>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-3">
+          <div className="text-sm text-gray-400 mb-3 px-2 flex items-center gap-2">
+            <Users size={14} />
+            <span>Список дилеров в регионе:</span>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-2">
-            <div className="text-sm text-gray-400 mb-3 px-2">Список дилеров:</div>
-            
-            <div className="space-y-2">
+          {dealers.length === 0 ? (
+            <div className="p-6 text-center text-gray-400 bg-gray-800/40 rounded-lg border border-gray-700/50">
+              <AlertTriangle size={24} className="mx-auto mb-2 text-gray-500" />
+              <p>Нет данных для отображения</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
               {dealers.map((dealer, index) => (
                 <div 
                   key={index} 
-                  className={`p-3 rounded-lg border ${selectedDealer === dealer.name ? `bg-${statusColor}-900/30 border-${statusColor}-700` : 'bg-gray-800/60 border-gray-700'} 
-                    hover:bg-gray-700/70 cursor-pointer transition-all`}
+                  className={`p-3.5 rounded-lg border transition-all duration-200 ${
+                    selectedDealer === dealer.name 
+                      ? `bg-${statusColor}-900/30 border-${statusColor}-700` 
+                      : 'bg-gray-800/60 border-gray-700 hover:bg-gray-700/70'
+                  } cursor-pointer`}
                   onClick={() => handleDealerSelect(dealer.name)}
                 >
-                  <div className="flex justify-between items-center mb-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <Users size={16} className="text-gray-400" />
-                      <span className="text-white font-medium">{dealer.name}</span>
+                  <div className="flex justify-between items-center">
+                    <div className="w-3/4 min-w-0"> {/* Ограничение ширины для предотвращения перекрытия */}
+                      <div className="flex items-center gap-2 mb-1">
+                        <Users size={16} className="text-gray-400 flex-shrink-0" />
+                        <span className="text-white font-medium text-base truncate">{dealer.name}</span>
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {dealer.models.length} {dealer.models.length === 1 ? 'модель' : dealer.models.length < 5 ? 'модели' : 'моделей'}
+                      </div>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded-full bg-${statusColor}-900/40 text-${statusColor}-300`}>
-                      {dealer.value}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <div className="w-full bg-gray-700 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full bg-${statusColor}-600`}
-                        style={{ width: `${(dealer.value / maxDealerValue) * 100}%` }}
-                      ></div>
+                    <div className={`px-2.5 py-1 rounded-full bg-${statusColor}-900/40 text-${statusColor}-300 flex items-center gap-1.5 border border-${statusColor}-800/30 whitespace-nowrap`}>
+                      {statusIcon}
+                      <span className="text-sm font-semibold">{dealer.value}</span>
                     </div>
-                    <span className="text-xs text-gray-400 w-12 text-right">
-                      {Math.round((dealer.value / maxDealerValue) * 100)}%
-                    </span>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          )}
         </div>
-      );
+      </div>
+    );
+  }
+  
+  // Уровень 3: Детализация по моделям для выбранного дилера
+  if (activeDetailLevel === 3 && selectedDealer && selectedRegion) {
+    let dealer = null;
+    
+    if (sourceData && Array.isArray(sourceData)) {
+      // Находим выбранный регион
+      const region = sourceData.find(r => r.name === selectedRegion);
+      
+      if (region && region.dealers && Array.isArray(region.dealers)) {
+        // Находим выбранного дилера
+        const dealerData = region.dealers.find(d => 
+          d.name.replace(/^"(.*)".*$/, '$1') === selectedDealer
+        );
+        
+        if (dealerData && dealerData.models && Array.isArray(dealerData.models)) {
+          const filteredModels = dealerData.models
+            .filter(model => !selectedModel || model.model === selectedModel)
+            .map(model => ({
+              id: model.model,
+              name: model.model,
+              count: parseInt(model.sold || 0),
+              img: model.photo_sha
+            }));
+          
+          const totalValue = filteredModels.reduce((sum, model) => sum + model.count, 0);
+          
+          if (totalValue > 0) {
+            dealer = {
+              name: dealerData.name.replace(/^"(.*)".*$/, '$1'),
+              value: totalValue,
+              models: filteredModels
+            };
+          }
+        }
+      }
+    } else {
+      // Для других статусов используем имеющиеся данные
+      const dealers = dealerData[selectedStatus][selectedRegion] || [];
+      dealer = dealers.find(d => d.name === selectedDealer);
     }
     
-    // Уровень 3: Детализация по моделям для выбранного дилера
-    if (activeDetailLevel === 3 && selectedDealer && selectedRegion) {
-      const dealers = dealerData[selectedStatus][selectedRegion] || [];
-      const dealer = dealers.find(d => d.name === selectedDealer);
-      
-      if (!dealer) return null;
-      
-      return (
-        <div className="h-full flex flex-col">
-          <div className="flex items-center gap-2 p-3 border-b border-gray-700 bg-gray-800/70">
+    if (!dealer) return null;
+    
+    return (
+      <div className="h-full flex flex-col"> {/* Увеличена ширина панели */}
+        {/* Улучшенный заголовок с навигацией */}
+        <div className="p-4 border-b border-gray-700 bg-gray-800/90">
+          <div className="flex items-center gap-3 mb-2">
             <button 
               onClick={handleBack}
-              className="p-1 rounded-full hover:bg-gray-700"
+              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition-colors text-gray-400 hover:text-white"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={20} />
             </button>
-            <div className="flex flex-col">
-              <h3 className="text-lg font-medium text-white">{selectedDealer}</h3>
-              <div className="flex items-center text-sm">
-                <span className={`text-${statusColor}-400 mr-1`}>{statusTitle}</span>
-                <span className="text-gray-400">• {selectedRegion}</span>
-                {selectedModel && (
-                  <span className="ml-2 text-gray-400">
-                    • {carModels.find(m => m.id === selectedModel)?.name}
-                  </span>
-                )}
-              </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-medium text-white truncate">{selectedDealer}</h3>
             </div>
           </div>
-          
-          <div className="flex-1 overflow-y-auto p-3">
-            <div className="bg-gray-800/70 rounded-lg p-4 mb-4 border border-gray-700">
-              <div className="flex justify-between items-center mb-3">
-                <div className="text-sm text-gray-400">Всего автомобилей:</div>
-                <div className="text-2xl font-bold text-white">{dealer.value}</div>
+          <div className="flex items-center text-sm text-gray-400 pl-10">
+            <div className="flex items-center gap-1">
+              <MapPin size={14} className="text-gray-500" />
+              <span>{selectedRegion}</span>
+            </div>
+            <span className="mx-1.5">•</span>
+            <div className="flex items-center gap-1">
+              <span className={`text-${statusColor}-400`}>{statusTitle}</span>
+            </div>
+            {selectedModel && (
+              <>
+                <span className="mx-1.5">•</span>
+                <div className="flex items-center gap-1">
+                  <Car size={14} className="text-gray-500" />
+                  <span>{carModels.find(m => m.id === selectedModel)?.name}</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-3">
+          {/* Карточка с общей информацией */}
+          <div className="bg-gray-800/70 rounded-lg p-4 mb-4 border border-gray-700 shadow-md">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex-1">
+                <div className="text-sm text-gray-400 mb-1">Всего автомобилей:</div>
+                <div className="flex items-baseline gap-1.5">
+                  <div className="text-2xl font-bold text-white">{dealer.value}</div>
+                  <div className="text-xs text-gray-400">единиц</div>
+                </div>
               </div>
-              
-              <div className="mb-2 text-sm text-gray-400">Распределение по моделям:</div>
-              
-              <div className="space-y-2">
-                {dealer.models.map((model, idx) => {
-                  const percentage = (model.count / dealer.value) * 100;
-                  
-                  return (
-                    <div key={idx} className="bg-gray-700/50 rounded-lg p-2 border border-gray-600/50">
-                      <div className="flex justify-between items-center mb-1">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-md overflow-hidden bg-gray-600/30">
-                            <img 
-                              src={model.img} 
-                              alt={model.name} 
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <span className="text-white">{model.name}</span>
-                        </div>
-                        <span className={`text-xs px-2 py-1 rounded-full bg-${statusColor}-900/40 text-${statusColor}-300`}>
-                          {model.count}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <div className="w-full bg-gray-700 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full bg-${statusColor}-600`}
-                            style={{ width: `${percentage}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-xs text-gray-400 w-10 text-right">
-                          {Math.round(percentage)}%
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="w-16 h-16 rounded-full bg-gray-750 border border-gray-700 flex items-center justify-center">
+                {statusIcon}
               </div>
             </div>
             
-            <div className="bg-gray-800/70 rounded-lg p-4 border border-gray-700">
-              <h4 className="font-medium text-white mb-3">Рекомендуемые действия:</h4>
-              <ul className="space-y-2">
-                <li className="flex items-start gap-2 text-sm">
-                  <Clock size={16} className="text-gray-400 mt-0.5" />
-                  <span className="text-gray-300">Запросить обновление статуса</span>
-                </li>
-                <li className="flex items-start gap-2 text-sm">
-                  <AlertTriangle size={16} className="text-yellow-400 mt-0.5" />
-                  <span className="text-gray-300">Проверить договоры на отложенные поставки</span>
-                </li>
-                <li className="flex items-start gap-2 text-sm">
-                  <Zap size={16} className="text-green-400 mt-0.5" />
-                  <span className="text-gray-300">Связаться с менеджером дилерского центра</span>
-                </li>
-              </ul>
+            <div className="mb-3 flex items-center gap-2">
+              <div className="text-sm text-gray-400">Распределение по моделям:</div>
+              <div className="text-xs px-2 py-0.5 bg-gray-700 rounded-full text-gray-300 border border-gray-600">
+                {dealer.models.length} {dealer.models.length === 1 ? 'модель' : dealer.models.length < 5 ? 'модели' : 'моделей'}
+              </div>
             </div>
+            
+            {dealer.models.length === 0 ? (
+              <div className="p-4 text-center text-gray-400 bg-gray-800/40 rounded-lg border border-gray-700/50">
+                <AlertTriangle size={24} className="mx-auto mb-2 text-gray-500" />
+                <p>Нет данных для отображения</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {dealer.models.map((model, idx) => (
+                  <div key={idx} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600/50 hover:bg-gray-700/80 transition-colors">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3 min-w-0 w-3/4"> {/* Ограничение ширины */}
+                        <div className="w-12 h-12 rounded-md overflow-hidden bg-gray-600/30 flex-shrink-0 flex items-center justify-center">
+                          <img 
+                            src={`https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400`}
+                            alt={model.photo_sha} 
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-white font-medium truncate">{carModelMap[model.id]?.name || model.name}</span>
+                          <span className="text-xs text-gray-400">{carModelMap[model.id]?.category || 'Авто'}</span>
+                        </div>
+                      </div>
+                      <div className={`px-2.5 py-1 rounded-md bg-${statusColor}-900/40 text-${statusColor}-300 flex items-center gap-1.5 border border-${statusColor}-800/30 whitespace-nowrap`}>
+                        <Car size={14} className="text-gray-400" />
+                        <span className="text-sm font-semibold">{model.count}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          {/* Карточка с рекомендациями */}
+          <div className="bg-gray-800/70 rounded-lg p-4 border border-gray-700 shadow-md">
+            <h4 className="font-medium text-white mb-3 flex items-center gap-2">
+              <Zap size={16} className="text-yellow-400" />
+              Рекомендуемые действия
+            </h4>
+            <ul className="space-y-3">
+              <li className="flex items-start gap-3 p-2.5 rounded-lg bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 transition-colors">
+                <Clock size={18} className="text-blue-400 mt-0.5" />
+                <div>
+                  <div className="text-sm text-gray-200 font-medium">Запросить обновление статуса</div>
+                  <div className="text-xs text-gray-400 mt-0.5">Получите актуальную информацию о состоянии поставки</div>
+                </div>
+              </li>
+              <li className="flex items-start gap-3 p-2.5 rounded-lg bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 transition-colors">
+                <AlertTriangle size={18} className="text-yellow-400 mt-0.5" />
+                <div>
+                  <div className="text-sm text-gray-200 font-medium">Проверить договоры на отложенные поставки</div>
+                  <div className="text-xs text-gray-400 mt-0.5">Проанализируйте условия договоров с повышенным риском</div>
+                </div>
+              </li>
+              <li className="flex items-start gap-3 p-2.5 rounded-lg bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 transition-colors">
+                <Zap size={18} className="text-green-400 mt-0.5" />
+                <div>
+                  <div className="text-sm text-gray-200 font-medium">Связаться с менеджером дилерского центра</div>
+                  <div className="text-xs text-gray-400 mt-0.5">Установите прямой контакт для ускорения процессов</div>
+                </div>
+              </li>
+            </ul>
           </div>
         </div>
-      );
-    }
-    
-    return null;
-  };
+      </div>
+    );
+  }
+  
+  return null;
+};
 
   // Общий шаблон с интерактивной боковой панелью
   return (
@@ -1508,13 +1713,15 @@ const totalFrozenCount = useMemo(() => {
       {loading && <ContentReadyLoader isLoading={loading} timeout={3000} />}
 
       {/* Плавающая боковая панель */}
-      <div 
-        className={`fixed top-0 right-0 h-full w-80 bg-gray-850 backdrop-blur-sm border-l border-gray-700 shadow-xl transform transition-transform duration-300 z-50 
-        ${showSidebar ? 'translate-x-0' : 'translate-x-full'}`}
-        style={{ backgroundColor: 'rgba(17, 24, 39, 0.95)' }}
-      >
-        {renderSidebarContent()}
-        
+    <div 
+  className={`fixed top-0 right-0 h-full bg-gray-850 backdrop-blur-sm border-l border-gray-700 shadow-xl transform transition-transform duration-300 z-50 
+  ${showSidebar ? 'translate-x-0' : 'translate-x-full'}`}
+  style={{ 
+    backgroundColor: 'rgba(17, 24, 39, 0.95)',
+    width: '400px' // Задаем точную ширину
+  }}
+>
+  {renderSidebarContent()}
         {showSidebar && activeDetailLevel > 0 && (
           <button 
             className="absolute top-1/2 -left-10 transform -translate-y-1/2 bg-gray-800 text-gray-400 p-2 rounded-l-lg border border-r-0 border-gray-700"
