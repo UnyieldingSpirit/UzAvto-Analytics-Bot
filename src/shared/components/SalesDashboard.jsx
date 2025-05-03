@@ -509,35 +509,91 @@ const renderChart = () => {
   // Определяем, нужно ли отображать по месяцам или один столбец
   const showMonthlyView = diffDays > 31;
   
+  // Текущая дата - для проверки доступности месяцев
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  
   // Подготавливаем данные и метки
   let currentLabels = [];
   let currentData = [];
-  let comparisonLabels = [];
   let comparisonData = [];
   
   if (showMonthlyView) {
     // Для месячного представления формируем метки по месяцам
     let currentDate = new Date(start.getFullYear(), start.getMonth(), 1);
-    const monthKeys = [];
     
+    // Отслеживаем уже добавленные месяцы, чтобы не было дубликатов
+    const addedMonthKeys = new Set();
+    
+    // Создаем массивы для хранения данных
+    const labelsArray = [];
+    const currentDataArray = [];
+    const comparisonDataArray = [];
+    
+    // Собираем все месяцы в диапазоне
     while (currentDate <= end) {
-      const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-      monthKeys.push(monthKey);
+      // Создаем уникальный ключ для месяца в формате "MM-YYYY"
+      const monthKey = `${currentDate.getMonth()}-${currentDate.getFullYear()}`;
       
+      // Пропускаем, если такой месяц уже добавлен
+      if (addedMonthKeys.has(monthKey)) {
+        // Переходим к следующему месяцу
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        continue;
+      }
+      
+      // Добавляем ключ в Set
+      addedMonthKeys.add(monthKey);
+      
+      // Форматируем метку месяца
       const monthName = currentDate.toLocaleDateString('ru-RU', { month: 'short' });
-      currentLabels.push(monthName);
+      
+      // Если год не текущий, добавляем его к метке
+      const labelWithYear = currentDate.getFullYear() !== currentYear 
+        ? `${monthName} ${currentDate.getFullYear()}`
+        : monthName;
+      
+      labelsArray.push(labelWithYear);
+      
+      // Проверяем, доступен ли месяц в текущем году
+      const isMonthAvailableCurrentYear = currentDate <= now;
+      
+      // Ищем данные для этого месяца
+      const monthIndex = currentDate.getMonth();
+      let value = null;
+      
+      // Заполняем данные
+      if (isMonthAvailableCurrentYear) {
+        value = (Array.isArray(salesData) && monthIndex < salesData.length) 
+          ? salesData[monthIndex] 
+          : 0;
+      }
+      
+      currentDataArray.push(value);
+      
+      // Данные для прошлого года
+      if (showComparison) {
+        const lastYearDate = new Date(currentDate);
+        lastYearDate.setFullYear(lastYearDate.getFullYear() - 1);
+        const lastYearMonthIndex = lastYearDate.getMonth();
+        
+        const lastYearValue = (Array.isArray(lastYearSalesData) && lastYearMonthIndex < lastYearSalesData.length) 
+          ? lastYearSalesData[lastYearMonthIndex] 
+          : 0;
+        
+        comparisonDataArray.push(lastYearValue);
+      }
       
       // Переходим к следующему месяцу
       currentDate.setMonth(currentDate.getMonth() + 1);
     }
     
-    // Используем данные из salesData, которые соответствуют этим месяцам
-    currentData = salesData.length > 0 ? salesData : Array(currentLabels.length).fill(0);
+    // Присваиваем подготовленные данные
+    currentLabels = labelsArray;
+    currentData = currentDataArray;
     
-    // Если включено сравнение, подготавливаем данные для прошлого года
     if (showComparison) {
-      comparisonLabels = currentLabels.map(label => `${label} (${start.getFullYear() - 1})`);
-      comparisonData = lastYearSalesData.length > 0 ? lastYearSalesData : Array(comparisonLabels.length).fill(0);
+      comparisonData = comparisonDataArray;
     }
   } else {
     // Для короткого периода - один столбец
@@ -545,22 +601,33 @@ const renderChart = () => {
     const formattedEnd = end.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
     const label = formattedStart === formattedEnd ? formattedStart : `${formattedStart} - ${formattedEnd}`;
     
-    currentLabels = [label];
+    // Добавляем год, если не текущий
+    const labelWithYear = start.getFullYear() !== currentYear 
+      ? `${label} ${start.getFullYear()}`
+      : label;
+    
+    currentLabels = [labelWithYear];
+    
+    // Проверяем, доступен ли период
+    const isPeriodAvailable = start <= now;
     
     // Суммируем все значения за период
-    const totalValue = salesData.reduce((sum, val) => sum + val, 0);
-    currentData = [totalValue];
+    const totalValue = isPeriodAvailable
+      ? salesData.reduce((sum, val) => sum + (val || 0), 0)
+      : null;
+    
+    currentData = [totalValue !== null ? (totalValue > 0 ? totalValue : 0) : null];
     
     // Если включено сравнение, готовим данные для прошлого года
     if (showComparison) {
-      comparisonLabels = [`${label} (${start.getFullYear() - 1})`];
-      const totalComparisonValue = lastYearSalesData.reduce((sum, val) => sum + val, 0);
-      comparisonData = [totalComparisonValue];
+      const lastYearTotal = lastYearSalesData.reduce((sum, val) => sum + (val || 0), 0);
+      comparisonData = [lastYearTotal || 0];
     }
   }
   
   // Если нет данных для отображения
-  if (currentData.length === 0 || currentData.every(val => val === 0)) {
+  if ((currentData.every(val => val === null || val === 0) || currentData.length === 0) && 
+      (!showComparison || comparisonData.every(val => val === 0) || comparisonData.length === 0)) {
     d3.select(container)
       .append('div')
       .attr('class', 'flex items-center justify-center h-full')
@@ -571,7 +638,7 @@ const renderChart = () => {
   }
   
   // Размеры графика
-  const margin = { top: 30, right: 30, bottom: 80, left: 60 };
+  const margin = { top: 30, right: 30, bottom: 60, left: 60 };
   const width = container.clientWidth - margin.left - margin.right;
   const height = container.clientHeight - margin.top - margin.bottom;
   
@@ -589,8 +656,9 @@ const renderChart = () => {
     .range([0, width])
     .padding(0.3);
   
-  // Максимальное значение для шкалы Y
-  const yMax = d3.max([...currentData, ...(showComparison ? comparisonData : [])]) * 1.1 || 100;
+  // Находим максимальное значение для оси Y, игнорируя null
+  const allValues = [...currentData.filter(v => v !== null), ...comparisonData.filter(v => v !== null)];
+  const yMax = Math.max(...allValues, 1) * 1.1; // Минимум 1, чтобы избежать деления на 0
   
   const y = d3.scaleLinear()
     .domain([0, yMax])
@@ -653,67 +721,90 @@ const renderChart = () => {
     .attr('stroke', 'rgba(75, 85, 99, 0.7)');
   
   // Функция для отображения тултипа
-  const showTooltip = (event, value, label, isLastYear) => {
+  const showTooltip = (event, value, label, isLastYear, index) => {
+    // Если значение null, не показываем тултип
+    if (value === null) return;
+    
     // Находим соответствующее значение для сравнения
     let currentValue = isLastYear ? null : value;
     let lastYearValue = isLastYear ? value : null;
-    let percentChange = 0;
     
     if (showComparison) {
-      const labelIndex = isLastYear ? comparisonLabels.indexOf(label) : currentLabels.indexOf(label);
-      
       if (isLastYear) {
-        currentValue = labelIndex < currentData.length ? currentData[labelIndex] : 0;
+        // Если это прошлогоднее значение, берем текущее по индексу
+        currentValue = index < currentData.length ? currentData[index] : null;
       } else {
-        lastYearValue = labelIndex < comparisonData.length ? comparisonData[labelIndex] : 0;
-      }
-      
-      if (lastYearValue > 0) {
-        percentChange = ((currentValue - lastYearValue) / lastYearValue * 100).toFixed(1);
+        // Если это текущее значение, берем прошлогоднее по индексу
+        lastYearValue = index < comparisonData.length ? comparisonData[index] : 0;
       }
     }
     
-    // Форматирование значений
+    // Функция форматирования значений в зависимости от типа данных
     const formatValue = val => {
+      if (val === null) return "Нет данных";
+      
       if (activeTab === 'год') {
+        // Форматирование для сумм
         return new Intl.NumberFormat('ru-RU', { 
           style: 'currency', 
           currency: 'UZS',
           maximumFractionDigits: 0
         }).format(val);
       } else {
+        // Форматирование для контрактов
         return val.toLocaleString();
       }
     };
     
     // Создаем содержимое тултипа
-    const tooltipContent = `
+    let tooltipContent = `
       <div class="font-bold text-center mb-2 text-purple-300">${label}</div>
       <table class="w-full">
         <tbody>
+    `;
+    
+    if (isLastYear) {
+      tooltipContent += `
+        <tr>
+          <td class="py-1 text-gray-300">Прошлый год:</td>
+          <td class="py-1 font-bold text-right">${formatValue(value)}</td>
+        </tr>
+      `;
+      
+      if (currentValue !== null) {
+        tooltipContent += `
           <tr>
-            <td class="py-1 text-gray-300">${isLastYear ? 'Прошлый период:' : 'Текущий период:'}</td>
-            <td class="py-1 font-bold text-right">${formatValue(value)}</td>
+            <td class="py-1 text-gray-300">Текущий год:</td>
+            <td class="py-1 font-bold text-right">${formatValue(currentValue)}</td>
           </tr>
-          ${showComparison && currentValue !== null && lastYearValue !== null ? `
-            <tr>
-              <td class="py-1 text-gray-300">${isLastYear ? 'Текущий период:' : 'Прошлый период:'}</td>
-              <td class="py-1 font-bold text-right">${formatValue(isLastYear ? currentValue : lastYearValue)}</td>
-            </tr>
-            <tr class="border-t border-gray-700">
-              <td class="py-1 pt-2 text-gray-300">Изменение:</td>
-              <td class="py-1 pt-2 font-bold text-right ${percentChange >= 0 ? 'text-green-400' : 'text-red-400'}">
-                ${percentChange >= 0 ? '+' : ''}${percentChange}%
-              </td>
-            </tr>
-          ` : ''}
+        `;
+      }
+    } else {
+      tooltipContent += `
+        <tr>
+          <td class="py-1 text-gray-300">Текущий год:</td>
+          <td class="py-1 font-bold text-right">${formatValue(value)}</td>
+        </tr>
+      `;
+      
+      if (lastYearValue > 0) {
+        tooltipContent += `
+          <tr>
+            <td class="py-1 text-gray-300">Прошлый год:</td>
+            <td class="py-1 font-bold text-right">${formatValue(lastYearValue)}</td>
+          </tr>
+        `;
+      }
+    }
+    
+    tooltipContent += `
         </tbody>
       </table>
     `;
     
     // Позиционирование тултипа
     const tooltipWidth = 200;
-    const tooltipHeight = showComparison ? 140 : 80;
+    const tooltipHeight = showComparison ? 120 : 80;
     
     let xPos = event.pageX - container.getBoundingClientRect().left;
     let yPos = event.pageY - container.getBoundingClientRect().top;
@@ -761,15 +852,79 @@ const renderChart = () => {
     .attr('offset', '100%')
     .attr('stop-color', '#7E22CE');
   
+  // Добавляем легенду, если включено сравнение
+  if (showComparison) {
+    const legendX = width - 220;
+    const legendY = 10;
+    
+    // Фон для легенды
+    svg.append('rect')
+      .attr('x', legendX - 10)
+      .attr('y', legendY - 5)
+      .attr('width', 220)
+      .attr('height', 40)
+      .attr('rx', 4)
+      .attr('fill', 'rgba(31, 41, 55, 0.7)')
+      .attr('stroke', 'rgba(75, 85, 99, 0.5)');
+    
+    // Текущий год
+    svg.append('rect')
+      .attr('x', legendX)
+      .attr('y', legendY)
+      .attr('width', 20)
+      .attr('height', 10)
+      .attr('rx', 2)
+      .attr('fill', 'url(#purpleGradient)');
+    
+    svg.append('text')
+      .attr('x', legendX + 30)
+      .attr('y', legendY + 8)
+      .attr('fill', '#D1D5DB')
+      .attr('font-size', '12px')
+      .text('Текущий год');
+    
+    // Прошлый год
+    svg.append('rect')
+      .attr('x', legendX + 120)
+      .attr('y', legendY)
+      .attr('width', 20)
+      .attr('height', 10)
+      .attr('rx', 2)
+      .attr('fill', 'rgba(59, 130, 246, 0.7)');
+    
+    svg.append('text')
+      .attr('x', legendX + 150)
+      .attr('y', legendY + 8)
+      .attr('fill', '#D1D5DB')
+      .attr('font-size', '12px')
+      .text('Прошлый год');
+    
+    // Недоступные данные
+    svg.append('rect')
+      .attr('x', legendX)
+      .attr('y', legendY + 20)
+      .attr('width', 20)
+      .attr('height', 10)
+      .attr('rx', 2)
+      .attr('fill', 'rgba(107, 114, 128, 0.1)')
+      .attr('stroke', 'rgba(107, 114, 128, 0.3)')
+      .attr('stroke-dasharray', '2,2');
+    
+    svg.append('text')
+      .attr('x', legendX + 30)
+      .attr('y', legendY + 28)
+      .attr('fill', '#D1D5DB')
+      .attr('font-size', '12px')
+      .text('Данные недоступны');
+  }
+  
   // Рисуем столбцы
   currentLabels.forEach((label, i) => {
-    const value = i < currentData.length ? currentData[i] : 0;
+    const value = i < currentData.length ? currentData[i] : null;
+    const lastYearValue = i < comparisonData.length ? comparisonData[i] : 0;
     
     if (showComparison) {
       // Рисуем столбцы прошлого года
-      const lastYearValue = i < comparisonData.length ? comparisonData[i] : 0;
-      const lastYearLabel = i < comparisonLabels.length ? comparisonLabels[i] : `${label} (пред.)`;
-      
       svg.append('rect')
         .attr('class', 'bar-last-year')
         .attr('x', x(label))
@@ -781,10 +936,10 @@ const renderChart = () => {
         .attr('height', 0)
         .on('mouseover', function(event) {
           d3.select(this).attr('fill', 'rgba(96, 165, 250, 0.9)');
-          showTooltip(event, lastYearValue, lastYearLabel, true);
+          showTooltip(event, lastYearValue, label, true, i);
         })
         .on('mousemove', function(event) {
-          showTooltip(event, lastYearValue, lastYearLabel, true);
+          showTooltip(event, lastYearValue, label, true, i);
         })
         .on('mouseout', function() {
           d3.select(this).attr('fill', 'rgba(59, 130, 246, 0.7)');
@@ -796,106 +951,91 @@ const renderChart = () => {
         .attr('y', y(lastYearValue))
         .attr('height', height - y(lastYearValue));
       
-      // Добавляем метку "Прошлый год"
-      if (i === 0) {
-        svg.append('text')
-          .attr('x', x(label) + x.bandwidth() / 4)
-          .attr('y', height + 45)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '10px')
-          .attr('fill', 'rgba(59, 130, 246, 0.9)')
-          .text('Прошлый год');
-      }
-      
-      // Рисуем столбцы текущего года
-      svg.append('rect')
-        .attr('class', 'bar-current-year')
-        .attr('x', x(label) + x.bandwidth() / 2 + 2)
-        .attr('width', x.bandwidth() / 2 - 2)
-        .attr('rx', 2)
-        .attr('fill', 'url(#purpleGradient)')
-        .attr('filter', 'drop-shadow(0 0 5px rgba(168, 85, 247, 0.5))')
-        .attr('y', height)
-        .attr('height', 0)
-        .on('mouseover', function(event) {
-          d3.select(this).attr('fill', '#b975fa');
-          showTooltip(event, value, label, false);
-        })
-        .on('mousemove', function(event) {
-          showTooltip(event, value, label, false);
-        })
-        .on('mouseout', function() {
-          d3.select(this).attr('fill', 'url(#purpleGradient)');
-          hideTooltip();
-        })
-        .transition()
-        .duration(800)
-        .delay(i * 30)
-        .attr('y', y(value))
-        .attr('height', height - y(value));
-      
-      // Добавляем метку "Текущий год"
-      if (i === 0) {
-        svg.append('text')
-          .attr('x', x(label) + x.bandwidth() * 3/4)
-          .attr('y', height + 45)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '10px')
-          .attr('fill', '#9333EA')
-          .text('Текущий год');
-      }
-      
-      // Добавляем процентное изменение
-      if (lastYearValue > 0) {
-        const percentChange = ((value - lastYearValue) / lastYearValue * 100);
-        const isPositive = value > lastYearValue;
-        
-        svg.append('text')
-          .attr('x', x(label) + x.bandwidth() / 2)
-          .attr('y', y(Math.max(value, lastYearValue)) - 10)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '10px')
-          .attr('font-weight', 'bold')
-          .attr('fill', isPositive ? '#4ADE80' : '#F87171')
-          .attr('opacity', 0)
-          .text(isPositive ? `↑${Math.abs(percentChange).toFixed(1)}%` : `↓${Math.abs(percentChange).toFixed(1)}%`)
+      // Рисуем столбцы текущего года только если значение не null
+      if (value !== null) {
+        svg.append('rect')
+          .attr('class', 'bar-current-year')
+          .attr('x', x(label) + x.bandwidth() / 2 + 2)
+          .attr('width', x.bandwidth() / 2 - 2)
+          .attr('rx', 2)
+          .attr('fill', 'url(#purpleGradient)')
+          .attr('filter', 'drop-shadow(0 0 5px rgba(168, 85, 247, 0.5))')
+          .attr('y', height)
+          .attr('height', 0)
+          .on('mouseover', function(event) {
+            d3.select(this).attr('fill', '#b975fa');
+            showTooltip(event, value, label, false, i);
+          })
+          .on('mousemove', function(event) {
+            showTooltip(event, value, label, false, i);
+          })
+          .on('mouseout', function() {
+            d3.select(this).attr('fill', 'url(#purpleGradient)');
+            hideTooltip();
+          })
           .transition()
-          .duration(500)
-          .delay(800 + i * 30)
-          .attr('opacity', 1);
+          .duration(800)
+          .delay(i * 30)
+          .attr('y', y(value))
+          .attr('height', height - y(value));
+      } else {
+        // Если данных для текущего года нет, показываем пунктирный плейсхолдер
+        svg.append('rect')
+          .attr('class', 'bar-current-year-placeholder')
+          .attr('x', x(label) + x.bandwidth() / 2 + 2)
+          .attr('width', x.bandwidth() / 2 - 2)
+          .attr('height', height)
+          .attr('y', 0)
+          .attr('rx', 2)
+          .attr('fill', 'rgba(107, 114, 128, 0.1)')
+          .attr('stroke', 'rgba(107, 114, 128, 0.3)')
+          .attr('stroke-dasharray', '2,2');
       }
     } else {
       // Если нет сравнения, рисуем один столбец на всю ширину
-      svg.append('rect')
-        .attr('class', 'bar-current-year')
-        .attr('x', x(label))
-        .attr('width', x.bandwidth())
-        .attr('rx', 2)
-        .attr('fill', 'url(#purpleGradient)')
-        .attr('filter', 'drop-shadow(0 0 5px rgba(168, 85, 247, 0.5))')
-        .attr('y', height)
-        .attr('height', 0)
-        .on('mouseover', function(event) {
-          d3.select(this).attr('fill', '#b975fa');
-          showTooltip(event, value, label, false);
-        })
-        .on('mousemove', function(event) {
-          showTooltip(event, value, label, false);
-        })
-        .on('mouseout', function() {
-          d3.select(this).attr('fill', 'url(#purpleGradient)');
-          hideTooltip();
-        })
-        .transition()
-        .duration(800)
-        .delay(i * 30)
-        .attr('y', y(value))
-        .attr('height', height - y(value));
+      if (value !== null) {
+        svg.append('rect')
+          .attr('class', 'bar-current-year')
+          .attr('x', x(label))
+          .attr('width', x.bandwidth())
+          .attr('rx', 2)
+          .attr('fill', 'url(#purpleGradient)')
+          .attr('filter', 'drop-shadow(0 0 5px rgba(168, 85, 247, 0.5))')
+          .attr('y', height)
+          .attr('height', 0)
+          .on('mouseover', function(event) {
+            d3.select(this).attr('fill', '#b975fa');
+            showTooltip(event, value, label, false, i);
+          })
+          .on('mousemove', function(event) {
+            showTooltip(event, value, label, false, i);
+          })
+          .on('mouseout', function() {
+            d3.select(this).attr('fill', 'url(#purpleGradient)');
+            hideTooltip();
+          })
+          .transition()
+          .duration(800)
+          .delay(i * 30)
+          .attr('y', y(value))
+          .attr('height', height - y(value));
+      } else {
+        // Если данных нет, показываем плейсхолдер
+        svg.append('rect')
+          .attr('class', 'bar-current-year-placeholder')
+          .attr('x', x(label))
+          .attr('width', x.bandwidth())
+          .attr('height', height)
+          .attr('y', 0)
+          .attr('rx', 2)
+          .attr('fill', 'rgba(107, 114, 128, 0.1)')
+          .attr('stroke', 'rgba(107, 114, 128, 0.3)')
+          .attr('stroke-dasharray', '2,2');
+      }
     }
   });
 };
   
-  // Эффект для обновления графика при изменении данных
   useEffect(() => {
     if (chartRef.current) {
       renderChart();
@@ -1325,20 +1465,6 @@ const renderChart = () => {
               </div>
             )}
           </div>
-          
-          {/* Кнопка сравнения */}
-          <button 
-            className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 text-sm border ${
-              showComparison 
-                ? 'bg-indigo-900/30 text-indigo-100 border-indigo-700'
-                : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'
-            }`}
-            onClick={toggleComparison}
-          >
-            <Activity size={14} />
-            <span>Сравнение с прошлым годом</span>
-          </button>
-          
           {/* Кнопка обновления данных */}
           <button 
             className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-md text-white text-sm flex items-center gap-1.5"
