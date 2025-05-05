@@ -3330,7 +3330,6 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
   const yearSelector = document.createElement('div');
   yearSelector.className = 'flex justify-between items-center mb-3';
   
-  // Добавляем информацию о выбранном регионе
   let regionInfo = '';
   if (selectedRegion !== 'all') {
     const regionName = regionsList.find(r => r.id === selectedRegion)?.name || 'Выбранный регион';

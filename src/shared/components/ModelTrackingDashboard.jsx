@@ -85,7 +85,9 @@ const formatApiData = () => {
           state_moving: 0,
           state_reserved: 0,
           state_binding: 0,
-          state_booked: 0
+          state_booked: 0,
+          paid_count: 0,       // Добавлено: количество оплаченных
+          no_paid_count: 0     // Добавлено: количество неоплаченных
         });
         uniqueModels.push(modelMap.get(model.model));
       }
@@ -103,6 +105,10 @@ const formatApiData = () => {
       modelData.state_reserved += parseInt(model.state_reserved || 0);
       modelData.state_binding += parseInt(model.state_binding || 0);
       modelData.state_booked += parseInt(model.state_booked || 0);
+      
+      // Добавляем суммирование по оплаченным и неоплаченным
+      modelData.paid_count += parseInt(model.paid_count || 0);
+      modelData.no_paid_count += parseInt(model.no_paid_count || 0);
     });
   });
   
@@ -134,7 +140,9 @@ const formatApiData = () => {
           state_moving: parseInt(model.state_moving || 0),
           state_reserved: parseInt(model.state_reserved || 0),
           state_binding: parseInt(model.state_binding || 0),
-          state_booked: parseInt(model.state_booked || 0)
+          state_booked: parseInt(model.state_booked || 0),
+          paid_count: parseInt(model.paid_count || 0),       // Добавлено: оплаченные в регионе
+          no_paid_count: parseInt(model.no_paid_count || 0)  // Добавлено: неоплаченные в регионе
         });
       }
     });
@@ -168,65 +176,72 @@ const formatApiData = () => {
   const revenueData = calculateRevenueData();
   
   // Данные статусов заказов на основе реальных данных
-  const calculateStatusData = () => {
-    let totalNew = 0;
-    let totalWaiting = 0;
-    let totalComplete = 0;
-    let totalMoving = 0;
-    let totalReserved = 0;
-    let totalBinding = 0;
-    let totalBooked = 0;
-    
-    // Суммируем значения по всем моделям и регионам
-    // Если выбран регион, суммируем только по этому региону
-    if (selectedRegion) {
-      const regionModels = modelsByRegion[selectedRegion.id] || [];
-      regionModels.forEach(model => {
-        totalNew += model.state_new || 0;
-        totalWaiting += model.state_waiting || 0;
-        totalComplete += model.state_complete || 0;
-        totalMoving += model.state_moving || 0;
-        totalReserved += model.state_reserved || 0;
-        totalBinding += model.state_binding || 0;
-        totalBooked += model.state_booked || 0;
-      });
-    } else {
-      data.forEach(region => {
-        region.models.forEach(model => {
-          totalNew += parseInt(model.state_new || 0);
-          totalWaiting += parseInt(model.state_waiting || 0);
-          totalComplete += parseInt(model.state_complete || 0);
-          totalMoving += parseInt(model.state_moving || 0);
-          totalReserved += parseInt(model.state_reserved || 0);
-          totalBinding += parseInt(model.state_binding || 0);
-          totalBooked += parseInt(model.state_booked || 0);
-        });
-      });
-    }
-    
-    return [
-      { id: 'neopl', name: 'Не оплаченный', value: totalNew, color: '#ef4444' },
-      { id: 'ocheredi', name: 'В очереди', value: totalWaiting, color: '#f59e0b' },
-      { id: 'process', name: 'Завершенные', value: totalComplete, color: '#10b981' },
-      { id: 'dostavka', name: 'В пути', value: totalMoving, color: '#8b5cf6' },
-      { id: 'raspredelenie', name: 'Зарезервировано', value: totalReserved + totalBinding, color: '#3b82f6' },
-      { id: 'diler', name: 'Забронировано', value: totalBooked, color: '#6366f1' }
-    ];
-  };
+const calculateStatusData = () => {
+  let totalNew = 0;
+  let totalWaiting = 0;
+  let totalComplete = 0;
+  let totalMoving = 0;
+  let totalReserved = 0;
+  let totalBinding = 0;
+  let totalBooked = 0;
   
+  // Суммируем значения по всем моделям и регионам
+  // Если выбран регион, суммируем только по этому региону
+  if (selectedRegion) {
+    const regionModels = modelsByRegion[selectedRegion.id] || [];
+    regionModels.forEach(model => {
+      totalNew += model.state_new || 0;
+      totalWaiting += model.state_waiting || 0;
+      totalComplete += model.state_complete || 0;
+      totalMoving += model.state_moving || 0;
+      totalReserved += model.state_reserved || 0;
+      totalBinding += model.state_binding || 0;
+      totalBooked += model.state_booked || 0;
+    });
+  } else {
+    data.forEach(region => {
+      region.models.forEach(model => {
+        totalNew += parseInt(model.state_new || 0);
+        totalWaiting += parseInt(model.state_waiting || 0);
+        totalComplete += parseInt(model.state_complete || 0);
+        totalMoving += parseInt(model.state_moving || 0);
+        totalReserved += parseInt(model.state_reserved || 0);
+        totalBinding += parseInt(model.state_binding || 0);
+        totalBooked += parseInt(model.state_booked || 0);
+      });
+    });
+  }
+  
+  return [
+    { id: 'new', name: 'Новый', value: totalNew, color: '#ef4444' },
+    { id: 'waiting', name: 'Ожидает', value: totalWaiting, color: '#f59e0b' },
+    { id: 'distributed', name: 'Распределенно', value: totalReserved, color: '#3b82f6' },
+    { id: 'moving', name: 'В пути', value: totalMoving, color: '#8b5cf6' },
+    { id: 'dealer', name: 'У дилера', value: totalComplete, color: '#10b981' },
+    { id: 'distribution', name: 'На распределении', value: totalBinding, color: '#60a5fa' },
+    { id: 'reserved', name: 'Бронь', value: totalBooked, color: '#6366f1' }
+  ];
+};
   const statusData = calculateStatusData();
   
   // Статусы оплаты
   const calculatePaymentCategories = () => {
-    const totalPaid = statusData.reduce((sum, status) => {
-      // Считаем оплаченными все статусы, кроме "Не оплаченный"
-      if (status.id !== 'neopl') {
-        return sum + status.value;
-      }
-      return sum;
-    }, 0);
+    // Используем напрямую paid_count и no_paid_count для расчетов
+    let totalPaid = 0;
+    let totalUnpaid = 0;
     
-    const totalUnpaid = statusData.find(s => s.id === 'neopl')?.value || 0;
+    if (selectedRegion) {
+      const regionModels = modelsByRegion[selectedRegion.id] || [];
+      regionModels.forEach(model => {
+        totalPaid += model.paid_count || 0;
+        totalUnpaid += model.no_paid_count || 0;
+      });
+    } else {
+      models.forEach(model => {
+        totalPaid += model.paid_count || 0;
+        totalUnpaid += model.no_paid_count || 0;
+      });
+    }
     
     return {
       'oplachen': { name: 'ОПЛАЧЕНО', value: totalPaid, color: '#10b981' },
@@ -242,7 +257,9 @@ const formatApiData = () => {
       'COBALT': 12000,
       'DAMAS-2': 9500,
       'ONIX': 16000,
-      'TRACKER-2': 22000
+      'TRACKER-2': 22000,
+      'Captiva 5T': 18000,
+      'EQUINOX': 20000
     };
     return prices[modelName] || 15000;
   }
@@ -694,61 +711,171 @@ const formatApiData = () => {
           .style('color', '#f1f5f9')
           .style('font-size', '18px')
           .text(model.totalCount || 0);
+
+        // Добавляем информацию об оплаченных и неоплаченных
+        const paymentInfo = card.append('div')
+          .style('margin-top', '8px')
+          .style('margin-bottom', '12px')
+          .style('display', 'flex')
+          .style('justify-content', 'space-between')
+          .style('background', 'rgba(15, 23, 42, 0.3)')
+          .style('border-radius', '8px')
+          .style('padding', '8px 12px');
         
-        // Информация о статусах
-        const statusInfo = card.append('div')
-          .style('margin-top', '12px')
+        // Оплаченные
+        const paidBlock = paymentInfo.append('div')
           .style('display', 'flex')
           .style('flex-direction', 'column')
-          .style('gap', '8px');
-          
-        const newStatus = statusInfo.append('div')
-          .style('display', 'flex')
-          .style('justify-content', 'space-between')
           .style('align-items', 'center');
-          
-        newStatus.append('div')
+        
+        paidBlock.append('div')
           .style('color', '#94a3b8')
-          .style('font-size', '12px')
-          .text('Не оплаченные:');
-          
-        newStatus.append('div')
-          .style('color', '#ef4444')
-          .style('font-weight', 'medium')
-          .style('font-size', '12px')
-          .text(model.state_new || 0);
-          
-    const waitingStatus = statusInfo.append('div')
-          .style('display', 'flex')
-          .style('justify-content', 'space-between')
-          .style('align-items', 'center');
-          
-        waitingStatus.append('div')
-          .style('color', '#94a3b8')
-          .style('font-size', '12px')
-          .text('В очереди:');
-          
-        waitingStatus.append('div')
-          .style('color', '#f59e0b')
-          .style('font-weight', 'medium')
-          .style('font-size', '12px')
-          .text(model.state_waiting || 0);
-          
-        const completeStatus = statusInfo.append('div')
-          .style('display', 'flex')
-          .style('justify-content', 'space-between')
-          .style('align-items', 'center');
-          
-        completeStatus.append('div')
-          .style('color', '#94a3b8')
-          .style('font-size', '12px')
-          .text('Завершенные:');
-          
-        completeStatus.append('div')
+          .style('font-size', '11px')
+          .style('margin-bottom', '2px')
+          .text('ОПЛАЧЕНО');
+        
+        paidBlock.append('div')
           .style('color', '#10b981')
-          .style('font-weight', 'medium')
-          .style('font-size', '12px')
-          .text(model.state_complete || 0);
+          .style('font-weight', 'bold')
+          .style('font-size', '16px')
+          .text(model.paid_count || 0);
+        
+        // Неоплаченные
+        const unpaidBlock = paymentInfo.append('div')
+          .style('display', 'flex')
+          .style('flex-direction', 'column')
+          .style('align-items', 'center');
+        
+        unpaidBlock.append('div')
+          .style('color', '#94a3b8')
+          .style('font-size', '11px')
+          .style('margin-bottom', '2px')
+          .text('НЕ ОПЛАЧЕНО');
+        
+        unpaidBlock.append('div')
+          .style('color', '#ef4444')
+          .style('font-weight', 'bold')
+          .style('font-size', '16px')
+          .text(model.no_paid_count || 0);
+        
+        // Информация о статусах
+    // Информация о статусах
+const statusInfo = card.append('div')
+  .style('display', 'flex')
+  .style('flex-direction', 'column')
+  .style('gap', '8px');
+  
+const newStatus = statusInfo.append('div')
+  .style('display', 'flex')
+  .style('justify-content', 'space-between')
+  .style('align-items', 'center');
+  
+newStatus.append('div')
+  .style('color', '#94a3b8')
+  .style('font-size', '12px')
+  .text('Новый:');
+  
+newStatus.append('div')
+  .style('color', '#ef4444')
+  .style('font-weight', 'medium')
+  .style('font-size', '12px')
+  .text(model.state_new || 0);
+  
+const waitingStatus = statusInfo.append('div')
+  .style('display', 'flex')
+  .style('justify-content', 'space-between')
+  .style('align-items', 'center');
+  
+waitingStatus.append('div')
+  .style('color', '#94a3b8')
+  .style('font-size', '12px')
+  .text('Ожидает:');
+  
+waitingStatus.append('div')
+  .style('color', '#f59e0b')
+  .style('font-weight', 'medium')
+  .style('font-size', '12px')
+  .text(model.state_waiting || 0);
+  
+const completeStatus = statusInfo.append('div')
+  .style('display', 'flex')
+  .style('justify-content', 'space-between')
+  .style('align-items', 'center');
+  
+completeStatus.append('div')
+  .style('color', '#94a3b8')
+  .style('font-size', '12px')
+  .text('У дилера:');
+  
+completeStatus.append('div')
+  .style('color', '#10b981')
+  .style('font-weight', 'medium')
+  .style('font-size', '12px')
+  .text(model.state_complete || 0);
+
+const movingStatus = statusInfo.append('div')
+  .style('display', 'flex')
+  .style('justify-content', 'space-between')
+  .style('align-items', 'center');
+  
+movingStatus.append('div')
+  .style('color', '#94a3b8')
+  .style('font-size', '12px')
+  .text('В пути:');
+  
+movingStatus.append('div')
+  .style('color', '#8b5cf6')
+  .style('font-weight', 'medium')
+  .style('font-size', '12px')
+  .text(model.state_moving || 0);
+
+const reservedStatus = statusInfo.append('div')
+  .style('display', 'flex')
+  .style('justify-content', 'space-between')
+  .style('align-items', 'center');
+  
+reservedStatus.append('div')
+  .style('color', '#94a3b8')
+  .style('font-size', '12px')
+  .text('Распределенно:');
+  
+reservedStatus.append('div')
+  .style('color', '#3b82f6')
+  .style('font-weight', 'medium')
+  .style('font-size', '12px')
+  .text(model.state_reserved || 0);
+
+const bindingStatus = statusInfo.append('div')
+  .style('display', 'flex')
+  .style('justify-content', 'space-between')
+  .style('align-items', 'center');
+  
+bindingStatus.append('div')
+  .style('color', '#94a3b8')
+  .style('font-size', '12px')
+  .text('На распределении:');
+  
+bindingStatus.append('div')
+  .style('color', '#60a5fa')
+  .style('font-weight', 'medium')
+  .style('font-size', '12px')
+  .text(model.state_binding || 0);
+
+const bookedStatus = statusInfo.append('div')
+  .style('display', 'flex')
+  .style('justify-content', 'space-between')
+  .style('align-items', 'center');
+  
+bookedStatus.append('div')
+  .style('color', '#94a3b8')
+  .style('font-size', '12px')
+  .text('Бронь:');
+  
+bookedStatus.append('div')
+  .style('color', '#6366f1')
+  .style('font-weight', 'medium')
+  .style('font-size', '12px')
+  .text(model.state_booked || 0);
           
         // Прогресс-бар для статусов
         const progressContainer = card.append('div')
@@ -767,7 +894,10 @@ const formatApiData = () => {
           const newWidth = ((model.state_new || 0) / total) * 100;
           const waitingWidth = ((model.state_waiting || 0) / total) * 100;
           const completeWidth = ((model.state_complete || 0) / total) * 100;
-          const otherWidth = 100 - newWidth - waitingWidth - completeWidth;
+          const movingWidth = ((model.state_moving || 0) / total) * 100;
+          const reservedWidth = ((model.state_reserved || 0) / total) * 100;
+          const bindingWidth = ((model.state_binding || 0) / total) * 100;
+          const bookedWidth = ((model.state_booked || 0) / total) * 100;
           
           // Создаем сегменты прогресс-бара
           if (newWidth > 0) {
@@ -791,11 +921,32 @@ const formatApiData = () => {
               .style('background', '#10b981');
           }
           
-          if (otherWidth > 0) {
+          if (movingWidth > 0) {
             progressContainer.append('div')
               .style('height', '100%')
-              .style('width', `${otherWidth}%`)
+              .style('width', `${movingWidth}%`)
+              .style('background', '#8b5cf6');
+          }
+          
+          if (reservedWidth > 0) {
+            progressContainer.append('div')
+              .style('height', '100%')
+              .style('width', `${reservedWidth}%`)
               .style('background', '#3b82f6');
+          }
+          
+          if (bindingWidth > 0) {
+            progressContainer.append('div')
+              .style('height', '100%')
+              .style('width', `${bindingWidth}%`)
+              .style('background', '#60a5fa');
+          }
+          
+          if (bookedWidth > 0) {
+            progressContainer.append('div')
+              .style('height', '100%')
+              .style('width', `${bookedWidth}%`)
+              .style('background', '#6366f1');
           }
         }
       });
@@ -866,58 +1017,91 @@ const formatApiData = () => {
         const rightPart = rowContent.append('div')
           .style('display', 'flex')
           .style('align-items', 'center')
-          .style('gap', '32px');
+          .style('gap', '20px');
         
-        // Статусы
-        const newBlock = rightPart.append('div')
+        // Оплачено / Не оплачено
+        const paidBlock = rightPart.append('div')
           .style('display', 'flex')
           .style('flex-direction', 'column')
           .style('align-items', 'flex-end');
         
-        newBlock.append('div')
+        paidBlock.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Не оплачены');
+          .text('Оплачено');
         
-        newBlock.append('div')
-          .style('color', '#ef4444')
-          .style('font-size', '14px')
-          .style('font-weight', 'bold')
-          .text(model.state_new || 0);
-        
-        // В очереди
-        const waitingBlock = rightPart.append('div')
-          .style('display', 'flex')
-          .style('flex-direction', 'column')
-          .style('align-items', 'flex-end');
-        
-        waitingBlock.append('div')
-          .style('color', '#94a3b8')
-          .style('font-size', '12px')
-          .text('В очереди');
-        
-        waitingBlock.append('div')
-          .style('color', '#f59e0b')
-          .style('font-size', '14px')
-          .style('font-weight', 'bold')
-          .text(model.state_waiting || 0);
-        
-        // Завершено
-        const completeBlock = rightPart.append('div')
-          .style('display', 'flex')
-          .style('flex-direction', 'column')
-          .style('align-items', 'flex-end');
-        
-        completeBlock.append('div')
-          .style('color', '#94a3b8')
-          .style('font-size', '12px')
-          .text('Завершены');
-        
-        completeBlock.append('div')
+        paidBlock.append('div')
           .style('color', '#10b981')
           .style('font-size', '14px')
           .style('font-weight', 'bold')
-          .text(model.state_complete || 0);
+          .text(model.paid_count || 0);
+        
+        const unpaidBlock = rightPart.append('div')
+          .style('display', 'flex')
+          .style('flex-direction', 'column')
+          .style('align-items', 'flex-end');
+        
+        unpaidBlock.append('div')
+          .style('color', '#94a3b8')
+          .style('font-size', '12px')
+          .text('Не оплачено');
+        
+        unpaidBlock.append('div')
+          .style('color', '#ef4444')
+          .style('font-size', '14px')
+          .style('font-weight', 'bold')
+          .text(model.no_paid_count || 0);
+        
+        // Статусы
+       const newBlock = rightPart.append('div')
+  .style('display', 'flex')
+  .style('flex-direction', 'column')
+  .style('align-items', 'flex-end');
+
+newBlock.append('div')
+  .style('color', '#94a3b8')
+  .style('font-size', '12px')
+  .text('Новый');
+
+newBlock.append('div')
+  .style('color', '#ef4444')
+  .style('font-size', '14px')
+  .style('font-weight', 'bold')
+  .text(model.state_new || 0);
+        
+        // В очереди
+   const waitingBlock = rightPart.append('div')
+  .style('display', 'flex')
+  .style('flex-direction', 'column')
+  .style('align-items', 'flex-end');
+
+waitingBlock.append('div')
+  .style('color', '#94a3b8')
+  .style('font-size', '12px')
+  .text('Ожидает');
+
+waitingBlock.append('div')
+  .style('color', '#f59e0b')
+  .style('font-size', '14px')
+  .style('font-weight', 'bold')
+  .text(model.state_waiting || 0);
+
+// Завершено
+const completeBlock = rightPart.append('div')
+  .style('display', 'flex')
+  .style('flex-direction', 'column')
+  .style('align-items', 'flex-end');
+
+completeBlock.append('div')
+  .style('color', '#94a3b8')
+  .style('font-size', '12px')
+  .text('У дилера');
+
+completeBlock.append('div')
+  .style('color', '#10b981')
+  .style('font-size', '14px')
+  .style('font-weight', 'bold')
+  .text(model.state_complete || 0);
         
         // Всего
         const totalBlock = rightPart.append('div')
@@ -1115,14 +1299,15 @@ const renderStatusChart = () => {
   // Добавляем обработчики событий без изменения цвета
   bars.on('mouseover', function(event, d) {
       // Определяем описание для каждого статуса
-      const descriptions = {
-        'neopl': 'Заказы без оплаты или с частичной оплатой',
-        'ocheredi': 'Оплаченные заказы в очереди на обработку',
-        'process': 'Заказы завершены',
-        'dostavka': 'Заказы в доставке',
-        'raspredelenie': 'Зарезервированные заказы',
-        'diler': 'Забронированные заказы'
-      };
+    const descriptions = {
+  'new': 'Новые заказы',
+  'waiting': 'Заказы в ожидании',
+  'distributed': 'Распределенные заказы',
+  'moving': 'Заказы в пути',
+  'dealer': 'Заказы у дилера',
+  'distribution': 'На распределении',
+  'reserved': 'Забронированные заказы'
+};
       
       const desc = descriptions[d.id] || 'Нет описания';
       
@@ -1226,14 +1411,15 @@ const renderStatusChart = () => {
     .text('СТАТУС ЗАКАЗОВ');
 
   // Добавляем описания статусов
-  const statusDescriptions = [
-    { id: 'neopl', desc: 'Заказы без оплаты' },
-    { id: 'ocheredi', desc: 'В очереди на обработку' },
-    { id: 'process', desc: 'Завершены' },
-    { id: 'dostavka', desc: 'В пути' },
-    { id: 'raspredelenie', desc: 'Зарезервированы' },
-    { id: 'diler', desc: 'Забронированы' }
-  ];
+const statusDescriptions = [
+  { id: 'new', desc: 'Новые заказы' },
+  { id: 'waiting', desc: 'Заказы в ожидании' },
+  { id: 'distributed', desc: 'Распределенные заказы' },
+  { id: 'moving', desc: 'Заказы в пути' },
+  { id: 'dealer', desc: 'Заказы у дилера' },
+  { id: 'distribution', desc: 'На распределении' },
+  { id: 'reserved', desc: 'Забронированные заказы' }
+];
   
   // Определяем количество колонок в легенде
   const columns = 3; // Показываем в 3 колонки
@@ -1407,16 +1593,17 @@ const renderStatusChart = () => {
           </div>
         </div>
         
-        <p className="text-slate-400 mb-6 font-medium">
-          {currentView === 'general' 
-            ? `СТАТУСЫ ЗАКАЗОВ ${isWholesale ? '(ОПТОВЫЕ)' : '(РОЗНИЧНЫЕ)'}: НЕ ОПЛАЧЕННЫЙ, В ОЧЕРЕДИ, ЗАВЕРШЕННЫЕ, В ПУТИ, ЗАРЕЗЕРВИРОВАННЫЕ, ЗАБРОНИРОВАННЫЕ`
-            : currentView === 'region'
-              ? `СТАТИСТИКА ПО РЕГИОНУ: ${selectedRegion?.name}`
-              : `ДЕТАЛЬНАЯ ИНФОРМАЦИЯ ПО МОДЕЛИ: ${selectedModel?.name}`}
-        </p>
+      <p className="text-slate-400 mb-6 font-medium">
+  {currentView === 'general' 
+    ? `СТАТУСЫ ЗАКАЗОВ ${isWholesale ? '(ОПТОВЫЕ)' : '(РОЗНИЧНЫЕ)'}: НОВЫЙ, ОЖИДАЕТ, РАСПРЕДЕЛЕННО, В ПУТИ, У ДИЛЕРА, НА РАСПРЕДЕЛЕНИИ, БРОНЬ`
+    : currentView === 'region'
+      ? `СТАТИСТИКА ПО РЕГИОНУ: ${selectedRegion?.name}`
+      : `ДЕТАЛЬНАЯ ИНФОРМАЦИЯ ПО МОДЕЛИ: ${selectedModel?.name}`}
+</p>
         
         <div className="mb-6">
           {/* Карточка со статусом оплаты - отображаем только на общем экране и экране региона */}
+{/* Карточка со статусом оплаты - отображаем только на общем экране и экране региона */}
 {currentView !== 'model' && (
   <div className="lg:col-span-8 bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl shadow-xl border border-slate-700/50 relative overflow-hidden mb-6">
     <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-purple-500/5 to-pink-500/5 z-0 pointer-events-none"></div>
@@ -1429,59 +1616,47 @@ const renderStatusChart = () => {
       </div>
       
       <div className="flex justify-center space-x-10 mb-6">
-        {Object.entries(paymentCategories).map(([key, category]) => (
-          <div key={key} className="flex flex-col items-center">
+        {/* Используем напрямую поля paid_count и no_paid_count */}
+        <div className="flex flex-col items-center">
+          <div 
+            className="w-20 h-20 rounded-full flex items-center justify-center mb-2 shadow-lg relative"
+            style={{ 
+              background: `radial-gradient(circle, #10b98130 0%, #10b98110 70%)`
+            }}
+          >
             <div 
-              className="w-20 h-20 rounded-full flex items-center justify-center mb-2 shadow-lg relative"
-              style={{ 
-                background: `radial-gradient(circle, ${category.color}30 0%, ${category.color}10 70%)`
-              }}
-            >
-              <div 
-                className="absolute inset-0 rounded-full z-0"
-                style={{ boxShadow: `0 0 20px ${category.color}30` }}
-              ></div>
-              <span className="text-2xl font-bold relative z-10" style={{ color: category.color }}>{category.value}</span>
-            </div>
-            <span className="text-sm font-medium text-slate-300">{category.name}</span>
+              className="absolute inset-0 rounded-full z-0"
+              style={{ boxShadow: `0 0 20px #10b98130` }}
+            ></div>
+            <span className="text-2xl font-bold relative z-10" style={{ color: '#10b981' }}>
+              {selectedRegion
+                ? modelsByRegion[selectedRegion.id]?.reduce((sum, model) => sum + (model.paid_count || 0), 0)
+                : models.reduce((sum, model) => sum + (model.paid_count || 0), 0)}
+            </span>
           </div>
-        ))}
-      </div>
-      
-      {/* Прогресс-бар оплаты с заголовком */}
-      <div className="mb-6">
-        {/* Расчет процента оплаченных заказов */}
-        {(() => {
-          const totalOrders = paymentCategories['oplachen'].value + paymentCategories['neoplachen'].value;
-          const paidPercent = totalOrders > 0 ? (paymentCategories['oplachen'].value / totalOrders) * 100 : 0;
-          
-          return (
-            <div className="w-full h-4 bg-slate-700 rounded-full overflow-hidden shadow-inner relative">
-              <div 
-                className="h-full rounded-full transition-all duration-1000 absolute left-0 top-0" 
-                style={{ 
-                  width: `${paidPercent}%`, 
-                  background: 'linear-gradient(to right, #10b981, #3b82f6)'
-                }}
-              ></div>
-              <div 
-                className="absolute left-0 top-0 h-full w-full opacity-50 z-0"
-                style={{ 
-                  width: `${paidPercent}%`, 
-                  boxShadow: '0 0 10px rgba(16, 185, 129, 0.5)'
-                }}
-              ></div>
-            </div>
-          );
-        })()}
+          <span className="text-sm font-medium text-slate-300">ОПЛАЧЕНО</span>
+        </div>
         
-        <div className="flex justify-between mt-2 text-sm text-slate-400">
-          <span>Оплачено: {paymentCategories['oplachen'].value} (UZS {formatNumber(revenueData.current * (paymentCategories['oplachen'].value / (paymentCategories['oplachen'].value + paymentCategories['neoplachen'].value || 1)))})</span>
-          <span>Не оплачено: {paymentCategories['neoplachen'].value} (UZS {formatNumber(revenueData.current * (paymentCategories['neoplachen'].value / (paymentCategories['oplachen'].value + paymentCategories['neoplachen'].value || 1)))})</span>
+        <div className="flex flex-col items-center">
+          <div 
+            className="w-20 h-20 rounded-full flex items-center justify-center mb-2 shadow-lg relative"
+            style={{ 
+              background: `radial-gradient(circle, #ef444430 0%, #ef444410 70%)`
+            }}
+          >
+            <div 
+              className="absolute inset-0 rounded-full z-0"
+              style={{ boxShadow: `0 0 20px #ef444430` }}
+            ></div>
+            <span className="text-2xl font-bold relative z-10" style={{ color: '#ef4444' }}>
+              {selectedRegion
+                ? modelsByRegion[selectedRegion.id]?.reduce((sum, model) => sum + (model.no_paid_count || 0), 0)
+                : models.reduce((sum, model) => sum + (model.no_paid_count || 0), 0)}
+            </span>
+          </div>
+          <span className="text-sm font-medium text-slate-300">НЕ ОПЛАЧЕНО</span>
         </div>
       </div>
-      
-      {/* График статусов заказов */}
       <div ref={statusChartRef} className="w-full" style={{ height: '280px' }}></div>
     </div>
   </div>
@@ -1508,6 +1683,22 @@ const renderStatusChart = () => {
                   </div>
                   
                   <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                    <h3 className="text-sm text-slate-400 mb-1">Оплачено</h3>
+                    <div className="text-xl font-bold text-green-500">
+                      {selectedModel?.paid_count || 0} шт.
+                    </div>
+                  </div>
+                  
+                  <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                    <h3 className="text-sm text-slate-400 mb-1">Не оплачено</h3>
+                    <div className="text-xl font-bold text-red-500">
+                      {selectedModel?.no_paid_count || 0} шт.
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
                     <h3 className="text-sm text-slate-400 mb-1">Не оплаченные</h3>
                     <div className="text-xl font-bold text-red-500">
                       {selectedModel?.state_new || 0} шт.
@@ -1518,6 +1709,13 @@ const renderStatusChart = () => {
                     <h3 className="text-sm text-slate-400 mb-1">Заказы в очереди</h3>
                     <div className="text-xl font-bold text-orange-500">
                       {selectedModel?.state_waiting || 0} шт.
+                    </div>
+                  </div>
+                  
+                  <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                    <h3 className="text-sm text-slate-400 mb-1">Завершенные</h3>
+                    <div className="text-xl font-bold text-green-500">
+                      {selectedModel?.state_complete || 0} шт.
                     </div>
                   </div>
                 </div>
@@ -1534,16 +1732,15 @@ const renderStatusChart = () => {
                       </thead>
                       <tbody className="divide-y divide-slate-700/50">
                         {(() => {
-                          // Расчет количества для статусов
-                          const statusCounts = [
-                            { name: 'Не оплаченные', value: selectedModel?.state_new || 0, color: '#ef4444' },
-                            { name: 'В очереди', value: selectedModel?.state_waiting || 0, color: '#f59e0b' },
-                            { name: 'Завершенные', value: selectedModel?.state_complete || 0, color: '#10b981' },
-                            { name: 'В пути', value: selectedModel?.state_moving || 0, color: '#8b5cf6' },
-                            { name: 'Зарезервировано', value: selectedModel?.state_reserved || 0, color: '#3b82f6' },
-                            { name: 'Привязано', value: selectedModel?.state_binding || 0, color: '#6366f1' },
-                            { name: 'Забронировано', value: selectedModel?.state_booked || 0, color: '#ec4899' }
-                          ];
+                       const statusCounts = [
+  { name: 'Новый', value: selectedModel?.state_new || 0, color: '#ef4444' },
+  { name: 'Ожидает', value: selectedModel?.state_waiting || 0, color: '#f59e0b' },
+  { name: 'У дилера', value: selectedModel?.state_complete || 0, color: '#10b981' },
+  { name: 'В пути', value: selectedModel?.state_moving || 0, color: '#8b5cf6' },
+  { name: 'Распределенно', value: selectedModel?.state_reserved || 0, color: '#3b82f6' },
+  { name: 'На распределении', value: selectedModel?.state_binding || 0, color: '#6366f1' },
+  { name: 'Бронь', value: selectedModel?.state_booked || 0, color: '#ec4899' }
+];
                           
                           return statusCounts.map((status, index) => (
                             <tr key={index} className="hover:bg-slate-700/30 transition-colors">
@@ -1562,6 +1759,41 @@ const renderStatusChart = () => {
                         })()}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+                
+                {/* Добавляем информацию об оплате */}
+                <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4 mb-4">
+                  <h3 className="text-sm text-slate-400 mb-3">Статус оплаты</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-slate-800/50 p-3 rounded-lg flex justify-between items-center">
+                      <div>
+                        <h4 className="text-xs text-slate-400">Оплачено</h4>
+                        <div className="text-lg font-bold text-green-500">
+                          {selectedModel?.paid_count || 0} шт.
+                        </div>
+                      </div>
+                      <div className="h-12 w-12 rounded-full flex items-center justify-center" 
+                           style={{background: 'radial-gradient(circle, rgba(16,185,129,0.2) 0%, rgba(16,185,129,0.05) 70%)'}}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="bg-slate-800/50 p-3 rounded-lg flex justify-between items-center">
+                      <div>
+                        <h4 className="text-xs text-slate-400">Не оплачено</h4>
+                        <div className="text-lg font-bold text-red-500">
+                          {selectedModel?.no_paid_count || 0} шт.
+                        </div>
+                      </div>
+                      <div className="h-12 w-12 rounded-full flex items-center justify-center" 
+                           style={{background: 'radial-gradient(circle, rgba(239,68,68,0.2) 0%, rgba(239,68,68,0.05) 70%)'}}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
@@ -1625,25 +1857,25 @@ const renderStatusChart = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700/50">
-                    {statusData.map((status) => {
-                      const totalOrders = statusData.reduce((acc, curr) => acc + curr.value, 0);
-                      const amount = totalOrders > 0 ? Math.round(revenueData.current * (status.value / totalOrders)) : 0;
-                      
-                      return (
-                        <tr key={status.id} className="hover:bg-slate-700/30 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="h-3 w-3 rounded-full mr-3" style={{ 
-                                backgroundColor: status.color,
-                                boxShadow: `0 0 10px ${status.color}70`
-                              }}></div>
-                              <div className="text-sm font-medium text-slate-300">{status.name}</div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">{status.value}</td>
-                        </tr>
-                      );
-                    })}
+                   {statusData.map((status) => {
+  const totalOrders = statusData.reduce((acc, curr) => acc + curr.value, 0);
+  const amount = totalOrders > 0 ? Math.round(revenueData.current * (status.value / totalOrders)) : 0;
+  
+  return (
+    <tr key={status.id} className="hover:bg-slate-700/30 transition-colors">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="h-3 w-3 rounded-full mr-3" style={{ 
+            backgroundColor: status.color,
+            boxShadow: `0 0 10px ${status.color}70`
+          }}></div>
+          <div className="text-sm font-medium text-slate-300">{status.name}</div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">{status.value}</td>
+    </tr>
+  );
+})}
                   </tbody>
                   <tfoot>
                     <tr className="bg-slate-800/50">
