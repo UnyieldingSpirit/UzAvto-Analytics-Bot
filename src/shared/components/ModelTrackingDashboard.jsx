@@ -1521,18 +1521,7 @@ const renderStatusChart = () => {
                     </div>
                   </div>
                 </div>
-                
-                {/* Показатель стоимости в виде карты */}
-                <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4 mb-4">
-                  <h3 className="text-sm text-slate-400 mb-3">Общая стоимость</h3>
-                  <div className="flex items-center justify-between">
-                    <div className="text-2xl font-bold text-white">
-                      {formatNumber(selectedModel?.value || 0)} UZS
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Таблица распределения по статусам */}
+
                 <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4 mb-4">
                   <h3 className="text-sm text-slate-400 mb-3">Распределение по статусам</h3>
                   <div className="overflow-x-auto">
@@ -1633,7 +1622,6 @@ const renderStatusChart = () => {
                     <tr className="border-b border-slate-700/50">
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Статус</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Количество</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Сумма (UZS)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700/50">
@@ -1653,7 +1641,6 @@ const renderStatusChart = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">{status.value}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">{formatNumber(amount)} UZS</td>
                         </tr>
                       );
                     })}
@@ -1663,9 +1650,6 @@ const renderStatusChart = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-300">ИТОГО</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-300">
                         {statusData.reduce((acc, curr) => acc + curr.value, 0)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-300">
-                        {formatNumber(revenueData.current)} UZS
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap"></td>
                     </tr>
