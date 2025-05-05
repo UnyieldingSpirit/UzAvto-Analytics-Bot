@@ -8,87 +8,6 @@ import { useTelegram } from '@/src/hooks/useTelegram';
 import * as d3 from 'd3';
 import ContentReadyLoader from '@/src/shared/layout/ContentReadyLoader';
 
-// Функция для получения меток и данных в зависимости от выбранного периода
-const getLabelsAndData = (startDate, endDate, data, isComparison = false) => {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diffTime = Math.abs(end - start);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  // Для периода до месяца (до 31 дня) - один столбец
-  if (diffDays <= 31) {
-    const formattedStart = start.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-    const formattedEnd = end.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-    const label = formattedStart === formattedEnd 
-      ? formattedStart 
-      : `${formattedStart} - ${formattedEnd}`;
-    
-    // Суммируем все значения в один столбец
-    let totalValue = 0;
-    if (Array.isArray(data) && data.length > 0) {
-      totalValue = data.reduce((sum, val) => sum + (val || 0), 0);
-      if (totalValue === 0) {
-        totalValue = Math.floor(Math.random() * 100) + 50; // Демо-данные если все нули
-      }
-    } else {
-      totalValue = Math.floor(Math.random() * 100) + 50;
-    }
-    
-    return {
-      labels: [isComparison ? `${label}\n(${start.getFullYear()})` : label],
-      data: [totalValue]
-    };
-  }
-  
-  // Для периода более месяца - разбиваем по месяцам
-  const labels = [];
-  const processedData = [];
-  
-  // Создаем помесячные данные для всего периода
-  let currentDate = new Date(start.getFullYear(), start.getMonth(), 1);
-  
-  while (currentDate <= end) {
-    // Форматируем метку с месяцем и, если нужно, с годом
-    const monthName = currentDate.toLocaleDateString('ru-RU', { month: 'short' });
-    const labelWithYear = isComparison 
-      ? `${monthName}\n(${currentDate.getFullYear()})` 
-      : monthName;
-    
-    labels.push(labelWithYear);
-    
-    // Определяем значение для этого месяца
-    let monthValue = 0;
-    
-    if (Array.isArray(data) && data.length > 0) {
-      const monthIndex = currentDate.getMonth();
-      
-      if (data.length === 12) {
-        // Если у нас стандартный набор из 12 месяцев
-        monthValue = data[monthIndex] || 0;
-      } else {
-        // Для произвольных данных берем по модулю
-        const index = monthIndex % data.length;
-        monthValue = data[index] || 0;
-      }
-    }
-    
-    // Если значение нулевое, генерируем случайное для демонстрации
-    if (monthValue === 0) {
-      monthValue = Math.floor(Math.random() * 100) + 50;
-    }
-    
-    processedData.push(monthValue);
-    
-    // Переходим к следующему месяцу
-    currentDate.setMonth(currentDate.getMonth() + 1);
-  }
-  
-  return {
-    labels,
-    data: processedData
-  };
-};
-
 const SalesChart = ({ 
   initialSalesData = [], 
   initialLastYearData = [], 
@@ -1492,6 +1411,7 @@ const renderChart = () => {
       </div>
       
       {/* Основной контент */}
+      
       <div className="p-4">
         {/* График D3 */}
         <div className={`relative h-80 mb-4 bg-gray-900 rounded-lg p-4 border border-gray-700 shadow-inner ${isFilterAnimating ? 'animate-pulse' : ''}`}>
