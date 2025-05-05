@@ -985,311 +985,302 @@ const formatApiData = () => {
     }
   };
 
-  const renderStatusChart = () => {
-    if (!statusChartRef.current) return;
-    d3.select(statusChartRef.current).selectAll('*').remove();
+const renderStatusChart = () => {
+  if (!statusChartRef.current) return;
+  d3.select(statusChartRef.current).selectAll('*').remove();
 
-    const width = statusChartRef.current.clientWidth;
-    const height = 300;
-    const margin = { top: 40, right: 20, bottom: 80, left: 50 }; // Увеличенный нижний отступ для подписей
+  const width = statusChartRef.current.clientWidth;
+  const height = 300;
+  const margin = { top: 40, right: 20, bottom: 80, left: 50 }; // Увеличенный нижний отступ для подписей
 
-    // Создаем SVG
-    const svg = d3.select(statusChartRef.current)
-      .append('svg')
-      .attr('width', width)
-      .attr('height', height + 60) // Увеличиваем высоту для подписей
-      .style('overflow', 'visible');
+  // Создаем SVG
+  const svg = d3.select(statusChartRef.current)
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height + 60) // Увеличиваем высоту для подписей
+    .style('overflow', 'visible');
 
-    // Создаем фильтр для эффекта свечения
-    const defs = svg.append('defs');
-    const filter = defs.append('filter')
-      .attr('id', 'glow');
-    filter.append('feGaussianBlur')
-      .attr('stdDeviation', '3.5')
-      .attr('result', 'coloredBlur');
+  // Создаем фильтр для эффекта свечения
+  const defs = svg.append('defs');
+  const filter = defs.append('filter')
+    .attr('id', 'glow');
+  filter.append('feGaussianBlur')
+    .attr('stdDeviation', '3.5')
+    .attr('result', 'coloredBlur');
 
-    const feMerge = filter.append('feMerge');
-    feMerge.append('feMergeNode')
-      .attr('in', 'coloredBlur');
-    feMerge.append('feMergeNode')
-      .attr('in', 'SourceGraphic');
+  const feMerge = filter.append('feMerge');
+  feMerge.append('feMergeNode')
+    .attr('in', 'coloredBlur');
+  feMerge.append('feMergeNode')
+    .attr('in', 'SourceGraphic');
 
-    // Создаем градиенты для столбцов
-    statusData.forEach((d, i) => {
-      const gradientId = `status-gradient-${i}`;
-      const gradient = defs.append('linearGradient')
-        .attr('id', gradientId)
-        .attr('x1', '0%')
-        .attr('y1', '0%')
-        .attr('x2', '0%')
-        .attr('y2', '100%');
-        
-      gradient.append('stop')
-        .attr('offset', '0%')
-        .attr('stop-color', d3.color(d.color).brighter(0.5));
-        
-      gradient.append('stop')
-        .attr('offset', '100%')
-        .attr('stop-color', d.color);
-    });
+  // Создаем градиенты для столбцов
+  statusData.forEach((d, i) => {
+    const gradientId = `status-gradient-${i}`;
+    const gradient = defs.append('linearGradient')
+      .attr('id', gradientId)
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '0%')
+      .attr('y2', '100%');
+      
+    gradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', d3.color(d.color).brighter(0.5));
+      
+    gradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', d.color);
+  });
 
-    // Создаем всплывающую подсказку
-    const tooltip = d3.select('body')
-      .append('div')
-      .attr('class', 'tooltip')
-      .style('position', 'absolute')
-      .style('visibility', 'hidden')
-      .style('background', 'rgba(15, 23, 42, 0.9)')
-      .style('color', '#f1f5f9')
-      .style('padding', '10px')
-      .style('border-radius', '6px')
-      .style('font-size', '12px')
-      .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.3)')
-      .style('z-index', '1000')
-      .style('max-width', '220px')
-      .style('border', '1px solid rgba(59, 130, 246, 0.2)');
+  // Создаем всплывающую подсказку
+  const tooltip = d3.select('body')
+    .append('div')
+    .attr('class', 'tooltip')
+    .style('position', 'absolute')
+    .style('visibility', 'hidden')
+    .style('background', 'rgba(15, 23, 42, 0.9)')
+    .style('color', '#f1f5f9')
+    .style('padding', '10px')
+    .style('border-radius', '6px')
+    .style('font-size', '12px')
+    .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.3)')
+    .style('z-index', '1000')
+    .style('max-width', '220px')
+    .style('border', '1px solid rgba(59, 130, 246, 0.2)');
 
-    // Создаем шкалы
-    const x = d3.scaleBand()
-      .domain(statusData.map(d => d.name))
-      .range([margin.left, width - margin.right])
-      .padding(0.5);
+  // Создаем шкалы
+  const x = d3.scaleBand()
+    .domain(statusData.map(d => d.name))
+    .range([margin.left, width - margin.right])
+    .padding(0.5);
 
-    const y = d3.scaleLinear()
-      .domain([0, d3.max(statusData, d => d.value) * 1.1])
-      .nice()
-      .range([height - margin.bottom, margin.top]);
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(statusData, d => d.value) * 1.1])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
 
-    // Добавляем оси
-    svg.append('g')
-      .attr('transform', `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).tickSize(0))
-      .call(g => g.select('.domain').remove())
-      .selectAll('text')
-      .attr('transform', 'rotate(-25)')
-      .style('text-anchor', 'end')
-      .style('font-size', '12px')
-      .style('fill', '#94a3b8');
+  // Добавляем оси
+  svg.append('g')
+    .attr('transform', `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(x).tickSize(0))
+    .call(g => g.select('.domain').remove())
+    .selectAll('text')
+    .attr('transform', 'rotate(-25)')
+    .style('text-anchor', 'end')
+    .style('font-size', '12px')
+    .style('fill', '#94a3b8');
 
-    svg.append('g')
-      .attr('transform', `translate(${margin.left},0)`)
-      .call(d3.axisLeft(y).ticks(5).tickFormat(d => d))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('.tick line')
-        .attr('x2', width - margin.left - margin.right)
-        .attr('stroke', '#334155')
-        .attr('stroke-opacity', 0.2))
-      .selectAll('text')
-      .style('font-size', '12px')
-      .style('fill', '#94a3b8');
-
-    // Добавляем сетку
-    svg.selectAll('.grid-line')
-      .data(y.ticks(5))
-      .enter()
-      .append('line')
-      .attr('class', 'grid-line')
-      .attr('x1', margin.left)
-      .attr('x2', width - margin.right)
-      .attr('y1', d => y(d))
-      .attr('y2', d => y(d))
+  svg.append('g')
+    .attr('transform', `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y).ticks(5).tickFormat(d => d))
+    .call(g => g.select('.domain').remove())
+    .call(g => g.selectAll('.tick line')
+      .attr('x2', width - margin.left - margin.right)
       .attr('stroke', '#334155')
-      .attr('stroke-opacity', 0.2)
-      .attr('stroke-dasharray', '4,4');
+      .attr('stroke-opacity', 0.2))
+    .selectAll('text')
+    .style('font-size', '12px')
+    .style('fill', '#94a3b8');
 
-    // Добавляем столбцы с анимацией
-    svg.selectAll('.bar')
-      .data(statusData)
-      .enter()
-      .append('rect')
-      .attr('class', 'bar')
-      .attr('x', d => x(d.name))
-      .attr('width', x.bandwidth())
-      .attr('y', height - margin.bottom)
-      .attr('height', 0)
-      .attr('rx', 8)
-      .attr('fill', (d, i) => `url(#status-gradient-${i})`)
-      .attr('stroke', '#0f172a')
-      .attr('stroke-width', 1)
-      .on('mouseover', function(event, d) {
-        // Определяем описание для каждого статуса
-        const descriptions = {
-          'neopl': 'Заказы без оплаты или с частичной оплатой',
-          'ocheredi': 'Оплаченные заказы в очереди на обработку',
-          'process': 'Заказы завершены',
-          'dostavka': 'Заказы в доставке',
-          'raspredelenie': 'Зарезервированные заказы',
-          'diler': 'Забронированные заказы'
-        };
-        
-        const desc = descriptions[d.id] || 'Нет описания';
-        
-        tooltip
-          .style('visibility', 'visible')
-          .html(`
-            <div>
-              <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${d.color}; margin-right: 5px;"></div>
-                <strong>${d.name}</strong>
-              </div>
-              <div style="margin-top: 5px;">${desc}</div>
-              <div style="margin-top: 8px; font-weight: bold;">Количество: ${d.value}</div>
+  // Добавляем сетку
+  svg.selectAll('.grid-line')
+    .data(y.ticks(5))
+    .enter()
+    .append('line')
+    .attr('class', 'grid-line')
+    .attr('x1', margin.left)
+    .attr('x2', width - margin.right)
+    .attr('y1', d => y(d))
+    .attr('y2', d => y(d))
+    .attr('stroke', '#334155')
+    .attr('stroke-opacity', 0.2)
+    .attr('stroke-dasharray', '4,4');
+
+  // Добавляем столбцы с анимацией
+  const bars = svg.selectAll('.bar')
+    .data(statusData)
+    .enter()
+    .append('rect')
+    .attr('class', 'bar')
+    .attr('x', d => x(d.name))
+    .attr('width', x.bandwidth())
+    .attr('y', height - margin.bottom)
+    .attr('height', 0)
+    .attr('rx', 8)
+    .attr('fill', (d, i) => `url(#status-gradient-${i})`)
+    .attr('stroke', '#0f172a')
+    .attr('stroke-width', 1);
+  
+  // Добавляем обработчики событий без изменения цвета
+  bars.on('mouseover', function(event, d) {
+      // Определяем описание для каждого статуса
+      const descriptions = {
+        'neopl': 'Заказы без оплаты или с частичной оплатой',
+        'ocheredi': 'Оплаченные заказы в очереди на обработку',
+        'process': 'Заказы завершены',
+        'dostavka': 'Заказы в доставке',
+        'raspredelenie': 'Зарезервированные заказы',
+        'diler': 'Забронированные заказы'
+      };
+      
+      const desc = descriptions[d.id] || 'Нет описания';
+      
+      tooltip
+        .style('visibility', 'visible')
+        .html(`
+          <div>
+            <div style="display: flex; align-items: center; margin-bottom: 5px;">
+              <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${d.color}; margin-right: 5px;"></div>
+              <strong>${d.name}</strong>
             </div>
-          `)
-          .style('left', (event.pageX + 15) + 'px')
-          .style('top', (event.pageY - 20) + 'px');
-          
-        d3.select(this)
-          .transition()
-          .duration(200)
-          .attr('fill', d3.color(d.color).brighter(0.2))
-          .attr('stroke-width', 2);
-      })
-      .on('mousemove', function(event) {
-        tooltip
-          .style('left', (event.pageX + 15) + 'px')
-          .style('top', (event.pageY - 20) + 'px');
-      })
-      .on('mouseout', function(event, d) {
-        tooltip
-          .style('visibility', 'hidden');
-          
-        d3.select(this)
-          .transition()
-          .duration(200)
-          .attr('fill', (d, i) => `url(#status-gradient-${i})`)
-          .attr('stroke-width', 1);
-      })
-      .transition()
-      .duration(800)
-      .delay((d, i) => i * 100)
-      .attr('y', d => y(d.value))
-      .attr('height', d => height - margin.bottom - y(d.value));
-
-    // Добавляем подписи над столбцами
-    svg.selectAll('.bar-label')
-      .data(statusData)
-      .enter()
-      .append('text')
-      .attr('class', 'bar-label')
-      .attr('x', d => x(d.name) + x.bandwidth() / 2)
-      .attr('y', d => y(d.value) - 10)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '12px')
-      .style('font-weight', 'bold')
-      .style('fill', d => d3.color(d.color).brighter(0.3))
-      .style('filter', 'url(#glow)')
-      .text(d => d.value)
-      .style('opacity', 0)
-      .transition()
-      .duration(500)
-      .delay((d, i) => i * 100 + 800)
-      .style('opacity', 1);
-
-    // Добавляем линию тренда
-    const line = d3.line()
-      .x(d => x(d.name) + x.bandwidth() / 2)
-      .y(d => y(d.value))
-      .curve(d3.curveMonotoneX);
-
-    svg.append('path')
-      .datum(statusData)
-      .attr('fill', 'none')
-      .attr('stroke', '#94a3b8')
-      .attr('stroke-width', 2)
-      .attr('stroke-dasharray', '6,4')
-      .attr('d', line)
-      .style('opacity', 0)
-      .transition()
-      .duration(800)
-      .delay(1000)
-      .style('opacity', 0.6);
-
-    // Добавляем точки пересечения
-    svg.selectAll('.dot')
-      .data(statusData)
-      .enter()
-      .append('circle')
-      .attr('class', 'dot')
-      .attr('cx', d => x(d.name) + x.bandwidth() / 2)
-      .attr('cy', d => y(d.value))
-      .attr('r', 4)
-      .attr('fill', '#f8fafc')
-      .attr('stroke', d => d.color)
-      .attr('stroke-width', 2)
-      .style('filter', 'url(#glow)')
-      .style('opacity', 0)
-      .transition()
-      .duration(300)
-      .delay((d, i) => i * 100 + 1100)
-      .style('opacity', 1);
-
-    // Добавляем заголовок "СТАТУС ЗАКАЗОВ"
-    svg.append('text')
-      .attr('x', width / 2)
-      .attr('y', height + 15)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '14px')
-      .style('font-weight', 'bold')
-      .style('fill', '#94a3b8')
-      .text('СТАТУС ЗАКАЗОВ');
-
-    // Добавляем описания статусов
-    const statusDescriptions = [
-      { id: 'neopl', desc: 'Заказы без оплаты' },
-      { id: 'ocheredi', desc: 'В очереди на обработку' },
-      { id: 'process', desc: 'Завершены' },
-      { id: 'dostavka', desc: 'В пути' },
-      { id: 'raspredelenie', desc: 'Зарезервированы' },
-      { id: 'diler', desc: 'Забронированы' }
-    ];
-    
-    // Определяем количество колонок в легенде
-    const columns = 3; // Показываем в 3 колонки
-    const itemsPerColumn = Math.ceil(statusDescriptions.length / columns);
-    const columnWidth = (width - margin.left - margin.right) / columns;
-    
-    // Создаем контейнер для легенды
-    const legendContainer = svg.append('g')
-      .attr('transform', `translate(${margin.left}, ${height + 25})`);
-    
-    // Добавляем элементы легенды
-    statusDescriptions.forEach((item, i) => {
-      const column = Math.floor(i / itemsPerColumn);
-      const row = i % itemsPerColumn;
-      
-      const status = statusData.find(s => s.id === item.id);
-      if (!status) return;
-      
-      const itemGroup = legendContainer.append('g')
-        .attr('transform', `translate(${column * columnWidth}, ${row * 20})`);
-      
-      // Цветной индикатор
-      itemGroup.append('rect')
-        .attr('width', 8)
-        .attr('height', 8)
-        .attr('rx', 2)
-        .attr('fill', status.color)
-        .attr('y', -8);
-      
-      // Название статуса
-      itemGroup.append('text')
-        .attr('x', 15)
-        .attr('y', 0)
-        .style('font-size', '10px')
-        .style('fill', '#e2e8f0')
-        .style('font-weight', 'medium')
-        .text(`${status.name}:`);
-      
-      // Описание статуса
-      itemGroup.append('text')
-        .attr('x', status.name.length * 5.5 + 20) // Отступ после названия
-        .attr('y', 0)
-        .style('font-size', '10px')
-        .style('fill', '#94a3b8')
-        .text(item.desc);
+            <div style="margin-top: 5px;">${desc}</div>
+            <div style="margin-top: 8px; font-weight: bold;">Количество: ${d.value}</div>
+          </div>
+        `)
+        .style('left', (event.pageX + 15) + 'px')
+        .style('top', (event.pageY - 20) + 'px');
+    })
+    .on('mousemove', function(event) {
+      tooltip
+        .style('left', (event.pageX + 15) + 'px')
+        .style('top', (event.pageY - 20) + 'px');
+    })
+    .on('mouseout', function() {
+      tooltip.style('visibility', 'hidden');
     });
-  };
+  
+  // Анимируем столбцы
+  bars.transition()
+    .duration(800)
+    .delay((d, i) => i * 100)
+    .attr('y', d => y(d.value))
+    .attr('height', d => height - margin.bottom - y(d.value));
+
+  // Добавляем подписи над столбцами
+  svg.selectAll('.bar-label')
+    .data(statusData)
+    .enter()
+    .append('text')
+    .attr('class', 'bar-label')
+    .attr('x', d => x(d.name) + x.bandwidth() / 2)
+    .attr('y', d => y(d.value) - 10)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '12px')
+    .style('font-weight', 'bold')
+    .style('fill', d => d3.color(d.color).brighter(0.3))
+    .style('filter', 'url(#glow)')
+    .text(d => d.value)
+    .style('opacity', 0)
+    .transition()
+    .duration(500)
+    .delay((d, i) => i * 100 + 800)
+    .style('opacity', 1);
+
+  // Добавляем линию тренда
+  const line = d3.line()
+    .x(d => x(d.name) + x.bandwidth() / 2)
+    .y(d => y(d.value))
+    .curve(d3.curveMonotoneX);
+
+  svg.append('path')
+    .datum(statusData)
+    .attr('fill', 'none')
+    .attr('stroke', '#94a3b8')
+    .attr('stroke-width', 2)
+    .attr('stroke-dasharray', '6,4')
+    .attr('d', line)
+    .style('opacity', 0)
+    .transition()
+    .duration(800)
+    .delay(1000)
+    .style('opacity', 0.6);
+
+  // Добавляем точки пересечения
+  svg.selectAll('.dot')
+    .data(statusData)
+    .enter()
+    .append('circle')
+    .attr('class', 'dot')
+    .attr('cx', d => x(d.name) + x.bandwidth() / 2)
+    .attr('cy', d => y(d.value))
+    .attr('r', 4)
+    .attr('fill', '#f8fafc')
+    .attr('stroke', d => d.color)
+    .attr('stroke-width', 2)
+    .style('filter', 'url(#glow)')
+    .style('opacity', 0)
+    .transition()
+    .duration(300)
+    .delay((d, i) => i * 100 + 1100)
+    .style('opacity', 1);
+
+  // Добавляем заголовок "СТАТУС ЗАКАЗОВ"
+  svg.append('text')
+    .attr('x', width / 2)
+    .attr('y', height + 15)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '14px')
+    .style('font-weight', 'bold')
+    .style('fill', '#94a3b8')
+    .text('СТАТУС ЗАКАЗОВ');
+
+  // Добавляем описания статусов
+  const statusDescriptions = [
+    { id: 'neopl', desc: 'Заказы без оплаты' },
+    { id: 'ocheredi', desc: 'В очереди на обработку' },
+    { id: 'process', desc: 'Завершены' },
+    { id: 'dostavka', desc: 'В пути' },
+    { id: 'raspredelenie', desc: 'Зарезервированы' },
+    { id: 'diler', desc: 'Забронированы' }
+  ];
+  
+  // Определяем количество колонок в легенде
+  const columns = 3; // Показываем в 3 колонки
+  const itemsPerColumn = Math.ceil(statusDescriptions.length / columns);
+  const columnWidth = (width - margin.left - margin.right) / columns;
+  
+  // Создаем контейнер для легенды
+  const legendContainer = svg.append('g')
+    .attr('transform', `translate(${margin.left}, ${height + 25})`);
+  
+  // Добавляем элементы легенды
+  statusDescriptions.forEach((item, i) => {
+    const column = Math.floor(i / itemsPerColumn);
+    const row = i % itemsPerColumn;
+    
+    const status = statusData.find(s => s.id === item.id);
+    if (!status) return;
+    
+    const itemGroup = legendContainer.append('g')
+      .attr('transform', `translate(${column * columnWidth}, ${row * 20})`);
+    
+    // Цветной индикатор
+    itemGroup.append('rect')
+      .attr('width', 8)
+      .attr('height', 8)
+      .attr('rx', 2)
+      .attr('fill', status.color)
+      .attr('y', -8);
+    
+    // Название статуса
+    itemGroup.append('text')
+      .attr('x', 15)
+      .attr('y', 0)
+      .style('font-size', '10px')
+      .style('fill', '#e2e8f0')
+      .style('font-weight', 'medium')
+      .text(`${status.name}:`);
+    
+    // Описание статуса
+    itemGroup.append('text')
+      .attr('x', status.name.length * 5.5 + 20) // Отступ после названия
+      .attr('y', 0)
+      .style('font-size', '10px')
+      .style('fill', '#94a3b8')
+      .text(item.desc);
+  });
+};
 
   return (
     <>
