@@ -18,7 +18,7 @@ const CarContractsAnalytics = () => {
   const [loadingComponent, setLoadingComponent] = useState(true);
   const [regionsList, setRegionsList] = useState([]);
   const [viewMode, setViewMode] = useState('cards');
-const [selectedYear, setSelectedYear] = useState('2025');
+  const [selectedYear, setSelectedYear] = useState('2025');
   const regionContractsRef = useRef(null);
   const modelContractsRef = useRef(null);
   const timelineContractsRef = useRef(null);
@@ -31,16 +31,15 @@ const [selectedYear, setSelectedYear] = useState('2025');
   const moneyReturnChartRef = useRef(null);
   const [yearlyChartData, setYearlyChartData] = useState([]);
 
-  const [yearlyData, setYearlyData] = useState({});
-const [yearlyDataLoading, setYearlyDataLoading] = useState(false);
+  const [yearlyDataLoading, setYearlyDataLoading] = useState(false);
   const carColors = ['Белый', 'Черный', 'Серебряный', 'Красный', 'Синий', 'Зеленый'];
   const carModifications = ['Стандарт', 'Комфорт', 'Люкс', 'Премиум', 'Спорт'];
-const getYearDateRange = (year) => {
-  return {
-    beginDate: `01.01.${year}`,
-    endDate: `31.12.${year}`
+  const getYearDateRange = (year) => {
+    return {
+     beginDate: `01.01.${year}`,
+     endDate: `31.12.${year}`
+    };
   };
-};
 
 const extractMonthlyReturnData = (apiData, year) => {
   const months = [
@@ -3318,9 +3317,18 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
   const container = ref.current;
   container.innerHTML = '';
   
+  // Используем обычную переменную вместо хука useState
+  let activeYears = [selectedYear]; // Инициализируем текущим выбранным годом
+  
+  const yearColors = {
+    '2023': { color: '#FF5252', name: '2023' },
+    '2024': { color: '#4CAF50', name: '2024' },
+    '2025': { color: '#2196F3', name: '2025' }
+  };
+  
   // Селектор года (добавляем до основного графика)
   const yearSelector = document.createElement('div');
-  yearSelector.className = 'flex justify-between items-center mb-2';
+  yearSelector.className = 'flex justify-between items-center mb-3';
   
   // Добавляем информацию о выбранном регионе
   let regionInfo = '';
@@ -3338,136 +3346,171 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
   yearSelector.innerHTML = `
     <div class="flex items-center">
       ${regionInfo}
+      <div class="text-sm text-gray-400 ml-2">Сравнение по годам:</div>
     </div>
     <div class="bg-gray-700 rounded-lg p-1 flex items-center border border-gray-700">
-      <button class="year-btn ${selectedYear === '2023' ? 'bg-blue-600 text-white' : 'text-gray-400'} px-3 py-1 text-sm font-medium rounded-md" data-year="2023">2023</button>
-      <button class="year-btn ${selectedYear === '2024' ? 'bg-blue-600 text-white' : 'text-gray-400'} px-3 py-1 text-sm font-medium rounded-md" data-year="2024">2024</button>
-      <button class="year-btn ${selectedYear === '2025' ? 'bg-blue-600 text-white' : 'text-gray-400'} px-3 py-1 text-sm font-medium rounded-md" data-year="2025">2025</button>
+      <label class="year-btn relative overflow-hidden ${activeYears.includes('2023') ? 'active-year bg-red-600 text-white' : 'text-gray-400 hover:text-white'} px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all">
+        <input type="checkbox" class="year-checkbox absolute opacity-0" data-year="2023" ${activeYears.includes('2023') ? 'checked' : ''}>
+        2023
+      </label>
+      <label class="year-btn relative overflow-hidden ${activeYears.includes('2024') ? 'active-year bg-green-600 text-white' : 'text-gray-400 hover:text-white'} px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all">
+        <input type="checkbox" class="year-checkbox absolute opacity-0" data-year="2024" ${activeYears.includes('2024') ? 'checked' : ''}>
+        2024
+      </label>
+      <label class="year-btn relative overflow-hidden ${activeYears.includes('2025') ? 'active-year bg-blue-600 text-white' : 'text-gray-400 hover:text-white'} px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all">
+        <input type="checkbox" class="year-checkbox absolute opacity-0" data-year="2025" ${activeYears.includes('2025') ? 'checked' : ''}>
+        2025
+      </label>
     </div>
   `;
   container.appendChild(yearSelector);
-  
-  // Добавляем обработчики для кнопок годов
-  yearSelector.querySelectorAll('.year-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const year = btn.getAttribute('data-year');
-      
-      // Обновляем состояние React
-      setSelectedYear(year);
-      
-      // Визуально обновляем UI сразу
-      yearSelector.querySelectorAll('.year-btn').forEach(b => {
-        b.classList.remove('bg-blue-600', 'text-white');
-        b.classList.add('text-gray-400');
-      });
-      btn.classList.remove('text-gray-400');
-      btn.classList.add('bg-blue-600', 'text-white');
-      
-      // Сразу показываем лоадер внутри функции при клике, не дожидаясь re-render
-      const graphContainer = container.querySelector('.chart-container');
-      if (graphContainer) {
-        graphContainer.innerHTML = '';
-        const loadingIndicator = document.createElement('div');
-        loadingIndicator.className = 'flex items-center justify-center h-64';
-        loadingIndicator.innerHTML = `
-          <div class="flex flex-col items-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-3"></div>
-            <p class="text-gray-400 text-sm">Загрузка данных за ${year} год${selectedRegion !== 'all' ? ' по выбранному региону' : ''}...</p>
-          </div>
-        `;
-        graphContainer.appendChild(loadingIndicator);
-      }
-      
-      // Запрашиваем данные за выбранный год с учетом текущих фильтров
-      setYearlyDataLoading(true);
-      fetchYearlyData(year);
-    });
-  });
   
   // Создаем основной контейнер для графика
   const graphContainer = document.createElement('div');
   graphContainer.className = 'chart-container w-full h-[300px]';
   container.appendChild(graphContainer);
-
-  // Если идет загрузка годовых данных, показываем индикатор загрузки
-  if (yearlyDataLoading) {
-    const loadingIndicator = document.createElement('div');
-    loadingIndicator.className = 'flex items-center justify-center h-64';
-    loadingIndicator.innerHTML = `
-      <div class="flex flex-col items-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-3"></div>
-        <p class="text-gray-400 text-sm">Загрузка данных за ${selectedYear} год${selectedRegion !== 'all' ? ' по выбранному региону' : ''}...</p>
-      </div>
-    `;
-    graphContainer.appendChild(loadingIndicator);
-    return;
-  }
   
-  // Определяем, какие данные использовать
-  // В приоритете используем данные из yearlyChartData, если они есть
-  const displayData = yearlyChartData.length > 0 ? yearlyChartData : data;
+  // Функция для обновления выбранных годов
+  const updateSelectedYears = () => {
+    const yearCheckboxes = yearSelector.querySelectorAll('.year-checkbox');
+    const newSelectedYears = [];
+    
+    yearCheckboxes.forEach(checkbox => {
+      const yearBtn = checkbox.parentElement;
+      if (checkbox.checked) {
+        newSelectedYears.push(checkbox.dataset.year);
+        // Добавляем класс активной кнопки
+        if (checkbox.dataset.year === '2023') {
+          yearBtn.className = "year-btn relative overflow-hidden active-year bg-red-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
+        } else if (checkbox.dataset.year === '2024') {
+          yearBtn.className = "year-btn relative overflow-hidden active-year bg-green-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
+        } else {
+          yearBtn.className = "year-btn relative overflow-hidden active-year bg-blue-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
+        }
+      } else {
+        // Неактивная кнопка
+        yearBtn.className = "year-btn relative overflow-hidden text-gray-400 hover:text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
+      }
+    });
+    
+    // Обновляем, если есть выбранные года
+    if (newSelectedYears.length > 0) {
+      activeYears = newSelectedYears;
+      
+      // Показываем лоадер
+      graphContainer.innerHTML = `
+        <div class="flex items-center justify-center h-64">
+          <div class="flex flex-col items-center">
+            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mb-3"></div>
+            <p class="text-gray-400 text-sm">Загрузка данных...</p>
+          </div>
+        </div>
+      `;
+      
+      // Загружаем данные для всех выбранных годов
+      Promise.all(newSelectedYears.map(year => fetchYearData(year)))
+        .then(yearsData => {
+          renderMultiYearChart(graphContainer, yearsData, valueKey, labelKey, title);
+        });
+    } else {
+      // Если не выбран ни один год, устанавливаем текущий год по умолчанию
+      const defaultYear = selectedYear;
+      yearSelector.querySelector(`.year-checkbox[data-year="${defaultYear}"]`).checked = true;
+      
+      const defaultYearBtn = yearSelector.querySelector(`.year-checkbox[data-year="${defaultYear}"]`).parentElement;
+      if (defaultYear === '2023') {
+        defaultYearBtn.className = "year-btn relative overflow-hidden active-year bg-red-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
+      } else if (defaultYear === '2024') {
+        defaultYearBtn.className = "year-btn relative overflow-hidden active-year bg-green-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
+      } else {
+        defaultYearBtn.className = "year-btn relative overflow-hidden active-year bg-blue-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
+      }
+      
+      activeYears = [defaultYear];
+      
+      fetchYearData(defaultYear)
+        .then(yearData => {
+          renderMultiYearChart(graphContainer, [yearData], valueKey, labelKey, title);
+        });
+    }
+  };
   
-  // Если данных нет вообще, показываем сообщение и инициируем загрузку
-  if (!displayData || displayData.length === 0) {
-    const emptyState = document.createElement('div');
-    emptyState.className = 'flex items-center justify-center h-64';
-    emptyState.innerHTML = `
-      <div class="flex flex-col items-center">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-        <p class="text-gray-400 text-center mb-1">Нет данных для отображения за ${selectedYear} год${selectedRegion !== 'all' ? ' по выбранному региону' : ''}</p>
-        <button class="mt-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors flex items-center" id="retry-load-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+  // Загрузка данных за конкретный год
+  const fetchYearData = (year) => {
+    return new Promise((resolve) => {
+      // Получаем диапазон дат для года
+      const { beginDate, endDate } = getYearDateRange(year);
+      
+      // Формируем URL в зависимости от активного таба
+      const apiUrl = getApiUrlForTab(activeTab);
+      
+      // Подготавливаем данные запроса
+      const requestData = {
+        begin_date: beginDate,
+        end_date: endDate,
+        model_id: selectedModel !== 'all' ? selectedModel : undefined,
+        region_id: selectedRegion !== 'all' ? selectedRegion : undefined
+      };
+      
+      axios.post(apiUrl, requestData)
+        .then(response => {
+          if (response.data && Array.isArray(response.data)) {
+            // Преобразуем данные в формат для графика
+            const monthlyData = prepareMonthlyDataFromResponse(response.data, year);
+            resolve({ year, data: monthlyData });
+          } else {
+            resolve({ year, data: [] });
+          }
+        })
+        .catch(error => {
+          console.error(`Ошибка при получении данных за ${year} год:`, error);
+          resolve({ year, data: [] });
+        });
+    });
+  };
+  
+  // Функция для отображения пустого состояния
+  function showEmptyState(container) {
+    container.innerHTML = `
+      <div class="flex items-center justify-center h-64">
+        <div class="flex flex-col items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
-          Загрузить данные
-        </button>
+          <p class="text-gray-400 text-center mb-1">Нет данных для отображения</p>
+          <button class="mt-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors flex items-center" id="retry-load-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Загрузить данные
+          </button>
+        </div>
       </div>
     `;
-    graphContainer.appendChild(emptyState);
     
     // Добавляем обработчик для кнопки повторной загрузки
-    const retryBtn = graphContainer.querySelector('#retry-load-btn');
+    const retryBtn = container.querySelector('#retry-load-btn');
     if (retryBtn) {
       retryBtn.addEventListener('click', () => {
-        // Показываем лоадер сразу при нажатии кнопки
-        graphContainer.innerHTML = '';
-        const loadingIndicator = document.createElement('div');
-        loadingIndicator.className = 'flex items-center justify-center h-64';
-        loadingIndicator.innerHTML = `
-          <div class="flex flex-col items-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-3"></div>
-            <p class="text-gray-400 text-sm">Загрузка данных за ${selectedYear} год${selectedRegion !== 'all' ? ' по выбранному региону' : ''}...</p>
-          </div>
-        `;
-        graphContainer.appendChild(loadingIndicator);
-        
-        // Запрашиваем данные
-        setYearlyDataLoading(true);
-        fetchYearlyData(selectedYear);
+        updateSelectedYears();
       });
     }
-    
-    return;
   }
   
-  // Преобразуем данные перед отрисовкой (удаляем отрицательные значения)
-  const processedData = displayData.map(item => {
-    const value = item[valueKey] !== undefined ? item[valueKey] : 0;
-    return {
-      ...item,
-      [valueKey]: Math.abs(value)
-    };
-  });
-  
-  function renderD3Chart(container, chartData, valKey, labelKey, chartTitle, year) {
+  // Функция для отрисовки мультигодового графика
+  function renderMultiYearChart(container, yearsData, valKey, labelKey, chartTitle) {
     // Очищаем контейнер перед рендерингом
     container.innerHTML = '';
     
-    const margin = { top: 20, right: 30, bottom: 40, left: 60 };
+    // Если нет данных, показываем пустое состояние
+    if (!yearsData || yearsData.length === 0 || yearsData.every(yd => !yd.data || yd.data.length === 0)) {
+      showEmptyState(container);
+      return;
+    }
+    
+    const margin = { top: 30, right: 100, bottom: 50, left: 60 };
     const width = container.clientWidth - margin.left - margin.right;
-    const height = container.clientHeight - margin.top - margin.bottom;
+    const height = container.clientHeight - margin.top - margin.bottom - 20;
     
     const svg = d3.select(container)
       .append("svg")
@@ -3475,100 +3518,47 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       .attr("height", height + margin.top + margin.bottom)
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
-      
-    // Уникальные ID для градиентов
+    
+    // Уникальный ID для градиентов и других элементов
     const uniqueId = Date.now();
-    const areaGradientId = `areaGradient-${valKey}-${uniqueId}`;
-    const lineGradientId = `lineGradient-${valKey}-${uniqueId}`;
     
-    // Градиенты
-    const defs = svg.append("defs");
+    // Получаем все месяцы для оси X
+    const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
     
-    // Выбираем цвета в зависимости от активного таба
-    let primaryColor, secondaryColor;
-    switch(valKey) {
-      case 'contracts':
-        primaryColor = '#3b82f6'; // Blue
-        secondaryColor = '#2563eb'; // Dark blue
-        break;
-      case 'sales':
-        primaryColor = '#10b981'; // Green
-        secondaryColor = '#059669'; // Dark green
-        break;
-      case 'stock':
-        primaryColor = '#8b5cf6'; // Purple
-        secondaryColor = '#7c3aed'; // Dark purple
-        break;
-      case 'retail':
-        primaryColor = '#f59e0b'; // Amber
-        secondaryColor = '#d97706'; // Dark amber
-        break;
-      case 'wholesale':
-        primaryColor = '#6366f1'; // Indigo
-        secondaryColor = '#4f46e5'; // Dark indigo
-        break;
-      case 'promotions':
-        primaryColor = '#ef4444'; // Red
-        secondaryColor = '#dc2626'; // Dark red
-        break;
-      default:
-        primaryColor = '#3b82f6'; // Blue
-        secondaryColor = '#2563eb'; // Dark blue
-    }
-    
-    // Градиент для области
-    const areaGradient = defs.append("linearGradient")
-      .attr("id", areaGradientId)
-      .attr("x1", "0%").attr("y1", "0%")
-      .attr("x2", "0%").attr("y2", "100%");
+    // Подготавливаем данные для графика
+    const allMonthsData = yearsData.map(yearData => {
+      const year = yearData.year;
+      const data = yearData.data || [];
       
-    areaGradient.append("stop")
-      .attr("offset", "0%")
-      .attr("stop-color", primaryColor)
-      .attr("stop-opacity", 0.7);
-      
-    areaGradient.append("stop")
-      .attr("offset", "100%")
-      .attr("stop-color", primaryColor)
-      .attr("stop-opacity", 0.1);
-    
-    // Градиент для линии
-    const lineGradient = defs.append("linearGradient")
-      .attr("id", lineGradientId)
-      .attr("x1", "0%").attr("y1", "0%")
-      .attr("x2", "100%").attr("y2", "0%");
-      
-    lineGradient.append("stop")
-      .attr("offset", "0%")
-      .attr("stop-color", primaryColor);
-      
-    lineGradient.append("stop")
-      .attr("offset", "100%")
-      .attr("stop-color", secondaryColor);
-    
-    // Проверяем наличие данных и их формат
-    const hasValue = chartData.some(d => d[valKey] !== undefined && d[valKey] > 0);
-    if (!hasValue) {
-      svg.append("text")
-        .attr("x", width / 2)
-        .attr("y", height / 2)
-        .attr("text-anchor", "middle")
-        .style("font-size", "14px")
-        .style("fill", "#999")
-        .text("Нет данных для отображения");
-      return;
-    }
+      // Создаем полный набор месяцев
+      return months.map(month => {
+        // Находим соответствующий месяц в данных
+        const monthData = data.find(d => d[labelKey] === month) || {};
+        
+        return {
+          month,
+          year,
+          [valKey]: monthData[valKey] || 0,
+          amount: monthData.amount || 0,
+          color: yearColors[year].color
+        };
+      });
+    }).flat();
     
     // Шкалы
     const x = d3.scaleBand()
-      .domain(chartData.map(d => d[labelKey]))
+      .domain(months)
       .range([0, width])
-      .padding(1);
-      
+      .padding(0.2);
+    
+    // Находим максимальное значение для всех годов
+    const maxValue = d3.max(allMonthsData, d => d[valKey]) * 1.2 || 10;
+    
     const y = d3.scaleLinear()
-      .domain([0, d3.max(chartData, d => d[valKey]) * 1.2 || 10])
-      .range([height, 0]);
-      
+      .domain([0, maxValue])
+      .range([height, 0])
+      .nice();
+    
     // Сетка
     svg.append("g")
       .attr("class", "grid")
@@ -3578,203 +3568,344 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       )
       .style("stroke", "#333")
       .style("stroke-opacity", "0.1");
-      
+    
     // Оси
     svg.append("g")
       .attr("transform", `translate(0,${height})`)
       .call(d3.axisBottom(x))
       .selectAll("text")
-      .style("fill", "#999");
-      
+      .style("fill", "#bbb")
+      .style("font-size", "11px");
+    
     svg.append("g")
       .call(d3.axisLeft(y))
       .selectAll("text")
-      .style("fill", "#999");
+      .style("fill", "#bbb")
+      .style("font-size", "11px");
     
-    // Линия
-    const line = d3.line()
-      .x(d => x(d[labelKey]) + x.bandwidth()/2)
-      .y(d => y(d[valKey]))
-      .curve(d3.curveMonotoneX);
+    // Для каждого года рисуем линию
+    yearsData.forEach(yearData => {
+      const year = yearData.year;
+      const data = yearData.data || [];
       
-    // Область
-    const area = d3.area()
-      .x(d => x(d[labelKey]) + x.bandwidth()/2)
-      .y0(height)
-      .y1(d => y(d[valKey]))
-      .curve(d3.curveMonotoneX);
+      if (data.length === 0) return;
       
-    // Добавляем область
-    svg.append("path")
-      .datum(chartData)
-      .attr("class", "area")
-      .attr("fill", `url(#${areaGradientId})`)
-      .attr("d", area);
+      // Если данных нет, пропускаем
+      if (!data.some(d => d[valKey] > 0)) return;
       
-    // Добавляем линию с анимацией
-    const path = svg.append("path")
-      .datum(chartData)
-      .attr("class", "line")
-      .attr("fill", "none")
-      .attr("stroke", `url(#${lineGradientId})`)
-      .attr("stroke-width", 3)
-      .attr("d", line);
-    
-    // Анимация линии
-    if (path.node() && typeof path.node().getTotalLength === 'function') {
-      const totalLength = path.node().getTotalLength();
-      path
-        .attr("stroke-dasharray", totalLength)
-        .attr("stroke-dashoffset", totalLength)
+      // Полный набор месяцев с данными для каждого года
+      const yearMonthsData = months.map(month => {
+        const monthData = data.find(d => d[labelKey] === month) || {};
+        return {
+          month,
+          [valKey]: monthData[valKey] || 0,
+          amount: monthData.amount || 0
+        };
+      });
+      
+      // Создаем линию
+      const line = d3.line()
+        .x(d => x(d.month) + x.bandwidth() / 2)
+        .y(d => y(d[valKey]))
+        .curve(d3.curveMonotoneX);
+      
+      // Создаем градиент для каждого года
+      const lineGradientId = `lineGradient-${year}-${uniqueId}`;
+      const areaGradientId = `areaGradient-${year}-${uniqueId}`;
+      
+      const defs = svg.append("defs");
+      
+      // Градиент для линии
+      const lineGradient = defs.append("linearGradient")
+        .attr("id", lineGradientId)
+        .attr("x1", "0%").attr("y1", "0%")
+        .attr("x2", "100%").attr("y2", "0%");
+      
+      lineGradient.append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", yearColors[year].color);
+      
+      lineGradient.append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", yearColors[year].color);
+      
+      // Градиент для области
+      const areaGradient = defs.append("linearGradient")
+        .attr("id", areaGradientId)
+        .attr("x1", "0%").attr("y1", "0%")
+        .attr("x2", "0%").attr("y2", "100%");
+      
+      areaGradient.append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", yearColors[year].color)
+        .attr("stop-opacity", 0.3);
+      
+      areaGradient.append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", yearColors[year].color)
+        .attr("stop-opacity", 0.05);
+      
+      // Отображаем область под линией для одиночного года
+      if (yearsData.length === 1) {
+        const area = d3.area()
+          .x(d => x(d.month) + x.bandwidth() / 2)
+          .y0(height)
+          .y1(d => y(d[valKey]))
+          .curve(d3.curveMonotoneX);
+        
+        svg.append("path")
+          .datum(yearMonthsData)
+          .attr("class", `area-${year}`)
+          .attr("fill", `url(#${areaGradientId})`)
+          .attr("d", area);
+      }
+      
+      // Рисуем линию
+      const path = svg.append("path")
+        .datum(yearMonthsData)
+        .attr("class", `line-${year}`)
+        .attr("fill", "none")
+        .attr("stroke", `url(#${lineGradientId})`)
+        .attr("stroke-width", 3)
+        .attr("d", line);
+      
+      // Анимация линии
+      if (path.node() && typeof path.node().getTotalLength === 'function') {
+        const totalLength = path.node().getTotalLength();
+        path
+          .attr("stroke-dasharray", totalLength)
+          .attr("stroke-dashoffset", totalLength)
+          .transition()
+          .duration(1500)
+          .attr("stroke-dashoffset", 0);
+      }
+      
+      // Добавляем точки
+      svg.selectAll(`.dot-${year}`)
+        .data(yearMonthsData)
+        .enter().append("circle")
+        .attr("class", `dot-${year}`)
+        .attr("cx", d => x(d.month) + x.bandwidth() / 2)
+        .attr("cy", d => y(d[valKey]))
+        .attr("r", 0)
+        .attr("fill", yearColors[year].color)
+        .attr("stroke", "#1e1e1e")
+        .attr("stroke-width", 2)
         .transition()
-        .duration(1500)
-        .attr("stroke-dashoffset", 0);
-    }
-      
-    // Добавляем точки
-    svg.selectAll(".dot")
-      .data(chartData)
-      .enter().append("circle")
-      .attr("class", "dot")
-      .attr("cx", d => x(d[labelKey]) + x.bandwidth()/2)
-      .attr("cy", d => y(d[valKey]))
-      .attr("r", 0)
-      .attr("fill", primaryColor)
-      .attr("stroke", "#1e1e1e")
-      .attr("stroke-width", 2)
-      .transition()
-      .delay((d, i) => 1500 + i * 50)
-      .duration(300)
-      .attr("r", 5);
-      
-    // Добавляем метки значений
-    svg.selectAll(".value-label")
-      .data(chartData)
-      .enter().append("text")
-      .attr("class", "value-label")
-      .attr("x", d => x(d[labelKey]) + x.bandwidth()/2)
-      .attr("y", d => y(d[valKey]) - 10)
+        .delay((d, i) => 1500 + i * 50)
+        .duration(300)
+        .attr("r", d => d[valKey] > 0 ? 5 : 0);
+    });
+    
+    // Добавляем линию для текущего месяца
+    const currentDate = new Date();
+    const currentMonthIndex = currentDate.getMonth();
+    const currentMonth = months[currentMonthIndex];
+    
+    svg.append("line")
+      .attr("x1", x(currentMonth) + x.bandwidth() / 2)
+      .attr("y1", 0)
+      .attr("x2", x(currentMonth) + x.bandwidth() / 2)
+      .attr("y2", height)
+      .attr("stroke", "#e5e5e5")
+      .attr("stroke-width", 1)
+      .attr("stroke-dasharray", "3,3")
+      .attr("opacity", 0.5);
+    
+    // Добавляем метку текущего месяца
+    svg.append("text")
+      .attr("x", x(currentMonth) + x.bandwidth() / 2)
+      .attr("y", -8)
       .attr("text-anchor", "middle")
       .style("font-size", "10px")
-      .style("fill", primaryColor)
-      .style("opacity", 0)
-      .text(d => {
-        if (d[valKey] === 0) return "";
-        if (d[valKey] >= 1000000) return (d[valKey] / 1000000).toFixed(1) + 'M';
-        if (d[valKey] >= 1000) return (d[valKey] / 1000).toFixed(0) + 'K';
-        return d[valKey];
-      })
-      .transition()
-      .delay((d, i) => 1800 + i * 50)
-      .duration(300)
-      .style("opacity", 1);
-      
-    // Добавляем информацию о годе и регионе
-    let yearRegionInfo = `Данные за ${year} год`;
-    if (selectedRegion !== 'all') {
-      const regionName = regionsList.find(r => r.id === selectedRegion)?.name || 'выбранный регион';
-      yearRegionInfo += ` по региону: ${regionName}`;
-    }
+      .style("fill", "#e5e5e5")
+      .text("Текущий месяц");
     
-    svg.append("text")
-      .attr("x", width)
-      .attr("y", 0)
-      .attr("text-anchor", "end")
-      .style("font-size", "12px")
-      .style("fill", primaryColor)
-      .style("font-weight", "bold")
-      .text(yearRegionInfo);
-      
-    // Добавляем заголовок графика
+    // Заголовок графика
     svg.append("text")
       .attr("x", width / 2)
-      .attr("y", -5)
+      .attr("y", -15)
       .attr("text-anchor", "middle")
       .style("font-size", "14px")
       .style("fill", "#e5e7eb")
-      .style("font-weight", "medium")
       .text(chartTitle);
     
-    // Добавляем тултипы
+    // Легенда годов
+    const legend = svg.append("g")
+      .attr("class", "legend")
+      .attr("transform", `translate(${width + 20}, 10)`);
+    
+    yearsData.forEach((yearData, i) => {
+      const year = yearData.year;
+      
+      legend.append("rect")
+        .attr("x", 0)
+        .attr("y", i * 25)
+        .attr("width", 15)
+        .attr("height", 3)
+        .attr("fill", yearColors[year].color);
+      
+      legend.append("text")
+        .attr("x", 25)
+        .attr("y", i * 25 + 5)
+        .attr("text-anchor", "start")
+        .style("font-size", "12px")
+        .style("fill", "#e5e7eb")
+        .text(year);
+    });
+    
+    // Добавляем интерактивные подсказки
     const tooltip = d3.select("body").append("div")
-      .attr("class", `tooltip-${valKey}-${uniqueId}`)
+      .attr("class", `tooltip-${uniqueId}`)
       .style("opacity", 0)
       .style("position", "absolute")
-      .style("background-color", "rgba(40, 40, 40, 0.9)")
+      .style("background-color", "rgba(30, 41, 59, 0.95)")
       .style("color", "#fff")
-      .style("padding", "10px")
-      .style("border-radius", "5px")
+      .style("padding", "12px")
+      .style("border-radius", "6px")
       .style("font-size", "14px")
+      .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.1)")
       .style("pointer-events", "none")
-      .style("box-shadow", "0 4px 8px rgba(0, 0, 0, 0.3)")
-      .style("z-index", "10");
-      
-    svg.selectAll(".dot")
-      .on("mouseover", function(event, d) {
-        d3.select(this).transition()
-          .duration(200)
-          .attr("r", 8);
+      .style("z-index", 1000);
+    
+    // Создаем невидимые зоны для ховера для каждого месяца
+    months.forEach(month => {
+      svg.append("rect")
+        .attr("x", x(month))
+        .attr("y", 0)
+        .attr("width", x.bandwidth())
+        .attr("height", height)
+        .attr("fill", "transparent")
+        .on("mouseover", function(event) {
+          // Находим данные для всех годов для этого месяца
+          const monthData = allMonthsData.filter(d => d.month === month);
           
-        tooltip.transition()
-          .duration(200)
-          .style("opacity", 1);
+          // Создаем содержимое тултипа
+          let tooltipContent = `<div class="font-semibold mb-2">${month}</div>`;
           
-        let tooltipContent = `
-          <strong>${d[labelKey]} ${year}</strong><br>
-          ${valKey === 'contracts' ? 'Контрактов: ' : 
-            valKey === 'sales' ? 'Продаж: ' : 
-            valKey === 'stock' ? 'Остаток: ' :
-            valKey === 'retail' ? 'Розница: ' :
-            valKey === 'wholesale' ? 'Опт: ' :
-            valKey === 'promotions' ? 'Акции: ' : ''}
-          <strong>${d[valKey]}</strong>
-        `;
-        
-        // Добавляем информацию о регионе в тултип, если он выбран
-        if (selectedRegion !== 'all') {
-          const regionName = regionsList.find(r => r.id === selectedRegion)?.name || 'Выбранный регион';
-          tooltipContent += `<br>Регион: <strong>${regionName}</strong>`;
-        }
-        
-        tooltip.html(tooltipContent)
-          .style("left", (event.pageX + 10) + "px")
-          .style("top", (event.pageY - 28) + "px");
-      })
-      .on("mouseout", function() {
-        d3.select(this).transition()
-          .duration(200)
-          .attr("r", 5);
+          if (monthData.length > 0) {
+            tooltipContent += `<div class="space-y-2">`;
+            monthData.forEach(d => {
+              if (d[valKey] > 0) {
+                tooltipContent += `
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center">
+                      <span class="inline-block w-3 h-3 rounded-full mr-2" style="background-color: ${d.color};"></span>
+                      <span>${d.year}:</span>
+                    </div>
+                    <div class="font-medium">${d[valKey]}</div>
+                  </div>
+                `;
+              }
+            });
+            tooltipContent += `</div>`;
+          } else {
+            tooltipContent += `<div>Нет данных</div>`;
+          }
           
-        tooltip.transition()
-          .duration(500)
-          .style("opacity", 0);
-      })
-      .on("mousemove", function(event) {
-        tooltip
-          .style("left", (event.pageX + 10) + "px")
-          .style("top", (event.pageY - 28) + "px");
+          tooltip.html(tooltipContent)
+            .style("left", (event.pageX + 15) + "px")
+            .style("top", (event.pageY - 20) + "px")
+            .transition()
+            .duration(200)
+            .style("opacity", 1);
+          
+          // Подсвечиваем точки для этого месяца
+          yearsData.forEach(yearData => {
+            const year = yearData.year;
+            svg.selectAll(`.dot-${year}`)
+              .filter(d => d.month === month && d[valKey] > 0)
+              .transition()
+              .duration(200)
+              .attr("r", 7);
+          });
+        })
+        .on("mouseout", function() {
+          tooltip.transition()
+            .duration(500)
+            .style("opacity", 0);
+          
+          // Возвращаем точки к исходному размеру
+          yearsData.forEach(yearData => {
+            const year = yearData.year;
+            svg.selectAll(`.dot-${year}`)
+              .transition()
+              .duration(200)
+              .attr("r", 5);
+          });
+        })
+        .on("mousemove", function(event) {
+          tooltip
+            .style("left", (event.pageX + 15) + "px")
+            .style("top", (event.pageY - 20) + "px");
+        });
+    });
+  }
+  
+  // Добавляем обработчики событий для чекбоксов
+  setTimeout(() => {
+    const yearCheckboxes = yearSelector.querySelectorAll('.year-checkbox');
+    yearCheckboxes.forEach(checkbox => {
+      // Обработчик для всей кнопки
+      checkbox.parentElement.addEventListener('click', (e) => {
+        // Переключаем состояние чекбокса
+        checkbox.checked = !checkbox.checked;
+        // Вызываем обновление
+        updateSelectedYears();
+        // Предотвращаем дальнейшую обработку клика
+        e.preventDefault();
+      });
+    });
+  }, 0);
+  
+  // Если идет загрузка годовых данных, показываем индикатор загрузки
+  if (yearlyDataLoading) {
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'flex items-center justify-center h-64';
+    loadingIndicator.innerHTML = `
+      <div class="flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-3"></div>
+        <p class="text-gray-400 text-sm">Загрузка данных...</p>
+      </div>
+    `;
+    graphContainer.appendChild(loadingIndicator);
+    return;
+  }
+  
+  // Инициализируем график с текущими данными
+  if (activeYears.length === 1 && activeYears[0] === selectedYear) {
+    // Если выбран только текущий год, используем уже загруженные данные
+    const displayData = yearlyChartData.length > 0 ? yearlyChartData : data;
+    
+    if (!displayData || displayData.length === 0) {
+      showEmptyState(graphContainer);
+      return;
+    }
+    
+    // Преобразуем данные перед отрисовкой (удаляем отрицательные значения)
+    const processedData = displayData.map(item => {
+      const value = item[valueKey] !== undefined ? item[valueKey] : 0;
+      return {
+        ...item,
+        [valueKey]: Math.abs(value)
+      };
+    });
+    
+    renderMultiYearChart(graphContainer, [{ year: selectedYear, data: processedData }], valueKey, labelKey, title);
+  } else {
+    // Если выбрано несколько годов, загружаем данные для каждого года
+    Promise.all(activeYears.map(year => fetchYearData(year)))
+      .then(yearsData => {
+        renderMultiYearChart(graphContainer, yearsData, valueKey, labelKey, title);
       });
   }
   
-  // Добавляем заголовок с информацией о регионе, если он выбран
-  if (selectedRegion !== 'all' && !regionInfo) {
-    const regionHeader = document.createElement('div');
-    regionHeader.className = 'mb-3 px-2';
-    const regionName = regionsList.find(r => r.id === selectedRegion)?.name || 'Выбранный регион';
-    regionHeader.innerHTML = `
-      <div class="inline-flex items-center bg-blue-600/20 text-blue-400 rounded-full px-3 py-1 text-sm">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        Данные по региону: ${regionName}
-      </div>
-    `;
-    container.insertBefore(regionHeader, graphContainer);
+  // Инициализируем первичную загрузку данных, если уже есть выбранные годы
+  if (activeYears.length > 0) {
+    setTimeout(() => {
+      updateSelectedYears();
+    }, 50);
   }
-  
-  // Вызываем функцию рендеринга графика с обработанными данными
-  renderD3Chart(graphContainer, processedData, valueKey, labelKey, title, selectedYear);
 };
 
 const formatCurrency = (value) => {
@@ -3798,8 +3929,8 @@ const getStats = () => {
   if (selectedModel !== 'all') {
     const modelData = apiData.find(model => model.model_id === selectedModel);
     
-    if (modelData) {
-      // Если также выбран конкретный регион, фильтруем по региону
+    if (modelData) { 
+
       if (selectedRegion !== 'all') {
         // Поиск данных выбранного региона для выбранной модели
         const regionData = modelData.filter_by_region?.find(r => r.region_id === selectedRegion);
@@ -4885,7 +5016,7 @@ const stats = getStats();
           </div>
         </div>
         
-        <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
+        <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8 mt-[100px]">
           <h3 className="text-xl font-semibold mb-4">{getTimelineChartTitle()}</h3>
           <div 
             ref={timelineContractsRef} 
