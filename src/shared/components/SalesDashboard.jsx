@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Clock, Download, Check, AlertTriangle, ChevronDown, Truck, MapPin, 
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Clock, Check, AlertTriangle, ChevronDown, Truck, MapPin, 
   Archive, ChevronLeft, BarChart3, Users, Activity, ChevronRight, RefreshCcw, Zap, Calendar, Car, X } from 'lucide-react';
 import { carModels, regions } from '@/src/shared/mocks/mock-data';
 import { useTelegram } from '@/src/hooks/useTelegram';
@@ -28,7 +28,8 @@ const SalesChart = ({
   const [showRegionDropdown, setShowRegionDropdown] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState(null);
   const [dateRange, setDateRange] = useState(period || { 
-    start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+    // Изменение: показывать последний год по умолчанию
+    start: new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   });
   const [isFilterAnimating, setIsFilterAnimating] = useState(false);
@@ -141,129 +142,152 @@ const SalesChart = ({
     }
   };
   
-  // Функция запроса данных из API с учетом периода
-  const fetchAnalyticsData = async (forComparison = false) => {
-    const currentPeriod = period || dateRange;
+  // Функция форматирования значений для отображения над столбцами
+  const formatDisplayValue = (value) => {
+    if (value === null) return "";
     
-    // Для сравнения используем предыдущий год
-    const requestPeriod = forComparison 
-      ? getPreviousYearDates(currentPeriod.start, currentPeriod.end) 
-      : currentPeriod;
-      
-    setIsLoading(true);
-    if (!forComparison) setIsFilterAnimating(true);
-    
-    try {
-      // Получаем даты для запроса
-      const beginDate = formatDateForApi(requestPeriod.start);
-      const endDate = formatDateForApi(requestPeriod.end);
-      
-      // Формируем базовый URL API
-      const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
-      const apiUrl = `${baseUrl}&auto_analytics`;
-      
-      // Создаем объект данных для отправки в теле запроса
-      const requestData = {
-        begin_date: beginDate,
-        end_date: endDate,
-      };
-      
-      // Добавляем модель, если выбрана
-      if (selectedModel) {
-        requestData.model_id = selectedModel;
-      }
-      
-      // Добавляем регион, если выбран
-      if (selectedRegion) {
-        requestData.region_id = selectedRegion;
-      }
-      
-      console.log(`Отправка ${forComparison ? 'сравнительных' : 'текущих'} данных:`, requestData);
-      
-      // Выполняем POST-запрос с данными в теле
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(requestData)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log(`Получены ${forComparison ? 'сравнительные' : 'текущие'} данные:`, data);
-      
-      // Получаем метки для графика
-      if (!forComparison) {
-        const labels = getLabelsForPeriod(currentPeriod.start, currentPeriod.end);
-        setDisplayLabels(labels);
-      }
-      
-      // Обрабатываем данные для графика
-      const processedData = processApiData(data, forComparison);
-      
-      // Обновляем состояние в зависимости от типа запроса
-      if (forComparison) {
-        setLastYearSalesData(processedData);
-      } else {
-        setSalesData(processedData);
-        
-        // Извлекаем доступные модели из данных
-        if (Array.isArray(data)) {
-          // Собираем модели
-          const models = data.map(item => ({
-            id: item.model_id,
-            name: item.model_name,
-            img: `https://uzavtosalon.uz/b/core/m$load_image?sha=${item.photo_sha}&width=400&height=400`
-          }));
-          
-          // Фильтруем уникальные модели по ID
-          const uniqueModels = models.filter((model, index, self) =>
-            index === self.findIndex((m) => m.id === model.id)
-          );
-          
-          setAvailableModels(uniqueModels);
-          
-          // Собираем регионы из первой модели (они одинаковы для всех моделей)
-          if (data.length > 0 && data[0].filter_by_region && Array.isArray(data[0].filter_by_region)) {
-            const regions = data[0].filter_by_region.map(region => ({
-              id: region.region_id,
-              name: region.region_name
-            }));
-            setAvailableRegions(regions);
-          }
-        }
-        
-        // Если включено сравнение, делаем запрос для прошлого года
-        if (showComparison && !forComparison) {
-          fetchAnalyticsData(true);
-        }
-      }
-    } catch (error) {
-      console.error(`Ошибка при получении ${forComparison ? 'сравнительных' : 'текущих'} данных:`, error);
-      if (!forComparison) setHasError(true);
-      
-      // В случае ошибки устанавливаем демо-данные чтобы график все равно отображался
-      if (!forComparison) {
-        setSalesData(Array(displayLabels.length).fill(0).map(() => Math.floor(Math.random() * 100) + 50));
-      } else {
-        setLastYearSalesData(Array(displayLabels.length).fill(0).map(() => Math.floor(Math.random() * 100) + 50));
-      }
-    } finally {
-      setIsLoading(false);
-      if (!forComparison) {
-        setTimeout(() => {
-          setIsFilterAnimating(false);
-        }, 500);
-      }
+    if (value < 100000) {
+      // До 100к показываем полное число
+      return value.toLocaleString();
+    } else if (value < 1000000) {
+      // От 100к до 1М показываем в тысячах
+      return Math.round(value / 1000) + "K";
+    } else if (value < 1000000000) {
+      // От 1М до 1Б показываем в миллионах
+      return (value / 1000000).toFixed(1) + "М";
+    } else {
+      // Свыше 1Б показываем в миллиардах
+      return (value / 1000000000).toFixed(1) + "Б";
     }
   };
   
- // Функция обработки данных API для графика
+  // Функция запроса данных из API с учетом периода
+const fetchAnalyticsData = async (forComparison = false, customPeriod = null) => {
+  // Используем переданный период или берем из состояния
+  const currentPeriod = customPeriod || period || dateRange;
+  
+  // Для сравнения используем предыдущий год
+  const requestPeriod = forComparison 
+    ? getPreviousYearDates(currentPeriod.start, currentPeriod.end) 
+    : currentPeriod;
+    
+  setIsLoading(true);
+  if (!forComparison) setIsFilterAnimating(true);
+  
+  console.log(`Отправляем запрос за период: ${requestPeriod.start} - ${requestPeriod.end}`);
+  
+  try {
+    // Получаем даты для запроса
+    const beginDate = formatDateForApi(requestPeriod.start);
+    const endDate = formatDateForApi(requestPeriod.end);
+    
+    // Формируем базовый URL API
+    const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
+    const apiUrl = `${baseUrl}&auto_analytics`;
+    
+    // Создаем объект данных для отправки в теле запроса
+    const requestData = {
+      begin_date: beginDate,
+      end_date: endDate,
+    };
+    
+    // Добавляем модель, если выбрана
+    if (selectedModel) {
+      requestData.model_id = selectedModel;
+      console.log(`Запрос по конкретной модели: ${selectedModel}`);
+    }
+    
+    // Добавляем регион, если выбран
+    if (selectedRegion) {
+      requestData.region_id = selectedRegion;
+      console.log(`Запрос по конкретному региону: ${selectedRegion}`);
+    }
+    
+    console.log(`Отправка ${forComparison ? 'сравнительных' : 'текущих'} данных:`, requestData);
+    
+    // Выполняем POST-запрос с данными в теле
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(requestData)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log(`Получены ${forComparison ? 'сравнительные' : 'текущие'} данные:`, data);
+    
+    // Получаем метки для графика
+    if (!forComparison) {
+      const labels = getLabelsForPeriod(currentPeriod.start, currentPeriod.end);
+      setDisplayLabels(labels);
+    }
+    
+    // Обрабатываем данные для графика
+    const processedData = processApiData(data, forComparison);
+    
+    // Обновляем состояние в зависимости от типа запроса
+    if (forComparison) {
+      setLastYearSalesData(processedData);
+    } else {
+      setSalesData(processedData);
+      
+      // Извлекаем доступные модели из данных
+      if (Array.isArray(data)) {
+        // Собираем модели
+        const models = data.map(item => ({
+          id: item.model_id,
+          name: item.model_name,
+          img: `https://uzavtosalon.uz/b/core/m$load_image?sha=${item.photo_sha}&width=400&height=400`
+        }));
+        
+        // Фильтруем уникальные модели по ID
+        const uniqueModels = models.filter((model, index, self) =>
+          index === self.findIndex((m) => m.id === model.id)
+        );
+        
+        setAvailableModels(uniqueModels);
+        
+        // Собираем регионы из первой модели (они одинаковы для всех моделей)
+        if (data.length > 0 && data[0].filter_by_region && Array.isArray(data[0].filter_by_region)) {
+          const regions = data[0].filter_by_region.map(region => ({
+            id: region.region_id,
+            name: region.region_name
+          }));
+          setAvailableRegions(regions);
+        }
+      }
+      
+      // Если включено сравнение, делаем запрос для прошлого года
+      if (showComparison && !forComparison) {
+        fetchAnalyticsData(true, currentPeriod);
+      }
+    }
+  } catch (error) {
+    console.error(`Ошибка при получении ${forComparison ? 'сравнительных' : 'текущих'} данных:`, error);
+    if (!forComparison) setHasError(true);
+    
+    // В случае ошибки устанавливаем демо-данные чтобы график все равно отображался
+    if (!forComparison) {
+      setSalesData(Array(displayLabels.length).fill(0).map(() => Math.floor(Math.random() * 100) + 50));
+    } else {
+      setLastYearSalesData(Array(displayLabels.length).fill(0).map(() => Math.floor(Math.random() * 100) + 50));
+    }
+  } finally {
+    setIsLoading(false);
+    if (!forComparison) {
+      setTimeout(() => {
+        setIsFilterAnimating(false);
+      }, 500);
+    }
+  }
+};
+  
 const processApiData = (data, forComparison = false) => {
   // Если данные отсутствуют, возвращаем пустой массив
   if (!Array.isArray(data) || data.length === 0) {
@@ -271,99 +295,117 @@ const processApiData = (data, forComparison = false) => {
     return [];
   }
   
-  // Создаем объект для хранения данных по месяцам
-  const monthlyData = {};
-  
   try {
-    // Обходим все модели автомобилей
+    // Получаем текущую дату для определения, какие месяцы уже прошли
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-11, где 0 - январь
+    
+    // Создаем массив только для прошедших месяцев текущего года
+    const monthlyValues = Array(currentMonth + 1).fill(0);
+    
+    // Обрабатываем данные
     data.forEach(model => {
-      // Пропускаем, если выбрана конкретная модель и это не она
+      // Пропускаем модель, если выбрана конкретная модель и это не она
       if (selectedModel && model.model_id !== selectedModel) {
         return;
       }
       
-      console.log(`Обработка модели: ${model.model_name}`);
-      
       // Проверяем наличие данных по месяцам
       if (model.filter_by_month && Array.isArray(model.filter_by_month)) {
         model.filter_by_month.forEach(monthData => {
-          // Проверяем наличие данных о месяце
           if (monthData && monthData.month) {
-            // Получаем месяц из строки "YYYY-MM"
-            const monthKey = monthData.month; // Сохраняем оригинальный ключ
+            // Получаем месяц и год из формата "YYYY-MM"
+            const [year, month] = monthData.month.split('-').map(Number);
             
-            // Инициализируем месяц, если он не существует
-            if (!monthlyData[monthKey]) {
-              monthlyData[monthKey] = 0;
-            }
-            
-            // Обрабатываем данные по регионам
-            if (monthData.regions && Array.isArray(monthData.regions)) {
-              monthData.regions.forEach(region => {
-                // Если выбран конкретный регион, фильтруем данные
-                if (selectedRegion && region.region_id !== selectedRegion) {
-                  return;
-                }
-                
-                // Получаем значение в зависимости от вкладки
-                let value = 0;
-                if (activeTab === 'месяц' || activeTab === 'contracts') {
-                  value = parseInt(region.contract || 0);
-                } else {
-                  value = parseInt(region.total_price || 0);
-                }
-                
-                // Добавляем значение к соответствующему месяцу
-                monthlyData[monthKey] += value;
-              });
+            // Обрабатываем только данные текущего года и только прошедшие месяцы
+            if (year === currentYear && month - 1 <= currentMonth) {
+              // Индекс месяца (0-11)
+              const monthIndex = month - 1;
+              
+              // Обрабатываем данные по регионам
+              if (monthData.regions && Array.isArray(monthData.regions)) {
+                monthData.regions.forEach(region => {
+                  // Пропускаем, если выбран конкретный регион, и это не он
+                  if (selectedRegion && region.region_id !== selectedRegion) {
+                    return;
+                  }
+                  
+                  // Получаем значение в зависимости от вкладки
+                  let value = 0;
+                  if (activeTab === 'месяц' || activeTab === 'contracts') {
+                    value = parseInt(region.contract || 0);
+                  } else {
+                    value = parseInt(region.total_price || 0);
+                  }
+                  
+                  // Добавляем значение к соответствующему месяцу
+                  monthlyValues[monthIndex] += value;
+                });
+              }
             }
           }
         });
       }
     });
     
-    // Преобразуем объект в массив
-    const resultArray = Object.entries(monthlyData).map(([month, value]) => ({
-      month,
-      value
-    }));
-    
-    // Сортируем по месяцам
-    resultArray.sort((a, b) => a.month.localeCompare(b.month));
-    
-    // Возвращаем только значения
-    return resultArray.map(item => item.value);
+    console.log('Обработанные данные по прошедшим месяцам текущего года:', monthlyValues);
+    return monthlyValues;
   } catch (error) {
     console.error('Ошибка при обработке данных:', error);
     return [];
   }
 };
-  
-  // Эффект для загрузки данных при первом рендере
+
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      
-      // Если нет переданных начальных данных, загружаем из API
-      if (initialSalesData.length === 0) {
-        // Эмулируем небольшую задержку для отображения загрузки
-        setTimeout(() => {
-          fetchAnalyticsData();
-        }, 500);
-      } else {
-        // Иначе используем переданные данные
-        setSalesData(initialSalesData);
-        if (initialLastYearData.length > 0) {
-          setLastYearSalesData(initialLastYearData);
-        }
+  if (isFirstRender.current) {
+    isFirstRender.current = false;
+    
+    // Настройка периода только за текущий год
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1); // 1 января текущего года
+    
+    const currentYearPeriod = {
+      start: startOfYear.toISOString().split('T')[0],
+      end: now.toISOString().split('T')[0]
+    };
+    
+    // Устанавливаем период для даты за текущий год
+    setDateRange(currentYearPeriod);
+    if (setPeriod) {
+      setPeriod(currentYearPeriod);
+    }
+    
+    // Если нет переданных начальных данных, загружаем из API с периодом за текущий год
+    if (initialSalesData.length === 0) {
+      setTimeout(() => {
+        fetchAnalyticsData(false, currentYearPeriod);
+      }, 500);
+    } else {
+      // Иначе используем переданные данные
+      setSalesData(initialSalesData);
+      if (initialLastYearData.length > 0) {
+        setLastYearSalesData(initialLastYearData);
       }
     }
-  }, []);
+  }
+}, []);
   
   // Эффект для обновления данных при изменении фильтров
   useEffect(() => {
     if (!isFirstRender.current) {
-      fetchAnalyticsData();
+      console.log('Фильтры изменились, обновляем данные');
+      setIsLoading(true);
+    
+      // Небольшая задержка для визуального эффекта загрузки
+      setTimeout(() => {
+        fetchAnalyticsData();
+        if (showComparison) {
+          setTimeout(() => {
+            fetchAnalyticsData(true);
+          }, 200);
+        }
+      }, 300);
     }
   }, [selectedModel, selectedRegion, activeTab, period]);
   
@@ -557,7 +599,8 @@ const renderChart = () => {
   }
   
   // Размеры графика
-  const margin = { top: 30, right: 30, bottom: 60, left: 60 };
+  // Увеличиваем отступ слева для меток шкалы
+  const margin = { top: 30, right: 30, bottom: 60, left: 80 };
   const width = container.clientWidth - margin.left - margin.right;
   const height = container.clientHeight - margin.top - margin.bottom;
   
@@ -640,110 +683,134 @@ const renderChart = () => {
     .attr('stroke', 'rgba(75, 85, 99, 0.7)');
   
   // Функция для отображения тултипа
-  const showTooltip = (event, value, label, isLastYear, index) => {
-    // Если значение null, не показываем тултип
-    if (value === null) return;
-    
-    // Находим соответствующее значение для сравнения
-    let currentValue = isLastYear ? null : value;
-    let lastYearValue = isLastYear ? value : null;
-    
-    if (showComparison) {
-      if (isLastYear) {
-        // Если это прошлогоднее значение, берем текущее по индексу
-        currentValue = index < currentData.length ? currentData[index] : null;
-      } else {
-        // Если это текущее значение, берем прошлогоднее по индексу
-        lastYearValue = index < comparisonData.length ? comparisonData[index] : 0;
-      }
-    }
-    
-    // Функция форматирования значений в зависимости от типа данных
-    const formatValue = val => {
-      if (val === null) return "Нет данных";
-      
-      if (activeTab === 'год') {
-        // Форматирование для сумм
-        return new Intl.NumberFormat('ru-RU', { 
-          style: 'currency', 
-          currency: 'UZS',
-          maximumFractionDigits: 0
-        }).format(val);
-      } else {
-        // Форматирование для контрактов
-        return val.toLocaleString();
-      }
-    };
-    
-    // Создаем содержимое тултипа
-    let tooltipContent = `
-      <div class="font-bold text-center mb-2 text-purple-300">${label}</div>
-      <table class="w-full">
-        <tbody>
-    `;
-    
+ // Функция для отображения тултипа
+const showTooltip = (event, value, label, isLastYear, index) => {
+  // Если значение null, не показываем тултип
+  if (value === null) return;
+  
+  // Находим соответствующее значение для сравнения
+  let currentValue = isLastYear ? null : value;
+  let lastYearValue = isLastYear ? value : null;
+  
+  if (showComparison) {
     if (isLastYear) {
-      tooltipContent += `
-        <tr>
-          <td class="py-1 text-gray-300">Прошлый год:</td>
-          <td class="py-1 font-bold text-right">${formatValue(value)}</td>
-        </tr>
-      `;
-      
-      if (currentValue !== null) {
-        tooltipContent += `
-          <tr>
-            <td class="py-1 text-gray-300">Текущий год:</td>
-            <td class="py-1 font-bold text-right">${formatValue(currentValue)}</td>
-          </tr>
-        `;
-      }
+      // Если это прошлогоднее значение, берем текущее по индексу
+      currentValue = index < currentData.length ? currentData[index] : null;
     } else {
-      tooltipContent += `
-        <tr>
-          <td class="py-1 text-gray-300">Текущий год:</td>
-          <td class="py-1 font-bold text-right">${formatValue(value)}</td>
-        </tr>
-      `;
-      
-      if (lastYearValue > 0) {
-        tooltipContent += `
-          <tr>
-            <td class="py-1 text-gray-300">Прошлый год:</td>
-            <td class="py-1 font-bold text-right">${formatValue(lastYearValue)}</td>
-          </tr>
-        `;
-      }
+      // Если это текущее значение, берем прошлогоднее по индексу
+      lastYearValue = index < comparisonData.length ? comparisonData[index] : 0;
     }
+  }
+  
+  // Функция форматирования значений в зависимости от типа данных
+  const formatValue = val => {
+    if (val === null) return "Нет данных";
+    
+    if (activeTab === 'год') {
+      // Форматирование для сумм
+      return new Intl.NumberFormat('ru-RU', { 
+        style: 'currency', 
+        currency: 'UZS',
+        maximumFractionDigits: 0
+      }).format(val);
+    } else {
+      // Форматирование для контрактов
+      return val.toLocaleString();
+    }
+  };
+  
+  // Рассчитываем процент изменения если есть оба значения
+  let percentChange = null;
+  if (currentValue !== null && lastYearValue > 0) {
+    percentChange = ((currentValue - lastYearValue) / lastYearValue * 100).toFixed(1);
+  }
+  
+  // Создаем красивый тултип с градиентом
+  let tooltipContent = `
+    <div class="relative overflow-hidden rounded-md" style="background: linear-gradient(120deg, #1e293b, #111927);">
+      <div class="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10" 
+           style="background: radial-gradient(circle, rgba(168,85,247,0.6) 0%, rgba(0,0,0,0) 70%); transform: translate(30%, -30%);"></div>
+      
+      <div class="px-4 py-3 border-b border-gray-700">
+        <div class="font-bold text-center text-white text-sm">${label}</div>
+      </div>
+      
+      <div class="p-4">
+  `;
+  
+  // Если есть сравнение и оба значения
+  if (showComparison && currentValue !== null && lastYearValue > 0) {
+    tooltipContent += `
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex flex-col">
+          <div class="font-bold text-xl text-white">${formatValue(currentValue)}</div>
+          <div class="text-xs text-gray-400 mt-0.5">текущее значение</div>
+        </div>
+        
+        <div class="h-full border-r border-gray-700 mx-2"></div>
+        
+        <div class="flex flex-col items-end">
+          <div class="text-base text-gray-300">${formatValue(lastYearValue)}</div>
+          <div class="text-xs text-gray-400 mt-0.5">предыдущий период</div>
+        </div>
+      </div>
+      
+      <div class="flex items-center justify-center mt-2 ${percentChange >= 0 ? 'text-green-400' : 'text-red-400'}">
+        <div class="flex items-center gap-1 px-3 py-1 rounded-full ${percentChange >= 0 ? 'bg-green-900/20' : 'bg-red-900/20'} 
+                    ${percentChange >= 0 ? 'border border-green-800/30' : 'border border-red-800/30'}">
+          ${percentChange >= 0 ? 
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>' : 
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>'}
+          <span class="font-bold">${percentChange >= 0 ? '+' : ''}${percentChange}%</span>
+        </div>
+      </div>
+    `;
+  } else {
+    // Если нет сравнения или одно из значений отсутствует
+    const displayValue = currentValue !== null ? currentValue : (lastYearValue > 0 ? lastYearValue : value);
     
     tooltipContent += `
-        </tbody>
-      </table>
+      <div class="flex flex-col items-center">
+        <div class="font-bold text-xl text-white">${formatValue(displayValue)}</div>
+        <div class="text-xs text-gray-400 mt-1">
+          ${activeTab === 'месяц' ? 'контрактов' : 'сумма'}
+        </div>
+      </div>
     `;
-    
-    // Позиционирование тултипа
-    const tooltipWidth = 200;
-    const tooltipHeight = showComparison ? 120 : 80;
-    
-    let xPos = event.pageX - container.getBoundingClientRect().left;
-    let yPos = event.pageY - container.getBoundingClientRect().top;
-    
-    if (xPos + tooltipWidth > container.clientWidth) {
-      xPos = xPos - tooltipWidth;
-    }
-    
-    if (yPos - tooltipHeight < 0) {
-      yPos = yPos + 20;
-    } else {
-      yPos = yPos - tooltipHeight - 10;
-    }
-    
-    d3.select(tooltip)
-      .html(tooltipContent)
-      .style('left', `${xPos}px`)
-      .style('top', `${yPos}px`)
-      .style('opacity', 1);
-  };
+  }
+  
+  tooltipContent += `
+      </div>
+    </div>
+  `;
+  
+  // Позиционирование тултипа
+  const tooltipWidth = 240;
+  const tooltipHeight = showComparison && currentValue !== null && lastYearValue > 0 ? 140 : 100;
+  
+  let xPos = event.pageX - container.getBoundingClientRect().left;
+  let yPos = event.pageY - container.getBoundingClientRect().top;
+  
+  if (xPos + tooltipWidth > container.clientWidth) {
+    xPos = xPos - tooltipWidth;
+  }
+  
+  if (yPos - tooltipHeight < 0) {
+    yPos = yPos + 20;
+  } else {
+    yPos = yPos - tooltipHeight - 10;
+  }
+  
+  d3.select(tooltip)
+    .html(tooltipContent)
+    .style('left', `${xPos}px`)
+    .style('top', `${yPos}px`)
+    .style('opacity', 1)
+    .style('width', `${tooltipWidth}px`)
+    .style('border-radius', '6px')
+    .style('overflow', 'hidden')
+    .style('box-shadow', '0 4px 20px rgba(0, 0, 0, 0.3)');
+};
   
   // Функция для скрытия тултипа
   const hideTooltip = () => {
@@ -870,6 +937,17 @@ const renderChart = () => {
         .attr('y', y(lastYearValue))
         .attr('height', height - y(lastYearValue));
       
+      // Добавляем значение над столбцом прошлого года
+      if (lastYearValue > 0) {
+        svg.append("text")
+          .attr("x", x(label) + (x.bandwidth() / 4))
+          .attr("y", y(lastYearValue) - 5)
+          .attr("text-anchor", "middle")
+          .attr("font-size", "10px")
+          .attr("fill", "#D1D5DB")
+          .text(formatDisplayValue(lastYearValue));
+      }
+      
       // Рисуем столбцы текущего года только если значение не null
       if (value !== null) {
         svg.append('rect')
@@ -897,6 +975,15 @@ const renderChart = () => {
           .delay(i * 30)
           .attr('y', y(value))
           .attr('height', height - y(value));
+          
+        // Добавляем значение над столбцом текущего года
+        svg.append("text")
+          .attr("x", x(label) + x.bandwidth() / 2 + 2 + (x.bandwidth() / 4))
+          .attr("y", y(value) - 5)
+          .attr("text-anchor", "middle")
+          .attr("font-size", "10px")
+          .attr("fill", "#D1D5DB")
+          .text(formatDisplayValue(value));
       } else {
         // Если данных для текущего года нет, показываем пунктирный плейсхолдер
         svg.append('rect')
@@ -938,6 +1025,15 @@ const renderChart = () => {
           .delay(i * 30)
           .attr('y', y(value))
           .attr('height', height - y(value));
+          
+        // Добавляем значение над столбцом
+        svg.append("text")
+          .attr("x", x(label) + x.bandwidth() / 2)
+          .attr("y", y(value) - 5)
+          .attr("text-anchor", "middle")
+          .attr("font-size", "10px")
+          .attr("fill", "#D1D5DB")
+          .text(formatDisplayValue(value));
       } else {
         // Если данных нет, показываем плейсхолдер
         svg.append('rect')
@@ -1529,13 +1625,15 @@ const renderChart = () => {
             </button>
           </div>
           
-          <button 
-            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-sm rounded-md flex items-center gap-1.5 border border-gray-700"
-            onClick={() => setShowPeriodModal(true)}
-          >
-            <Calendar size={14} />
-            <span>Выбрать даты</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white text-sm rounded-md flex items-center gap-1.5 border border-gray-700"
+              onClick={() => setShowPeriodModal(true)}
+            >
+              <Calendar size={14} />
+              <span>Выбрать даты</span>
+            </button>
+          </div>
         </div>
       </div>
       
@@ -1602,6 +1700,7 @@ const renderChart = () => {
     </>
   );
 };
+
 
 
 
