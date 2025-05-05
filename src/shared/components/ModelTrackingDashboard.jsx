@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { carModels, regions } from '@/src/shared/mocks/mock-data';
 
-const OrderTrackingDashboard = () => {
+const ModelTrackingDashboard = () => {
   const donutChartRef = useRef(null);
   const modelsChartRef = useRef(null);
   const statusChartRef = useRef(null);
@@ -1608,4 +1608,4 @@ const renderStatusChart = () => {
   );
 };
 
-export default OrderTrackingDashboard;
+export default ModelTrackingDashboard;

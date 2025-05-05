@@ -8,7 +8,6 @@ import { useTelegram } from '@/src/hooks/useTelegram';
 import * as d3 from 'd3';
 import ContentReadyLoader from '@/src/shared/layout/ContentReadyLoader';
 
-
 const SalesChart = ({ 
   initialSalesData = [], 
   initialLastYearData = [],
@@ -224,19 +223,16 @@ const fetchAnalyticsData = async (forComparison = false, customPeriod = null) =>
     const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
     const apiUrl = `${baseUrl}&auto_analytics`;
     
-    // Создаем объект данных для отправки в теле запроса
     const requestData = {
       begin_date: beginDate,
       end_date: endDate,
     };
     
-    // Добавляем модель, если выбрана
     if (selectedModel) {
       requestData.model_id = selectedModel;
       console.log(`Запрос по конкретной модели: ${selectedModel}`);
     }
     
-    // Добавляем регион, если выбран
     if (selectedRegion) {
       requestData.region_id = selectedRegion;
       console.log(`Запрос по конкретному региону: ${selectedRegion}`);
@@ -244,7 +240,6 @@ const fetchAnalyticsData = async (forComparison = false, customPeriod = null) =>
     
     console.log(`Отправка ${forComparison ? 'сравнительных' : 'текущих'} данных:`, requestData);
     
-    // Выполняем POST-запрос с данными в теле
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -2908,9 +2903,7 @@ const renderSidebarContent = () => {
           </div>
         </div>
         
-        {/* Сетка отчетов */}
         <div className="grid grid-cols-1 lg:grid-cols-1 gap-5 mb-5">
-          {/* Обновленный график продаж с использованием компонента SalesChart */}
           <div className="bg-gray-800/80 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-lg overflow-hidden">
             <SalesChart 
               salesData={salesData}
