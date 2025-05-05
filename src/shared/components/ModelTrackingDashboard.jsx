@@ -1602,7 +1602,6 @@ const statusDescriptions = [
 </p>
         
         <div className="mb-6">
-          {/* Карточка со статусом оплаты - отображаем только на общем экране и экране региона */}
 {/* Карточка со статусом оплаты - отображаем только на общем экране и экране региона */}
 {currentView !== 'model' && (
   <div className="lg:col-span-8 bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl shadow-xl border border-slate-700/50 relative overflow-hidden mb-6">
