@@ -212,15 +212,15 @@ const calculateStatusData = () => {
     });
   }
   
-  return [
-    { id: 'new', name: 'Новый', value: totalNew, color: '#ef4444' },
-    { id: 'waiting', name: 'Ожидает', value: totalWaiting, color: '#f59e0b' },
-    { id: 'distributed', name: 'Распределенно', value: totalReserved, color: '#3b82f6' },
-    { id: 'moving', name: 'В пути', value: totalMoving, color: '#8b5cf6' },
-    { id: 'dealer', name: 'У дилера', value: totalComplete, color: '#10b981' },
-    { id: 'distribution', name: 'На распределении', value: totalBinding, color: '#60a5fa' },
-    { id: 'reserved', name: 'Бронь', value: totalBooked, color: '#6366f1' }
-  ];
+return [
+  { id: 'new', name: 'Не оплаченно', value: totalNew, color: '#ef4444' },
+  { id: 'waiting', name: 'Оплаченно', value: totalWaiting, color: '#f59e0b' },
+  { id: 'distributed', name: 'Распределенно', value: totalReserved, color: '#3b82f6' },
+  { id: 'moving', name: 'В пути', value: totalMoving, color: '#8b5cf6' },
+  { id: 'dealer', name: 'У дилера', value: totalComplete, color: '#10b981' },
+  { id: 'distribution', name: 'На распределении', value: totalBinding, color: '#60a5fa' },
+  { id: 'reserved', name: 'Бронь', value: totalBooked, color: '#6366f1' }
+];
 };
   const statusData = calculateStatusData();
   
@@ -773,7 +773,7 @@ const newStatus = statusInfo.append('div')
 newStatus.append('div')
   .style('color', '#94a3b8')
   .style('font-size', '12px')
-  .text('Новый:');
+  .text('Не оплаченно:');
   
 newStatus.append('div')
   .style('color', '#ef4444')
@@ -789,7 +789,7 @@ const waitingStatus = statusInfo.append('div')
 waitingStatus.append('div')
   .style('color', '#94a3b8')
   .style('font-size', '12px')
-  .text('Ожидает:');
+  .text('Оплаченно:');
   
 waitingStatus.append('div')
   .style('color', '#f59e0b')
@@ -1061,7 +1061,7 @@ bookedStatus.append('div')
 newBlock.append('div')
   .style('color', '#94a3b8')
   .style('font-size', '12px')
-  .text('Новый');
+  .text('Не оплаченно');
 
 newBlock.append('div')
   .style('color', '#ef4444')
@@ -1078,7 +1078,7 @@ newBlock.append('div')
 waitingBlock.append('div')
   .style('color', '#94a3b8')
   .style('font-size', '12px')
-  .text('Ожидает');
+  .text('Оплаченно');
 
 waitingBlock.append('div')
   .style('color', '#f59e0b')
@@ -1299,9 +1299,9 @@ const renderStatusChart = () => {
   // Добавляем обработчики событий без изменения цвета
   bars.on('mouseover', function(event, d) {
       // Определяем описание для каждого статуса
-    const descriptions = {
-  'new': 'Новые заказы',
-  'waiting': 'Заказы в ожидании',
+const descriptions = {
+  'new': 'Не оплаченные заказы',
+  'waiting': 'Оплаченные заказы',
   'distributed': 'Распределенные заказы',
   'moving': 'Заказы в пути',
   'dealer': 'Заказы у дилера',
@@ -1412,8 +1412,8 @@ const renderStatusChart = () => {
 
   // Добавляем описания статусов
 const statusDescriptions = [
-  { id: 'new', desc: 'Новые заказы' },
-  { id: 'waiting', desc: 'Заказы в ожидании' },
+  { id: 'new', desc: 'Не оплаченные заказы' },
+  { id: 'waiting', desc: 'Оплаченные заказы' },
   { id: 'distributed', desc: 'Распределенные заказы' },
   { id: 'moving', desc: 'Заказы в пути' },
   { id: 'dealer', desc: 'Заказы у дилера' },
@@ -1595,7 +1595,7 @@ const statusDescriptions = [
         
       <p className="text-slate-400 mb-6 font-medium">
   {currentView === 'general' 
-    ? `СТАТУСЫ ЗАКАЗОВ ${isWholesale ? '(ОПТОВЫЕ)' : '(РОЗНИЧНЫЕ)'}: НОВЫЙ, ОЖИДАЕТ, РАСПРЕДЕЛЕННО, В ПУТИ, У ДИЛЕРА, НА РАСПРЕДЕЛЕНИИ, БРОНЬ`
+    ? `СТАТУСЫ ЗАКАЗОВ ${isWholesale ? '(ОПТОВЫЕ)' : '(РОЗНИЧНЫЕ)'}: НЕ ОПЛАЧЕННО, ОПЛАЧЕННО, РАСПРЕДЕЛЕННО, В ПУТИ, У ДИЛЕРА, НА РАСПРЕДЕЛЕНИИ, БРОНЬ`
     : currentView === 'region'
       ? `СТАТИСТИКА ПО РЕГИОНУ: ${selectedRegion?.name}`
       : `ДЕТАЛЬНАЯ ИНФОРМАЦИЯ ПО МОДЕЛИ: ${selectedModel?.name}`}
@@ -1732,9 +1732,9 @@ const statusDescriptions = [
                       </thead>
                       <tbody className="divide-y divide-slate-700/50">
                         {(() => {
-                       const statusCounts = [
-  { name: 'Новый', value: selectedModel?.state_new || 0, color: '#ef4444' },
-  { name: 'Ожидает', value: selectedModel?.state_waiting || 0, color: '#f59e0b' },
+             const statusCounts = [
+  { name: 'Не оплаченно', value: selectedModel?.state_new || 0, color: '#ef4444' },
+  { name: 'Оплаченно', value: selectedModel?.state_waiting || 0, color: '#f59e0b' },
   { name: 'У дилера', value: selectedModel?.state_complete || 0, color: '#10b981' },
   { name: 'В пути', value: selectedModel?.state_moving || 0, color: '#8b5cf6' },
   { name: 'Распределенно', value: selectedModel?.state_reserved || 0, color: '#3b82f6' },
