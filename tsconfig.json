@@ -38,7 +38,7 @@
     "src/app/statistics/page.jsx",
     "src/shared/components/Statistics.jsx",
     "src/shared/components/FinancialAnalytics.jsx",
-    "src/shared/components/ContractsAnalyticsDashboard.jsx",
+    "src/shared/components/ContractsAnalyticsDashboard/ContractsAnalyticsDashboard.jsx",
     "src/app/auth/page.tsx",
     "src/shared/components/AuthForm.jsx"
   ],
