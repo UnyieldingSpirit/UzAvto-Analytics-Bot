@@ -3,68 +3,39 @@ import { useState, useEffect, useRef } from 'react';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 import { carModels, regions } from '../mocks/mock-data';
 
+
 const FilterPanel = ({ 
+  // Основные состояния
   selectedModel, 
   setSelectedModel,
-  selectedPeriod,
-  setSelectedPeriod,
-  isCustomPeriod,
-  setIsCustomPeriod,
-  customStartDate,
-  setCustomStartDate,
-  customEndDate,
-  setCustomEndDate,
-  handleCustomPeriodSelect,
-  getPeriodLabel,
-  carModels
+  selectedRegion,
+  setSelectedRegion,
+  startDate,
+  setStartDate,
+  endDate,
+  setEndDate,
+  // Данные для выбора
+  regionsList = [], // Устанавливаем значение по умолчанию
+  carModels = [],   // Устанавливаем значение по умолчанию
+  // Функция для применения фильтров
+  applyDateFilter
 }) => {
-  const datePickerRef = useRef(null);
+  // Состояния для управления UI
   const [showAllModels, setShowAllModels] = useState(false);
-  const [showCustomPeriod, setShowCustomPeriod] = useState(false);
+  const [showAllRegions, setShowAllRegions] = useState(false);
   
-  // Создаем временные даты для произвольного периода
-  const [tempStartDate, setTempStartDate] = useState(customStartDate);
-  const [tempEndDate, setTempEndDate] = useState(customEndDate);
+  // Безопасно определяем, какие регионы и модели показывать сразу
+  const visibleRegions = regionsList?.slice(0, 6) || [];
+  const hiddenRegions = regionsList?.slice(6) || [];
   
-  // Обработчик быстрого выбора периода
-  const handlePresetPeriod = (days) => {
-    const end = new Date();
-    const start = new Date();
-    
-    if (days === 7) {
-      start.setDate(end.getDate() - 7);
-    } else if (days === 30) {
-      start.setDate(end.getDate() - 30);
-    } else if (days === 90) { // 3 месяца
-      start.setMonth(end.getMonth() - 3);
-    } else if (days === 180) { // 6 месяцев
-      start.setMonth(end.getMonth() - 6);
-    } else if (days === 365) { // год
-      start.setFullYear(end.getFullYear() - 1);
-    }
-    
-    setCustomStartDate(start);
-    setCustomEndDate(end);
-    setIsCustomPeriod(true);
-    setSelectedPeriod('custom');
-    handleCustomPeriodSelect();
-  };
-  
-  // Применение произвольного периода
-  const applyCustomPeriod = () => {
-    setCustomStartDate(tempStartDate);
-    setCustomEndDate(tempEndDate);
-    setIsCustomPeriod(true);
-    setSelectedPeriod('custom');
-    handleCustomPeriodSelect();
-    setShowCustomPeriod(false);
-  };
+  const visibleModels = carModels?.slice(0, 6) || [];
+  const hiddenModels = carModels?.slice(6) || [];
   
   return (
-    <div className="bg-gradient-to-b from-gray-800/90 to-gray-900/90 rounded-xl p-5 border border-gray-700/70 shadow-lg mb-6 backdrop-blur-sm transition-all duration-300 hover:shadow-indigo-900/10">
+    <div className="bg-gradient-to-b from-gray-800/90 to-gray-900/90 rounded-xl p-5 border border-gray-700/70 shadow-lg mb-6 backdrop-blur-sm">
       <div className="flex items-center justify-between mb-5 border-b border-gray-700/50 pb-4">
         <h3 className="text-lg font-bold text-white flex items-center">
-          <span className="mr-2 text-xl bg-indigo-500/20 w-8 h-8 rounded-full flex items-center justify-center shadow-inner shadow-indigo-500/10">🔍</span> 
+          <span className="mr-2 text-xl bg-indigo-500/20 w-8 h-8 rounded-full flex items-center justify-center">🔍</span> 
           Параметры аналитики
         </h3>
         
@@ -72,9 +43,17 @@ const FilterPanel = ({
           <button
             onClick={() => {
               setSelectedModel('all');
-              setSelectedPeriod('year');
-              setIsCustomPeriod(false);
-              setShowCustomPeriod(false);
+              setSelectedRegion('all');
+              
+              // Установка дат по умолчанию (текущий год)
+              const today = new Date();
+              const startOfYear = new Date(today.getFullYear(), 0, 1);
+              
+              setStartDate(startOfYear.toISOString().substring(0, 10));
+              setEndDate(today.toISOString().substring(0, 10));
+              
+              // Применяем фильтры
+              setTimeout(() => applyDateFilter(), 100);
             }}
             className="text-xs px-2.5 py-1.5 rounded-md bg-gray-700/70 text-gray-300 hover:bg-gray-600 transition-all flex items-center"
           >
@@ -87,16 +66,60 @@ const FilterPanel = ({
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Выбор модели */}
+        {/* Выбор периода - простой вариант с двумя инпутами */}
+        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+          <h4 className="text-sm text-gray-300 font-medium mb-3 flex items-center">
+            <span className="mr-2 text-base bg-indigo-500/10 w-6 h-6 rounded-full flex items-center justify-center">📅</span>
+            Период
+          </h4>
+          
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <label className="block text-xs text-gray-400 mb-1.5">Начало периода</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <input 
+                  type="date" 
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full pl-10 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+            
+            <div className="flex-1">
+              <label className="block text-xs text-gray-400 mb-1.5">Конец периода</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <input 
+                  type="date" 
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full pl-10 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Выбор региона - простой вариант */}
         <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
           <h4 className="text-sm text-gray-300 font-medium mb-3 flex items-center justify-between">
             <div className="flex items-center">
-              <span className="mr-2 text-base bg-indigo-500/10 w-6 h-6 rounded-full flex items-center justify-center">🚗</span>
-              Модель автомобиля
+              <span className="mr-2 text-base bg-indigo-500/10 w-6 h-6 rounded-full flex items-center justify-center">🌐</span>
+              Регион
             </div>
-            {selectedModel !== 'all' && (
+            {selectedRegion !== 'all' && (
               <button 
-                onClick={() => setSelectedModel('all')}
+                onClick={() => setSelectedRegion('all')}
                 className="text-xs px-2 py-0.5 rounded bg-gray-700/70 text-gray-300 hover:bg-gray-600 transition-all"
               >
                 Сбросить
@@ -104,45 +127,39 @@ const FilterPanel = ({
             )}
           </h4>
           
-          <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
             <button 
-              className={`rounded-md p-2 transition-all flex flex-col items-center justify-center ${
-                selectedModel === 'all' ? 'bg-indigo-600/80 text-white shadow-md' : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
+              className={`rounded-md p-2 transition-all flex items-center justify-center ${
+                selectedRegion === 'all' ? 'bg-indigo-600/80 text-white shadow-md' : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
               }`}
-              onClick={() => setSelectedModel('all')}
+              onClick={() => setSelectedRegion('all')}
             >
-              <span className="text-lg mb-1">🔍</span>
-              <span className="text-xs font-medium">Все модели</span>
+              <span className="text-sm font-medium">Все регионы</span>
             </button>
             
-            {carModels.slice(0, 5).map(model => (
+            {visibleRegions.map(region => (
               <button 
-                key={model.id}
-                className={`rounded-md p-2 transition-all flex flex-col items-center justify-center ${
-                  selectedModel === model.id ? 'bg-indigo-600/80 text-white shadow-md' : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
+                key={region.id}
+                className={`rounded-md p-2 transition-all flex items-center justify-center ${
+                  selectedRegion === region.id ? 'bg-indigo-600/80 text-white shadow-md' : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
                 }`}
-                onClick={() => setSelectedModel(model.id)}
+                onClick={() => setSelectedRegion(region.id)}
               >
-                <img 
-                  src={model.img} 
-                  alt={model.name} 
-                  className="w-8 h-8 object-contain mb-1" 
-                />
-                <span className="text-xs font-medium truncate w-full text-center">{model.name}</span>
+                <span className="text-xs font-medium truncate w-full text-center">{region.name}</span>
               </button>
             ))}
           </div>
           
-          {carModels.length > 5 && (
+          {hiddenRegions.length > 0 && (
             <>
               <button 
-                onClick={() => setShowAllModels(!showAllModels)}
+                onClick={() => setShowAllRegions(!showAllRegions)}
                 className="w-full py-1.5 text-xs font-medium text-indigo-300 hover:text-indigo-200 transition-all flex items-center justify-center"
               >
-                {showAllModels ? 'Скрыть' : 'Показать все модели'}
+                {showAllRegions ? 'Скрыть' : 'Показать все регионы'}
                 <svg 
                   xmlns="http://www.w3.org/2000/svg" 
-                  className={`h-3.5 w-3.5 ml-1 transition-transform ${showAllModels ? 'rotate-180' : ''}`} 
+                  className={`h-3.5 w-3.5 ml-1 transition-transform ${showAllRegions ? 'rotate-180' : ''}`} 
                   fill="none" 
                   viewBox="0 0 24 24" 
                   stroke="currentColor"
@@ -151,22 +168,17 @@ const FilterPanel = ({
                 </svg>
               </button>
               
-              {showAllModels && (
-                <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-gray-700/40">
-                  {carModels.slice(5).map(model => (
+              {showAllRegions && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 pt-2 border-t border-gray-700/40 animate-slideDown">
+                  {hiddenRegions.map(region => (
                     <button 
-                      key={model.id}
-                      className={`rounded-md p-2 transition-all flex flex-col items-center justify-center ${
-                        selectedModel === model.id ? 'bg-indigo-600/80 text-white shadow-md' : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
+                      key={region.id}
+                      className={`rounded-md p-2 transition-all flex items-center justify-center ${
+                        selectedRegion === region.id ? 'bg-indigo-600/80 text-white shadow-md' : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
                       }`}
-                      onClick={() => setSelectedModel(model.id)}
+                      onClick={() => setSelectedRegion(region.id)}
                     >
-                      <img 
-                        src={model.img} 
-                        alt={model.name} 
-                        className="w-8 h-8 object-contain mb-1" 
-                      />
-                      <span className="text-xs font-medium truncate w-full text-center">{model.name}</span>
+                      <span className="text-xs font-medium truncate w-full text-center">{region.name}</span>
                     </button>
                   ))}
                 </div>
@@ -174,302 +186,110 @@ const FilterPanel = ({
             </>
           )}
         </div>
-        
-        {/* Выбор периода - полностью переработанный блок */}
-        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
-          <h4 className="text-sm text-gray-300 font-medium mb-3 flex items-center justify-between">
-            <div className="flex items-center">
-              <span className="mr-2 text-base bg-indigo-500/10 w-6 h-6 rounded-full flex items-center justify-center">📅</span>
-              Период анализа
-            </div>
-            {(selectedPeriod !== 'year' || isCustomPeriod) && (
-              <button 
-                onClick={() => {
-                  setIsCustomPeriod(false);
-                  setSelectedPeriod('year');
-                  setShowCustomPeriod(false);
-                }}
-                className="text-xs px-2 py-0.5 rounded bg-gray-700/70 text-gray-300 hover:bg-gray-600 transition-all"
-              >
-                Сбросить
-              </button>
-            )}
-          </h4>
-          
-          {/* Основные предустановленные периоды */}
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            <button 
-              className={`rounded-md py-2 transition-all ${
-                selectedPeriod === 'week' && !isCustomPeriod 
-                  ? 'bg-indigo-600/80 text-white shadow-md' 
-                  : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
-              }`}
-              onClick={() => {
-                setSelectedPeriod('week');
-                setIsCustomPeriod(false);
-                setShowCustomPeriod(false);
-              }}
-            >
-              <div className="flex flex-col items-center">
-                <span className="text-lg mb-0.5">📊</span>
-                <span className="text-xs font-medium">Неделя</span>
-              </div>
-            </button>
-            <button 
-              className={`rounded-md py-2 transition-all ${
-                selectedPeriod === 'month' && !isCustomPeriod 
-                  ? 'bg-indigo-600/80 text-white shadow-md' 
-                  : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
-              }`}
-              onClick={() => {
-                setSelectedPeriod('month');
-                setIsCustomPeriod(false);
-                setShowCustomPeriod(false);
-              }}
-            >
-              <div className="flex flex-col items-center">
-                <span className="text-lg mb-0.5">📆</span>
-                <span className="text-xs font-medium">Месяц</span>
-              </div>
-            </button>
-            <button 
-              className={`rounded-md py-2 transition-all ${
-                selectedPeriod === 'quarter' && !isCustomPeriod 
-                  ? 'bg-indigo-600/80 text-white shadow-md' 
-                  : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
-              }`}
-              onClick={() => {
-                setSelectedPeriod('quarter');
-                setIsCustomPeriod(false);
-                setShowCustomPeriod(false);
-              }}
-            >
-              <div className="flex flex-col items-center">
-                <span className="text-lg mb-0.5">📋</span>
-                <span className="text-xs font-medium">Полгода</span>
-              </div>
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            <button 
-              className={`rounded-md py-2 transition-all ${
-                selectedPeriod === 'year' && !isCustomPeriod 
-                  ? 'bg-indigo-600/80 text-white shadow-md' 
-                  : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
-              }`}
-              onClick={() => {
-                setSelectedPeriod('year');
-                setIsCustomPeriod(false);
-                setShowCustomPeriod(false);
-              }}
-            >
-              <div className="flex flex-col items-center">
-                <span className="text-lg mb-0.5">📈</span>
-                <span className="text-xs font-medium">Год</span>
-              </div>
-            </button>
-            <button 
-              className={`rounded-md py-2 transition-all ${
-                isCustomPeriod && (customEndDate.getTime() - customStartDate.getTime()) / (1000 * 60 * 60 * 24) <= 30
-                  ? 'bg-indigo-600/80 text-white shadow-md' 
-                  : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
-              }`}
-              onClick={() => handlePresetPeriod(30)}
-            >
-              <div className="flex flex-col items-center">
-                <span className="text-lg mb-0.5">🗓️</span>
-                <span className="text-xs font-medium">30 дней</span>
-              </div>
-            </button>
-            <button 
-              className={`rounded-md py-2 transition-all ${
-                isCustomPeriod && (customEndDate.getTime() - customStartDate.getTime()) / (1000 * 60 * 60 * 24) <= 7
-                  ? 'bg-indigo-600/80 text-white shadow-md' 
-                  : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
-              }`}
-              onClick={() => handlePresetPeriod(7)}
-            >
-              <div className="flex flex-col items-center">
-                <span className="text-lg mb-0.5">📅</span>
-                <span className="text-xs font-medium">7 дней</span>
-              </div>
-            </button>
-          </div>
-          
-          {/* Выбор произвольного периода - переключение по кнопке */}
-          <div className="mt-2">
-            <button
-              onClick={() => setShowCustomPeriod(!showCustomPeriod)}
-              className={`w-full py-2 px-3 rounded-lg flex items-center justify-between transition-all ${
-                showCustomPeriod || (isCustomPeriod && !([7, 30, 90, 180, 365].some(days => 
-                  Math.abs((customEndDate.getTime() - customStartDate.getTime()) / (1000 * 60 * 60 * 24) - days) < 2)))
-                  ? 'bg-indigo-600/80 text-white' 
-                  : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
-              }`}
-            >
+      </div>
+      
+      {/* Выбор модели автомобиля */}
+      {carModels && carModels.length > 0 && (
+        <div className="mt-5">
+          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+            <h4 className="text-sm text-gray-300 font-medium mb-3 flex items-center justify-between">
               <div className="flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span className="text-sm font-medium">
-                  {isCustomPeriod 
-                    ? `${customStartDate.toLocaleDateString('ru-RU', {day: 'numeric', month: 'short'})} — ${customEndDate.toLocaleDateString('ru-RU', {day: 'numeric', month: 'short'})}`
-                    : 'Произвольный период'}
-                </span>
+                <span className="mr-2 text-base bg-indigo-500/10 w-6 h-6 rounded-full flex items-center justify-center">🚗</span>
+                Модель автомобиля
               </div>
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className={`h-4 w-4 transition-transform ${showCustomPeriod ? 'rotate-180' : ''}`}
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+              {selectedModel !== 'all' && (
+                <button 
+                  onClick={() => setSelectedModel('all')}
+                  className="text-xs px-2 py-0.5 rounded bg-gray-700/70 text-gray-300 hover:bg-gray-600 transition-all"
+                >
+                  Сбросить
+                </button>
+              )}
+            </h4>
             
-            {showCustomPeriod && (
-              <div className="mt-3 p-3 bg-gray-900/50 rounded-lg border border-gray-700/50 animate-slideDown">
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1.5">Начало периода</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <input 
-                        type="date" 
-                        value={tempStartDate.toISOString().split('T')[0]}
-                        onChange={(e) => setTempStartDate(new Date(e.target.value))}
-                        className="w-full pl-10 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1.5">Конец периода</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <input 
-                        type="date" 
-                        value={tempEndDate.toISOString().split('T')[0]}
-                        onChange={(e) => setTempEndDate(new Date(e.target.value))}
-                        className="w-full pl-10 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
-                </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-2">
+              <button 
+                className={`rounded-md p-2 transition-all flex items-center justify-center ${
+                  selectedModel === 'all' ? 'bg-indigo-600/80 text-white shadow-md' : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
+                }`}
+                onClick={() => setSelectedModel('all')}
+              >
+                <span className="text-sm font-medium">Все модели</span>
+              </button>
+              
+              {visibleModels.map(model => (
+                <button 
+                  key={model.id}
+                  className={`rounded-md p-2 transition-all flex flex-col items-center justify-center ${
+                    selectedModel === model.id ? 'bg-indigo-600/80 text-white shadow-md' : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
+                  }`}
+                  onClick={() => setSelectedModel(model.id)}
+                >
+                  {model.img && (
+                    <img 
+                      src={model.img} 
+                      alt={model.name} 
+                      className="w-6 h-6 object-contain mb-1" 
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://telegra.ph/file/e54ca862bac1f2187ddde.png';
+                      }}
+                    />
+                  )}
+                  <span className="text-xs font-medium truncate w-full text-center">{model.name}</span>
+                </button>
+              ))}
+            </div>
+            
+            {hiddenModels.length > 0 && (
+              <>
+                <button 
+                  onClick={() => setShowAllModels(!showAllModels)}
+                  className="w-full py-1.5 text-xs font-medium text-indigo-300 hover:text-indigo-200 transition-all flex items-center justify-center"
+                >
+                  {showAllModels ? 'Скрыть' : 'Показать все модели'}
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className={`h-3.5 w-3.5 ml-1 transition-transform ${showAllModels ? 'rotate-180' : ''}`} 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
                 
-                {/* Дополнительные опции быстрого выбора */}
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => {
-                      setTempStartDate(new Date(new Date().setMonth(new Date().getMonth() - 3)));
-                      setTempEndDate(new Date());
-                    }}
-                    className="px-2 py-1.5 text-xs bg-gray-800 text-gray-300 rounded-md hover:bg-gray-700 transition-all"
-                  >
-                    3 месяца
-                  </button>
-                  <button
-                    onClick={() => {
-                      setTempStartDate(new Date(new Date().setMonth(new Date().getMonth() - 6)));
-                      setTempEndDate(new Date());
-                    }}
-                    className="px-2 py-1.5 text-xs bg-gray-800 text-gray-300 rounded-md hover:bg-gray-700 transition-all"
-                  >
-                    6 месяцев
-                  </button>
-                  <button
-                    onClick={() => {
-                      setTempStartDate(new Date(new Date().setFullYear(new Date().getFullYear() - 1)));
-                      setTempEndDate(new Date());
-                    }}
-                    className="px-2 py-1.5 text-xs bg-gray-800 text-gray-300 rounded-md hover:bg-gray-700 transition-all"
-                  >
-                    1 год
-                  </button>
-                </div>
-                
-                {/* Информация о выбранном периоде */}
-                {tempStartDate && tempEndDate && tempEndDate >= tempStartDate && (
-                  <div className="mt-3 py-2 px-3 bg-indigo-900/20 rounded-lg border border-indigo-500/30">
-                    <div className="flex items-center text-indigo-300 text-xs">
-                      <span className="mr-1.5">ℹ️</span>
-                      Период: {Math.ceil((tempEndDate.getTime() - tempStartDate.getTime()) / (1000 * 60 * 60 * 24))} дней
-                    </div>
+                {showAllModels && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-2 pt-2 border-t border-gray-700/40 animate-slideDown">
+                    {hiddenModels.map(model => (
+                      <button 
+                        key={model.id}
+                        className={`rounded-md p-2 transition-all flex flex-col items-center justify-center ${
+                          selectedModel === model.id ? 'bg-indigo-600/80 text-white shadow-md' : 'bg-gray-700/60 text-gray-300 hover:bg-gray-700/90'
+                        }`}
+                        onClick={() => setSelectedModel(model.id)}
+                      >
+                        {model.img && (
+                          <img 
+                            src={model.img} 
+                            alt={model.name} 
+                            className="w-6 h-6 object-contain mb-1" 
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = 'https://telegra.ph/file/e54ca862bac1f2187ddde.png';
+                            }}
+                          />
+                        )}
+                        <span className="text-xs font-medium truncate w-full text-center">{model.name}</span>
+                      </button>
+                    ))}
                   </div>
                 )}
-                
-                <div className="mt-3 flex justify-end">
-                  <button
-                    onClick={applyCustomPeriod}
-                    disabled={!(tempStartDate && tempEndDate && tempEndDate >= tempStartDate)}
-                    className={`px-3 py-1.5 rounded-md text-sm flex items-center ${
-                      tempStartDate && tempEndDate && tempEndDate >= tempStartDate
-                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                        : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                    } transition-all`}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Применить
-                  </button>
-                </div>
-              </div>
+              </>
             )}
           </div>
         </div>
-      </div>
-      
-      {/* Индикатор выбранных фильтров */}
-      <div className="mt-4 bg-gray-900/40 rounded-lg p-3 border border-gray-700/50">
-        <div className="text-gray-400 text-xs mb-2">Активные фильтры:</div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="px-3 py-1.5 rounded-lg bg-indigo-900/30 text-indigo-300 text-sm flex items-center border border-indigo-500/30">
-            <span className="mr-1.5 text-base">🚗</span>
-            <span className="mr-1 font-medium">Модель:</span>
-            {selectedModel === 'all' ? 
-              'Все модели' : 
-              carModels.find(m => m.id === selectedModel)?.name || 'Модель не выбрана'}
-            {selectedModel !== 'all' && (
-              <button 
-                onClick={() => setSelectedModel('all')}
-                className="ml-2 text-indigo-300 hover:text-white"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-          
-          <div className="px-3 py-1.5 rounded-lg bg-indigo-900/30 text-indigo-300 text-sm flex items-center border border-indigo-500/30">
-            <span className="mr-1.5 text-base">📅</span>
-            <span className="mr-1 font-medium">Период:</span>
-            {isCustomPeriod ? 
-              `${customStartDate.toLocaleDateString('ru-RU', {day: 'numeric', month: 'short'})} — ${customEndDate.toLocaleDateString('ru-RU', {day: 'numeric', month: 'short'})}` : 
-              getPeriodLabel(selectedPeriod)}
-            {(selectedPeriod !== 'year' || isCustomPeriod) && (
-              <button 
-                onClick={() => {
-                  setIsCustomPeriod(false);
-                  setSelectedPeriod('year');
-                }}
-                className="ml-2 text-indigo-300 hover:text-white"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-      
+      )}
       <style jsx>{`
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-10px); }
@@ -1748,64 +1568,6 @@ const resetCustomPeriod = () => {
             isActive={activeMetric === 'cancellation'}
             onClick={() => setActiveMetric('cancellation')}
           />
-        </div>
-      </div>
-    );
-  };
-
-  // Компонент для выбора модели с изображениями
-  const ModelSelector = () => {
-    return (
-      <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg mb-6 hover:shadow-xl transition-all duration-300">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold text-white flex items-center">
-            <span className="text-2xl mr-2">🚗</span> 
-            Выбор модели
-          </h3>
-          {selectedModel !== 'all' && (
-            <button 
-              onClick={() => setSelectedModel('all')} 
-              className="px-3 py-1 bg-gray-700/80 hover:bg-gray-600/80 text-sm text-gray-300 rounded-md transition-all"
-            >
-              Сбросить фильтр
-            </button>
-          )}
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          <div 
-            className={`bg-gray-900/90 p-4 rounded-lg border ${selectedModel === 'all' ? 'border-indigo-500/70 ring-2 ring-indigo-500/30' : 'border-gray-700/60 hover:border-indigo-500/40'} transition-all duration-300 flex flex-col items-center cursor-pointer`}
-            onClick={() => setSelectedModel('all')}
-          >
-            <div className="w-14 h-14 rounded-full bg-indigo-500/20 flex items-center justify-center mb-2">
-              <span className="text-2xl">🔍</span>
-            </div>
-            <p className="font-medium text-gray-200 text-center">Все модели</p>
-            <p className="text-xs text-gray-400">Показать всё</p>
-          </div>
-          
-          {carModels.map(model => (
-            <div 
-              key={model.id}
-              className={`bg-gray-900/90 p-4 rounded-lg border ${selectedModel === model.id ? 'border-indigo-500/70 ring-2 ring-indigo-500/30' : 'border-gray-700/60 hover:border-indigo-500/40'} transition-all duration-300 flex flex-col items-center cursor-pointer`}
-              onClick={() => setSelectedModel(model.id)}
-            >
-              <div className="w-16 h-16 bg-gray-800/80 rounded-lg flex items-center justify-center mb-2 overflow-hidden">
-                <img 
-                  src={model.img} 
-                  alt={model.name} 
-                  className="w-full h-full object-contain p-1"
-                />
-              </div>
-              <p className="font-medium text-gray-200 text-center">{model.name}</p>
-              <p className="text-xs text-gray-400">{
-                model.category === 'sedan' ? 'Седан' :
-                model.category === 'suv' ? 'Внедорожник' :
-                model.category === 'minivan' ? 'Минивэн' : 
-                model.category
-              }</p>
-            </div>
-          ))}
         </div>
       </div>
     );
