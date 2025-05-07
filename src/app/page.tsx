@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import FinancialAnalytics from "@/src/shared/components/FinancialAnalytics";
-import AnalyticsDashboard from "@/src/shared/components/ContractsAnalyticsDashboard";
+import AnalyticsDashboard from "@/src/shared/components/ContractsAnalyticsDashboard/ContractsAnalyticsDashboard";
 import ModelTrackingDashboard from "@/src/shared/components/ModelTrackingDashboard";
 import InstallmentDashboard from "@/src/shared/components/InstallmentDashboard";
 import SalesDashboard from "@/src/shared/components/SalesDashboard";

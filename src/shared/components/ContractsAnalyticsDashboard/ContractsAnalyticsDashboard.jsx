@@ -38,7 +38,7 @@ const fetchContractDataByDate = async (beginDate, endDate) => {
   }
 };
 
-export default function ContractsAnalyticsDashboard() {
+function ContractsAnalyticsDashboard() {
   // Основные состояния
   const [selectedPeriod, setSelectedPeriod] = useState('year');
   const [periodData, setPeriodData] = useState([]);
@@ -1217,3 +1217,6 @@ const renderHeatmap = () => {
     </div>
   );
 }
+
+
+export default ContractsAnalyticsDashboard;
