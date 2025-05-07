@@ -1,5 +1,5 @@
-import { useRef, useEffect } from 'react';
-import { formatNumber } from './utils/formatters';
+import { useRef, useEffect, useState } from 'react';
+import { FileText, CheckCircle, XCircle } from 'lucide-react';
 
 const StatsCards = ({ 
   selectedPeriod, 
@@ -18,33 +18,56 @@ const StatsCards = ({
     cancellation: useRef(null)
   };
   
-  // Функция для получения актуальных значений для отображения
-  const getTotalValues = () => {
-    // Если нет данных, возвращаем нули
-    if (!detailedData || !detailedData.totals) {
-      return {
-        contracts: 0,
-        realization: 0,
-        cancellation: 0
-      };
-    }
+  // Используем состояние вместо useRef для хранения значений, 
+  // чтобы компонент перерисовывался при изменении данных
+  const [totalValues, setTotalValues] = useState({
+    contracts: 0,
+    realization: 0,
+    cancellation: 0
+  });
+  
+  // Обновляем значения при изменении входных данных
+  useEffect(() => {
+    // Функция для получения актуальных значений
+    const calculateValues = () => {
+      // Если нет данных, возвращаем нули
+      if (!detailedData || !detailedData.totals) {
+        console.error("Отсутствуют данные для отображения", detailedData);
+        return {
+          contracts: 0,
+          realization: 0,
+          cancellation: 0
+        };
+      }
 
-    // Если выбрана конкретная модель и есть данные о ее производительности
-    if (selectedModel !== 'all' && modelPerformance && modelPerformance[selectedModel]) {
+      // Если выбрана конкретная модель и есть данные о ее производительности
+      if (selectedModel !== 'all' && modelPerformance && modelPerformance[selectedModel]) {
+        console.log(`Используем данные для модели ${selectedModel}:`, modelPerformance[selectedModel]);
+        return {
+          contracts: modelPerformance[selectedModel].contracts || 0,
+          realization: modelPerformance[selectedModel].realization || 0,
+          cancellation: modelPerformance[selectedModel].cancellation || 0
+        };
+      }
+      
+      console.log("Используем общие данные detailedData.totals:", detailedData.totals);
+      
+      // В противном случае используем общие данные
       return {
-        contracts: modelPerformance[selectedModel].contracts || 0,
-        realization: modelPerformance[selectedModel].realization || 0,
-        cancellation: modelPerformance[selectedModel].cancellation || 0
+        contracts: detailedData.totals.contracts || 0,
+        realization: detailedData.totals.realization || 0,
+        cancellation: detailedData.totals.cancellation || 0
       };
-    }
+    };
     
-    // В противном случае используем общие данные
-    return detailedData.totals;
-  };
+    // Рассчитываем новые значения и обновляем состояние
+    const newValues = calculateValues();
+    console.log("Обновляем значения:", newValues);
+    setTotalValues(newValues);
+    
+  }, [detailedData, selectedModel, modelPerformance]); // Зависимости для useEffect
   
-  const totalValues = getTotalValues();
-  
-  // Эффект для анимации чисел
+  // Эффект для анимации чисел при изменении totalValues
   useEffect(() => {
     // Анимация для чисел
     Object.keys(valueRefs).forEach(key => {
@@ -61,7 +84,7 @@ const StatsCards = ({
           
           const currentValue = Math.floor(startValue + (target - startValue) * easedProgress);
           if (valueRefs[key].current) {
-            valueRefs[key].current.textContent = formatNumber(currentValue);
+            valueRefs[key].current.textContent = currentValue.toLocaleString('ru-RU');
           }
           
           if (progress < 1) {
@@ -73,101 +96,112 @@ const StatsCards = ({
       }
     });
   }, [totalValues]);
-  
-  // Получение цвета для отображения изменений
-  const getChangeColor = (change) => {
-    const changeNum = parseFloat(change);
-    if (changeNum > 0) return 'text-emerald-500';
-    if (changeNum < 0) return 'text-red-500';
-    return 'text-gray-400';
-  };
-  
-  // Получение стрелки для изменений
-  const getChangeIcon = (change) => {
-    const changeNum = parseFloat(change);
-    if (changeNum > 0) return '↑';
-    if (changeNum < 0) return '↓';
-    return '—';
-  };
-  
-  // Карточка метрики
-  const MetricCard = ({ title, icon, value, change, color, isActive, onClick }) => {
-    const borderClass = isActive ? `border-${color}-500` : 'border-gray-700';
-    const bgClass = isActive ? `bg-${color}-900/30` : 'bg-gray-800/80';
+
+  // Форматируем период для заголовка
+  const getFormattedPeriod = () => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
     
-    return (
-      <div 
-        className={`rounded-lg p-5 border ${borderClass} ${bgClass} transition-all duration-300 cursor-pointer hover:shadow-xl hover:scale-105`}
-        onClick={onClick}
-      >
-        <div className="flex items-center">
-          <div className={`w-14 h-14 rounded-full bg-${color}-500/30 flex items-center justify-center mr-4 shadow-lg`}>
-            <span className="text-2xl">{icon}</span>
-          </div>
-          <div className="flex-1">
-            <h3 className="text-sm text-gray-400 font-semibold">{title}</h3>
-            <div className="flex items-baseline">
-              <span ref={valueRefs[value.toLowerCase()]} className="text-2xl font-bold text-white">
-                {formatNumber(totalValues[value.toLowerCase()])}
-              </span>
-              <span className={`ml-2 text-sm font-medium ${getChangeColor(detailedData.changes?.[value.toLowerCase()])}`}>
-                {getChangeIcon(detailedData.changes?.[value.toLowerCase()])} {Math.abs(detailedData.changes?.[value.toLowerCase()] || 0)}%
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    // Выбираем тип периода
+    if (selectedPeriod === 'year') {
+      return `за ${currentYear} год`;
+    } else if (selectedPeriod === 'quarter') {
+      return 'за полгода';
+    } else if (selectedPeriod === 'month') {
+      const monthName = today.toLocaleString('ru-RU', { month: 'long' });
+      return `за ${monthName}`;
+    } else if (selectedPeriod === 'week') {
+      return 'за текущую неделю';
+    } else if (selectedPeriod === 'custom') {
+      return 'за выбранный период';
+    }
+    
+    return 'за выбранный период';
   };
 
   return (
-    <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg mb-6 hover:shadow-xl transition-all duration-300">
-      <h3 className="text-xl font-bold text-white mb-6 flex items-center">
-        <span className="text-2xl mr-2">📊</span> 
-        Статистика {selectedPeriod === 'month' ? 'за месяц' : 
-                    selectedPeriod === 'week' ? 'за неделю' : 
-                    selectedPeriod === 'quarter' ? 'за полгода' : 
-                    selectedPeriod === 'custom' ? 'за выбранный период' : 'за год'}
-        {selectedDetailLabel && (
-          <span className="ml-2 text-indigo-400">
-            ({selectedDetailLabel})
-          </span>
-        )}
+    <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-5 border border-gray-700/60 shadow-lg mb-5 hover:shadow-xl transition-all duration-300">
+      <h3 className="text-lg font-bold text-white mb-4 flex items-center">
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500/20 mr-2">
+          <span className="text-indigo-400 text-lg">📊</span>
+        </div>
+        <span>Статистика {getFormattedPeriod()}</span>
         {selectedModel !== 'all' && carModels && (
-          <span className="ml-2 text-indigo-400">
+          <span className="ml-2 text-indigo-400 text-sm font-medium">
             ({carModels.find(m => m.id === selectedModel)?.name})
           </span>
         )}
       </h3>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MetricCard 
-          title="Контракты" 
-          icon="📝"
-          value="contracts"
-          change={detailedData.changes?.contracts}
-          color="indigo"
-          isActive={activeMetric === 'contracts'}
+        {/* Карточка Контракты */}
+        <div 
+          className={`rounded-xl p-4 border ${activeMetric === 'contracts' ? 'border-indigo-500' : 'border-gray-700/60'} ${activeMetric === 'contracts' ? 'bg-indigo-900/30' : 'bg-gray-800/60'} transition-all duration-300 cursor-pointer hover:shadow-md hover:translate-y-[-2px] group`}
           onClick={() => setActiveMetric('contracts')}
-        />
-        <MetricCard 
-          title="Реализация" 
-          icon="✅"
-          value="realization"
-          change={detailedData.changes?.realization}
-          color="emerald"
-          isActive={activeMetric === 'realization'}
+        >
+          <div className="flex items-center">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-500/30 flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
+              <FileText size={18} className="text-indigo-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-indigo-400 mb-1">Контракты</h3>
+              <div className="flex items-baseline">
+                <span ref={valueRefs.contracts} className="text-2xl font-bold text-white">
+                  {totalValues.contracts.toLocaleString('ru-RU')}
+                </span>
+                <span className="ml-1.5 text-xs font-medium text-gray-400">
+                  шт
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Карточка Реализация */}
+        <div 
+          className={`rounded-xl p-4 border ${activeMetric === 'realization' ? 'border-emerald-500' : 'border-gray-700/60'} ${activeMetric === 'realization' ? 'bg-emerald-900/30' : 'bg-gray-800/60'} transition-all duration-300 cursor-pointer hover:shadow-md hover:translate-y-[-2px] group`}
           onClick={() => setActiveMetric('realization')}
-        />
-        <MetricCard 
-          title="Отмена" 
-          icon="❌"
-          value="cancellation"
-          change={detailedData.changes?.cancellation}
-          color="red"
-          isActive={activeMetric === 'cancellation'}
+        >
+          <div className="flex items-center">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-500/30 flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
+              <CheckCircle size={18} className="text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-emerald-400 mb-1">Реализация</h3>
+              <div className="flex items-baseline">
+                <span ref={valueRefs.realization} className="text-2xl font-bold text-white">
+                  {totalValues.realization.toLocaleString('ru-RU')}
+                </span>
+                <span className="ml-1.5 text-xs font-medium text-gray-400">
+                  шт
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Карточка Отмена */}
+        <div 
+          className={`rounded-xl p-4 border ${activeMetric === 'cancellation' ? 'border-red-500' : 'border-gray-700/60'} ${activeMetric === 'cancellation' ? 'bg-red-900/30' : 'bg-gray-800/60'} transition-all duration-300 cursor-pointer hover:shadow-md hover:translate-y-[-2px] group`}
           onClick={() => setActiveMetric('cancellation')}
-        />
+        >
+          <div className="flex items-center">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-500/30 flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
+              <XCircle size={18} className="text-red-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-red-400 mb-1">Отмена</h3>
+              <div className="flex items-baseline">
+                <span ref={valueRefs.cancellation} className="text-2xl font-bold text-white">
+                  {totalValues.cancellation.toLocaleString('ru-RU')}
+                </span>
+                <span className="ml-1.5 text-xs font-medium text-gray-400">
+                  шт
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

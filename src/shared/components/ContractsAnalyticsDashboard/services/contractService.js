@@ -26,6 +26,8 @@ export const fetchContractData = async (beginDate, endDate) => {
 
 // Функция для обработки и подготовки данных по контрактам
 export const processContractData = (data, modelId, regionId, period) => {
+    console.log("INPUT DATA FROM API:", data);
+
     // Готовим данные для модели производительности
     const modelPerformance = {};
 
@@ -34,6 +36,11 @@ export const processContractData = (data, modelId, regionId, period) => {
         const modelAllContracts = model.filter_by_month || [];
         const modelRealizedContracts = model.filter_real_by_month || [];
         const modelCanceledContracts = model.filter_cancel_by_month || [];
+
+        console.log(`Обработка модели: ${model.model_name} (ID: ${model.model_id})`);
+        console.log(`filter_by_month:`, modelAllContracts);
+        console.log(`filter_real_by_month:`, modelRealizedContracts);
+        console.log(`filter_cancel_by_month:`, modelCanceledContracts);
 
         let totalContracts = 0;
         let totalRealization = 0;
@@ -53,17 +60,35 @@ export const processContractData = (data, modelId, regionId, period) => {
             : modelCanceledContracts.filter(region => region.region_id === regionId);
 
         // Суммируем данные по регионам и месяцам для каждой модели
-        filteredContracts.forEach(region =>
-            region.data.forEach(item => totalContracts += parseInt(item.order_count))
-        );
+        filteredContracts.forEach(region => {
+            region.data.forEach(item => {
+                const count = parseInt(item.order_count);
+                totalContracts += count;
+                console.log(`Контракты для региона ${region.region_name}, месяц ${item.order_month}: ${count}`);
+            });
+        });
 
-        filteredRealizations.forEach(region =>
-            region.data.forEach(item => totalRealization += parseInt(item.order_count))
-        );
+        filteredRealizations.forEach(region => {
+            region.data.forEach(item => {
+                const count = parseInt(item.order_count);
+                totalRealization += count;
+                console.log(`Реализация для региона ${region.region_name}, месяц ${item.order_month}: ${count}`);
+            });
+        });
 
-        filteredCancellations.forEach(region =>
-            region.data.forEach(item => totalCancellation += parseInt(item.order_count))
-        );
+        filteredCancellations.forEach(region => {
+            region.data.forEach(item => {
+                const count = parseInt(item.order_count);
+                totalCancellation += count;
+                console.log(`Отмена для региона ${region.region_name}, месяц ${item.order_month}: ${count}`);
+            });
+        });
+
+        console.log(`Итоги для модели ${model.model_name}:`, {
+            contracts: totalContracts,
+            realization: totalRealization,
+            cancellation: totalCancellation
+        });
 
         // Вычисляем конверсию (процент реализованных контрактов)
         const conversion = totalContracts > 0
@@ -78,8 +103,7 @@ export const processContractData = (data, modelId, regionId, period) => {
         };
     });
 
-    // Дальше идет код для выбора и обработки данных по выбранной модели/региону
-    // и формирования periodData, detailedData, и т.д.
+    console.log("Model Performance (все модели):", modelPerformance);
 
     // Выбираем данные в зависимости от выбранной модели и региона
     let filteredAllContracts = [];
@@ -87,6 +111,7 @@ export const processContractData = (data, modelId, regionId, period) => {
     let filteredCanceledContracts = [];
 
     if (modelId === 'all') {
+        console.log("Объединяем данные по всем моделям");
         // Объединяем данные по всем моделям
         data.forEach(model => {
             const modelContracts = model.filter_by_month || [];
@@ -109,10 +134,12 @@ export const processContractData = (data, modelId, regionId, period) => {
             }
         });
     } else {
+        console.log(`Обрабатываем только модель с ID ${modelId}`);
         // Берем данные только для выбранной модели
         const selectedModel = data.find(model => model.model_id === modelId);
 
         if (selectedModel) {
+            console.log(`Найдена модель: ${selectedModel.model_name}`);
             const modelContracts = selectedModel.filter_by_month || [];
             const modelRealizations = selectedModel.filter_real_by_month || [];
             const modelCancellations = selectedModel.filter_cancel_by_month || [];
@@ -127,6 +154,8 @@ export const processContractData = (data, modelId, regionId, period) => {
                 filteredRealizedContracts = modelRealizations.filter(region => region.region_id === regionId);
                 filteredCanceledContracts = modelCancellations.filter(region => region.region_id === regionId);
             }
+        } else {
+            console.warn(`Модель с ID ${modelId} не найдена!`);
         }
     }
 
@@ -147,6 +176,7 @@ export const processContractData = (data, modelId, regionId, period) => {
 
     // Сортируем месяцы
     const sortedMonths = Array.from(months).sort();
+    console.log("Уникальные месяцы:", sortedMonths);
 
     // Создаем объект для хранения данных по каждому месяцу
     const monthlyData = {};
@@ -184,10 +214,13 @@ export const processContractData = (data, modelId, regionId, period) => {
                 monthlyData[month].cancellation += parseInt(monthData.order_count);
             }
         });
+
+        console.log(`Данные за месяц ${month}:`, monthlyData[month]);
     });
 
     // Конвертируем объект в массив для графиков
     const periodData = Object.values(monthlyData);
+    console.log("Period Data:", periodData);
 
     // Вычисляем суммарные показатели
     const totals = {
@@ -201,7 +234,15 @@ export const processContractData = (data, modelId, regionId, period) => {
         totals.contracts += month.contracts;
         totals.realization += month.realization;
         totals.cancellation += month.cancellation;
+
+        console.log(`Суммирование за ${month.name}:`, {
+            contracts: month.contracts,
+            realization: month.realization,
+            cancellation: month.cancellation
+        });
     });
+
+    console.log("ИТОГОВЫЕ СУММЫ:", totals);
 
     // Детализированные данные (для подробного графика)
     const detailedData = {
@@ -211,90 +252,14 @@ export const processContractData = (data, modelId, regionId, period) => {
         changes: calculateChanges(periodData)
     };
 
+    console.log("Detailed Data:", detailedData);
+
     return {
         periodData,
         detailedData,
         modelPerformance
     };
 };
-
-// Вспомогательная функция для обработки отфильтрованных данных
-const processFilteredData = (filteredContracts, filteredRealizations, filteredCancellations) => {
-    // Собираем все уникальные месяцы
-    const months = new Set();
-
-    filteredContracts.forEach(region =>
-        region.data.forEach(item => months.add(item.order_month))
-    );
-
-    filteredRealizations.forEach(region =>
-        region.data.forEach(item => months.add(item.order_month))
-    );
-
-    filteredCancellations.forEach(region =>
-        region.data.forEach(item => months.add(item.order_month))
-    );
-
-    // Сортируем месяцы
-    const sortedMonths = Array.from(months).sort();
-
-    // Создаем объект для хранения данных по каждому месяцу
-    const monthlyData = {};
-
-    sortedMonths.forEach(month => {
-        // Инициализируем данные для месяца
-        monthlyData[month] = {
-            name: formatMonthName(month),
-            month: month,
-            contracts: 0,
-            realization: 0,
-            cancellation: 0
-        };
-
-        // Суммируем все контракты по всем регионам для данного месяца
-        filteredContracts.forEach(region => {
-            const monthData = region.data.find(item => item.order_month === month);
-            if (monthData) {
-                monthlyData[month].contracts += parseInt(monthData.order_count);
-            }
-        });
-
-        // Суммируем реализованные контракты по всем регионам для данного месяца
-        filteredRealizations.forEach(region => {
-            const monthData = region.data.find(item => item.order_month === month);
-            if (monthData) {
-                monthlyData[month].realization += parseInt(monthData.order_count);
-            }
-        });
-
-        // Суммируем отмененные контракты по всем регионам для данного месяца
-        filteredCancellations.forEach(region => {
-            const monthData = region.data.find(item => item.order_month === month);
-            if (monthData) {
-                monthlyData[month].cancellation += parseInt(monthData.order_count);
-            }
-        });
-    });
-
-    // Конвертируем объект в массив для графиков
-    const periodData = Object.values(monthlyData);
-
-    // Детализированные данные (для подробного графика)
-    const detailedData = {
-        label: periodData.length > 0 ? periodData[0].name : '',
-        data: generateDetailedData(periodData),
-        totals: calculateTotals(periodData),
-        changes: calculateChanges(periodData)
-    };
-
-    return {
-        periodData,
-        detailedData,
-        modelPerformance: {} // Этот объект нужно заполнить отдельно
-    };
-};
-
-// Вспомогательная функция для форматирования имени месяца из строки вида "2025-05"
 const formatMonthName = (monthStr) => {
     const monthNames = [
         'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -303,12 +268,18 @@ const formatMonthName = (monthStr) => {
 
     try {
         const [year, month] = monthStr.split('-');
-        return `${monthNames[parseInt(month) - 1]} ${year}`;
+        const monthIndex = parseInt(month) - 1;
+
+        // Проверка валидности месяца
+        if (monthIndex >= 0 && monthIndex < 12) {
+            return `${monthNames[monthIndex]} ${year}`;
+        }
+        return monthStr; // Возвращаем исходную строку, если не удалось распарсить
     } catch (error) {
+        console.error("Ошибка форматирования месяца:", error);
         return monthStr;
     }
 };
-
 // Вспомогательная функция для генерации детализированных данных по дням
 const generateDetailedData = (periodData) => {
     if (periodData.length === 0) return [];
@@ -340,7 +311,7 @@ const generateDetailedData = (periodData) => {
     return dayData;
 };
 
-// Расчет суммарных показателей
+// Расчет суммарных показателей - ИСПРАВЛЕНО: убрано деление на количество периодов
 const calculateTotals = (periodData) => {
     if (periodData.length === 0) return { contracts: 0, realization: 0, cancellation: 0 };
 
@@ -355,9 +326,9 @@ const calculateTotals = (periodData) => {
     });
 
     return {
-        contracts: Math.round(totalContracts / periodData.length),
-        realization: Math.round(totalRealization / periodData.length),
-        cancellation: Math.round(totalCancellation / periodData.length)
+        contracts: totalContracts, // Исправлено: возвращаем сумму, а не среднее
+        realization: totalRealization, // Исправлено: возвращаем сумму, а не среднее
+        cancellation: totalCancellation // Исправлено: возвращаем сумму, а не среднее
     };
 };
 

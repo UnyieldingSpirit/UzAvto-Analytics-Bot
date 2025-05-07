@@ -7,7 +7,7 @@ export const formatNumber = (num) => {
     } else if (num >= 1000) {
         return (num / 1000).toFixed(1) + 'K';
     }
-    return num;
+    return num.toString(); // Убедимся, что возвращается строка
 };
 
 // Получаем названия периодов
