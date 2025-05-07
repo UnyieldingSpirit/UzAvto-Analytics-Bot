@@ -1,16 +1,42 @@
 'use client'
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 
 // Импорт компонентов
 import FilterPanel from './FilterPanel';
 import SelectedModelDetails from './SelectedModelDetails';
 import ModelComparisonChart from './ModelComparisonChart';
-import StatsCards from './StatsCards'
+import StatsCards from './StatsCards';
 // Импорт утилит и сервисов
 import { formatNumber, getPeriodLabel, getPeriodDescription } from './utils/formatters';
 import { fetchContractData, processContractData } from './services/contractService';
 import { regions } from './models/regions';
+
+// Функция для получения данных о контрактах по датам
+const fetchContractDataByDate = async (beginDate, endDate) => {
+  try {
+    const response = await fetch('https://uzavtosalon.uz/b/dashboard/infos&get_all_contract_by_date', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        begin_date: beginDate,
+        end_date: endDate
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Ошибка при получении данных: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Ошибка при запросе данных о контрактах по датам:', error);
+    throw error;
+  }
+};
 
 export default function ContractsAnalyticsDashboard() {
   // Основные состояния
@@ -27,6 +53,7 @@ export default function ContractsAnalyticsDashboard() {
   const [modelPerformance, setModelPerformance] = useState({});
   const [enhancedModels, setEnhancedModels] = useState([]);
   const [contractData, setContractData] = useState([]); // Храним данные от API
+  const [dailyContractData, setDailyContractData] = useState([]);
   
   // Состояния для кастомного периода
   const [isCustomPeriod, setIsCustomPeriod] = useState(false);
@@ -37,45 +64,6 @@ export default function ContractsAnalyticsDashboard() {
   
   // Кэш обработанных данных
   const processedDataCache = useRef({});
-  
-  // Генерация тепловой карты
-  const generateHeatmapData = (selectedModelId = 'all', period = 'year') => {
-    const heatmap = [];
-    
-    // Базовое значение зависит от модели и периода
-    let baseValue = selectedModelId === 'all' ? 80 : 40; // Меньше значения для одной модели
-    
-    // Корректируем базовое значение в зависимости от периода
-    switch (period) {
-      case 'quarter':
-        baseValue *= 1.2;
-        break;
-      case 'month':
-        baseValue *= 0.5;
-        break;
-      case 'week':
-        baseValue *= 0.2;
-        break;
-    }
-    
-    // Количество недель для отображения
-    const weeksCount = period === 'week' ? 1 : 4;
-    
-    for (let week = 0; week < weeksCount; week++) {
-      const weekData = { week: `Неделя ${week + 1}` };
-      
-      for (let day = 1; day <= 7; day++) {
-        // В выходные (6,7) меньше контрактов
-        const dayFactor = (day === 6 || day === 7) ? 0.7 : 1.0;
-        // Значение для тепловой карты
-        weekData[`day${day}`] = Math.round(baseValue * dayFactor * (0.5 + Math.random()));
-      }
-      
-      heatmap.push(weekData);
-    }
-    
-    return heatmap;
-  };
   
   // Получение категории для модели на основе имени
   const getCategoryForModel = (modelName) => {
@@ -90,37 +78,24 @@ export default function ContractsAnalyticsDashboard() {
     return 'other';
   };
   
-  // Функция для загрузки данных с API
-  const loadDataFromApi = async () => {
+  // Функция для загрузки всех необходимых данных (объединяем запросы)
+  const loadAllData = async () => {
     setIsLoading(true);
     
     try {
-      // Получаем текущую дату
-      const currentDate = new Date();
-      
-      // Формируем дату начала текущего года (1 января)
-      const startOfYear = new Date(currentDate.getFullYear(), 0, 1);
-      
-      // Получаем форматированные даты для API
-      const formattedStartDate = isCustomPeriod
-        ? `${customStartDate.getDate().toString().padStart(2, '0')}.${(customStartDate.getMonth() + 1).toString().padStart(2, '0')}.${customStartDate.getFullYear()}`
-        : `${startOfYear.getDate().toString().padStart(2, '0')}.${(startOfYear.getMonth() + 1).toString().padStart(2, '0')}.${startOfYear.getFullYear()}`;
-        
-      const formattedEndDate = isCustomPeriod
-        ? `${customEndDate.getDate().toString().padStart(2, '0')}.${(customEndDate.getMonth() + 1).toString().padStart(2, '0')}.${customEndDate.getFullYear()}`
-        : `${currentDate.getDate().toString().padStart(2, '0')}.${(currentDate.getMonth() + 1).toString().padStart(2, '0')}.${currentDate.getFullYear()}`;
+      // Форматируем даты для API
+      const formattedStartDate = formatDateForApi(startDate);
+      const formattedEndDate = formatDateForApi(endDate);
       
       console.log(`Загрузка данных API: от ${formattedStartDate} до ${formattedEndDate}`);
       
-      // Запрос к API
-      const data = await fetchContractData(formattedStartDate, formattedEndDate);
-      
-      // Сохраняем данные API
-      setContractData(data);
+      // Запрос к API для данных по месяцам
+      const monthlyData = await fetchContractData(formattedStartDate, formattedEndDate);
+      setContractData(monthlyData);
       
       // Обновляем модели автомобилей
-      if (data.length > 0) {
-        const enrichedModels = data.map(model => {
+      if (monthlyData.length > 0) {
+        const enrichedModels = monthlyData.map(model => {
           return {
             id: model.model_id,
             name: model.model_name,
@@ -132,9 +107,23 @@ export default function ContractsAnalyticsDashboard() {
         setEnhancedModels(enrichedModels);
       }
       
-      console.log("Данные API успешно загружены:", data.length);
+      // Запрос к API для данных по дням
+      // Берем текущий месяц для детализации и тепловой карты
+      const today = new Date();
+      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      
+      const formattedMonthStart = formatDateForApi(firstDayOfMonth);
+      const formattedMonthEnd = formatDateForApi(lastDayOfMonth);
+      
+      console.log(`Загрузка данных по дням: от ${formattedMonthStart} до ${formattedMonthEnd}`);
+      
+      const dailyData = await fetchContractDataByDate(formattedMonthStart, formattedMonthEnd);
+      setDailyContractData(dailyData);
+      
+      console.log("Все данные успешно загружены");
     } catch (error) {
-      console.error("Ошибка при загрузке данных API:", error);
+      console.error("Ошибка при загрузке данных:", error);
     } finally {
       setIsLoading(false);
     }
@@ -161,7 +150,6 @@ export default function ContractsAnalyticsDashboard() {
       setPeriodData(cachedData.periodData);
       setDetailedData(cachedData.detailedData);
       setModelPerformance(cachedData.modelPerformance);
-      setHeatmapData(generateHeatmapData(selectedModel, selectedPeriod));
       
       // Устанавливаем первый доступный период для детализации
       if (cachedData.periodData.length > 0) {
@@ -181,7 +169,6 @@ export default function ContractsAnalyticsDashboard() {
     setPeriodData(processed.periodData);
     setDetailedData(processed.detailedData);
     setModelPerformance(processed.modelPerformance);
-    setHeatmapData(generateHeatmapData(selectedModel, selectedPeriod));
     
     // Если есть данные, устанавливаем первый доступный период для детализации
     if (processed.periodData.length > 0) {
@@ -192,101 +179,60 @@ export default function ContractsAnalyticsDashboard() {
     console.log("DetailedData.totals:", processed.detailedData.totals);
   };
   
-  // Функция для применения фильтра дат - ИЗМЕНЕНО: теперь только загружает новые данные API
-// Функция для применения фильтра дат
-const applyDateFilter = () => {
-  console.log(`Применение фильтров: даты=${startDate}-${endDate}, регион=${selectedRegion}, модель=${selectedModel}`);
-  
-  // Сбрасываем кэш при изменении параметров
-  processedDataCache.current = {};
-  
-  // Устанавливаем состояние загрузки
-  setIsLoading(true);
-  
-  try {
-    // Форматируем даты для API
-    const formattedStartDate = formatDateForApi(startDate);
-    const formattedEndDate = formatDateForApi(endDate);
+  // Функция для применения фильтра дат
+  const applyDateFilter = () => {
+    console.log(`Применение фильтров: даты=${startDate}-${endDate}, регион=${selectedRegion}, модель=${selectedModel}`);
     
-    console.log(`Отправка запроса с параметрами: даты=${formattedStartDate}-${formattedEndDate}, регион=${selectedRegion}, модель=${selectedModel}`);
+    // Сбрасываем кэш при изменении параметров
+    processedDataCache.current = {};
     
-    // Запрос к API с выбранными пользователем параметрами
-    fetchContractData(formattedStartDate, formattedEndDate)
-      .then(data => {
-        setContractData(data);
-        
-        // Обрабатываем данные с применением текущих фильтров по модели и региону
-        const processed = processContractData(data, selectedModel, selectedRegion, selectedPeriod);
-        
-        // Обновляем состояния на основе обработанных данных
-        setPeriodData(processed.periodData);
-        setDetailedData(processed.detailedData);
-        setModelPerformance(processed.modelPerformance);
-        setHeatmapData(generateHeatmapData(selectedModel, selectedPeriod));
-        
-        // Если есть данные, устанавливаем первый доступный период для детализации
-        if (processed.periodData.length > 0) {
-          setSelectedDetailLabel(processed.periodData[0].name);
-        }
-      })
-      .catch(error => {
-        console.error("Ошибка при загрузке данных:", error);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+    // Загружаем данные заново
+    loadAllData();
+  };
+  
+  // Обработчик для изменения модели
+  const handleModelChange = (modelId) => {
+    setSelectedModel(modelId);
+    
+    // Обновляем данные с новым фильтром по модели
+    // Важно: не делаем новый запрос, а обрабатываем имеющиеся данные с новым фильтром
+    if (contractData.length > 0) {
+      const processed = processContractData(contractData, modelId, selectedRegion, selectedPeriod);
       
-  } catch (error) {
-    console.error("Ошибка при форматировании дат:", error);
-    setIsLoading(false);
-  }
-};
-
-// Обработчик для изменения модели
-const handleModelChange = (modelId) => {
-  setSelectedModel(modelId);
-  
-  // Обновляем данные с новым фильтром по модели
-  // Важно: не делаем новый запрос, а обрабатываем имеющиеся данные с новым фильтром
-  if (contractData.length > 0) {
-    const processed = processContractData(contractData, modelId, selectedRegion, selectedPeriod);
-    
-    setPeriodData(processed.periodData);
-    setDetailedData(processed.detailedData);
-    setModelPerformance(processed.modelPerformance);
-    setHeatmapData(generateHeatmapData(modelId, selectedPeriod));
-    
-    // Если есть данные, устанавливаем первый доступный период для детализации
-    if (processed.periodData.length > 0) {
-      setSelectedDetailLabel(processed.periodData[0].name);
+      setPeriodData(processed.periodData);
+      setDetailedData(processed.detailedData);
+      setModelPerformance(processed.modelPerformance);
+      
+      // Если есть данные, устанавливаем первый доступный период для детализации
+      if (processed.periodData.length > 0) {
+        setSelectedDetailLabel(processed.periodData[0].name);
+      }
     }
-  }
-};
-
-// Обработчик для изменения региона
-const handleRegionChange = (regionId) => {
-  setSelectedRegion(regionId);
+  };
   
-  // Обновляем данные с новым фильтром по региону
-  // Важно: не делаем новый запрос, а обрабатываем имеющиеся данные с новым фильтром
-  if (contractData.length > 0) {
-    const processed = processContractData(contractData, selectedModel, regionId, selectedPeriod);
+  // Обработчик для изменения региона
+  const handleRegionChange = (regionId) => {
+    setSelectedRegion(regionId);
     
-    setPeriodData(processed.periodData);
-    setDetailedData(processed.detailedData);
-    setModelPerformance(processed.modelPerformance);
-    setHeatmapData(generateHeatmapData(selectedModel, selectedPeriod));
-    
-    // Если есть данные, устанавливаем первый доступный период для детализации
-    if (processed.periodData.length > 0) {
-      setSelectedDetailLabel(processed.periodData[0].name);
+    // Обновляем данные с новым фильтром по региону
+    // Важно: не делаем новый запрос, а обрабатываем имеющиеся данные с новым фильтром
+    if (contractData.length > 0) {
+      const processed = processContractData(contractData, selectedModel, regionId, selectedPeriod);
+      
+      setPeriodData(processed.periodData);
+      setDetailedData(processed.detailedData);
+      setModelPerformance(processed.modelPerformance);
+      
+      // Если есть данные, устанавливаем первый доступный период для детализации
+      if (processed.periodData.length > 0) {
+        setSelectedDetailLabel(processed.periodData[0].name);
+      }
     }
-  }
-};
+  };
   
   // Инициализация данных при загрузке компонента
   useEffect(() => {
-    loadDataFromApi();
+    loadAllData();
   }, []);
   
   // Обработка данных при изменении фильтров или загрузке данных API
@@ -295,18 +241,6 @@ const handleRegionChange = (regionId) => {
       processData();
     }
   }, [selectedModel, selectedRegion, selectedPeriod, contractData, isLoading]);
-  
-  // Обработка выбора кастомного периода
-  const handleCustomPeriodSelect = () => {
-    setIsCustomPeriod(true);
-    setSelectedPeriod('custom');
-    
-    // Сбрасываем кэш при изменении периода
-    processedDataCache.current = {};
-    
-    // Загружаем данные для нового периода
-    loadDataFromApi();
-  };
   
   // ВАЖНО: Детализированные данные не меняем полностью, а только обновляем график
   useEffect(() => {
@@ -377,451 +311,682 @@ const handleRegionChange = (regionId) => {
     return null;
   };
   
-// Функция для обработки данных и подготовки их к отображению на графике
-const processDataForChart = (data, startDateString, endDateString) => {
-  if (!data || !data.length) return [];
-  
-  // Преобразуем строковые даты в объекты Date для сравнения
-  const start = new Date(startDateString);
-  const end = new Date(endDateString);
-  
-  // Для гарантии правильного сравнения установим время в начало дня для начальной даты
-  // и конец дня для конечной даты
-  start.setHours(0, 0, 0, 0);
-  end.setHours(23, 59, 59, 999);
-  
-  console.log("Фильтрация данных по периоду:", start.toLocaleDateString('ru-RU'), "-", end.toLocaleDateString('ru-RU'));
-  
-  // Фильтруем данные, чтобы оставить только те, что попадают в диапазон дат
-  const filteredData = data.filter(item => {
-    // Предполагаем, что в item.month хранится строка вида "2025-05"
-    if (!item.month) return false;
+  // Функция для обработки данных и подготовки их к отображению на графике
+  const processDataForChart = (data, startDateString, endDateString) => {
+    if (!data || !data.length) return [];
     
-    const [year, month] = item.month.split('-');
-    // Создаем дату для первого дня месяца
-    const itemDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+    // Преобразуем строковые даты в объекты Date для сравнения
+    const start = new Date(startDateString);
+    const end = new Date(endDateString);
     
-    // Проверяем, попадает ли дата в запрошенный диапазон
-    const isInRange = itemDate >= start && itemDate <= end;
+    // Для гарантии правильного сравнения установим время в начало дня для начальной даты
+    // и конец дня для конечной даты
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
     
-    if (!isInRange) {
-      console.log(`Месяц ${item.name} (${item.month}) не входит в запрошенный диапазон`);
+    console.log("Фильтрация данных по периоду:", start.toLocaleDateString('ru-RU'), "-", end.toLocaleDateString('ru-RU'));
+    
+    // Фильтруем данные, чтобы оставить только те, что попадают в диапазон дат
+    const filteredData = data.filter(item => {
+      // Предполагаем, что в item.month хранится строка вида "2025-05"
+      if (!item.month) return false;
+      
+      const [year, month] = item.month.split('-');
+      // Создаем дату для первого дня месяца
+      const itemDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      
+      // Проверяем, попадает ли дата в запрошенный диапазон
+      const isInRange = itemDate >= start && itemDate <= end;
+      
+      if (!isInRange) {
+        console.log(`Месяц ${item.name} (${item.month}) не входит в запрошенный диапазон`);
+      }
+      
+      return isInRange;
+    });
+    
+    console.log(`Отфильтровано ${filteredData.length} из ${data.length} периодов`);
+    
+    // Сортируем по дате
+    const sortedData = filteredData.sort((a, b) => {
+      const [yearA, monthA] = a.month.split('-');
+      const [yearB, monthB] = b.month.split('-');
+      
+      const dateA = new Date(parseInt(yearA), parseInt(monthA) - 1, 1);
+      const dateB = new Date(parseInt(yearB), parseInt(monthB) - 1, 1);
+      
+      return dateA - dateB;
+    });
+    
+    console.log("Данные для графика после фильтрации и сортировки:", sortedData);
+    
+    return sortedData;
+  };
+  
+  // Форматирование даты для API (DD.MM.YYYY)
+  const formatDateForApi = (dateString) => {
+    if (!dateString) {
+      const today = new Date();
+      return `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear()}`;
     }
     
-    return isInRange;
-  });
-  
-  console.log(`Отфильтровано ${filteredData.length} из ${data.length} периодов`);
-  
-  // Сортируем по дате
-  const sortedData = filteredData.sort((a, b) => {
-    const [yearA, monthA] = a.month.split('-');
-    const [yearB, monthB] = b.month.split('-');
-    
-    const dateA = new Date(parseInt(yearA), parseInt(monthA) - 1, 1);
-    const dateB = new Date(parseInt(yearB), parseInt(monthB) - 1, 1);
-    
-    return dateA - dateB;
-  });
-  
-  console.log("Данные для графика после фильтрации и сортировки:", sortedData);
-  
-  return sortedData;
-};
-
-// Форматирование даты для API (DD.MM.YYYY)
-const formatDateForApi = (dateString) => {
-  if (!dateString) {
-    const today = new Date();
-    return `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear()}`;
-  }
-  
-  try {
-    const date = new Date(dateString);
-    return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()}`;
-  } catch (e) {
-    console.error("Ошибка форматирования даты:", e);
-    const today = new Date();
-    return `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear()}`;
-  }
-};
-
-// Функция для рендеринга графика
-const renderChart = () => {
-  // Проверка наличия данных
-  if (!periodData || periodData.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-gray-400">Нет данных для отображения. Пожалуйста, выберите другой период или фильтры.</p>
-      </div>
-    );
-  }
-  
-  // Фильтруем данные для отображения только за запрошенный период
-  const chartData = processDataForChart(periodData, startDate, endDate);
-  
-  // Если после фильтрации данных не осталось
-  if (chartData.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-gray-400">Нет данных для выбранного периода: {new Date(startDate).toLocaleDateString('ru-RU')} - {new Date(endDate).toLocaleDateString('ru-RU')}</p>
-      </div>
-    );
-  }
-  
-  // Настраиваем отображение оси X в зависимости от количества точек данных
-  const xAxisConfig = {
-    dataKey: "name",
-    stroke: "#9ca3af",
-    // Корректировка угла и высоты для лучшей читаемости
-    angle: chartData.length > 12 ? -45 : 0,
-    textAnchor: chartData.length > 12 ? 'end' : 'middle', 
-    height: chartData.length > 12 ? 60 : 30,
-    tick: {fontSize: 12},
-    // Показываем все точки данных
-    interval: 0 
-  };
-
-  switch (chartType) {
-    case 'line':
-      return (
-        <LineChart data={chartData}>
-          <defs>
-            <linearGradient id="colorContractsGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.2}/>
-            </linearGradient>
-            <linearGradient id="colorRealizationGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0.2}/>
-            </linearGradient>
-            <linearGradient id="colorCancellationGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2}/>
-            </linearGradient>
-          </defs>
-          <XAxis {...xAxisConfig} />
-          <YAxis 
-            stroke="#9ca3af" 
-            tickFormatter={formatNumber}
-            width={70}
-          />
-          <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-          <Tooltip content={renderCustomTooltip} />
-          <Legend 
-            verticalAlign="top" 
-            height={36} 
-            formatter={(value) => {
-              const labels = {
-                contracts: "Контракты",
-                realization: "Реализация",
-                cancellation: "Отмена"
-              };
-              return <span style={{color: '#d1d5db', fontSize: '0.9rem'}}>{labels[value]}</span>
-            }}
-          />
-          <Line 
-            type="monotone" 
-            dataKey="contracts" 
-            stroke="#4f46e5" 
-            strokeWidth={3}
-            dot={{ stroke: '#4f46e5', fill: '#1f2937', strokeWidth: 2, r: 5 }}
-            activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
-          />
-          <Line 
-            type="monotone" 
-            dataKey="realization" 
-            stroke="#10b981" 
-            strokeWidth={3} 
-            dot={{ stroke: '#10b981', fill: '#1f2937', strokeWidth: 2, r: 5 }}
-            activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
-          />
-          <Line 
-            type="monotone" 
-            dataKey="cancellation" 
-            stroke="#ef4444" 
-            strokeWidth={3}
-            dot={{ stroke: '#ef4444', fill: '#1f2937', strokeWidth: 2, r: 5 }}
-            activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
-          />
-        </LineChart>
-      );
-      
-    case 'area':
-      return (
-        <AreaChart data={chartData}>
-          <defs>
-            <linearGradient id="colorContractsGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.1}/>
-            </linearGradient>
-            <linearGradient id="colorRealizationGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
-            </linearGradient>
-            <linearGradient id="colorCancellationGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
-            </linearGradient>
-          </defs>
-          <XAxis {...xAxisConfig} />
-          <YAxis 
-            stroke="#9ca3af" 
-            tickFormatter={formatNumber}
-            width={70}
-          />
-          <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-          <Tooltip content={renderCustomTooltip} />
-          <Legend 
-            verticalAlign="top" 
-            height={36} 
-            formatter={(value) => {
-              const labels = {
-                contracts: "Контракты",
-                realization: "Реализация",
-                cancellation: "Отмена"
-              };
-              return <span style={{color: '#d1d5db', fontSize: '0.9rem'}}>{labels[value]}</span>
-            }}
-          />
-          <Area 
-            type="monotone" 
-            dataKey="contracts" 
-            fill="url(#colorContractsGradient)" 
-            stroke="#4f46e5" 
-            strokeWidth={2}
-            activeDot={{ r: 8 }}
-          />
-          <Area 
-            type="monotone" 
-            dataKey="realization" 
-            fill="url(#colorRealizationGradient)" 
-            stroke="#10b981" 
-            strokeWidth={2}
-            activeDot={{ r: 8 }}
-          />
-          <Area 
-            type="monotone" 
-            dataKey="cancellation" 
-            fill="url(#colorCancellationGradient)" 
-            stroke="#ef4444" 
-            strokeWidth={2}
-            activeDot={{ r: 8 }}
-          />
-        </AreaChart>
-      );
-      
-    case 'bar':
-      return (
-        <BarChart data={chartData}>
-          <XAxis {...xAxisConfig} />
-          <YAxis 
-            stroke="#9ca3af" 
-            tickFormatter={formatNumber}
-            width={70}
-          />
-          <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-          <Tooltip content={renderCustomTooltip} />
-          <Legend 
-            verticalAlign="top" 
-            height={36} 
-            formatter={(value) => {
-              const labels = {
-                contracts: "Контракты",
-                realization: "Реализация",
-                cancellation: "Отмена"
-              };
-              return <span style={{color: '#d1d5db', fontSize: '0.9rem'}}>{labels[value]}</span>
-            }}
-          />
-          <defs>
-            <linearGradient id="contractsBar" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#4f46e5" stopOpacity={1}/>
-              <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.6}/>
-            </linearGradient>
-            <linearGradient id="realizationBar" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10b981" stopOpacity={1}/>
-              <stop offset="100%" stopColor="#10b981" stopOpacity={0.6}/>
-            </linearGradient>
-            <linearGradient id="cancellationBar" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity={1}/>
-              <stop offset="100%" stopColor="#ef4444" stopOpacity={0.6}/>
-            </linearGradient>
-          </defs>
-          <Bar 
-            dataKey="contracts" 
-            fill="url(#contractsBar)" 
-            radius={[4, 4, 0, 0]}
-          />
-          <Bar 
-            dataKey="realization" 
-            fill="url(#realizationBar)" 
-            radius={[4, 4, 0, 0]}
-          />
-          <Bar 
-            dataKey="cancellation" 
-            fill="url(#cancellationBar)" 
-            radius={[4, 4, 0, 0]}
-          />
-        </BarChart>
-      );
-      
-    default:
-      return (
-        <LineChart data={chartData}>
-          <XAxis dataKey="name" />
-          <YAxis />
-          <Tooltip />
-          <Line 
-            type="monotone" 
-            dataKey="contracts" 
-            stroke="#4f46e5"
-          />
-          <Line 
-            type="monotone" 
-            dataKey="realization" 
-            stroke="#10b981"
-          />
-          <Line 
-            type="monotone" 
-            dataKey="cancellation" 
-            stroke="#ef4444"
-          />
-        </LineChart>
-      );
-  }
-};
-
-  
-  // График для детализации по дням выбранного периода
-  const renderDetailedChart = () => {
-    if (!detailedData.data) return null;
-    
-    return (
-      <LineChart data={detailedData.data}>
-        <defs>
-          <linearGradient id="colorContractsMonth" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
-            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.2}/>
-          </linearGradient>
-          <linearGradient id="colorRealizationMonth" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-            <stop offset="95%" stopColor="#10b981" stopOpacity={0.2}/>
-          </linearGradient>
-          <linearGradient id="colorCancellationMonth" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
-            <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2}/>
-          </linearGradient>
-        </defs>
-        <XAxis 
-          dataKey="day" 
-          stroke="#9ca3af"
-          tick={{ fontSize: 12 }}
-          // Корректируем показ тиков в зависимости от количества дней
-          ticks={detailedData.data.length <= 7 
-            ? detailedData.data.map(d => d.day)
-            : [1, 5, 10, 15, 20, 25, 30].filter(d => d <= detailedData.data.length)}
-        />
-        <YAxis stroke="#9ca3af" tickFormatter={formatNumber}/>
-        <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-        <Tooltip content={renderCustomTooltip} />
-        <Line 
-          type="monotone" 
-          dataKey="contracts" 
-          stroke="#4f46e5" 
-          strokeWidth={2}
-          dot={false}
-          activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
-        />
-        <Line 
-          type="monotone" 
-          dataKey="realization" 
-          stroke="#10b981" 
-          strokeWidth={2}
-          dot={false}
-          activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
-        />
-        <Line 
-          type="monotone" 
-          dataKey="cancellation" 
-          stroke="#ef4444" 
-          strokeWidth={2}
-          dot={false}
-          activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
-        />
-      </LineChart>
-    );
+    try {
+      const date = new Date(dateString);
+      return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()}`;
+    } catch (e) {
+      console.error("Ошибка форматирования даты:", e);
+      const today = new Date();
+      return `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear()}`;
+    }
   };
   
-  // Тепловая карта для визуализации интенсивности контрактов
-  const renderHeatmap = () => {
-    const colorScale = (value) => {
-      // Адаптируем шкалу под периоды
-      let minVal, maxVal;
-      switch (selectedPeriod) {
-        case 'year':
-        case 'quarter':
-          minVal = 20;
-          maxVal = 140;
-          break;
-        case 'month':
-          minVal = 10;
-          maxVal = 70;
-          break;
-        case 'week':
-          minVal = 2;
-          maxVal = 20;
-          break;
-        default:
-          minVal = 20;
-          maxVal = 140;
-      }
-      
-      const normalizedVal = Math.min(1, Math.max(0, (value - minVal) / (maxVal - minVal)));
-      
-      // Градиент от синего (холодный) к красному (горячий)
-      if (normalizedVal < 0.25) {
-        return `rgba(59, 130, 246, ${0.3 + normalizedVal * 0.7})`;
-      } else if (normalizedVal < 0.5) {
-        return `rgba(139, 92, 246, ${0.3 + normalizedVal * 0.7})`;
-      } else if (normalizedVal < 0.75) {
-        return `rgba(249, 115, 22, ${0.3 + normalizedVal * 0.7})`;
-      } else {
-        return `rgba(239, 68, 68, ${0.3 + normalizedVal * 0.7})`;
-      }
-    };
+  // Функция для получения номера недели в месяце
+  const getWeekNumber = (date) => {
+    const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+    const pastDaysOfMonth = date.getDate() - 1;
     
-    // Адаптируем отображение тепловой карты для недельного вида
-    if (selectedPeriod === 'week' && heatmapData.length === 1) {
+    return Math.ceil((pastDaysOfMonth + firstDayOfMonth.getDay()) / 7);
+  };
+
+  // Функция для рендеринга графика
+  const renderChart = () => {
+    // Проверка наличия данных
+    if (!periodData || periodData.length === 0) {
       return (
-        <div className="grid grid-cols-8 gap-1 w-full">
-          <div className="col-span-1"></div>
-          <div className="font-medium text-gray-400 text-center text-sm">Пн</div>
-          <div className="font-medium text-gray-400 text-center text-sm">Вт</div>
-          <div className="font-medium text-gray-400 text-center text-sm">Ср</div>
-          <div className="font-medium text-gray-400 text-center text-sm">Чт</div>
-          <div className="font-medium text-gray-400 text-center text-sm">Пт</div>
-          <div className="font-medium text-gray-400 text-center text-sm">Сб</div>
-          <div className="font-medium text-gray-400 text-center text-sm">Вс</div>
-          
-          <div className="font-medium text-gray-400 text-sm flex items-center">
-            Неделя
-          </div>
-          {[1,2,3,4,5,6,7].map(day => (
-            <div 
-              key={`cell-week-${day}`}
-              className="aspect-square rounded-md flex items-center justify-center text-xs font-medium text-white relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer group"
-              style={{ backgroundColor: colorScale(heatmapData[0][`day${day}`]) }}
-            >
-              <span className="relative z-10">{heatmapData[0][`day${day}`]}</span>
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300"></div>
-            </div>
-          ))}
+        <div className="flex items-center justify-center h-full">
+          <p className="text-gray-400">Нет данных для отображения. Пожалуйста, выберите другой период или фильтры.</p>
         </div>
       );
     }
     
+    // Фильтруем данные для отображения только за запрошенный период
+    const chartData = processDataForChart(periodData, startDate, endDate);
+    
+    // Если после фильтрации данных не осталось
+    if (chartData.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-gray-400">Нет данных для выбранного периода: {new Date(startDate).toLocaleDateString('ru-RU')} - {new Date(endDate).toLocaleDateString('ru-RU')}</p>
+        </div>
+      );
+    }
+    
+    // Настраиваем отображение оси X в зависимости от количества точек данных
+    const xAxisConfig = {
+      dataKey: "name",
+      stroke: "#9ca3af",
+      // Корректировка угла и высоты для лучшей читаемости
+      angle: chartData.length > 12 ? -45 : 0,
+      textAnchor: chartData.length > 12 ? 'end' : 'middle', 
+      height: chartData.length > 12 ? 60 : 30,
+      tick: {fontSize: 12},
+      // Показываем все точки данных
+      interval: 0 
+    };
+
+    switch (chartType) {
+      case 'line':
+        return (
+          <LineChart data={chartData}>
+            <defs>
+              <linearGradient id="colorContractsGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.2}/>
+              </linearGradient>
+              <linearGradient id="colorRealizationGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0.2}/>
+              </linearGradient>
+              <linearGradient id="colorCancellationGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2}/>
+              </linearGradient>
+            </defs>
+            <XAxis {...xAxisConfig} />
+            <YAxis 
+              stroke="#9ca3af" 
+              tickFormatter={formatNumber}
+              width={70}
+            />
+            <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+            <Tooltip content={renderCustomTooltip} />
+            <Legend 
+              verticalAlign="top" 
+              height={36} 
+              formatter={(value) => {
+                const labels = {
+                  contracts: "Контракты",
+                  realization: "Реализация",
+                  cancellation: "Отмена"
+                };
+                return <span style={{color: '#d1d5db', fontSize: '0.9rem'}}>{labels[value]}</span>
+              }}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="contracts" 
+              stroke="#4f46e5" 
+              strokeWidth={3}
+              dot={{ stroke: '#4f46e5', fill: '#1f2937', strokeWidth: 2, r: 5 }}
+              activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="realization" 
+              stroke="#10b981" 
+              strokeWidth={3} 
+              dot={{ stroke: '#10b981', fill: '#1f2937', strokeWidth: 2, r: 5 }}
+              activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="cancellation" 
+              stroke="#ef4444" 
+              strokeWidth={3}
+              dot={{ stroke: '#ef4444', fill: '#1f2937', strokeWidth: 2, r: 5 }}
+              activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
+            />
+          </LineChart>
+        );
+        
+      case 'area':
+        return (
+          <AreaChart data={chartData}>
+            <defs>
+              <linearGradient id="colorContractsGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.1}/>
+              </linearGradient>
+              <linearGradient id="colorRealizationGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
+              </linearGradient>
+              <linearGradient id="colorCancellationGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
+              </linearGradient>
+            </defs>
+            <XAxis {...xAxisConfig} />
+            <YAxis 
+              stroke="#9ca3af" 
+              tickFormatter={formatNumber}
+              width={70}
+            />
+            <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+            <Tooltip content={renderCustomTooltip} />
+            <Legend 
+              verticalAlign="top" 
+              height={36} 
+              formatter={(value) => {
+                const labels = {
+                  contracts: "Контракты",
+                  realization: "Реализация",
+                  cancellation: "Отмена"
+                };
+                return <span style={{color: '#d1d5db', fontSize: '0.9rem'}}>{labels[value]}</span>
+              }}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="contracts" 
+              fill="url(#colorContractsGradient)" 
+              stroke="#4f46e5" 
+              strokeWidth={2}
+              activeDot={{ r: 8 }}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="realization" 
+              fill="url(#colorRealizationGradient)" 
+              stroke="#10b981" 
+              strokeWidth={2}
+              activeDot={{ r: 8 }}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="cancellation" 
+              fill="url(#colorCancellationGradient)" 
+              stroke="#ef4444" 
+              strokeWidth={2}
+              activeDot={{ r: 8 }}
+            />
+          </AreaChart>
+        );
+        
+      case 'bar':
+        return (
+          <BarChart data={chartData}>
+            <XAxis {...xAxisConfig} />
+            <YAxis 
+              stroke="#9ca3af" 
+              tickFormatter={formatNumber}
+              width={70}
+            />
+            <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+            <Tooltip content={renderCustomTooltip} />
+            <Legend 
+              verticalAlign="top" 
+              height={36} 
+              formatter={(value) => {
+                const labels = {
+                  contracts: "Контракты",
+                  realization: "Реализация",
+                  cancellation: "Отмена"
+                };
+                return <span style={{color: '#d1d5db', fontSize: '0.9rem'}}>{labels[value]}</span>
+              }}
+            />
+            <defs>
+              <linearGradient id="contractsBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#4f46e5" stopOpacity={1}/>
+                <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.6}/>
+              </linearGradient>
+              <linearGradient id="realizationBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#10b981" stopOpacity={1}/>
+                <stop offset="100%" stopColor="#10b981" stopOpacity={0.6}/>
+              </linearGradient>
+              <linearGradient id="cancellationBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#ef4444" stopOpacity={1}/>
+                <stop offset="100%" stopColor="#ef4444" stopOpacity={0.6}/>
+              </linearGradient>
+            </defs>
+            <Bar 
+              dataKey="contracts" 
+              fill="url(#contractsBar)" 
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar 
+              dataKey="realization" 
+              fill="url(#realizationBar)" 
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar 
+              dataKey="cancellation" 
+              fill="url(#cancellationBar)" 
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        );
+        
+      default:
+        return (
+          <LineChart data={chartData}>
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Line 
+              type="monotone" 
+              dataKey="contracts" 
+              stroke="#4f46e5"
+            />
+            <Line 
+              type="monotone" 
+              dataKey="realization" 
+              stroke="#10b981"
+            />
+            <Line 
+              type="monotone" 
+              dataKey="cancellation" 
+              stroke="#ef4444"
+            />
+          </LineChart>
+        );
+    }
+  };
+  
+const renderDetailedChart = () => {
+  // Проверка наличия данных
+  if (!dailyContractData || !Array.isArray(dailyContractData)) {
     return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-400">Нет данных для отображения детализации.</p>
+      </div>
+    );
+  }
+
+  
+  
+  // Фильтруем данные по выбранной модели
+  const filteredData = selectedModel === 'all' 
+    ? dailyContractData 
+    : dailyContractData.filter(model => model.model_id === selectedModel);
+  
+  // Фильтруем также по выбранному региону, если он указан
+  const filteredByRegion = (selectedRegion === 'all')
+    ? filteredData
+    : filteredData.map(model => {
+        const newModel = {...model};
+        if (newModel.filter_by_date && Array.isArray(newModel.filter_by_date)) {
+          newModel.filter_by_date = newModel.filter_by_date.filter(
+            region => region.region_id === selectedRegion
+          );
+        }
+        return newModel;
+      }).filter(model => 
+        model.filter_by_date && 
+        model.filter_by_date.length > 0 && 
+        model.filter_by_date.some(region => region.data && region.data.length > 0)
+      );
+  
+  // Если нет данных после фильтрации
+  if (filteredByRegion.length === 0 || !filteredByRegion.some(model => 
+    model.filter_by_date && 
+    Array.isArray(model.filter_by_date) && 
+    model.filter_by_date.some(region => region.data && region.data.length > 0)
+  )) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-400">Нет данных для отображения детализации по выбранным параметрам.</p>
+      </div>
+    );
+  }
+  
+  // Создаем карту данных для каждого дня
+  const dayDataMap = {};
+  
+  // Собираем данные о контрактах по дням
+  filteredByRegion.forEach(model => {
+    if (model.filter_by_date && Array.isArray(model.filter_by_date)) {
+      model.filter_by_date.forEach(region => {
+        if (region.data && Array.isArray(region.data)) {
+          region.data.forEach(item => {
+            if (item.order_date && item.order_count) {
+              const dateStr = item.order_date;
+              
+              // Инициализируем запись для даты, если ее еще нет
+              if (!dayDataMap[dateStr]) {
+                dayDataMap[dateStr] = {
+                  date: dateStr,
+                  day: new Date(dateStr).getDate(),
+                  contracts: 0,
+                  realization: 0,
+                  cancellation: 0
+                };
+              }
+              
+              // Добавляем количество контрактов
+              dayDataMap[dateStr].contracts += parseInt(item.order_count);
+              
+              // Используем соотношение для реализации и отмены (примерно 70% и 5%)
+              // Это условно, в реальной системе нужно получать эти данные с API
+              dayDataMap[dateStr].realization = Math.round(dayDataMap[dateStr].contracts * 0.7);
+              dayDataMap[dateStr].cancellation = Math.round(dayDataMap[dateStr].contracts * 0.05);
+            }
+          });
+        }
+      });
+    }
+  });
+  
+  // Преобразуем объект в массив и сортируем по дате
+  const chartData = Object.values(dayDataMap).sort((a, b) => a.day - b.day);
+  
+  // Если нет данных
+  if (chartData.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-400">Нет данных для отображения детализации.</p>
+      </div>
+    );
+  }
+  
+  return (
+    <LineChart data={chartData}>
+      <defs>
+        <linearGradient id="colorContractsMonth" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
+          <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.2}/>
+        </linearGradient>
+        <linearGradient id="colorRealizationMonth" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+          <stop offset="95%" stopColor="#10b981" stopOpacity={0.2}/>
+        </linearGradient>
+        <linearGradient id="colorCancellationMonth" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+          <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2}/>
+        </linearGradient>
+      </defs>
+      <XAxis 
+        dataKey="day" 
+        stroke="#9ca3af"
+        tick={{ fontSize: 12 }}
+        // Корректируем показ тиков в зависимости от количества дней
+        ticks={chartData.length <= 7 
+          ? chartData.map(d => d.day)
+          : [1, 5, 10, 15, 20, 25, 30].filter(d => d <= Math.max(...chartData.map(item => item.day)))}
+      />
+      <YAxis stroke="#9ca3af" tickFormatter={formatNumber}/>
+      <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+      <Tooltip content={renderCustomTooltip} />
+      <Line 
+        type="monotone" 
+        dataKey="contracts" 
+        stroke="#4f46e5" 
+        strokeWidth={2}
+        dot={{ stroke: '#4f46e5', fill: '#1f2937', strokeWidth: 2, r: 4 }}
+        activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
+      />
+      <Line 
+        type="monotone" 
+        dataKey="realization" 
+        stroke="#10b981" 
+        strokeWidth={2}
+        dot={{ stroke: '#10b981', fill: '#1f2937', strokeWidth: 2, r: 4 }}
+        activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
+      />
+      <Line 
+        type="monotone" 
+        dataKey="cancellation" 
+        stroke="#ef4444" 
+        strokeWidth={2}
+        dot={{ stroke: '#ef4444', fill: '#1f2937', strokeWidth: 2, r: 4 }}
+        activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
+      />
+    </LineChart>
+  );
+};
+  
+const renderHeatmap = () => {
+  // Проверка наличия данных
+  if (!dailyContractData || !Array.isArray(dailyContractData)) {
+    return (
+      <div className="flex items-center justify-center h-48">
+        <p className="text-gray-400">Нет данных для отображения тепловой карты.</p>
+      </div>
+    );
+  }
+  
+  // Функция для определения цвета ячейки с фиксированными пороговыми значениями
+  const colorScale = (value) => {
+    // Если нет значения, возвращаем серый цвет
+    if (value === null || value === undefined || value === 0) {
+      return "rgba(75, 85, 99, 0.2)"; // серый цвет для дней без данных
+    }
+    
+    // Фиксированные пороговые значения
+    if (value < 1000) {
+      // Мало (синий)
+      return "rgba(59, 130, 246, 0.7)";
+    } else if (value < 1200) {
+      // Средне (фиолетовый)
+      return "rgba(139, 92, 246, 0.7)";
+    } else if (value < 1500) {
+      // Много (оранжевый)
+      return "rgba(249, 115, 22, 0.7)";
+    } else {
+      // Очень много (красный)
+      return "rgba(239, 68, 68, 0.7)";
+    }
+  };
+  
+  // Фильтруем данные по выбранной модели
+  const filteredData = selectedModel === 'all' 
+    ? dailyContractData 
+    : dailyContractData.filter(model => model.model_id === selectedModel);
+  
+  // Фильтруем также по выбранному региону, если он указан
+  const filteredByRegion = (selectedRegion === 'all')
+    ? filteredData
+    : filteredData.map(model => {
+        const newModel = {...model};
+        if (newModel.filter_by_date && Array.isArray(newModel.filter_by_date)) {
+          newModel.filter_by_date = newModel.filter_by_date.filter(
+            region => region.region_id === selectedRegion
+          );
+        }
+        return newModel;
+      }).filter(model => 
+        model.filter_by_date && 
+        model.filter_by_date.length > 0 && 
+        model.filter_by_date.some(region => region.data && region.data.length > 0)
+      );
+  
+  // Если нет данных после фильтрации
+  if (filteredByRegion.length === 0 || !filteredByRegion.some(model => 
+    model.filter_by_date && 
+    Array.isArray(model.filter_by_date) && 
+    model.filter_by_date.some(region => region.data && region.data.length > 0)
+  )) {
+    return (
+      <div className="flex items-center justify-center h-48">
+        <p className="text-gray-400">Нет данных для отображения тепловой карты по выбранным параметрам.</p>
+      </div>
+    );
+  }
+  
+  // Собираем все даты
+  const allDates = [];
+  filteredByRegion.forEach(model => {
+    if (model.filter_by_date && Array.isArray(model.filter_by_date)) {
+      model.filter_by_date.forEach(region => {
+        if (region.data && Array.isArray(region.data)) {
+          region.data.forEach(item => {
+            if (item.order_date) {
+              allDates.push(item.order_date);
+            }
+          });
+        }
+      });
+    }
+  });
+  
+  // Если нет дат
+  if (allDates.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-48">
+        <p className="text-gray-400">Нет данных о датах для отображения тепловой карты.</p>
+      </div>
+    );
+  }
+  
+  // Определяем месяц и год
+  const firstDate = new Date(allDates[0]);
+  const currentYear = firstDate.getFullYear();
+  const currentMonth = firstDate.getMonth();
+  
+  // Получаем название месяца
+  const monthNames = [
+    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+  ];
+  const currentMonthName = `${monthNames[currentMonth]} ${currentYear}`;
+  
+  // Создаем объект для хранения данных по дням
+  const dayDataMap = {};
+  
+  // Заполняем данные по дням
+  filteredByRegion.forEach(model => {
+    if (model.filter_by_date && Array.isArray(model.filter_by_date)) {
+      model.filter_by_date.forEach(region => {
+        if (region.data && Array.isArray(region.data)) {
+          region.data.forEach(item => {
+            if (item.order_date && item.order_count) {
+              const date = new Date(item.order_date);
+              // Проверяем, что дата относится к текущему месяцу
+              if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
+                const day = date.getDate();
+                
+                // Инициализируем данные для дня, если их еще нет
+                if (!dayDataMap[day]) {
+                  dayDataMap[day] = 0;
+                }
+                
+                // Добавляем количество заказов
+                dayDataMap[day] += parseInt(item.order_count);
+              }
+            }
+          });
+        }
+      });
+    }
+  });
+  
+  // Получаем первый день месяца
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+  // День недели для первого дня месяца (0 - воскресенье, 1 - понедельник, ...)
+  let firstDayOfWeek = firstDayOfMonth.getDay();
+  // Преобразуем в формат 1-7, где 1 - понедельник, 7 - воскресенье
+  if (firstDayOfWeek === 0) firstDayOfWeek = 7;
+  
+  // Получаем последний день месяца
+  const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
+  const daysInMonth = lastDayOfMonth.getDate();
+  
+  // Сегодняшний день (для определения будущих дней)
+  const today = new Date();
+  const currentDay = today.getDate();
+  const isCurrentMonth = today.getMonth() === currentMonth && today.getFullYear() === currentYear;
+  
+  // Создаем недели
+  const weeks = [];
+  let currentWeek = { week: "Неделя 1" };
+  let weekNumber = 1;
+  
+  // Заполняем пустые ячейки до первого дня месяца
+  for (let i = 1; i < firstDayOfWeek; i++) {
+    currentWeek[`day${i}`] = { day: null, value: null };
+  }
+  
+  // Заполняем дни месяца
+  for (let day = 1; day <= daysInMonth; day++) {
+    // Вычисляем день недели для текущего дня
+    const dayOfWeek = (firstDayOfWeek + day - 1) % 7 || 7;
+    
+    // Если начинается новая неделя, добавляем текущую неделю в список и создаем новую
+    if (dayOfWeek === 1 && day > 1) {
+      weeks.push(currentWeek);
+      weekNumber++;
+      currentWeek = { week: `Неделя ${weekNumber}` };
+    }
+    
+    // Определяем, будущий ли это день (после сегодняшнего дня для текущего месяца)
+    const isFuture = isCurrentMonth && day > currentDay;
+    
+    // Заполняем данные для дня
+    currentWeek[`day${dayOfWeek}`] = {
+      day: day,
+      value: dayDataMap[day] || 0,
+      isFuture
+    };
+  }
+  
+  // Заполняем пустые ячейки после последнего дня месяца
+  const lastDayOfWeek = (firstDayOfWeek + daysInMonth - 1) % 7 || 7;
+  for (let i = lastDayOfWeek + 1; i <= 7; i++) {
+    currentWeek[`day${i}`] = { day: null, value: null };
+  }
+  
+  // Добавляем последнюю неделю
+  weeks.push(currentWeek);
+  
+  // Отрисовка тепловой карты
+  return (
+    <>
+      {/* Добавляем заголовок с текущим месяцем */}
+      <div className="mb-4">
+        <h4 className="text-lg font-medium text-white">Тепловая карта за {currentMonthName}</h4>
+      </div>
+      
       <div className="grid grid-cols-8 gap-1 w-full">
         <div className="col-span-1"></div>
         <div className="font-medium text-gray-400 text-center text-sm">Пн</div>
@@ -832,26 +997,50 @@ const renderChart = () => {
         <div className="font-medium text-gray-400 text-center text-sm">Сб</div>
         <div className="font-medium text-gray-400 text-center text-sm">Вс</div>
         
-        {heatmapData.map((week, weekIndex) => (
-          <>
-            <div key={`week-${weekIndex}`} className="font-medium text-gray-400 text-sm flex items-center">
+        {weeks.map((week, weekIndex) => (
+          <React.Fragment key={`week-row-${weekIndex}`}>
+            <div className="font-medium text-gray-400 text-sm flex items-center">
               {week.week}
             </div>
-            {[1,2,3,4,5,6,7].map(day => (
-              <div 
-                key={`cell-${weekIndex}-${day}`}
-                className="aspect-square rounded-md flex items-center justify-center text-xs font-medium text-white relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer group"
-                style={{ backgroundColor: colorScale(week[`day${day}`]) }}
-              >
-                <span className="relative z-10">{week[`day${day}`]}</span>
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300"></div>
-              </div>
-            ))}
-          </>
+            {[1,2,3,4,5,6,7].map(day => {
+              const dayData = week[`day${day}`];
+              
+              // Пустая ячейка (день другого месяца)
+              if (!dayData || dayData.day === null) {
+                return (
+                  <div 
+                    key={`cell-${weekIndex}-${day}`}
+                    className="aspect-square rounded-md bg-gray-800/30"
+                  ></div>
+                );
+              }
+              
+              // Определяем, является ли день будущим
+              const isFuture = dayData.isFuture;
+              const cellColor = isFuture ? "rgba(75, 85, 99, 0.2)" : colorScale(dayData.value);
+              
+              return (
+                <div 
+                  key={`cell-${weekIndex}-${day}`}
+                  className={`aspect-square rounded-md flex flex-col items-center justify-center text-xs font-medium relative overflow-hidden transition-all duration-300 ${!isFuture ? 'hover:scale-105 hover:shadow-lg cursor-pointer' : ''} group`}
+                  style={{ backgroundColor: cellColor }}
+                >
+                  <span className={`text-[10px] mb-1 ${isFuture ? 'text-gray-500' : 'text-gray-300'}`}>
+                    {dayData.day}
+                  </span>
+                  <span className={`relative z-10 ${isFuture ? 'text-gray-500' : 'text-white'}`}>
+                    {!isFuture && dayData.value > 0 ? dayData.value : ''}
+                  </span>
+                  {!isFuture && <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300"></div>}
+                </div>
+              );
+            })}
+          </React.Fragment>
         ))}
       </div>
-    );
-    };
+    </>
+  );
+};
 
   return (
     <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 rounded-xl shadow-2xl border border-gray-700/40 w-full mx-auto overflow-hidden">
@@ -879,34 +1068,34 @@ const renderChart = () => {
             </p>
           </div>
           
-     <FilterPanel 
-  selectedModel={selectedModel}
-  setSelectedModel={setSelectedModel}
-  selectedRegion={selectedRegion}
-  setSelectedRegion={setSelectedRegion}
-  startDate={startDate}
-  setStartDate={setStartDate}
-  endDate={endDate}
-  setEndDate={setEndDate}
-  regionsList={regions}
-  carModels={enhancedModels}
-  applyDateFilter={applyDateFilter}
-  handleModelChange={handleModelChange}
-  handleRegionChange={handleRegionChange}
-/>
+          <FilterPanel 
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+            selectedRegion={selectedRegion}
+            setSelectedRegion={setSelectedRegion}
+            startDate={startDate}
+            setStartDate={setStartDate}
+            endDate={endDate}
+            setEndDate={setEndDate}
+            regionsList={regions}
+            carModels={enhancedModels}
+            applyDateFilter={applyDateFilter}
+            handleModelChange={handleModelChange}
+            handleRegionChange={handleRegionChange}
+          />
           
-        <StatsCards 
-  selectedPeriod={selectedPeriod}
-  selectedDetailLabel={selectedDetailLabel}
-  selectedModel={selectedModel}
-  detailedData={detailedData}
-  activeMetric={activeMetric}
-  setActiveMetric={setActiveMetric}
-  carModels={enhancedModels}
-  modelPerformance={modelPerformance}
-  startDate={startDate}
-  endDate={endDate}
-/>
+          <StatsCards 
+            selectedPeriod={selectedPeriod}
+            selectedDetailLabel={selectedDetailLabel}
+            selectedModel={selectedModel}
+            detailedData={detailedData}
+            activeMetric={activeMetric}
+            setActiveMetric={setActiveMetric}
+            carModels={enhancedModels}
+            modelPerformance={modelPerformance}
+            startDate={startDate}
+            endDate={endDate}
+          />
           
           {/* Детали выбранной модели */}
           <SelectedModelDetails 
@@ -992,11 +1181,7 @@ const renderChart = () => {
           <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-6">
             <h3 className="text-xl font-bold text-white mb-4 flex items-center">
               <span className="text-2xl mr-2">📅</span> 
-              Детализация {
-                selectedPeriod === 'week' ? 'по дням недели' : 
-                selectedPeriod === 'month' ? 'по дням месяца' : 
-                `для ${selectedDetailLabel}`
-              }
+              Детализация по дням месяца
             </h3>
             
             <div className="w-full h-64">
@@ -1007,16 +1192,16 @@ const renderChart = () => {
           </div>
           
           {/* Сравнительный анализ моделей */}
-{selectedModel === 'all' && (
-  <ModelComparisonChart 
-    modelPerformance={modelPerformance}
-    carModels={enhancedModels}
-    selectedPeriod={selectedPeriod}
-    getPeriodLabel={getPeriodLabel}
-    startDate={startDate}
-    endDate={endDate}
-  />
-)}
+          {selectedModel === 'all' && (
+            <ModelComparisonChart 
+              modelPerformance={modelPerformance}
+              carModels={enhancedModels}
+              selectedPeriod={selectedPeriod}
+              getPeriodLabel={getPeriodLabel}
+              startDate={startDate}
+              endDate={endDate}
+            />
+          )}
         </>
       )}
       

@@ -24,6 +24,32 @@ export const fetchContractData = async (beginDate, endDate) => {
     }
 };
 
+// Функция для получения данных о контрактах по датам (добавить в конец файла)
+export const fetchContractDataByDate = async (beginDate, endDate) => {
+    try {
+        const response = await fetch('https://uzavtosalon.uz/b/dashboard/infos&get_all_contract_by_date', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                begin_date: beginDate,
+                end_date: endDate
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Ошибка при получении данных: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Ошибка при запросе данных о контрактах по датам:', error);
+        throw error;
+    }
+};
+
 // Функция для обработки и подготовки данных по контрактам
 export const processContractData = (data, modelId, regionId, period) => {
     console.log("INPUT DATA FROM API:", data);
