@@ -9,35 +9,10 @@ import ModelComparisonChart from './ModelComparisonChart';
 import StatsCards from './StatsCards';
 // Импорт утилит и сервисов
 import { formatNumber, getPeriodLabel, getPeriodDescription } from './utils/formatters';
-import { fetchContractData, processContractData } from './services/contractService';
+import { fetchContractData, fetchContractDataByDate, processContractData } from './services/contractService';
 import { regions } from './models/regions';
 import ContentReadyLoader from '../../layout/ContentReadyLoader';
 
-// Функция для получения данных о контрактах по датам
-const fetchContractDataByDate = async (beginDate, endDate) => {
-  try {
-    const response = await fetch('https://uzavtosalon.uz/b/dashboard/infos&get_all_contract_by_date', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        begin_date: beginDate,
-        end_date: endDate
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Ошибка при получении данных: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Ошибка при запросе данных о контрактах по датам:', error);
-    throw error;
-  }
-};
 
 function ContractsAnalyticsDashboard() {
   // Основные состояния
@@ -50,7 +25,6 @@ function ContractsAnalyticsDashboard() {
   const [chartType, setChartType] = useState('line');
   const [activeMetric, setActiveMetric] = useState('contracts');
   const [isLoading, setIsLoading] = useState(true);
-  const [heatmapData, setHeatmapData] = useState([]);
   const [modelPerformance, setModelPerformance] = useState({});
   const [enhancedModels, setEnhancedModels] = useState([]);
   const [contractData, setContractData] = useState([]); // Храним данные от API
@@ -60,7 +34,7 @@ function ContractsAnalyticsDashboard() {
   const [isCustomPeriod, setIsCustomPeriod] = useState(false);
   const [customStartDate, setCustomStartDate] = useState(new Date(new Date().setMonth(new Date().getMonth() - 1)));
   const [customEndDate, setCustomEndDate] = useState(new Date());
-  const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().substring(0, 10));
+ const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().substring(0, 10));
   const [endDate, setEndDate] = useState(new Date().toISOString().substring(0, 10));
   
   // Кэш обработанных данных
@@ -85,8 +59,9 @@ function ContractsAnalyticsDashboard() {
     
     try {
       // Форматируем даты для API
-      const formattedStartDate = formatDateForApi(startDate);
-      const formattedEndDate = formatDateForApi(endDate);
+     const formattedStartDate = formatDateForApi(startDate, true); // Указываем, что это начальная дата
+const formattedEndDate = formatDateForApi(endDate);
+
       
       console.log(`Загрузка данных API: от ${formattedStartDate} до ${formattedEndDate}`);
       
@@ -130,7 +105,6 @@ function ContractsAnalyticsDashboard() {
     }
   };
   
-  // Функция для обработки данных на основе фильтров
   const processData = () => {
     console.log(`Обработка данных для фильтров: модель=${selectedModel}, регион=${selectedRegion}, период=${selectedPeriod}`);
     
@@ -243,46 +217,20 @@ function ContractsAnalyticsDashboard() {
     }
   }, [selectedModel, selectedRegion, selectedPeriod, contractData, isLoading]);
   
-  // ВАЖНО: Детализированные данные не меняем полностью, а только обновляем график
+  // Обновляем только label при изменении выбранного периода
   useEffect(() => {
     if (periodData.length > 0 && !isLoading && selectedDetailLabel && detailedData.totals) {
       // Найти выбранный период в данных
       const selectedPeriodData = periodData.find(item => item.name === selectedDetailLabel);
       
       if (selectedPeriodData) {
-        console.log("Обновление графика детализации для периода:", selectedDetailLabel);
+        console.log("Обновление периода детализации:", selectedDetailLabel);
         
-        // Для примера используем помощника для генерации детализированных данных
-        const generateDetailedDaysFromPeriod = (periodItem) => {
-          const days = [];
-          const daysInMonth = 30; // Предполагаем 30 дней в месяце для упрощения
-          
-          for (let day = 1; day <= daysInMonth; day++) {
-            // Применяем некоторую случайность с сохранением общей суммы
-            const dayFactor = (day % 7 === 0 || day % 7 === 6) ? 0.7 : 1.0; // В выходные меньше
-            const randomFactor = 0.7 + Math.random() * 0.6;
-            
-            const contracts = Math.max(1, Math.round((periodItem.contracts / daysInMonth) * randomFactor * dayFactor));
-            const realization = Math.max(0, Math.round((periodItem.realization / daysInMonth) * randomFactor * dayFactor));
-            const cancellation = Math.max(0, Math.round((periodItem.cancellation / daysInMonth) * randomFactor * dayFactor));
-            
-            days.push({
-              day: day,
-              contracts,
-              realization,
-              cancellation
-            });
-          }
-          
-          return days;
-        };
-        
-        // ВАЖНО: Сохраняем исходные totals и changes, меняем только data и label
+        // ВАЖНО: Сохраняем исходные totals и changes, меняем только label
         setDetailedData(prevData => {
           const updatedData = {
             ...prevData,
-            label: selectedPeriodData.name,
-            data: generateDetailedDaysFromPeriod(selectedPeriodData)
+            label: selectedPeriodData.name
           };
           console.log("Обновленные данные детализации с сохранением totals:", updatedData);
           return updatedData;
@@ -365,21 +313,28 @@ function ContractsAnalyticsDashboard() {
   };
   
   // Форматирование даты для API (DD.MM.YYYY)
-  const formatDateForApi = (dateString) => {
-    if (!dateString) {
-      const today = new Date();
-      return `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear()}`;
+// Форматирование даты для API (DD.MM.YYYY) с корректировкой даты начала
+const formatDateForApi = (dateString, isStartDate = false) => {
+  if (!dateString) {
+    const today = new Date();
+    return `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear()}`;
+  }
+  
+  try {
+    const date = new Date(dateString);
+    
+    // Если это начальная дата, добавляем 1 день
+    if (isStartDate) {
+      date.setDate(date.getDate() + 1);
     }
     
-    try {
-      const date = new Date(dateString);
-      return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()}`;
-    } catch (e) {
-      console.error("Ошибка форматирования даты:", e);
-      const today = new Date();
-      return `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear()}`;
-    }
-  };
+    return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()}`;
+  } catch (e) {
+    console.error("Ошибка форматирования даты:", e);
+    const today = new Date();
+    return `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear()}`;
+  }
+};
   
   // Функция для получения номера недели в месяце
   const getWeekNumber = (date) => {
@@ -644,8 +599,6 @@ function ContractsAnalyticsDashboard() {
         </div>
       );
     }
-
-  
   
     // Фильтруем данные по выбранной модели
     const filteredData = selectedModel === 'all'
@@ -684,7 +637,7 @@ function ContractsAnalyticsDashboard() {
   
     // Создаем карту данных для каждого дня
     const dayDataMap = {};
-  
+
     // Собираем данные о контрактах по дням
     filteredByRegion.forEach(model => {
       if (model.filter_by_date && Array.isArray(model.filter_by_date)) {
@@ -706,12 +659,61 @@ function ContractsAnalyticsDashboard() {
                 }
               
                 // Добавляем количество контрактов
-                dayDataMap[dateStr].contracts += parseInt(item.order_count);
-              
-                // Используем соотношение для реализации и отмены (примерно 70% и 5%)
-                // Это условно, в реальной системе нужно получать эти данные с API
-                dayDataMap[dateStr].realization = Math.round(dayDataMap[dateStr].contracts * 0.7);
-                dayDataMap[dateStr].cancellation = Math.round(dayDataMap[dateStr].contracts * 0.05);
+                dayDataMap[dateStr].contracts += parseInt(item.order_count || 0);
+              }
+            });
+          }
+        });
+      }
+      
+      // Аналогично для реализованных контрактов, если они есть в API
+      if (model.filter_real_by_date && Array.isArray(model.filter_real_by_date)) {
+        model.filter_real_by_date.forEach(region => {
+          if (region.data && Array.isArray(region.data)) {
+            region.data.forEach(item => {
+              if (item.order_date && item.order_count) {
+                const dateStr = item.order_date;
+                
+                // Инициализируем запись для даты, если ее еще нет
+                if (!dayDataMap[dateStr]) {
+                  dayDataMap[dateStr] = {
+                    date: dateStr,
+                    day: new Date(dateStr).getDate(),
+                    contracts: 0,
+                    realization: 0,
+                    cancellation: 0
+                  };
+                }
+                
+                // Добавляем количество реализованных контрактов
+                dayDataMap[dateStr].realization += parseInt(item.order_count || 0);
+              }
+            });
+          }
+        });
+      }
+      
+      // Аналогично для отмененных контрактов, если они есть в API
+      if (model.filter_cancel_by_date && Array.isArray(model.filter_cancel_by_date)) {
+        model.filter_cancel_by_date.forEach(region => {
+          if (region.data && Array.isArray(region.data)) {
+            region.data.forEach(item => {
+              if (item.order_date && item.order_count) {
+                const dateStr = item.order_date;
+                
+                // Инициализируем запись для даты, если ее еще нет
+                if (!dayDataMap[dateStr]) {
+                  dayDataMap[dateStr] = {
+                    date: dateStr,
+                    day: new Date(dateStr).getDate(),
+                    contracts: 0,
+                    realization: 0,
+                    cancellation: 0
+                  };
+                }
+                
+                // Добавляем количество отмененных контрактов
+                dayDataMap[dateStr].cancellation += parseInt(item.order_count || 0);
               }
             });
           }
@@ -972,7 +974,7 @@ function ContractsAnalyticsDashboard() {
         currentWeek = { week: `Неделя ${weekNumber}` };
       }
     
-      // Определяем, будущий ли это день (после сегодняшнего дня для текущего месяца)
+      // Определяем, является ли день будущим (после сегодняшнего дня для текущего месяца)
       const isFuture = isCurrentMonth && day > currentDay;
     
       // Заполняем данные для дня
@@ -1262,8 +1264,7 @@ function ContractsAnalyticsDashboard() {
                   region.data.some(item => parseInt(item.order_count || 0) > 0)
                 );
               });
-                              
-            // Если данных нет, не показываем блок вообще
+              // Если данных нет, не показываем блок вообще
             if (!hasDetailedData) {
               return null;
             }
