@@ -313,7 +313,6 @@ const formattedEndDate = formatDateForApi(endDate);
   };
   
   // Форматирование даты для API (DD.MM.YYYY)
-// Форматирование даты для API (DD.MM.YYYY) с корректировкой даты начала
 const formatDateForApi = (dateString, isStartDate = false) => {
   if (!dateString) {
     const today = new Date();
@@ -323,7 +322,6 @@ const formatDateForApi = (dateString, isStartDate = false) => {
   try {
     const date = new Date(dateString);
     
-    // Если это начальная дата, добавляем 1 день
     if (isStartDate) {
       date.setDate(date.getDate() + 1);
     }
