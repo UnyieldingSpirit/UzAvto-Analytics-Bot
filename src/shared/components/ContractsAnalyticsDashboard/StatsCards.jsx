@@ -8,7 +8,8 @@ const StatsCards = ({
   detailedData, 
   activeMetric, 
   setActiveMetric, 
-  carModels 
+  carModels,
+  modelPerformance 
 }) => {
   // Анимация для чисел
   const valueRefs = {
@@ -17,12 +18,38 @@ const StatsCards = ({
     cancellation: useRef(null)
   };
   
+  // Функция для получения актуальных значений для отображения
+  const getTotalValues = () => {
+    // Если нет данных, возвращаем нули
+    if (!detailedData || !detailedData.totals) {
+      return {
+        contracts: 0,
+        realization: 0,
+        cancellation: 0
+      };
+    }
+
+    // Если выбрана конкретная модель и есть данные о ее производительности
+    if (selectedModel !== 'all' && modelPerformance && modelPerformance[selectedModel]) {
+      return {
+        contracts: modelPerformance[selectedModel].contracts || 0,
+        realization: modelPerformance[selectedModel].realization || 0,
+        cancellation: modelPerformance[selectedModel].cancellation || 0
+      };
+    }
+    
+    // В противном случае используем общие данные
+    return detailedData.totals;
+  };
+  
+  const totalValues = getTotalValues();
+  
   // Эффект для анимации чисел
   useEffect(() => {
     // Анимация для чисел
     Object.keys(valueRefs).forEach(key => {
-      if (valueRefs[key].current && detailedData.totals) {
-        const target = detailedData.totals[key];
+      if (valueRefs[key].current) {
+        const target = totalValues[key];
         const duration = 1500;
         const start = Date.now();
         const startValue = parseInt(valueRefs[key].current.textContent.replace(/[^0-9.-]/g, '')) || 0;
@@ -45,7 +72,7 @@ const StatsCards = ({
         animate();
       }
     });
-  }, [detailedData]);
+  }, [totalValues]);
   
   // Получение цвета для отображения изменений
   const getChangeColor = (change) => {
@@ -81,7 +108,7 @@ const StatsCards = ({
             <h3 className="text-sm text-gray-400 font-semibold">{title}</h3>
             <div className="flex items-baseline">
               <span ref={valueRefs[value.toLowerCase()]} className="text-2xl font-bold text-white">
-                {detailedData.totals ? formatNumber(detailedData.totals[value.toLowerCase()]) : '—'}
+                {formatNumber(totalValues[value.toLowerCase()])}
               </span>
               <span className={`ml-2 text-sm font-medium ${getChangeColor(detailedData.changes?.[value.toLowerCase()])}`}>
                 {getChangeIcon(detailedData.changes?.[value.toLowerCase()])} {Math.abs(detailedData.changes?.[value.toLowerCase()] || 0)}%
@@ -106,7 +133,7 @@ const StatsCards = ({
             ({selectedDetailLabel})
           </span>
         )}
-        {selectedModel !== 'all' && (
+        {selectedModel !== 'all' && carModels && (
           <span className="ml-2 text-indigo-400">
             ({carModels.find(m => m.id === selectedModel)?.name})
           </span>

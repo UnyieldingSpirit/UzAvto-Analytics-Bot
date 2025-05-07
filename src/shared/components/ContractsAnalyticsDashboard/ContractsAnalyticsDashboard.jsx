@@ -4,10 +4,9 @@ import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
 
 // Импорт компонентов
 import FilterPanel from './FilterPanel';
-import StatsCards from './StatsCards';
 import SelectedModelDetails from './SelectedModelDetails';
 import ModelComparisonChart from './ModelComparisonChart';
-
+import StatsCards from './StatsCards'
 // Импорт утилит и сервисов
 import { formatNumber, getPeriodLabel, getPeriodDescription } from './utils/formatters';
 import { fetchContractData, processContractData } from './services/contractService';
@@ -74,58 +73,6 @@ export default function ContractsAnalyticsDashboard() {
     return heatmap;
   };
   
-  // Получение и обработка данных
-  const fetchData = async () => {
-    setIsLoading(true);
-    
-    try {
-      // Получаем форматированные даты для API
-      const formattedStartDate = isCustomPeriod
-        ? `${customStartDate.getDate().toString().padStart(2, '0')}.${(customStartDate.getMonth() + 1).toString().padStart(2, '0')}.${customStartDate.getFullYear()}`
-        : '01.01.2025';
-        
-      const formattedEndDate = isCustomPeriod
-        ? `${customEndDate.getDate().toString().padStart(2, '0')}.${(customEndDate.getMonth() + 1).toString().padStart(2, '0')}.${customEndDate.getFullYear()}`
-        : '31.12.2025';
-      
-      // Запрос к API
-      const contractData = await fetchContractData(formattedStartDate, formattedEndDate);
-      
-      // Обработка данных из API
-      const processed = processContractData(contractData, selectedModel, selectedRegion, selectedPeriod);
-      
-      setPeriodData(processed.periodData);
-      setDetailedData(processed.detailedData);
-      setModelPerformance(processed.modelPerformance);
-      setHeatmapData(generateHeatmapData(selectedModel, selectedPeriod));
-      
-      // Если есть данные, устанавливаем первый доступный период для детализации
-      if (processed.periodData.length > 0) {
-        setSelectedDetailLabel(processed.periodData[0].name);
-      }
-      
-      if (enhancedModels.length === 0 && contractData.length > 0) {
-        const enrichedModels = contractData.map(model => {
-          return {
-            id: model.model_id,
-            name: model.model_name,
-            img: `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400`,
-            category: getCategoryForModel(model.model_name),
-            performance: Math.round(40 + Math.random() * 60),
-            trend: Math.round((Math.random() * 40) - 15),
-            sales: Math.round(1000 + Math.random() * 9000)
-          };
-        });
-        
-        setEnhancedModels(enrichedModels);
-      }
-    } catch (error) {
-      console.error("Ошибка при загрузке данных:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
   // Получение категории для модели на основе имени
   const getCategoryForModel = (modelName) => {
     const sedans = ['COBALT', 'NEXIA', 'GENTRA'];
@@ -138,6 +85,61 @@ export default function ContractsAnalyticsDashboard() {
     
     return 'other';
   };
+  
+  // Получение и обработка данных
+const fetchData = async () => {
+  setIsLoading(true);
+  
+  try {
+    // Получаем текущую дату
+    const currentDate = new Date();
+    
+    // Формируем дату начала текущего года (1 января)
+    const startOfYear = new Date(currentDate.getFullYear(), 0, 1);
+    
+    // Получаем форматированные даты для API
+    const formattedStartDate = isCustomPeriod
+      ? `${customStartDate.getDate().toString().padStart(2, '0')}.${(customStartDate.getMonth() + 1).toString().padStart(2, '0')}.${customStartDate.getFullYear()}`
+      : `${startOfYear.getDate().toString().padStart(2, '0')}.${(startOfYear.getMonth() + 1).toString().padStart(2, '0')}.${startOfYear.getFullYear()}`;
+      
+    const formattedEndDate = isCustomPeriod
+      ? `${customEndDate.getDate().toString().padStart(2, '0')}.${(customEndDate.getMonth() + 1).toString().padStart(2, '0')}.${customEndDate.getFullYear()}`
+      : `${currentDate.getDate().toString().padStart(2, '0')}.${(currentDate.getMonth() + 1).toString().padStart(2, '0')}.${currentDate.getFullYear()}`;
+    
+    // Запрос к API
+    const contractData = await fetchContractData(formattedStartDate, formattedEndDate);
+    
+    // Обработка данных из API
+    const processed = processContractData(contractData, selectedModel, selectedRegion, selectedPeriod);
+    
+    setPeriodData(processed.periodData);
+    setDetailedData(processed.detailedData);
+    setModelPerformance(processed.modelPerformance);
+    setHeatmapData(generateHeatmapData(selectedModel, selectedPeriod));
+    
+    // Если есть данные, устанавливаем первый доступный период для детализации
+    if (processed.periodData.length > 0) {
+      setSelectedDetailLabel(processed.periodData[0].name);
+    }
+    
+    if (enhancedModels.length === 0 && contractData.length > 0) {
+      const enrichedModels = contractData.map(model => {
+        return {
+          id: model.model_id,
+          name: model.model_name,
+          img: `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400`,
+          category: getCategoryForModel(model.model_name)
+        };
+      });
+      
+      setEnhancedModels(enrichedModels);
+    }
+  } catch (error) {
+    console.error("Ошибка при загрузке данных:", error);
+  } finally {
+    setIsLoading(false);
+  }
+};
   
   // Применение фильтра дат
   const applyDateFilter = () => {
@@ -154,7 +156,7 @@ export default function ContractsAnalyticsDashboard() {
     if (!isLoading) {
       fetchData();
     }
-  }, [selectedPeriod,  isCustomPeriod]);
+  }, [selectedPeriod, isCustomPeriod]);
   
   // Обработка выбора кастомного периода
   const handleCustomPeriodSelect = () => {
@@ -240,236 +242,235 @@ export default function ContractsAnalyticsDashboard() {
   };
   
   // Компонент графика
-// Компонент графика
-const renderChart = () => {
-  // Проверка наличия данных
-  if (!periodData || periodData.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-gray-400">Нет данных для отображения. Пожалуйста, выберите другой период или фильтры.</p>
-      </div>
-    );
-  }
+  const renderChart = () => {
+    // Проверка наличия данных
+    if (!periodData || periodData.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-gray-400">Нет данных для отображения. Пожалуйста, выберите другой период или фильтры.</p>
+        </div>
+      );
+    }
 
-  switch (chartType) {
-    case 'line':
-      return (
-        <LineChart data={periodData}>
-          <defs>
-            <linearGradient id="colorContractsGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.2}/>
-            </linearGradient>
-            <linearGradient id="colorRealizationGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0.2}/>
-            </linearGradient>
-            <linearGradient id="colorCancellationGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2}/>
-            </linearGradient>
-          </defs>
-          <XAxis 
-            dataKey="name" 
-            stroke="#9ca3af"
-            // Если много данных, показываем не все тики
-            interval={selectedPeriod === 'month' ? 4 : 'preserveEnd'}
-            angle={selectedPeriod === 'month' ? -45 : 0}
-            textAnchor={selectedPeriod === 'month' ? 'end' : 'middle'}
-            height={selectedPeriod === 'month' ? 60 : 30}
-          />
-          <YAxis stroke="#9ca3af" tickFormatter={formatNumber}/>
-          <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-          <Tooltip content={renderCustomTooltip} />
-          <Legend 
-            verticalAlign="top" 
-            height={36} 
-            formatter={(value) => {
-              const labels = {
-                contracts: "Контракты",
-                realization: "Реализация",
-                cancellation: "Отмена"
-              };
-              return <span style={{color: '#d1d5db', fontSize: '0.9rem'}}>{labels[value]}</span>
-            }}
-          />
-          <Line 
-            type="monotone" 
-            dataKey="contracts" 
-            stroke="#4f46e5" 
-            strokeWidth={3}
-            dot={{ stroke: '#4f46e5', fill: '#1f2937', strokeWidth: 2, r: 6 }}
-            activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
-          />
-          <Line 
-            type="monotone" 
-            dataKey="realization" 
-            stroke="#10b981" 
-            strokeWidth={3} 
-            dot={{ stroke: '#10b981', fill: '#1f2937', strokeWidth: 2, r: 6 }}
-            activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
-          />
-          <Line 
-            type="monotone" 
-            dataKey="cancellation" 
-            stroke="#ef4444" 
-            strokeWidth={3}
-            dot={{ stroke: '#ef4444', fill: '#1f2937', strokeWidth: 2, r: 6 }}
-            activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
-          />
-        </LineChart>
-      );
-      
-    case 'area':
-      return (
-        <AreaChart data={periodData}>
-          <defs>
-            <linearGradient id="colorContractsGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.1}/>
-            </linearGradient>
-            <linearGradient id="colorRealizationGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
-            </linearGradient>
-            <linearGradient id="colorCancellationGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
-            </linearGradient>
-          </defs>
-          <XAxis 
-            dataKey="name" 
-            stroke="#9ca3af"
-            interval={selectedPeriod === 'month' ? 4 : 'preserveEnd'}
-            angle={selectedPeriod === 'month' ? -45 : 0}
-            textAnchor={selectedPeriod === 'month' ? 'end' : 'middle'}
-            height={selectedPeriod === 'month' ? 60 : 30}
-          />
-          <YAxis stroke="#9ca3af" tickFormatter={formatNumber}/>
-          <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-          <Tooltip content={renderCustomTooltip} />
-          <Legend 
-            verticalAlign="top" 
-            height={36} 
-            formatter={(value) => {
-              const labels = {
-                contracts: "Контракты",
-                realization: "Реализация",
-                cancellation: "Отмена"
-              };
-              return <span style={{color: '#d1d5db', fontSize: '0.9rem'}}>{labels[value]}</span>
-            }}
-          />
-          <Area 
-            type="monotone" 
-            dataKey="contracts" 
-            fill="url(#colorContractsGradient)" 
-            stroke="#4f46e5" 
-            strokeWidth={2}
-            activeDot={{ r: 8 }}
-          />
-          <Area 
-            type="monotone" 
-            dataKey="realization" 
-            fill="url(#colorRealizationGradient)" 
-            stroke="#10b981" 
-            strokeWidth={2}
-            activeDot={{ r: 8 }}
-          />
-          <Area 
-            type="monotone" 
-            dataKey="cancellation" 
-            fill="url(#colorCancellationGradient)" 
-            stroke="#ef4444" 
-            strokeWidth={2}
-            activeDot={{ r: 8 }}
-          />
-        </AreaChart>
-      );
-      
-    case 'bar':
-      return (
-        <BarChart data={periodData}>
-          <XAxis 
-            dataKey="name" 
-            stroke="#9ca3af"
-            interval={selectedPeriod === 'month' ? 4 : 'preserveEnd'}
-            angle={selectedPeriod === 'month' ? -45 : 0}
-            textAnchor={selectedPeriod === 'month' ? 'end' : 'middle'}
-            height={selectedPeriod === 'month' ? 60 : 30}
-          />
-          <YAxis stroke="#9ca3af" tickFormatter={formatNumber}/>
-          <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-          <Tooltip content={renderCustomTooltip} />
-          <Legend 
-            verticalAlign="top" 
-            height={36} 
-            formatter={(value) => {
-              const labels = {
-                contracts: "Контракты",
-                realization: "Реализация",
-                cancellation: "Отмена"
-              };
-              return <span style={{color: '#d1d5db', fontSize: '0.9rem'}}>{labels[value]}</span>
-            }}
-          />
-          <defs>
-            <linearGradient id="contractsBar" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#4f46e5" stopOpacity={1}/>
-              <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.6}/>
-            </linearGradient>
-            <linearGradient id="realizationBar" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10b981" stopOpacity={1}/>
-              <stop offset="100%" stopColor="#10b981" stopOpacity={0.6}/>
-            </linearGradient>
-            <linearGradient id="cancellationBar" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity={1}/>
-              <stop offset="100%" stopColor="#ef4444" stopOpacity={0.6}/>
-            </linearGradient>
-          </defs>
-          <Bar 
-            dataKey="contracts" 
-            fill="url(#contractsBar)" 
-            radius={[4, 4, 0, 0]}
-          />
-          <Bar 
-            dataKey="realization" 
-            fill="url(#realizationBar)" 
-            radius={[4, 4, 0, 0]}
-          />
-          <Bar 
-            dataKey="cancellation" 
-            fill="url(#cancellationBar)" 
-            radius={[4, 4, 0, 0]}
-          />
-        </BarChart>
-      );
-      
-    default:
-      return (
-        <LineChart data={periodData}>
-          <XAxis dataKey="name" />
-          <YAxis />
-          <Tooltip />
-          <Line 
-            type="monotone" 
-            dataKey="contracts" 
-            stroke="#4f46e5"
-          />
-          <Line 
-            type="monotone" 
-            dataKey="realization" 
-            stroke="#10b981"
-          />
-          <Line 
-            type="monotone" 
-            dataKey="cancellation" 
-            stroke="#ef4444"
-          />
-        </LineChart>
-      );
-  }
-};
+    switch (chartType) {
+      case 'line':
+        return (
+          <LineChart data={periodData}>
+            <defs>
+              <linearGradient id="colorContractsGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.2}/>
+              </linearGradient>
+              <linearGradient id="colorRealizationGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0.2}/>
+              </linearGradient>
+              <linearGradient id="colorCancellationGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2}/>
+              </linearGradient>
+            </defs>
+            <XAxis 
+              dataKey="name" 
+              stroke="#9ca3af"
+              // Если много данных, показываем не все тики
+              interval={selectedPeriod === 'month' ? 4 : 'preserveEnd'}
+              angle={selectedPeriod === 'month' ? -45 : 0}
+              textAnchor={selectedPeriod === 'month' ? 'end' : 'middle'}
+              height={selectedPeriod === 'month' ? 60 : 30}
+            />
+            <YAxis stroke="#9ca3af" tickFormatter={formatNumber}/>
+            <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+            <Tooltip content={renderCustomTooltip} />
+            <Legend 
+              verticalAlign="top" 
+              height={36} 
+              formatter={(value) => {
+                const labels = {
+                  contracts: "Контракты",
+                  realization: "Реализация",
+                  cancellation: "Отмена"
+                };
+                return <span style={{color: '#d1d5db', fontSize: '0.9rem'}}>{labels[value]}</span>
+              }}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="contracts" 
+              stroke="#4f46e5" 
+              strokeWidth={3}
+              dot={{ stroke: '#4f46e5', fill: '#1f2937', strokeWidth: 2, r: 6 }}
+              activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="realization" 
+              stroke="#10b981" 
+              strokeWidth={3} 
+              dot={{ stroke: '#10b981', fill: '#1f2937', strokeWidth: 2, r: 6 }}
+              activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="cancellation" 
+              stroke="#ef4444" 
+              strokeWidth={3}
+              dot={{ stroke: '#ef4444', fill: '#1f2937', strokeWidth: 2, r: 6 }}
+              activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
+            />
+          </LineChart>
+        );
+        
+      case 'area':
+        return (
+          <AreaChart data={periodData}>
+            <defs>
+              <linearGradient id="colorContractsGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.1}/>
+              </linearGradient>
+              <linearGradient id="colorRealizationGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
+              </linearGradient>
+              <linearGradient id="colorCancellationGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
+              </linearGradient>
+            </defs>
+            <XAxis 
+              dataKey="name" 
+              stroke="#9ca3af"
+              interval={selectedPeriod === 'month' ? 4 : 'preserveEnd'}
+              angle={selectedPeriod === 'month' ? -45 : 0}
+              textAnchor={selectedPeriod === 'month' ? 'end' : 'middle'}
+              height={selectedPeriod === 'month' ? 60 : 30}
+            />
+            <YAxis stroke="#9ca3af" tickFormatter={formatNumber}/>
+            <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+            <Tooltip content={renderCustomTooltip} />
+            <Legend 
+              verticalAlign="top" 
+              height={36} 
+              formatter={(value) => {
+                const labels = {
+                  contracts: "Контракты",
+                  realization: "Реализация",
+                  cancellation: "Отмена"
+                };
+                return <span style={{color: '#d1d5db', fontSize: '0.9rem'}}>{labels[value]}</span>
+              }}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="contracts" 
+              fill="url(#colorContractsGradient)" 
+              stroke="#4f46e5" 
+              strokeWidth={2}
+              activeDot={{ r: 8 }}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="realization" 
+              fill="url(#colorRealizationGradient)" 
+              stroke="#10b981" 
+              strokeWidth={2}
+              activeDot={{ r: 8 }}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="cancellation" 
+              fill="url(#colorCancellationGradient)" 
+              stroke="#ef4444" 
+              strokeWidth={2}
+              activeDot={{ r: 8 }}
+            />
+          </AreaChart>
+        );
+        
+      case 'bar':
+        return (
+          <BarChart data={periodData}>
+            <XAxis 
+              dataKey="name" 
+              stroke="#9ca3af"
+              interval={selectedPeriod === 'month' ? 4 : 'preserveEnd'}
+              angle={selectedPeriod === 'month' ? -45 : 0}
+              textAnchor={selectedPeriod === 'month' ? 'end' : 'middle'}
+              height={selectedPeriod === 'month' ? 60 : 30}
+            />
+            <YAxis stroke="#9ca3af" tickFormatter={formatNumber}/>
+            <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+            <Tooltip content={renderCustomTooltip} />
+            <Legend 
+              verticalAlign="top" 
+              height={36} 
+              formatter={(value) => {
+                const labels = {
+                  contracts: "Контракты",
+                  realization: "Реализация",
+                  cancellation: "Отмена"
+                };
+                return <span style={{color: '#d1d5db', fontSize: '0.9rem'}}>{labels[value]}</span>
+              }}
+            />
+            <defs>
+              <linearGradient id="contractsBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#4f46e5" stopOpacity={1}/>
+                <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.6}/>
+              </linearGradient>
+              <linearGradient id="realizationBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#10b981" stopOpacity={1}/>
+                <stop offset="100%" stopColor="#10b981" stopOpacity={0.6}/>
+              </linearGradient>
+              <linearGradient id="cancellationBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#ef4444" stopOpacity={1}/>
+                <stop offset="100%" stopColor="#ef4444" stopOpacity={0.6}/>
+              </linearGradient>
+            </defs>
+            <Bar 
+              dataKey="contracts" 
+              fill="url(#contractsBar)" 
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar 
+              dataKey="realization" 
+              fill="url(#realizationBar)" 
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar 
+              dataKey="cancellation" 
+              fill="url(#cancellationBar)" 
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        );
+        
+      default:
+        return (
+          <LineChart data={periodData}>
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Line 
+              type="monotone" 
+              dataKey="contracts" 
+              stroke="#4f46e5"
+            />
+            <Line 
+              type="monotone" 
+              dataKey="realization" 
+              stroke="#10b981"
+            />
+            <Line 
+              type="monotone" 
+              dataKey="cancellation" 
+              stroke="#ef4444"
+            />
+          </LineChart>
+        );
+    }
+  };
   
   // График для детализации по дням выбранного периода
   const renderDetailedChart = () => {
@@ -629,9 +630,9 @@ const renderChart = () => {
         ))}
       </div>
     );
-  };
+    };
 
-return (
+  return (
     <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 rounded-xl shadow-2xl border border-gray-700/40 w-full mx-auto overflow-hidden">
       {isLoading ? (
         <div className="flex flex-col items-center justify-center p-8 min-h-[400px]">
@@ -672,15 +673,16 @@ return (
           />
           
           {/* Показатели за выбранный период */}
-          <StatsCards 
-            selectedPeriod={selectedPeriod}
-            selectedDetailLabel={selectedDetailLabel}
-            selectedModel={selectedModel}
-            detailedData={detailedData}
-            activeMetric={activeMetric}
-            setActiveMetric={setActiveMetric}
-            carModels={enhancedModels}
-          />
+<StatsCards 
+  selectedPeriod={selectedPeriod}
+  selectedDetailLabel={selectedDetailLabel}
+  selectedModel={selectedModel}
+  detailedData={detailedData}
+  activeMetric={activeMetric}
+  setActiveMetric={setActiveMetric}
+  carModels={enhancedModels}
+  modelPerformance={modelPerformance}
+/>
           
           {/* Детали выбранной модели */}
           <SelectedModelDetails 
@@ -693,74 +695,76 @@ return (
           />
           
           {/* Основной график */}
-<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-  <div className="lg:col-span-2 bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-      <h3 className="text-xl font-bold text-white flex items-center">
-        <span className="text-2xl mr-2">📈</span> 
-        Динамика показателей {getPeriodLabel(selectedPeriod).toLowerCase()}
-        {selectedModel !== 'all' && (
-          <span className="ml-2 text-indigo-400 text-base">
-            ({carModels.find(m => m.id === selectedModel)?.name})
-          </span>
-        )}
-      </h3>
-      <div className="flex flex-wrap gap-2">
-        <button 
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${chartType === 'line' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'}`}
-          onClick={() => setChartType('line')}
-        >
-          Линия
-        </button>
-        <button 
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${chartType === 'area' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'}`}
-          onClick={() => setChartType('area')}
-        >
-          Область
-        </button>
-        <button 
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${chartType === 'bar' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'}`}
-          onClick={() => setChartType('bar')}
-        >
-          Столбцы
-        </button>
-      </div>
-    </div>
-    
-    <div className="w-full h-80">
-      <ResponsiveContainer width="100%" height="100%">
-        {renderChart()}
-      </ResponsiveContainer>
-    </div>
-  </div>
-  
-  {/* Тепловая карта */}
-  <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
-    <h3 className="text-xl font-bold text-white mb-6 flex items-center">
-      <span className="text-2xl mr-2">🗓️</span> 
-      Тепловая карта контрактов
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <div className="lg:col-span-2 bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
+           <div className="lg:col-span-2 bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
+  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+    <h3 className="text-xl font-bold text-white flex items-center">
+      <span className="text-2xl mr-2">📈</span> 
+      Динамика показателей {getPeriodLabel(selectedPeriod).toLowerCase()}
+      {selectedModel !== 'all' && (
+        <span className="ml-2 text-indigo-400 text-base">
+          ({enhancedModels.find(m => m.id === selectedModel)?.name})
+        </span>
+      )}
     </h3>
-    {renderHeatmap()}
-    <div className="mt-4 flex justify-between items-center">
-      <div className="flex items-center">
-        <div className="w-3 h-3 rounded-full bg-blue-500/70 mr-1"></div>
-        <span className="text-xs text-gray-400">Мало</span>
-      </div>
-      <div className="flex items-center">
-        <div className="w-3 h-3 rounded-full bg-purple-500/70 mr-1"></div>
-        <span className="text-xs text-gray-400">Средне</span>
-      </div>
-      <div className="flex items-center">
-        <div className="w-3 h-3 rounded-full bg-orange-500/70 mr-1"></div>
-        <span className="text-xs text-gray-400">Много</span>
-      </div>
-      <div className="flex items-center">
-        <div className="w-3 h-3 rounded-full bg-red-500/70 mr-1"></div>
-        <span className="text-xs text-gray-400">Очень много</span>
-      </div>
+    <div className="flex flex-wrap gap-2">
+      <button 
+        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${chartType === 'line' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'}`}
+        onClick={() => setChartType('line')}
+      >
+        Линия
+      </button>
+      <button 
+        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${chartType === 'area' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'}`}
+        onClick={() => setChartType('area')}
+      >
+        Область
+      </button>
+      <button 
+        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${chartType === 'bar' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'}`}
+        onClick={() => setChartType('bar')}
+      >
+        Столбцы
+      </button>
     </div>
   </div>
-</div>
+              </div>
+              
+              <div className="w-full h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  {renderChart()}
+                </ResponsiveContainer>
+              </div>
+            </div>
+            
+            {/* Тепловая карта */}
+            <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
+              <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+                <span className="text-2xl mr-2">🗓️</span> 
+                Тепловая карта контрактов
+              </h3>
+              {renderHeatmap()}
+              <div className="mt-4 flex justify-between items-center">
+                <div className="flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-blue-500/70 mr-1"></div>
+                  <span className="text-xs text-gray-400">Мало</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-purple-500/70 mr-1"></div>
+                  <span className="text-xs text-gray-400">Средне</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-orange-500/70 mr-1"></div>
+                  <span className="text-xs text-gray-400">Много</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-red-500/70 mr-1"></div>
+                  <span className="text-xs text-gray-400">Очень много</span>
+                </div>
+              </div>
+            </div>
+          </div>
           
           {/* График по дням детализации */}
           <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-6">

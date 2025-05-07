@@ -26,31 +26,113 @@ export const fetchContractData = async (beginDate, endDate) => {
 
 // Функция для обработки и подготовки данных по контрактам
 export const processContractData = (data, modelId, regionId, period) => {
-    // Данные для обработки
-    const modelData = data.find(model => model.model_id === (modelId === 'all' ? data[0].model_id : modelId)) || data[0];
+    // Готовим данные для модели производительности
+    const modelPerformance = {};
 
-    // Получаем данные по фильтрам
-    const allContracts = modelData.filter_by_month || [];
-    const realizedContracts = modelData.filter_real_by_month || [];
-    const canceledContracts = modelData.filter_cancel_by_month || [];
+    // Для каждой модели вычисляем суммарные показатели
+    data.forEach(model => {
+        const modelAllContracts = model.filter_by_month || [];
+        const modelRealizedContracts = model.filter_real_by_month || [];
+        const modelCanceledContracts = model.filter_cancel_by_month || [];
 
-    // Фильтруем по региону, если выбран конкретный регион
-    const filteredAllContracts = regionId === 'all'
-        ? allContracts
-        : allContracts.filter(region => region.region_id === regionId);
+        let totalContracts = 0;
+        let totalRealization = 0;
+        let totalCancellation = 0;
 
-    const filteredRealizedContracts = regionId === 'all'
-        ? realizedContracts
-        : realizedContracts.filter(region => region.region_id === regionId);
+        // Фильтрация по региону, если выбран конкретный регион
+        const filteredContracts = regionId === 'all'
+            ? modelAllContracts
+            : modelAllContracts.filter(region => region.region_id === regionId);
 
-    const filteredCanceledContracts = regionId === 'all'
-        ? canceledContracts
-        : canceledContracts.filter(region => region.region_id === regionId);
+        const filteredRealizations = regionId === 'all'
+            ? modelRealizedContracts
+            : modelRealizedContracts.filter(region => region.region_id === regionId);
 
-    // Преобразуем данные для графиков
+        const filteredCancellations = regionId === 'all'
+            ? modelCanceledContracts
+            : modelCanceledContracts.filter(region => region.region_id === regionId);
+
+        // Суммируем данные по регионам и месяцам для каждой модели
+        filteredContracts.forEach(region =>
+            region.data.forEach(item => totalContracts += parseInt(item.order_count))
+        );
+
+        filteredRealizations.forEach(region =>
+            region.data.forEach(item => totalRealization += parseInt(item.order_count))
+        );
+
+        filteredCancellations.forEach(region =>
+            region.data.forEach(item => totalCancellation += parseInt(item.order_count))
+        );
+
+        // Вычисляем конверсию (процент реализованных контрактов)
+        const conversion = totalContracts > 0
+            ? Math.round((totalRealization / totalContracts) * 100)
+            : 0;
+
+        modelPerformance[model.model_id] = {
+            contracts: totalContracts,
+            realization: totalRealization,
+            cancellation: totalCancellation,
+            conversion
+        };
+    });
+
+    // Дальше идет код для выбора и обработки данных по выбранной модели/региону
+    // и формирования periodData, detailedData, и т.д.
+
+    // Выбираем данные в зависимости от выбранной модели и региона
+    let filteredAllContracts = [];
+    let filteredRealizedContracts = [];
+    let filteredCanceledContracts = [];
+
+    if (modelId === 'all') {
+        // Объединяем данные по всем моделям
+        data.forEach(model => {
+            const modelContracts = model.filter_by_month || [];
+            const modelRealizations = model.filter_real_by_month || [];
+            const modelCancellations = model.filter_cancel_by_month || [];
+
+            // Фильтруем по региону, если выбран конкретный регион
+            if (regionId === 'all') {
+                filteredAllContracts.push(...modelContracts);
+                filteredRealizedContracts.push(...modelRealizations);
+                filteredCanceledContracts.push(...modelCancellations);
+            } else {
+                const filteredRegionContracts = modelContracts.filter(region => region.region_id === regionId);
+                const filteredRegionRealizations = modelRealizations.filter(region => region.region_id === regionId);
+                const filteredRegionCancellations = modelCancellations.filter(region => region.region_id === regionId);
+
+                filteredAllContracts.push(...filteredRegionContracts);
+                filteredRealizedContracts.push(...filteredRegionRealizations);
+                filteredCanceledContracts.push(...filteredRegionCancellations);
+            }
+        });
+    } else {
+        // Берем данные только для выбранной модели
+        const selectedModel = data.find(model => model.model_id === modelId);
+
+        if (selectedModel) {
+            const modelContracts = selectedModel.filter_by_month || [];
+            const modelRealizations = selectedModel.filter_real_by_month || [];
+            const modelCancellations = selectedModel.filter_cancel_by_month || [];
+
+            // Фильтруем по региону, если выбран конкретный регион
+            if (regionId === 'all') {
+                filteredAllContracts = modelContracts;
+                filteredRealizedContracts = modelRealizations;
+                filteredCanceledContracts = modelCancellations;
+            } else {
+                filteredAllContracts = modelContracts.filter(region => region.region_id === regionId);
+                filteredRealizedContracts = modelRealizations.filter(region => region.region_id === regionId);
+                filteredCanceledContracts = modelCancellations.filter(region => region.region_id === regionId);
+            }
+        }
+    }
+
+    // Собираем все уникальные месяцы
     const months = new Set();
 
-    // Собираем все уникальные месяцы из всех наборов данных
     filteredAllContracts.forEach(region =>
         region.data.forEach(item => months.add(item.order_month))
     );
@@ -107,44 +189,95 @@ export const processContractData = (data, modelId, regionId, period) => {
     // Конвертируем объект в массив для графиков
     const periodData = Object.values(monthlyData);
 
-    // Готовим данные для модели производительности (статистика по моделям)
-    const modelPerformance = {};
+    // Вычисляем суммарные показатели
+    const totals = {
+        contracts: 0,
+        realization: 0,
+        cancellation: 0
+    };
 
-    // Для каждой модели вычисляем суммарные показатели
-    data.forEach(model => {
-        const modelAllContracts = model.filter_by_month || [];
-        const modelRealizedContracts = model.filter_real_by_month || [];
-        const modelCanceledContracts = model.filter_cancel_by_month || [];
-
-        let totalContracts = 0;
-        let totalRealization = 0;
-        let totalCancellation = 0;
-
-        // Суммируем данные по регионам и месяцам для каждой модели
-        modelAllContracts.forEach(region =>
-            region.data.forEach(item => totalContracts += parseInt(item.order_count))
-        );
-
-        modelRealizedContracts.forEach(region =>
-            region.data.forEach(item => totalRealization += parseInt(item.order_count))
-        );
-
-        modelCanceledContracts.forEach(region =>
-            region.data.forEach(item => totalCancellation += parseInt(item.order_count))
-        );
-
-        // Вычисляем конверсию (процент реализованных контрактов)
-        const conversion = totalContracts > 0
-            ? Math.round((totalRealization / totalContracts) * 100)
-            : 0;
-
-        modelPerformance[model.model_id] = {
-            contracts: totalContracts,
-            realization: totalRealization,
-            cancellation: totalCancellation,
-            conversion
-        };
+    // Суммируем данные из всех месяцев
+    periodData.forEach(month => {
+        totals.contracts += month.contracts;
+        totals.realization += month.realization;
+        totals.cancellation += month.cancellation;
     });
+
+    // Детализированные данные (для подробного графика)
+    const detailedData = {
+        label: periodData.length > 0 ? periodData[0].name : '',
+        data: generateDetailedData(periodData),
+        totals: totals,
+        changes: calculateChanges(periodData)
+    };
+
+    return {
+        periodData,
+        detailedData,
+        modelPerformance
+    };
+};
+
+// Вспомогательная функция для обработки отфильтрованных данных
+const processFilteredData = (filteredContracts, filteredRealizations, filteredCancellations) => {
+    // Собираем все уникальные месяцы
+    const months = new Set();
+
+    filteredContracts.forEach(region =>
+        region.data.forEach(item => months.add(item.order_month))
+    );
+
+    filteredRealizations.forEach(region =>
+        region.data.forEach(item => months.add(item.order_month))
+    );
+
+    filteredCancellations.forEach(region =>
+        region.data.forEach(item => months.add(item.order_month))
+    );
+
+    // Сортируем месяцы
+    const sortedMonths = Array.from(months).sort();
+
+    // Создаем объект для хранения данных по каждому месяцу
+    const monthlyData = {};
+
+    sortedMonths.forEach(month => {
+        // Инициализируем данные для месяца
+        monthlyData[month] = {
+            name: formatMonthName(month),
+            month: month,
+            contracts: 0,
+            realization: 0,
+            cancellation: 0
+        };
+
+        // Суммируем все контракты по всем регионам для данного месяца
+        filteredContracts.forEach(region => {
+            const monthData = region.data.find(item => item.order_month === month);
+            if (monthData) {
+                monthlyData[month].contracts += parseInt(monthData.order_count);
+            }
+        });
+
+        // Суммируем реализованные контракты по всем регионам для данного месяца
+        filteredRealizations.forEach(region => {
+            const monthData = region.data.find(item => item.order_month === month);
+            if (monthData) {
+                monthlyData[month].realization += parseInt(monthData.order_count);
+            }
+        });
+
+        // Суммируем отмененные контракты по всем регионам для данного месяца
+        filteredCancellations.forEach(region => {
+            const monthData = region.data.find(item => item.order_month === month);
+            if (monthData) {
+                monthlyData[month].cancellation += parseInt(monthData.order_count);
+            }
+        });
+    });
+
+    // Конвертируем объект в массив для графиков
+    const periodData = Object.values(monthlyData);
 
     // Детализированные данные (для подробного графика)
     const detailedData = {
@@ -157,7 +290,7 @@ export const processContractData = (data, modelId, regionId, period) => {
     return {
         periodData,
         detailedData,
-        modelPerformance
+        modelPerformance: {} // Этот объект нужно заполнить отдельно
     };
 };
 
