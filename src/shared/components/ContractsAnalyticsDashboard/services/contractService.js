@@ -24,7 +24,7 @@ export const fetchContractData = async (beginDate, endDate) => {
     }
 };
 
-// Функция для получения данных о контрактах по датам (добавить в конец файла)
+// Функция для получения данных о контрактах по датам
 export const fetchContractDataByDate = async (beginDate, endDate) => {
     try {
         const response = await fetch('https://uzavtosalon.uz/b/dashboard/infos&get_all_contract_by_date', {
@@ -125,7 +125,11 @@ export const processContractData = (data, modelId, regionId, period) => {
             contracts: totalContracts,
             realization: totalRealization,
             cancellation: totalCancellation,
-            conversion
+            conversion,
+            // Сохраняем исходные данные по регионам для прямого доступа в компоненте SelectedModelDetails
+            filter_by_month: filteredContracts,
+            filter_real_by_month: filteredRealizations,
+            filter_cancel_by_month: filteredCancellations
         };
     });
 
@@ -286,6 +290,7 @@ export const processContractData = (data, modelId, regionId, period) => {
         modelPerformance
     };
 };
+
 const formatMonthName = (monthStr) => {
     const monthNames = [
         'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -306,6 +311,7 @@ const formatMonthName = (monthStr) => {
         return monthStr;
     }
 };
+
 // Вспомогательная функция для генерации детализированных данных по дням
 const generateDetailedData = (periodData) => {
     if (periodData.length === 0) return [];
@@ -337,7 +343,7 @@ const generateDetailedData = (periodData) => {
     return dayData;
 };
 
-// Расчет суммарных показателей - ИСПРАВЛЕНО: убрано деление на количество периодов
+// Расчет суммарных показателей
 const calculateTotals = (periodData) => {
     if (periodData.length === 0) return { contracts: 0, realization: 0, cancellation: 0 };
 
@@ -352,9 +358,9 @@ const calculateTotals = (periodData) => {
     });
 
     return {
-        contracts: totalContracts, // Исправлено: возвращаем сумму, а не среднее
-        realization: totalRealization, // Исправлено: возвращаем сумму, а не среднее
-        cancellation: totalCancellation // Исправлено: возвращаем сумму, а не среднее
+        contracts: totalContracts,
+        realization: totalRealization,
+        cancellation: totalCancellation
     };
 };
 

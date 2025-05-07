@@ -13,11 +13,11 @@ const FilterPanel = ({
   setEndDate,
   // Данные для выбора
   regionsList = [], 
-  carModels = [],   
+  carModels = [], // Уже отфильтрованные модели
   // Функции для применения фильтров
   applyDateFilter,
-  handleModelChange,     // Новый обработчик для изменения модели
-  handleRegionChange     // Новый обработчик для изменения региона
+  handleModelChange,
+  handleRegionChange
 }) => {
   // Состояния для отслеживания ошибок загрузки изображений
   const [failedImages, setFailedImages] = useState({});
@@ -147,8 +147,8 @@ const FilterPanel = ({
         </div>
       </div>
       
-      {/* Выбор модели автомобиля */}
-      {carModels && carModels.length > 0 && (
+      {/* Выбор модели автомобиля в виде списка */}
+      {carModels.length > 0 && (
         <div className="bg-gray-800/60 rounded-xl p-4 border border-gray-700/60 hover:border-indigo-500/30 transition-all duration-300 shadow-sm hover:shadow">
           <h4 className="text-sm font-medium text-white mb-3 flex items-center justify-between">
             <div className="flex items-center">
@@ -165,47 +165,37 @@ const FilterPanel = ({
             )}
           </h4>
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            {/* Кнопка "Все модели" */}
             <button 
-              className={`rounded-xl p-3 transition-all flex flex-col items-center justify-center ${
+              className={`rounded-lg p-2 transition-all flex items-center ${
                 selectedModel === 'all' 
                   ? 'bg-indigo-600 text-white shadow-md' 
                   : 'bg-gray-700/70 text-gray-300 hover:bg-gray-700 hover:shadow-md'
               }`}
               onClick={() => handleModelChange('all')}
             >
-              <div className="h-12 w-12 flex items-center justify-center bg-gray-800/70 rounded-lg mb-2">
-                <Car className="w-6 h-6" />
+              <div className="w-8 h-8 flex items-center justify-center bg-gray-800/70 rounded-lg mr-2">
+                <Car className="w-5 h-5" />
               </div>
-              <span className="text-xs font-medium">Все модели</span>
+              <span className="text-sm font-medium">Все модели</span>
             </button>
             
-            {carModels.map(model => (
+            {/* Список моделей */}
+            {carModels.map((model, index) => (
               <button 
                 key={model.id}
-                className={`rounded-xl p-3 transition-all flex flex-col items-center justify-center ${
+                className={`rounded-lg p-2 transition-all flex items-center ${
                   selectedModel === model.id 
                     ? 'bg-indigo-600 text-white shadow-md' 
                     : 'bg-gray-700/70 text-gray-300 hover:bg-gray-700 hover:shadow-md'
                 }`}
                 onClick={() => handleModelChange(model.id)}
               >
-                <div className="relative h-12 w-12 flex items-center justify-center bg-gray-800/70 rounded-lg mb-2 overflow-hidden">
-                  {model.img && !failedImages[model.id] ? (
-                    <img 
-                      src={model.img}
-                      alt={model.name} 
-                      className="w-full h-full object-contain p-1" 
-                      onError={() => handleImageError(model.id)}
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center w-full h-full">
-                      <ImageOff className="w-5 h-5 text-gray-500" />
-                      <span className="text-xs text-gray-500">Нет фото</span>
-                    </div>
-                  )}
+                <div className="text-gray-400 font-medium text-sm w-5 mr-1 text-center">
+                  {index + 1}.
                 </div>
-                <span className="text-xs font-medium truncate w-full text-center">{model.name}</span>
+                <span className="text-sm font-medium truncate">{model.name}</span>
               </button>
             ))}
           </div>

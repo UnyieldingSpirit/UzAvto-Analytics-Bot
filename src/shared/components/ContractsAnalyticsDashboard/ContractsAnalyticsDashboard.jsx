@@ -11,6 +11,7 @@ import StatsCards from './StatsCards';
 import { formatNumber, getPeriodLabel, getPeriodDescription } from './utils/formatters';
 import { fetchContractData, processContractData } from './services/contractService';
 import { regions } from './models/regions';
+import ContentReadyLoader from '../../layout/ContentReadyLoader';
 
 // Функция для получения данных о контрактах по датам
 const fetchContractDataByDate = async (beginDate, endDate) => {
@@ -786,6 +787,18 @@ const renderDetailedChart = () => {
   );
 };
   
+  const filteredModels = enhancedModels.filter(model => {
+  // Получаем данные о производительности для модели
+  const modelStats = modelPerformance[model.id];
+  
+  // Проверяем наличие ненулевых данных
+  return modelStats && (
+    (modelStats.contracts && modelStats.contracts > 0) || 
+    (modelStats.realization && modelStats.realization > 0) || 
+    (modelStats.cancellation && modelStats.cancellation > 0)
+  );
+});
+  
 const renderHeatmap = () => {
   // Проверка наличия данных
   if (!dailyContractData || !Array.isArray(dailyContractData)) {
@@ -1045,10 +1058,10 @@ const renderHeatmap = () => {
   return (
     <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 rounded-xl shadow-2xl border border-gray-700/40 w-full mx-auto overflow-hidden">
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center p-8 min-h-[400px]">
-          <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-400 text-lg">Загрузка данных...</p>
-        </div>
+      <ContentReadyLoader 
+          isLoading={isLoading} 
+          timeout={5000}
+        />
       ) : (
         <>
           <div className="mb-6">
@@ -1068,21 +1081,21 @@ const renderHeatmap = () => {
             </p>
           </div>
           
-          <FilterPanel 
-            selectedModel={selectedModel}
-            setSelectedModel={setSelectedModel}
-            selectedRegion={selectedRegion}
-            setSelectedRegion={setSelectedRegion}
-            startDate={startDate}
-            setStartDate={setStartDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-            regionsList={regions}
-            carModels={enhancedModels}
-            applyDateFilter={applyDateFilter}
-            handleModelChange={handleModelChange}
-            handleRegionChange={handleRegionChange}
-          />
+      <FilterPanel 
+  selectedModel={selectedModel}
+  setSelectedModel={setSelectedModel}
+  selectedRegion={selectedRegion}
+  setSelectedRegion={setSelectedRegion}
+  startDate={startDate}
+  setStartDate={setStartDate}
+  endDate={endDate}
+  setEndDate={setEndDate}
+  regionsList={regions}
+  carModels={filteredModels}
+  applyDateFilter={applyDateFilter}
+  handleModelChange={handleModelChange}
+  handleRegionChange={handleRegionChange}
+/>
           
           <StatsCards 
             selectedPeriod={selectedPeriod}
@@ -1107,101 +1120,131 @@ const renderHeatmap = () => {
             getPeriodLabel={getPeriodLabel}
           />
           
-          {/* Основной график */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <div className="lg:col-span-2 bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <h3 className="text-xl font-bold text-white flex items-center">
-                  <span className="text-2xl mr-2">📈</span> 
-                  Динамика показателей {getPeriodLabel(selectedPeriod).toLowerCase()}
-                  {selectedModel !== 'all' && (
-                    <span className="ml-2 text-indigo-400 text-base">
-                      ({enhancedModels.find(m => m.id === selectedModel)?.name})
-                    </span>
-                  )}
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  <button 
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${chartType === 'line' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'}`}
-                    onClick={() => setChartType('line')}
-                  >
-                    Линия
-                  </button>
-                  <button 
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${chartType === 'area' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'}`}
-                    onClick={() => setChartType('area')}
-                  >
-                    Область
-                  </button>
-                  <button 
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${chartType === 'bar' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'}`}
-                    onClick={() => setChartType('bar')}
-                  >
-                    Столбцы
-                  </button>
-                </div>
-              </div>
-              
-              <div className="w-full h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  {renderChart()}
-                </ResponsiveContainer>
-              </div>
-            </div>
-            
-            {/* Тепловая карта */}
-            <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
-              <h3 className="text-xl font-bold text-white mb-6 flex items-center">
-                <span className="text-2xl mr-2">🗓️</span> 
-                Тепловая карта контрактов
-              </h3>
-              {renderHeatmap()}
-              <div className="mt-4 flex justify-between items-center">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-blue-500/70 mr-1"></div>
-                  <span className="text-xs text-gray-400">Мало</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-purple-500/70 mr-1"></div>
-                  <span className="text-xs text-gray-400">Средне</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-orange-500/70 mr-1"></div>
-                  <span className="text-xs text-gray-400">Много</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-red-500/70 mr-1"></div>
-                  <span className="text-xs text-gray-400">Очень много</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* График по дням детализации */}
-          <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-6">
-            <h3 className="text-xl font-bold text-white mb-4 flex items-center">
-              <span className="text-2xl mr-2">📅</span> 
-              Детализация по дням месяца
-            </h3>
-            
-            <div className="w-full h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                {renderDetailedChart()}
-              </ResponsiveContainer>
-            </div>
-          </div>
-          
-          {/* Сравнительный анализ моделей */}
-          {selectedModel === 'all' && (
-            <ModelComparisonChart 
-              modelPerformance={modelPerformance}
-              carModels={enhancedModels}
-              selectedPeriod={selectedPeriod}
-              getPeriodLabel={getPeriodLabel}
-              startDate={startDate}
-              endDate={endDate}
-            />
-          )}
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+  <div className="lg:col-span-2 bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <h3 className="text-xl font-bold text-white flex items-center">
+        <span className="text-2xl mr-2">📈</span> 
+        Динамика показателей {getPeriodLabel(selectedPeriod).toLowerCase()}
+        {selectedModel !== 'all' && (
+          <span className="ml-2 text-indigo-400 text-base">
+            ({enhancedModels.find(m => m.id === selectedModel)?.name})
+          </span>
+        )}
+      </h3>
+      <div className="flex flex-wrap gap-2">
+        <button 
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${chartType === 'line' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'}`}
+          onClick={() => setChartType('line')}
+        >
+          Линия
+        </button>
+        <button 
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${chartType === 'area' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'}`}
+          onClick={() => setChartType('area')}
+        >
+          Область
+        </button>
+        <button 
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${chartType === 'bar' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'}`}
+          onClick={() => setChartType('bar')}
+        >
+          Столбцы
+        </button>
+      </div>
+    </div>
+    
+    <div className="w-full h-80">
+      {periodData && periodData.length > 0 ? (
+        <ResponsiveContainer width="100%" height="100%">
+          {renderChart()}
+        </ResponsiveContainer>
+      ) : (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-gray-400">Нет данных для отображения графика.</p>
+        </div>
+      )}
+    </div>
+  </div>
+  
+  {/* Тепловая карта - отображаем только если есть данные */}
+  {dailyContractData && dailyContractData.length > 0 ? (
+    <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
+      <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+        <span className="text-2xl mr-2">🗓️</span> 
+        Тепловая карта контрактов
+      </h3>
+      {renderHeatmap()}
+      <div className="mt-4 flex justify-between items-center">
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full bg-blue-500/70 mr-1"></div>
+          <span className="text-xs text-gray-400">Мало</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full bg-purple-500/70 mr-1"></div>
+          <span className="text-xs text-gray-400">Средне</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full bg-orange-500/70 mr-1"></div>
+          <span className="text-xs text-gray-400">Много</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full bg-red-500/70 mr-1"></div>
+          <span className="text-xs text-gray-400">Очень много</span>
+        </div>
+      </div>
+    </div>
+  ) : (
+    <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
+      <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+        <span className="text-2xl mr-2">🗓️</span> 
+        Тепловая карта контрактов
+      </h3>
+      <div className="flex items-center justify-center h-48">
+        <p className="text-gray-400">Нет данных для отображения тепловой карты.</p>
+      </div>
+    </div>
+  )}
+</div>
+
+{/* График по дням детализации - отображаем только если есть данные */}
+{dailyContractData && dailyContractData.length > 0 ? (
+  <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-6">
+    <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+      <span className="text-2xl mr-2">📅</span> 
+      Детализация по дням месяца
+    </h3>
+    
+    <div className="w-full h-64">
+      <ResponsiveContainer width="100%" height="100%">
+        {renderDetailedChart()}
+      </ResponsiveContainer>
+    </div>
+  </div>
+) : (
+  <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-6">
+    <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+      <span className="text-2xl mr-2">📅</span> 
+      Детализация по дням месяца
+    </h3>
+    
+    <div className="flex items-center justify-center h-64">
+      <p className="text-gray-400">Нет данных для отображения детализации.</p>
+    </div>
+  </div>
+)}
+
+{/* Сравнительный анализ моделей - отображаем только если есть данные и выбраны все модели */}
+{selectedModel === 'all' && Object.keys(modelPerformance).length > 0 && (
+  <ModelComparisonChart 
+    modelPerformance={modelPerformance}
+    carModels={enhancedModels}
+    selectedPeriod={selectedPeriod}
+    getPeriodLabel={getPeriodLabel}
+    startDate={startDate}
+    endDate={endDate}
+  />
+)}
         </>
       )}
       
