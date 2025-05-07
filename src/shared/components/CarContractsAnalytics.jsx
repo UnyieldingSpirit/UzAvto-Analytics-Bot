@@ -521,8 +521,6 @@ const fetchYearlyData = async (year) => {
     const requestData = {
       begin_date: beginDate,
       end_date: endDate,
-      model_id: selectedModel !== 'all' ? selectedModel : undefined,
-      region_id: selectedRegion !== 'all' ? selectedRegion : undefined
     };
     
     const response = await axios.post(apiUrl, requestData);
