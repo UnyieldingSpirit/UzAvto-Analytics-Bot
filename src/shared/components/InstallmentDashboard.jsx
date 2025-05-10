@@ -2249,7 +2249,7 @@ const overduePercentage = modelData.total_price > 0
                    onClick={() => handleRegionSelect(region.id)}
                  >
                    <td className="p-2">{region.name}</td>
-                   <td className="p-2 text-right">{formatNumberWithFullAmount(modelInRegion.contract_count)}</td>
+                   <td className="p-2 text-right">{(modelInRegion.contract_count)} шт. </td>
                    <td className="p-2 text-right text-green-400">{paidPercentage}%</td>
                    <td className="p-2 text-right text-red-400">{overduePercentage}%</td>
                    <td className="p-2 text-right">{formatNumber(remaining)}</td>

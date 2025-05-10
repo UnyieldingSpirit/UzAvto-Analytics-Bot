@@ -1660,53 +1660,6 @@ const renderStatusChart = () => {
                     {selectedModel?.name} {selectedRegion ? `в регионе ${selectedRegion?.name}` : '- Общая статистика'}
                   </h2>
                 </div>
-                
-                {/* Показатели модели */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
-                    <h3 className="text-sm text-slate-400 mb-1">Всего автомобилей</h3>
-                    <div className="text-xl font-bold text-white">
-                      {selectedModel?.totalCount || 0} шт.
-                    </div>
-                  </div>
-                  
-                  <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
-                    <h3 className="text-sm text-slate-400 mb-1">Оплачено</h3>
-                    <div className="text-xl font-bold text-green-500">
-                      {selectedModel?.paid_count || 0} шт.
-                    </div>
-                  </div>
-                  
-                  <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
-                    <h3 className="text-sm text-slate-400 mb-1">Не оплачено</h3>
-                    <div className="text-xl font-bold text-red-500">
-                      {selectedModel?.no_paid_count || 0} шт.
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
-                    <h3 className="text-sm text-slate-400 mb-1">Не оплаченно</h3>
-                    <div className="text-xl font-bold text-red-500">
-                      {selectedModel?.state_new || 0} шт.
-                    </div>
-                  </div>
-                  
-                  <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
-                    <h3 className="text-sm text-slate-400 mb-1">Оплаченно</h3>
-                    <div className="text-xl font-bold text-orange-500">
-                      {selectedModel?.state_waiting || 0} шт.
-                    </div>
-                  </div>
-                  
-                  <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
-                    <h3 className="text-sm text-slate-400 mb-1">У дилера</h3>
-                    <div className="text-xl font-bold text-green-500">
-                      {selectedModel?.state_complete || 0} шт.
-                    </div>
-                  </div>
-                </div>
 
                 <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4 mb-4">
                   <h3 className="text-sm text-slate-400 mb-3">Распределение по статусам</h3>

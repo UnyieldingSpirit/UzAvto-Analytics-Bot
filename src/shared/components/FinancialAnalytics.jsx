@@ -260,7 +260,6 @@ useEffect(() => {
   }
 }, [filteredData, viewType, displayMode, focusCategory, showQuarterlyData]);
   
-  // Функция отрисовки основного графика
   const renderMainChart = () => {
     if (!mainChartRef.current) return;
     
@@ -731,8 +730,6 @@ if (viewType === 'bar') {
   };
   
 
-// Модификация функции renderPeriodComparisonTable для создания столбчатого графика
-// Функция для более удобного форматирования больших чисел
 const formatProfitCompact = (number) => {
   if (number >= 1000000000000) { // триллионы
     return `${(number / 1000000000000).toFixed(1)}T`;
@@ -746,7 +743,6 @@ const formatProfitCompact = (number) => {
   return Math.round(number).toLocaleString('ru-RU');
 };
 
-// Модифицированная функция рендеринга периода
 const renderPeriodComparisonTable = () => {
   if (!mainChartRef.current || !filteredData.length) return;
   
@@ -1496,10 +1492,7 @@ const renderPeriodComparisonTable = () => {
   // Инициализация графика с полными данными
   updateChart();
 };
-          
-       
 
-// Показываем опции выбора детализации (модели или регионы)
 const showSelectionOptions = (year, month, monthName) => {
   if (!mainChartRef.current) return;
   d3.selectAll('.chart-tooltip, .bar-tooltip, .model-tooltip').remove();
@@ -2634,7 +2627,6 @@ const showCarModelDetails = (year, month, monthName) => {
   }
 }
 
-// Детализация по регионам Узбекистана
 const showRegionDetails = (year, month, monthName) => {
   if (!mainChartRef.current) return;
   d3.selectAll('.chart-tooltip, .bar-tooltip, .model-tooltip').remove();
@@ -3727,7 +3719,6 @@ function updateRegionComparisonData(compareYear, currentYear, month, monthName, 
  }
 };
       
-// Показывает распределение моделей по регионам
 const showModelRegionalDistribution = (modelName, year, month, monthName) => {
   if (!mainChartRef.current) return;
   d3.selectAll('.chart-tooltip, .bar-tooltip, .model-tooltip').remove();
@@ -3930,8 +3921,6 @@ const showModelRegionalDistribution = (modelName, year, month, monthName) => {
     row.append('div').style('color', '#f9fafb').style('text-align', 'center').text(`${marketShare}%`);
   });
 };
-
-// Функция для создания информационной карточки
 const createInfoCard = (container, title, value, suffix, color, trend) => {
   const card = container.append('div')
     .style('background', `rgba(30, 41, 59, 0.5)`)
@@ -3958,9 +3947,6 @@ const createInfoCard = (container, title, value, suffix, color, trend) => {
       .text(`${trend >= 0 ? '▲' : '▼'} ${Math.abs(trend)}% к прошлому году`);
   }
 };
-
-
-// Показывает распределение моделей в конкретном регионе
 const showRegionModelDistribution = (regionName, year, month, monthName) => {
   if (!mainChartRef.current) return;
   
@@ -4251,8 +4237,6 @@ const showRegionModelDistribution = (regionName, year, month, monthName) => {
   totalRow.append('div').style('color', totalGrowth >= 0 ? '#10b981' : '#ef4444').style('text-align', 'right').text(`${totalGrowth >= 0 ? '+' : ''}${totalGrowth}%`);
   totalRow.append('div').style('color', '#f9fafb').style('text-align', 'right').text('100%');
 };
-
-
 const renderGroupedBarChart = (data, options) => {
   const {
     container,
@@ -4447,8 +4431,6 @@ const renderGroupedBarChart = (data, options) => {
     }
   });
 };
-
-  // Мультилинейный график для сравнения по годам
   const renderMultiLineChart = () => {
     if (!mainChartRef.current) return;
     
@@ -4722,8 +4704,6 @@ const renderGroupedBarChart = (data, options) => {
         });
     });
   };
-  
-  // Функция для отрисовки радарного графика
   const renderRadarChart = () => {
     if (!mainChartRef.current) return;
     
@@ -4965,7 +4945,6 @@ const renderGroupedBarChart = (data, options) => {
     });
   };
   
-  // Комбинированный график (столбцы + линия)
   const renderMixedChart = () => {
     if (!mainChartRef.current) return;
     
@@ -5349,7 +5328,6 @@ const renderGroupedBarChart = (data, options) => {
     }
   };
   
-// Кардинально переработанный круговой индикатор выполнения плана
 const renderProgressChart = () => {
   if (!progressChartRef.current || Object.keys(financialData).length === 0) return;
   
@@ -5595,8 +5573,6 @@ const renderProgressChart = () => {
       .text(`Показатель для выбранного периода`);
   }
 };
-  
-  // Отрисовка пирога по категориям
   const renderDetailsChart = () => {
     if (!detailsChartRef.current || !filteredData.length) return;
     
@@ -5851,8 +5827,6 @@ const renderProgressChart = () => {
       .style('fill', d => d.color)
       .text(d => `${d3.format(',.0f')(d.value)}  UZS (${d3.format('.1f')((d.value / total) * 100)}%)`);
   };
-    
-    // Отрисовка графика тренда
   const renderYearlyTrendChart = () => {
     if (!yearlyTrendChartRef.current || Object.keys(financialData).length === 0) return;
     
@@ -6151,7 +6125,6 @@ const renderProgressChart = () => {
         .text('Акции');
     }
   };
-  
   const renderYearComparisonChart = () => {
     if (!yearComparisonChartRef.current || selectedYears.length < 2) return;
     
@@ -6342,8 +6315,6 @@ const renderProgressChart = () => {
       .style('fill', '#9ca3af')
       .text('Кварталы');
   };
-  
-  // Функция для отрисовки прогноза
   const renderForecastChart = () => {
     if (!forecastChartRef.current || Object.keys(financialData).length === 0) return;
     
@@ -6640,8 +6611,6 @@ const renderProgressChart = () => {
       .duration(500)
       .style('opacity', 1);
   };
-  
-  // Функция для отрисовки распределения по категориям
   const renderCategoryDistribution = () => {
     if (!categoryDistributionRef.current || !filteredData.length) return;
          
@@ -6850,8 +6819,6 @@ const renderProgressChart = () => {
         .text(type.name);
     });
   };
-  
-  // Функция для отрисовки квартальных данных
   const renderQuarterlyChart = () => {
     if (!quarterlyChartRef.current || Object.keys(financialData).length === 0) return;
     
@@ -7047,8 +7014,6 @@ const renderProgressChart = () => {
         .text(quarterlyData[0]?.year || '');
     }
   };
-  
-  // Форматирование суммы для отображения
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
@@ -7056,14 +7021,10 @@ const renderProgressChart = () => {
       maximumFractionDigits: 0
     }).format(amount);
   };
-  
-  // Получение суммы для заданного периода
   const getTotalForPeriod = () => {
     if (!filteredData.length) return 0;
     return filteredData.reduce((sum, month) => sum + month.total, 0);
   };
-  
-// Обработчик переключения режима отображения
 const handleDisplayModeChange = (mode) => {
   setDisplayMode(mode);
   
@@ -7082,8 +7043,6 @@ const handleDisplayModeChange = (mode) => {
     setEndYear(currentDate.year); // Текущий год
   }
 };
-  
-  // Проверка корректности выбранного периода
   const isPeriodValid = () => {
     if (startYear > endYear) return false;
     if (startYear === endYear && startMonth > endMonth) return false;
@@ -7527,112 +7486,8 @@ return (
             <div ref={progressChartRef} className="w-full h-64"></div>
           </div>
         </div>
-        
-        {/* РАЗДЕЛ: Детализация и распределение по категориям */}
-        {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <div className="bg-gray-800 rounded-xl p-5 border border-gray-700/50 shadow-lg">
-            <h3 className="text-xl font-semibold text-white mb-4">Структура продаж по категориям</h3>
-            <div ref={detailsChartRef} className="w-full"></div>
-          </div>
-          
-          <div className="bg-gray-800 rounded-xl p-5 border border-gray-700/50 shadow-lg">
-            <h3 className="text-xl font-semibold text-white mb-4">Распределение по категориям</h3>
-            <div ref={categoryDistributionRef} className="w-full"></div>
-          </div>
-        </div> */}
-        
-        {/* РАЗДЕЛ: Тренд по годам и прогноз */}
-        {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <div className="bg-gray-800 rounded-xl p-5 border border-gray-700/50 shadow-lg">
-            <h3 className="text-xl font-semibold text-white mb-4">Динамика по годам</h3>
-            <div ref={yearlyTrendChartRef} className="w-full"></div>
-          </div>
-          
-          <div className="bg-gray-800 rounded-xl p-5 border border-gray-700/50 shadow-lg">
-            <h3 className="text-xl font-semibold text-white mb-4">Прогноз на следующий год</h3>
-            <div ref={forecastChartRef} className="w-full"></div>
-          </div>
-        </div> */}
-        
-        {/* РАЗДЕЛ: Сравнение по годам (условное отображение) */}
-        {/* {displayMode === 'compare' && (
-          <div className="bg-gray-800 rounded-xl p-5 border border-gray-700/50 shadow-lg mb-6">
-            <h3 className="text-xl font-semibold text-white mb-4">Сравнение по годам</h3>
-            <div ref={yearComparisonChartRef} className="w-full"></div>
-          </div>
-        )} */}
-        
-        {/* РАЗДЕЛ: Квартальная аналитика (условное отображение) */}
-        {/* {showQuarterlyData && (
-          <div className="bg-gray-800 rounded-xl p-5 border border-gray-700/50 shadow-lg mb-6">
-            <h3 className="text-xl font-semibold text-white mb-4">Квартальная аналитика</h3>
-            <div ref={quarterlyChartRef} className="w-full"></div>
-          </div>
-        )} */}
-        
-        {/* РАЗДЕЛ: Панель инструментов и действий */}
-        {/* <div className="bg-gray-800/80 rounded-xl p-5 border border-gray-700/50 shadow-lg mb-6">
-          <h3 className="text-xl font-semibold text-white mb-4">Аналитические действия</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex items-center justify-center gap-2 bg-blue-600/20 hover:bg-blue-600/30 transition-colors rounded-lg p-4 text-blue-300 border border-blue-500/30"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-              Экспорт данных
-            </motion.button>
-            <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex items-center justify-center gap-2 bg-purple-600/20 hover:bg-purple-600/30 transition-colors rounded-lg p-4 text-purple-300 border border-purple-500/30"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-              </svg>
-              Подробный анализ
-            </motion.button>
-            <motion.button 
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center justify-center gap-2 bg-green-600/20 hover:bg-green-600/30 transition-colors rounded-lg p-4 text-green-300 border border-green-500/30"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
-                  <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
-                </svg>
-                Составить отчет
-              </motion.button>
-              <motion.button 
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center justify-center gap-2 bg-red-600/20 hover:bg-red-600/30 transition-colors rounded-lg p-4 text-red-300 border border-red-500/30"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2zM5 7a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm1 3a1 1 0 100 2h3a1 1 0 100-2H6z" clipRule="evenodd" />
-                </svg>
-                Предложить стратегию
-              </motion.button>
-            </div>
-          </div> */}
         </>
         )}
-      
-      {/* Если данные не загружены */}
-      {/* {filteredData.length === 0 && (
-        <div className="flex items-center justify-center h-64 bg-gray-800 rounded-xl border border-gray-700/50">
-          <div className="text-center">
-            <svg className="mx-auto h-12 w-12 text-gray-500 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p className="mt-4 text-gray-400">Загрузка данных...</p>
-          </div>
-        </div>
-      )} */}
-      
       <style jsx>{`
         .bg-clip-text {
           -webkit-background-clip: text;

@@ -568,9 +568,9 @@ const SalesDashboard = () => {
   };
 
   // Компонент аналитического дашборда
-  const renderAnalyticsDashboard = () => {
-    return <DashboardAnalytics selectedModel={selectedModel} />;
-  };
+  // const renderAnalyticsDashboard = () => {
+  //   return <DashboardAnalytics selectedModel={selectedModel} />;
+  // };
 
   // Содержимое боковой панели
   const renderSidebarContent = () => {
@@ -1146,7 +1146,6 @@ const SalesDashboard = () => {
                 </span>
               )}
             </h2>
-            <span className="text-sm text-gray-400">Активные задачи: <span className="text-white font-medium">89</span>/276</span>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
@@ -1214,7 +1213,7 @@ const SalesDashboard = () => {
         
         <div className="grid grid-cols-1 lg:grid-cols-1 gap-5 mb-5">
           {/* Компонент аналитики */}
-          {renderAnalyticsDashboard()}
+          {/* {renderAnalyticsDashboard()} */}
           
  {/* ТАБЛИЦА ЗАДОЛЖЕННОСТИ ПО КОНТРАКТАМ */}
           <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden">
