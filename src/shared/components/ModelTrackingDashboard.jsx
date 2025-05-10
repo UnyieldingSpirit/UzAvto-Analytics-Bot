@@ -178,7 +178,7 @@ const ModelTrackingDashboard = () => {
   
   const revenueData = calculateRevenueData();
   
-  // Данные статусов заказов на основе реальных данных
+  // Данные статусов заказов на основе реальных данных (С ОБНОВЛЕННЫМ ПОРЯДКОМ)
   const calculateStatusData = () => {
     let totalNew = 0;
     let totalWaiting = 0;
@@ -215,14 +215,15 @@ const ModelTrackingDashboard = () => {
       });
     }
     
+    // ИЗМЕНЕННЫЙ ПОРЯДОК СТАТУСОВ СОГЛАСНО ТРЕБОВАНИЮ
     return [
-      { id: 'new', name: 'Не оплаченно', value: totalNew, color: '#ef4444' },
-      { id: 'waiting', name: 'Оплаченно', value: totalWaiting, color: '#f59e0b' },
-      { id: 'distributed', name: 'Распределенно', value: totalReserved, color: '#3b82f6' },
+      { id: 'new', name: 'Не оплачено', value: totalNew, color: '#ef4444' },
+      { id: 'waiting', name: 'Оплачено', value: totalWaiting, color: '#f59e0b' },
+      { id: 'binding', name: 'На распределении', value: totalBinding, color: '#60a5fa' },
+      { id: 'reserved', name: 'Распределён', value: totalReserved, color: '#3b82f6' },
       { id: 'moving', name: 'В пути', value: totalMoving, color: '#8b5cf6' },
-      { id: 'dealer', name: 'У дилера', value: totalComplete, color: '#10b981' },
-      { id: 'distribution', name: 'На распределении', value: totalBinding, color: '#60a5fa' },
-      { id: 'reserved', name: 'Бронь', value: totalBooked, color: '#6366f1' }
+      { id: 'complete', name: 'У дилера', value: totalComplete, color: '#10b981' },
+      { id: 'booked', name: 'Бронь', value: totalBooked, color: '#6366f1' }
     ];
   };
   
@@ -762,12 +763,13 @@ const ModelTrackingDashboard = () => {
           .style('font-size', '16px')
           .text(model.no_paid_count || 0);
         
-        // Информация о статусах
+        // Информация о статусах - ОБНОВЛЕННЫЙ ПОРЯДОК СОГЛАСНО ТРЕБОВАНИЮ
         const statusInfo = card.append('div')
           .style('display', 'flex')
           .style('flex-direction', 'column')
           .style('gap', '8px');
           
+        // 1. Не оплачено
         const newStatus = statusInfo.append('div')
           .style('display', 'flex')
           .style('justify-content', 'space-between')
@@ -776,14 +778,15 @@ const ModelTrackingDashboard = () => {
         newStatus.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Не оплаченно:');
+          .text('Не оплачено:');
           
         newStatus.append('div')
           .style('color', '#ef4444')
           .style('font-weight', 'medium')
           .style('font-size', '12px')
           .text(model.state_new || 0);
-          
+        
+        // 2. Оплачено  
         const waitingStatus = statusInfo.append('div')
           .style('display', 'flex')
           .style('justify-content', 'space-between')
@@ -792,14 +795,32 @@ const ModelTrackingDashboard = () => {
         waitingStatus.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Оплаченно:');
+          .text('Оплачено:');
           
         waitingStatus.append('div')
           .style('color', '#f59e0b')
           .style('font-weight', 'medium')
           .style('font-size', '12px')
           .text(model.state_waiting || 0);
+        
+        // 3. На распределении
+        const bindingStatus = statusInfo.append('div')
+          .style('display', 'flex')
+          .style('justify-content', 'space-between')
+          .style('align-items', 'center');
           
+        bindingStatus.append('div')
+          .style('color', '#94a3b8')
+          .style('font-size', '12px')
+          .text('На распределении:');
+          
+        bindingStatus.append('div')
+          .style('color', '#60a5fa')
+          .style('font-weight', 'medium')
+          .style('font-size', '12px')
+          .text(model.state_binding || 0);
+        
+        // 4. Распределён
         const reservedStatus = statusInfo.append('div')
           .style('display', 'flex')
           .style('justify-content', 'space-between')
@@ -808,7 +829,7 @@ const ModelTrackingDashboard = () => {
         reservedStatus.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Распределенно:');
+          .text('Распределён:');
           
         reservedStatus.append('div')
           .style('color', '#3b82f6')
@@ -816,6 +837,7 @@ const ModelTrackingDashboard = () => {
           .style('font-size', '12px')
           .text(model.state_reserved || 0);
 
+        // 5. В пути
         const movingStatus = statusInfo.append('div')
           .style('display', 'flex')
           .style('justify-content', 'space-between')
@@ -832,6 +854,7 @@ const ModelTrackingDashboard = () => {
           .style('font-size', '12px')
           .text(model.state_moving || 0);
 
+        // 6. У дилера
         const completeStatus = statusInfo.append('div')
           .style('display', 'flex')
           .style('justify-content', 'space-between')
@@ -848,22 +871,7 @@ const ModelTrackingDashboard = () => {
           .style('font-size', '12px')
           .text(model.state_complete || 0);
 
-        const bindingStatus = statusInfo.append('div')
-          .style('display', 'flex')
-          .style('justify-content', 'space-between')
-          .style('align-items', 'center');
-          
-        bindingStatus.append('div')
-          .style('color', '#94a3b8')
-          .style('font-size', '12px')
-          .text('На распределении:');
-          
-        bindingStatus.append('div')
-          .style('color', '#60a5fa')
-          .style('font-weight', 'medium')
-          .style('font-size', '12px')
-          .text(model.state_binding || 0);
-
+        // 7. Бронь
         const bookedStatus = statusInfo.append('div')
           .style('display', 'flex')
           .style('justify-content', 'space-between')
@@ -902,7 +910,7 @@ const ModelTrackingDashboard = () => {
           const bindingWidth = ((model.state_binding || 0) / total) * 100;
           const bookedWidth = ((model.state_booked || 0) / total) * 100;
           
-          // Создаем сегменты прогресс-бара
+          // Создаем сегменты прогресс-бара в новом порядке
           if (newWidth > 0) {
             progressContainer.append('div')
               .style('height', '100%')
@@ -917,18 +925,11 @@ const ModelTrackingDashboard = () => {
               .style('background', '#f59e0b');
           }
           
-          if (completeWidth > 0) {
+          if (bindingWidth > 0) {
             progressContainer.append('div')
               .style('height', '100%')
-              .style('width', `${completeWidth}%`)
-              .style('background', '#10b981');
-          }
-          
-          if (movingWidth > 0) {
-            progressContainer.append('div')
-              .style('height', '100%')
-              .style('width', `${movingWidth}%`)
-              .style('background', '#8b5cf6');
+              .style('width', `${bindingWidth}%`)
+              .style('background', '#60a5fa');
           }
           
           if (reservedWidth > 0) {
@@ -938,11 +939,18 @@ const ModelTrackingDashboard = () => {
               .style('background', '#3b82f6');
           }
           
-          if (bindingWidth > 0) {
+          if (movingWidth > 0) {
             progressContainer.append('div')
               .style('height', '100%')
-              .style('width', `${bindingWidth}%`)
-              .style('background', '#60a5fa');
+              .style('width', `${movingWidth}%`)
+              .style('background', '#8b5cf6');
+          }
+          
+          if (completeWidth > 0) {
+            progressContainer.append('div')
+              .style('height', '100%')
+              .style('width', `${completeWidth}%`)
+              .style('background', '#10b981');
           }
           
           if (bookedWidth > 0) {
@@ -1064,7 +1072,7 @@ const ModelTrackingDashboard = () => {
         newBlock.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Не оплаченно');
+          .text('Не оплачено');
 
         newBlock.append('div')
           .style('color', '#ef4444')
@@ -1072,7 +1080,7 @@ const ModelTrackingDashboard = () => {
           .style('font-weight', 'bold')
           .text(model.state_new || 0);
                 
-        // Оплаченно
+        // Оплачено
         const waitingBlock = rightPart.append('div')
           .style('display', 'flex')
           .style('flex-direction', 'column')
@@ -1081,7 +1089,7 @@ const ModelTrackingDashboard = () => {
         waitingBlock.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Оплаченно');
+          .text('Оплачено');
 
         waitingBlock.append('div')
           .style('color', '#f59e0b')
@@ -1125,32 +1133,293 @@ const ModelTrackingDashboard = () => {
       });
     }
 
-    // На уровне модели показываем изображение
-    if (currentView === 'model' && selectedModel) {
-      // Просто добавляем изображение модели
-      const imageSection = container.append('div')
-        .style('margin-top', '20px')
-        .style('background', 'linear-gradient(145deg, #1e293b, #1a2234)')
-        .style('border-radius', '16px')
-        .style('padding', '20px')
-        .style('animation', 'fadeInUp 0.6s both');
-      
-      // Добавляем изображение модели
-      const imageContainer = imageSection.append('div')
-        .style('height', '200px')
+    // Улучшенный раздел детальной информации по модели
+  // В начале функции renderModelsChart(), перед любым отображением данных, добавьте проверку:
+if (currentView === 'model' && selectedModel) {
+  // Очищаем весь контейнер перед отрисовкой
+  container.selectAll("*").remove();
+  
+  // Создаем сразу двухколоночную карточку для детальной информации без верхней карточки
+  const detailContainer = container.append('div')
+    .style('display', 'grid')
+    .style('grid-template-columns', 'repeat(auto-fit, minmax(300px, 1fr))')
+    .style('gap', '20px')
+    .style('animation', 'fadeInUp 0.6s both');
+  
+  // КОЛОНКА 1: Информация и статусы
+  const infoColumn = detailContainer.append('div')
+    .style('background', 'linear-gradient(145deg, #1e293b, #1a2234)')
+    .style('border-radius', '16px')
+    .style('padding', '20px')
+    .style('border', '1px solid rgba(30, 41, 59, 0.8)')
+    .style('box-shadow', '0 10px 15px -3px rgba(0, 0, 0, 0.3)');
+  
+  // Добавляем название модели вверху
+  infoColumn.append('div')
+    .style('font-weight', 'bold')
+    .style('color', '#f1f5f9')
+    .style('font-size', '22px')
+    .style('margin-bottom', '15px')
+    .style('text-align', 'center')
+    .text(selectedModel.name.toUpperCase());
+  
+  // Все ВСЕГО - ОПЛАЧЕНО - НЕ ОПЛАЧЕНО
+  const statsHeader = infoColumn.append('div')
+    .style('display', 'grid')
+    .style('grid-template-columns', 'repeat(3, 1fr)')
+    .style('gap', '10px')
+    .style('margin-bottom', '20px');
+  
+  // ВСЕГО
+  const totalStats = statsHeader.append('div')
+    .style('padding', '10px')
+    .style('background', 'rgba(15, 23, 42, 0.3)')
+    .style('border-radius', '8px')
+    .style('text-align', 'center');
+  
+  totalStats.append('div')
+    .style('color', '#94a3b8')
+    .style('font-size', '12px')
+    .style('margin-bottom', '5px')
+    .text('ВСЕГО');
+  
+  totalStats.append('div')
+    .style('font-size', '22px')
+    .style('font-weight', 'bold')
+    .style('color', '#f1f5f9')
+    .text(selectedModel.totalCount || 0);
+  
+  // ОПЛАЧЕНО
+  const paidStats = statsHeader.append('div')
+    .style('padding', '10px')
+    .style('background', 'rgba(15, 23, 42, 0.3)')
+    .style('border-radius', '8px')
+    .style('text-align', 'center');
+  
+  paidStats.append('div')
+    .style('color', '#94a3b8')
+    .style('font-size', '12px')
+    .style('margin-bottom', '5px')
+    .text('ОПЛАЧЕНО');
+  
+  paidStats.append('div')
+    .style('font-size', '22px')
+    .style('font-weight', 'bold')
+    .style('color', '#10b981')
+    .text(selectedModel.paid_count || 0);
+  
+  // НЕ ОПЛАЧЕНО
+  const unpaidStats = statsHeader.append('div')
+    .style('padding', '10px')
+    .style('background', 'rgba(15, 23, 42, 0.3)')
+    .style('border-radius', '8px')
+    .style('text-align', 'center');
+  
+  unpaidStats.append('div')
+    .style('color', '#94a3b8')
+    .style('font-size', '12px')
+    .style('margin-bottom', '5px')
+    .text('НЕ ОПЛАЧЕНО');
+  
+  unpaidStats.append('div')
+    .style('font-size', '22px')
+    .style('font-weight', 'bold')
+    .style('color', '#ef4444')
+    .text(selectedModel.no_paid_count || 0);
+  
+  // Заголовок секции статусов
+  infoColumn.append('div')
+    .style('margin', '20px 0 15px 0')
+    .style('color', '#94a3b8')
+    .style('font-size', '14px')
+    .style('font-weight', 'medium')
+    .text('СТАТУСЫ ЗАКАЗОВ');
+  
+  // Прогресс-бар статусов
+  const progressSection = infoColumn.append('div')
+    .style('margin-bottom', '15px');
+  
+  // Создаем прогресс-бар с подписями
+  const progressData = [
+    { name: 'Не оплачено', value: selectedModel.state_new || 0, color: '#ef4444' },
+    { name: 'Оплачено', value: selectedModel.state_waiting || 0, color: '#f59e0b' },
+    { name: 'На распределении', value: selectedModel.state_binding || 0, color: '#60a5fa' },
+    { name: 'Распределён', value: selectedModel.state_reserved || 0, color: '#3b82f6' },
+    { name: 'В пути', value: selectedModel.state_moving || 0, color: '#8b5cf6' },
+    { name: 'У дилера', value: selectedModel.state_complete || 0, color: '#10b981' },
+    { name: 'Бронь', value: selectedModel.state_booked || 0, color: '#6366f1' }
+  ];
+  
+  const total = progressData.reduce((sum, item) => sum + item.value, 0);
+  
+  // Контейнер для прогресс-бара
+  const progressBarContainer = progressSection.append('div')
+    .style('width', '100%')
+    .style('height', '8px')
+    .style('background', '#334155')
+    .style('border-radius', '4px')
+    .style('overflow', 'hidden')
+    .style('margin-bottom', '10px')
+    .style('display', 'flex');
+  
+  // Добавляем сегменты прогресс-бара
+  if (total > 0) {
+    progressData.forEach(item => {
+      const width = (item.value / total) * 100;
+      if (width > 0) {
+        progressBarContainer.append('div')
+          .style('height', '100%')
+          .style('width', `${width}%`)
+          .style('background', item.color);
+      }
+    });
+  }
+  
+  // Легенда прогресс-бара
+  const legend = progressSection.append('div')
+    .style('display', 'flex')
+    .style('flex-wrap', 'wrap')
+    .style('gap', '8px')
+    .style('margin-bottom', '15px');
+  
+  progressData.forEach(item => {
+    if (item.value > 0) {
+      const legendItem = legend.append('div')
         .style('display', 'flex')
         .style('align-items', 'center')
-        .style('justify-content', 'center')
-        .style('background', `linear-gradient(145deg, ${selectedModel.color}10, ${selectedModel.color}05)`)
-        .style('border-radius', '8px')
-        .style('overflow', 'hidden');
+        .style('margin-right', '10px');
       
-      imageContainer.append('img')
-        .attr('src', `https://uzavtosalon.uz/b/core/m$load_image?sha=${selectedModel.image}&width=400&height=400`)
-        .style('max-height', '180px')
-        .style('max-width', '100%')
-        .style('object-fit', 'contain');
+      legendItem.append('div')
+        .style('width', '10px')
+        .style('height', '10px')
+        .style('border-radius', '50%')
+        .style('background', item.color)
+        .style('margin-right', '5px')
+        .style('box-shadow', `0 0 5px ${item.color}80`);
+      
+      legendItem.append('div')
+        .style('color', '#94a3b8')
+        .style('font-size', '11px')
+        .text(`${item.name}: ${item.value}`);
     }
+  });
+  
+  // Таблица статусов
+  const statusesSection = infoColumn.append('div');
+  
+  // Заголовки таблицы
+  const tableHeader = statusesSection.append('div')
+    .style('display', 'flex')
+    .style('justify-content', 'space-between')
+    .style('padding', '10px 5px')
+    .style('border-bottom', '1px solid rgba(30, 41, 59, 0.8)')
+    .style('margin-bottom', '10px');
+  
+  tableHeader.append('div')
+    .style('color', '#94a3b8')
+    .style('font-size', '12px')
+    .style('font-weight', 'medium')
+    .text('СТАТУС');
+  
+  tableHeader.append('div')
+    .style('color', '#94a3b8')
+    .style('font-size', '12px')
+    .style('font-weight', 'medium')
+    .text('КОЛИЧЕСТВО');
+  
+  // Строки таблицы статусов
+  progressData.forEach((status, index) => {
+    const row = statusesSection.append('div')
+      .style('display', 'flex')
+      .style('justify-content', 'space-between')
+      .style('padding', '8px 5px')
+      .style('border-bottom', index < progressData.length - 1 ? '1px solid rgba(30, 41, 59, 0.4)' : 'none');
+    
+    const statusLabel = row.append('div')
+      .style('display', 'flex')
+      .style('align-items', 'center');
+    
+    statusLabel.append('div')
+      .style('width', '8px')
+      .style('height', '8px')
+      .style('border-radius', '50%')
+      .style('background', status.color)
+      .style('margin-right', '8px');
+    
+    statusLabel.append('div')
+      .style('color', '#f1f5f9')
+      .style('font-size', '13px')
+      .text(status.name);
+    
+    row.append('div')
+      .style('color', status.color)
+      .style('font-size', '14px')
+      .style('font-weight', 'medium')
+      .text(status.value);
+  });
+  
+  // КОЛОНКА 2: Только изображение
+  const imageColumn = detailContainer.append('div')
+    .style('background', 'linear-gradient(145deg, #1e293b, #1a2234)')
+    .style('border-radius', '16px')
+    .style('border', '1px solid rgba(30, 41, 59, 0.8)')
+    .style('overflow', 'hidden')
+    .style('box-shadow', '0 10px 15px -3px rgba(0, 0, 0, 0.3)')
+    .style('display', 'flex')
+    .style('flex-direction', 'column');
+  
+  // Заголовок с названием "Изображение"
+  imageColumn.append('div')
+    .style('padding', '15px 20px')
+    .style('border-bottom', '1px solid rgba(30, 41, 59, 0.8)')
+    .style('font-weight', 'medium')
+    .style('color', '#f1f5f9')
+    .style('font-size', '16px')
+    .text('ИЗОБРАЖЕНИЕ');
+  
+  // Контейнер для изображения
+  const imageContainer = imageColumn.append('div')
+    .style('flex', '1')
+    .style('padding', '30px 20px')
+    .style('display', 'flex')
+    .style('flex-direction', 'column')
+    .style('justify-content', 'center')
+    .style('align-items', 'center')
+    .style('background', `linear-gradient(145deg, ${selectedModel.color}10, ${selectedModel.color}05)`)
+    .style('position', 'relative');
+  
+  // Добавляем декоративный элемент
+  imageContainer.append('div')
+    .style('position', 'absolute')
+    .style('top', '0')
+    .style('left', '0')
+    .style('width', '100%')
+    .style('height', '100%')
+    .style('background', `radial-gradient(circle at center, ${selectedModel.color}15 0%, transparent 70%)`);
+  
+  // Изображение модели
+  imageContainer.append('img')
+    .attr('src', `https://uzavtosalon.uz/b/core/m$load_image?sha=${selectedModel.image}&width=800&height=600`)
+    .style('max-width', '100%')
+    .style('max-height', '300px')
+    .style('object-fit', 'contain')
+    .style('border-radius', '8px')
+    .style('z-index', '1')
+    .style('filter', 'drop-shadow(0px 10px 15px rgba(0, 0, 0, 0.2))');
+  
+  // Название модели под изображением
+  imageContainer.append('div')
+    .style('margin-top', '20px')
+    .style('font-weight', 'bold')
+    .style('color', '#f1f5f9')
+    .style('font-size', '20px')
+    .style('text-align', 'center')
+    .style('z-index', '1')
+    .text(selectedModel.name.toUpperCase());
+  
+  // Важно: После создания всего детального вида, сразу вернуть из функции
+  return;
+}
 
     // Добавляем стили анимации
     if (!document.querySelector('style[data-animation="fadeInUp"]')) {
@@ -1555,7 +1824,7 @@ const renderStatusChart = () => {
         
         <p className="text-slate-400 mb-6 font-medium">
           {currentView === 'general' 
-            ? `СТАТУСЫ ЗАКАЗОВ ${isWholesale ? '(ОПТОВЫЕ)' : '(РОЗНИЧНЫЕ)'}: НЕ ОПЛАЧЕННО, ОПЛАЧЕННО, РАСПРЕДЕЛЕННО, В ПУТИ, У ДИЛЕРА, НА РАСПРЕДЕЛЕНИИ, БРОНЬ`
+            ? `СТАТУСЫ ЗАКАЗОВ ${isWholesale ? '(ОПТОВЫЕ)' : '(РОЗНИЧНЫЕ)'}: НЕ ОПЛАЧЕНО, ОПЛАЧЕНО, НА РАСПРЕДЕЛЕНИИ, РАСПРЕДЕЛЁН, В ПУТИ, У ДИЛЕРА, БРОНЬ`
             : currentView === 'region'
               ? `СТАТИСТИКА ПО РЕГИОНУ: ${selectedRegion?.name}`
               : `ДЕТАЛЬНАЯ ИНФОРМАЦИЯ ПО МОДЕЛИ: ${selectedModel?.name}`}
@@ -1649,114 +1918,6 @@ const renderStatusChart = () => {
               </div>
             </div>
           )}
-          
-          {/* Если мы в режиме модели, показываем детальную информацию */}
-          {currentView === 'model' && (
-            <div className="lg:col-span-8 bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl shadow-xl border border-slate-700/50 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-purple-500/5 to-pink-500/5 z-0"></div>
-              <div className="relative z-10">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-bold text-slate-200">
-                    {selectedModel?.name} {selectedRegion ? `в регионе ${selectedRegion?.name}` : '- Общая статистика'}
-                  </h2>
-                </div>
-
-                <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4 mb-4">
-                  <h3 className="text-sm text-slate-400 mb-3">Распределение по статусам</h3>
-                  <div>
-                    <div className="flex mb-2 pb-2 border-b border-slate-700/50">
-                      <div className="text-xs font-medium text-slate-400 uppercase tracking-wider pl-3 w-1/2">Статус</div>
-                      <div className="text-xs font-medium text-slate-400 uppercase tracking-wider w-1/2">Количество</div>
-                    </div>
-                    
-                    {(() => {
-                      const statusCounts = [
-                        { name: 'Не оплаченно', value: selectedModel?.state_new || 0, color: '#ef4444' },
-                        { name: 'Оплаченно', value: selectedModel?.state_waiting || 0, color: '#f59e0b' },
-                        { name: 'Распределенно', value: selectedModel?.state_reserved || 0, color: '#3b82f6' },
-                        { name: 'В пути', value: selectedModel?.state_moving || 0, color: '#8b5cf6' },
-                        { name: 'У дилера', value: selectedModel?.state_complete || 0, color: '#10b981' },
-                        { name: 'На распределении', value: selectedModel?.state_binding || 0, color: '#60a5fa' },
-                        { name: 'Бронь', value: selectedModel?.state_booked || 0, color: '#6366f1' }
-                      ];
-                      
-                      return statusCounts.map((status, index) => (
-                        <div 
-                          key={index} 
-                          className="flex py-2 hover:bg-slate-700/30 transition-colors"
-                        >
-                          <div className="flex items-center pl-3 w-1/2">
-                            <div 
-                              className="h-3 w-3 rounded-full mr-2" 
-                              style={{ 
-                                backgroundColor: status.color,
-                                boxShadow: `0 0 10px ${status.color}70`
-                              }}
-                            ></div>
-                            <div className="text-sm text-slate-300">{status.name}</div>
-                          </div>
-                          <div className="text-sm text-slate-400 w-1/2">{status.value}</div>
-                        </div>
-                      ));
-                    })()}
-                    
-                    <div className="flex pt-2 mt-2 border-t border-slate-700/50 font-medium">
-                      <div className="text-sm text-slate-300 pl-3 w-1/2">ИТОГО</div>
-                      <div className="text-sm text-slate-300 w-1/2">
-                        {(() => {
-                          const statusCounts = [
-                            selectedModel?.state_new || 0,
-                            selectedModel?.state_waiting || 0,
-                            selectedModel?.state_reserved || 0,
-                            selectedModel?.state_moving || 0,
-                            selectedModel?.state_complete || 0,
-                            selectedModel?.state_binding || 0,
-                            selectedModel?.state_booked || 0
-                          ];
-                          return statusCounts.reduce((a, b) => a + b, 0);
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Добавляем информацию об оплате */}
-                <div className="bg-slate-800/30 rounded-xl border border-slate-700/30 p-4 mb-4">
-                  <h3 className="text-sm text-slate-400 mb-3">Статус оплаты</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-slate-800/50 p-3 rounded-lg flex justify-between items-center">
-                      <div>
-                        <h4 className="text-xs text-slate-400">Оплачено</h4>
-                        <div className="text-lg font-bold text-green-500">
-                          {selectedModel?.paid_count || 0} шт.
-                        </div>
-                      </div>
-                      <div className="h-12 w-12 rounded-full flex items-center justify-center" 
-                           style={{background: 'radial-gradient(circle, rgba(16,185,129,0.2) 0%, rgba(16,185,129,0.05) 70%)'}}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    </div>
-                    <div className="bg-slate-800/50 p-3 rounded-lg flex justify-between items-center">
-                      <div>
-                        <h4 className="text-xs text-slate-400">Не оплачено</h4>
-                        <div className="text-lg font-bold text-red-500">
-                          {selectedModel?.no_paid_count || 0} шт.
-                        </div>
-                      </div>
-                      <div className="h-12 w-12 rounded-full flex items-center justify-center" 
-                           style={{background: 'radial-gradient(circle, rgba(239,68,68,0.2) 0%, rgba(239,68,68,0.05) 70%)'}}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
         
         {/* Карточка с моделями или регионами */}
@@ -1774,7 +1935,7 @@ const renderStatusChart = () => {
                       : `ДЕТАЛЬНАЯ ИНФОРМАЦИЯ: ${selectedModel?.name}`}
               </h2>
             </div>
-            <div ref={modelsChartRef} className="w-full" style={{ maxHeight: '450px', overflowY: 'auto' }}></div>
+           <div ref={modelsChartRef} className="w-full" style={{ maxHeight: currentView === 'model' ? 'none' : '650px', overflowY: currentView === 'model' ? 'visible' : 'auto' }}></div>
           </div>
         </div>
 
