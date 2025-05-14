@@ -22,6 +22,10 @@ const FilterPanel = ({
   // Состояния для отслеживания ошибок загрузки изображений
   const [failedImages, setFailedImages] = useState({});
   
+  // Внутренние состояния для хранения дат до применения фильтра
+  const [tempStartDate, setTempStartDate] = useState(startDate);
+  const [tempEndDate, setTempEndDate] = useState(endDate);
+  
   // Обработчик сброса всех фильтров
   const handleResetFilters = () => {
     setSelectedModel('all');
@@ -32,8 +36,14 @@ const FilterPanel = ({
     const threeMonthsAgo = new Date(today);
     threeMonthsAgo.setMonth(today.getMonth() - 3);
     
-    setStartDate(threeMonthsAgo.toISOString().substring(0, 10));
-    setEndDate(today.toISOString().substring(0, 10));
+    const newStartDate = threeMonthsAgo.toISOString().substring(0, 10);
+    const newEndDate = today.toISOString().substring(0, 10);
+    
+    // Обновляем как внутренние временные даты, так и внешние
+    setTempStartDate(newStartDate);
+    setTempEndDate(newEndDate);
+    setStartDate(newStartDate);
+    setEndDate(newEndDate);
     
     // Явно применяем фильтр после изменения дат
     setTimeout(() => applyDateFilter(), 100);
@@ -45,6 +55,26 @@ const FilterPanel = ({
       ...prev,
       [modelId]: true
     }));
+  };
+  
+  // Обработчик для временного изменения даты начала
+  const handleTempStartDateChange = (e) => {
+    setTempStartDate(e.target.value);
+  };
+  
+  // Обработчик для временного изменения даты окончания
+  const handleTempEndDateChange = (e) => {
+    setTempEndDate(e.target.value);
+  };
+  
+  // Обработчик для применения дат
+  const handleApplyDates = () => {
+    // Обновляем внешние даты только при нажатии кнопки "Применить"
+    setStartDate(tempStartDate);
+    setEndDate(tempEndDate);
+    
+    // Вызываем функцию для применения фильтра
+    applyDateFilter();
   };
 
   return (
@@ -82,8 +112,8 @@ const FilterPanel = ({
             <div className="flex-1">
               <input 
                 type="date" 
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                value={tempStartDate}
+                onChange={handleTempStartDateChange}
                 className="w-full py-2.5 px-3 bg-gray-700/80 border border-gray-600/60 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all"
               />
             </div>
@@ -93,14 +123,14 @@ const FilterPanel = ({
             <div className="flex-1">
               <input 
                 type="date" 
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                value={tempEndDate}
+                onChange={handleTempEndDateChange}
                 className="w-full py-2.5 px-3 bg-gray-700/80 border border-gray-600/60 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all"
               />
             </div>
             
             <button 
-              onClick={applyDateFilter}
+              onClick={handleApplyDates}
               className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all duration-300 shadow hover:shadow-md hover:shadow-indigo-600/20 flex items-center justify-center"
             >
               <span>Применить</span>

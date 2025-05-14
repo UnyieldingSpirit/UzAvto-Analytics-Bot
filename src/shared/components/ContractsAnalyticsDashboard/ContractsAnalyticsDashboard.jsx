@@ -30,13 +30,14 @@ function ContractsAnalyticsDashboard() {
   const [contractData, setContractData] = useState([]); // Храним данные от API
   const [dailyContractData, setDailyContractData] = useState([]);
   const prevDataRef = useRef(null);
-const prevRenderedChartRef = useRef(null);
+  const prevRenderedChartRef = useRef(null);
+  const [isDataReady, setIsDataReady] = useState(false); // Новое состояние для контроля готовности данных
   
   // Состояния для кастомного периода
   const [isCustomPeriod, setIsCustomPeriod] = useState(false);
   const [customStartDate, setCustomStartDate] = useState(new Date(new Date().setMonth(new Date().getMonth() - 1)));
   const [customEndDate, setCustomEndDate] = useState(new Date());
- const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().substring(0, 10));
+  const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().substring(0, 10));
   const [endDate, setEndDate] = useState(new Date().toISOString().substring(0, 10));
   
   // Кэш обработанных данных
@@ -61,8 +62,8 @@ const prevRenderedChartRef = useRef(null);
     
     try {
       // Форматируем даты для API
-     const formattedStartDate = formatDateForApi(startDate, true); // Указываем, что это начальная дата
-const formattedEndDate = formatDateForApi(endDate);
+      const formattedStartDate = formatDateForApi(startDate, true); // Указываем, что это начальная дата
+      const formattedEndDate = formatDateForApi(endDate);
 
       
       console.log(`Загрузка данных API: от ${formattedStartDate} до ${formattedEndDate}`);
@@ -100,8 +101,10 @@ const formattedEndDate = formatDateForApi(endDate);
       setDailyContractData(dailyData);
       
       console.log("Все данные успешно загружены");
+      return true; // Возвращаем успешное завершение
     } catch (error) {
       console.error("Ошибка при загрузке данных:", error);
+      return false; // Возвращаем ошибку
     } finally {
       setIsLoading(false);
     }
@@ -160,11 +163,17 @@ const formattedEndDate = formatDateForApi(endDate);
   const applyDateFilter = () => {
     console.log(`Применение фильтров: даты=${startDate}-${endDate}, регион=${selectedRegion}, модель=${selectedModel}`);
     
+    // Указываем, что данные не готовы (идет загрузка)
+    setIsDataReady(false);
+    
     // Сбрасываем кэш при изменении параметров
     processedDataCache.current = {};
     
     // Загружаем данные заново
-    loadAllData();
+    loadAllData().then(() => {
+      // После завершения загрузки помечаем данные как готовые
+      setIsDataReady(true);
+    });
   };
   
   // Обработчик для изменения модели
@@ -209,7 +218,9 @@ const formattedEndDate = formatDateForApi(endDate);
   
   // Инициализация данных при загрузке компонента
   useEffect(() => {
-    loadAllData();
+    loadAllData().then(() => {
+      setIsDataReady(true);
+    });
   }, []);
   
   // Обработка данных при изменении фильтров или загрузке данных API
@@ -315,26 +326,26 @@ const formattedEndDate = formatDateForApi(endDate);
   };
   
   // Форматирование даты для API (DD.MM.YYYY)
-const formatDateForApi = (dateString, isStartDate = false) => {
-  if (!dateString) {
-    const today = new Date();
-    return `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear()}`;
-  }
-  
-  try {
-    const date = new Date(dateString);
-    
-    if (isStartDate) {
-      date.setDate(date.getDate() + 1);
+  const formatDateForApi = (dateString, isStartDate = false) => {
+    if (!dateString) {
+      const today = new Date();
+      return `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear()}`;
     }
     
-    return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()}`;
-  } catch (e) {
-    console.error("Ошибка форматирования даты:", e);
-    const today = new Date();
-    return `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear()}`;
-  }
-};
+    try {
+      const date = new Date(dateString);
+      
+      if (isStartDate) {
+        date.setDate(date.getDate() + 1);
+      }
+      
+      return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()}`;
+    } catch (e) {
+      console.error("Ошибка форматирования даты:", e);
+      const today = new Date();
+      return `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear()}`;
+    }
+  };
   
   // Функция для получения номера недели в месяце
   const getWeekNumber = (date) => {
@@ -344,282 +355,291 @@ const formatDateForApi = (dateString, isStartDate = false) => {
     return Math.ceil((pastDaysOfMonth + firstDayOfMonth.getDay()) / 7);
   };
 
-// Полная функция renderChart
-const renderChart = () => {
-  // Проверка наличия данных
-  if (!periodData || periodData.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-gray-400">Нет данных для отображения. Пожалуйста, выберите другой период или фильтры.</p>
-      </div>
-    );
-  }
-  
-  // Фильтруем данные для отображения только за запрошенный период
-  const chartData = processDataForChart(periodData, startDate, endDate);
-  
-  // Если после фильтрации данных не осталось
-  if (chartData.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-gray-400">Нет данных для выбранного периода: {new Date(startDate).toLocaleDateString('ru-RU')} - {new Date(endDate).toLocaleDateString('ru-RU')}</p>
-      </div>
-    );
-  }
-  
-  // Более безопасное сравнение данных без использования JSON.stringify
-  const isDataChanged = !prevDataRef.current || 
-    chartData.length !== prevDataRef.current.length ||
-    chartData.some((item, index) => {
-      const prevItem = prevDataRef.current[index];
-      return !prevItem || 
-        item.name !== prevItem.name || 
-        item.contracts !== prevItem.contracts || 
-        item.realization !== prevItem.realization || 
-        item.cancellation !== prevItem.cancellation;
-    });
-  
-  // Если данные не изменились и у нас уже есть отрисованный график, возвращаем его
-  if (!isDataChanged && prevRenderedChartRef.current) {
-    console.log("Данные не изменились, используем существующий график");
-    return prevRenderedChartRef.current;
-  }
-  
-  // Обновляем ссылку на текущие данные (создаем глубокую копию данных)
-  prevDataRef.current = chartData.map(item => ({...item}));
-  
-  // Настраиваем отображение оси X в зависимости от количества точек данных
-  const xAxisConfig = {
-    dataKey: "name",
-    stroke: "#9ca3af",
-    // Корректировка угла и высоты для лучшей читаемости
-    angle: chartData.length > 12 ? -45 : 0,
-    textAnchor: chartData.length > 12 ? 'end' : 'middle',
-    height: chartData.length > 12 ? 60 : 30,
-    tick: { fontSize: 12 },
-    // Показываем все точки данных
-    interval: 0
-  };
+  // Полная функция renderChart
+  const renderChart = () => {
+    // Если данные еще не готовы после изменения фильтра
+    if (!isDataReady) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-gray-400">Нажмите "Применить", чтобы обновить данные для выбранного периода.</p>
+        </div>
+      );
+    }
+    
+    // Проверка наличия данных
+    if (!periodData || periodData.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-gray-400">Нет данных для отображения. Пожалуйста, выберите другой период или фильтры.</p>
+        </div>
+      );
+    }
+    
+    // Фильтруем данные для отображения только за запрошенный период
+    const chartData = processDataForChart(periodData, startDate, endDate);
+    
+    // Если после фильтрации данных не осталось
+    if (chartData.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-gray-400">Нет данных для выбранного периода: {new Date(startDate).toLocaleDateString('ru-RU')} - {new Date(endDate).toLocaleDateString('ru-RU')}</p>
+        </div>
+      );
+    }
+    
+    // Более безопасное сравнение данных без использования JSON.stringify
+    const isDataChanged = !prevDataRef.current || 
+      chartData.length !== prevDataRef.current.length ||
+      chartData.some((item, index) => {
+        const prevItem = prevDataRef.current[index];
+        return !prevItem || 
+          item.name !== prevItem.name || 
+          item.contracts !== prevItem.contracts || 
+          item.realization !== prevItem.realization || 
+          item.cancellation !== prevItem.cancellation;
+      });
+    
+    // Если данные не изменились и у нас уже есть отрисованный график, возвращаем его
+    if (!isDataChanged && prevRenderedChartRef.current) {
+      console.log("Данные не изменились, используем существующий график");
+      return prevRenderedChartRef.current;
+    }
+    
+    // Обновляем ссылку на текущие данные (создаем глубокую копию данных)
+    prevDataRef.current = chartData.map(item => ({...item}));
+    
+    // Настраиваем отображение оси X в зависимости от количества точек данных
+    const xAxisConfig = {
+      dataKey: "name",
+      stroke: "#9ca3af",
+      // Корректировка угла и высоты для лучшей читаемости
+      angle: chartData.length > 12 ? -45 : 0,
+      textAnchor: chartData.length > 12 ? 'end' : 'middle',
+      height: chartData.length > 12 ? 60 : 30,
+      tick: { fontSize: 12 },
+      // Показываем все точки данных
+      interval: 0
+    };
 
-  let renderedChart;
-  
-  switch (chartType) {
-    case 'line':
-      renderedChart = (
-        <LineChart data={chartData}>
-          <defs>
-            <linearGradient id="colorContractsGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8} />
-              <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.2} />
-            </linearGradient>
-            <linearGradient id="colorRealizationGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0.2} />
-            </linearGradient>
-            <linearGradient id="colorCancellationGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
-              <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2} />
-            </linearGradient>
-          </defs>
-          <XAxis {...xAxisConfig} />
-          <YAxis
-            stroke="#9ca3af"
-            tickFormatter={formatNumber}
-            width={70}
-          />
-          <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-          <Tooltip content={renderCustomTooltip} />
-          <Legend
-            verticalAlign="top"
-            height={36}
-            formatter={(value) => {
-              const labels = {
-                contracts: "Контракты",
-                realization: "Реализация",
-                cancellation: "Отмена"
-              };
-              return <span style={{ color: '#d1d5db', fontSize: '0.9rem' }}>{labels[value]}</span>
-            }}
-          />
-          <Line
-            type="monotone"
-            dataKey="contracts"
-            stroke="#4f46e5"
-            strokeWidth={3}
-            dot={{ stroke: '#4f46e5', fill: '#1f2937', strokeWidth: 2, r: 5 }}
-            activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="realization"
-            stroke="#10b981"
-            strokeWidth={3}
-            dot={{ stroke: '#10b981', fill: '#1f2937', strokeWidth: 2, r: 5 }}
-            activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="cancellation"
-            stroke="#ef4444"
-            strokeWidth={3}
-            dot={{ stroke: '#ef4444', fill: '#1f2937', strokeWidth: 2, r: 5 }}
-            activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
-          />
-        </LineChart>
-      );
-      break;
-      
-    case 'area':
-      renderedChart = (
-        <AreaChart data={chartData}>
-          <defs>
-            <linearGradient id="colorContractsGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8} />
-              <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.1} />
-            </linearGradient>
-            <linearGradient id="colorRealizationGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
-            </linearGradient>
-            <linearGradient id="colorCancellationGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
-              <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1} />
-            </linearGradient>
-          </defs>
-          <XAxis {...xAxisConfig} />
-          <YAxis
-            stroke="#9ca3af"
-            tickFormatter={formatNumber}
-            width={70}
-          />
-          <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-          <Tooltip content={renderCustomTooltip} />
-          <Legend
-            verticalAlign="top"
-            height={36}
-            formatter={(value) => {
-              const labels = {
-                contracts: "Контракты",
-                realization: "Реализация",
-                cancellation: "Отмена"
-              };
-              return <span style={{ color: '#d1d5db', fontSize: '0.9rem' }}>{labels[value]}</span>
-            }}
-          />
-          <Area
-            type="monotone"
-            dataKey="contracts"
-            fill="url(#colorContractsGradient)"
-            stroke="#4f46e5"
-            strokeWidth={2}
-            activeDot={{ r: 8 }}
-          />
-          <Area
-            type="monotone"
-            dataKey="realization"
-            fill="url(#colorRealizationGradient)"
-            stroke="#10b981"
-            strokeWidth={2}
-            activeDot={{ r: 8 }}
-          />
-          <Area
-            type="monotone"
-            dataKey="cancellation"
-            fill="url(#colorCancellationGradient)"
-            stroke="#ef4444"
-            strokeWidth={2}
-            activeDot={{ r: 8 }}
-          />
-        </AreaChart>
-      );
-      break;
-      
-    case 'bar':
-      renderedChart = (
-        <BarChart data={chartData}>
-          <XAxis {...xAxisConfig} />
-          <YAxis
-            stroke="#9ca3af"
-            tickFormatter={formatNumber}
-            width={70}
-          />
-          <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-          <Tooltip content={renderCustomTooltip} />
-          <Legend
-            verticalAlign="top"
-            height={36}
-            formatter={(value) => {
-              const labels = {
-                contracts: "Контракты",
-                realization: "Реализация",
-                cancellation: "Отмена"
-              };
-              return <span style={{ color: '#d1d5db', fontSize: '0.9rem' }}>{labels[value]}</span>
-            }}
-          />
-          <defs>
-            <linearGradient id="contractsBar" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#4f46e5" stopOpacity={1} />
-              <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.6} />
-            </linearGradient>
-            <linearGradient id="realizationBar" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
-              <stop offset="100%" stopColor="#10b981" stopOpacity={0.6} />
-            </linearGradient>
-            <linearGradient id="cancellationBar" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
-              <stop offset="100%" stopColor="#ef4444" stopOpacity={0.6} />
-            </linearGradient>
-          </defs>
-          <Bar
-            dataKey="contracts"
-            fill="url(#contractsBar)"
-            radius={[4, 4, 0, 0]}
-          />
-          <Bar
-            dataKey="realization"
-            fill="url(#realizationBar)"
-            radius={[4, 4, 0, 0]}
-          />
-          <Bar
-            dataKey="cancellation"
-            fill="url(#cancellationBar)"
-            radius={[4, 4, 0, 0]}
-          />
-        </BarChart>
-      );
-      break;
-      
-    default:
-      renderedChart = (
-        <LineChart data={chartData}>
-          <XAxis dataKey="name" />
-          <YAxis />
-          <Tooltip />
-          <Line
-            type="monotone"
-            dataKey="contracts"
-            stroke="#4f46e5"
-          />
-          <Line
-            type="monotone"
-            dataKey="realization"
-            stroke="#10b981"
-          />
-          <Line
-            type="monotone"
-            dataKey="cancellation"
-            stroke="#ef4444"
-          />
-        </LineChart>
-      );
-  }
-  
-  // Сохраняем отрисованный график
-  prevRenderedChartRef.current = renderedChart;
-  
-  return renderedChart;
-};
+    let renderedChart;
+    
+    switch (chartType) {
+      case 'line':
+        renderedChart = (
+          <LineChart data={chartData}>
+            <defs>
+              <linearGradient id="colorContractsGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.2} />
+              </linearGradient>
+              <linearGradient id="colorRealizationGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0.2} />
+              </linearGradient>
+              <linearGradient id="colorCancellationGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2} />
+              </linearGradient>
+            </defs>
+            <XAxis {...xAxisConfig} />
+            <YAxis
+              stroke="#9ca3af"
+              tickFormatter={formatNumber}
+              width={70}
+            />
+            <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+            <Tooltip content={renderCustomTooltip} />
+            <Legend
+              verticalAlign="top"
+              height={36}
+              formatter={(value) => {
+                const labels = {
+                  contracts: "Контракты",
+                  realization: "Реализация",
+                  cancellation: "Отмена"
+                };
+                return <span style={{ color: '#d1d5db', fontSize: '0.9rem' }}>{labels[value]}</span>
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="contracts"
+              stroke="#4f46e5"
+              strokeWidth={3}
+              dot={{ stroke: '#4f46e5', fill: '#1f2937', strokeWidth: 2, r: 5 }}
+              activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="realization"
+              stroke="#10b981"
+              strokeWidth={3}
+              dot={{ stroke: '#10b981', fill: '#1f2937', strokeWidth: 2, r: 5 }}
+              activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="cancellation"
+              stroke="#ef4444"
+              strokeWidth={3}
+              dot={{ stroke: '#ef4444', fill: '#1f2937', strokeWidth: 2, r: 5 }}
+              activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
+            />
+          </LineChart>
+        );
+        break;
+        
+      case 'area':
+        renderedChart = (
+          <AreaChart data={chartData}>
+            <defs>
+              <linearGradient id="colorContractsGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.1} />
+              </linearGradient>
+              <linearGradient id="colorRealizationGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
+              </linearGradient>
+              <linearGradient id="colorCancellationGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1} />
+              </linearGradient>
+            </defs>
+            <XAxis {...xAxisConfig} />
+            <YAxis
+              stroke="#9ca3af"
+              tickFormatter={formatNumber}
+              width={70}
+            />
+            <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+            <Tooltip content={renderCustomTooltip} />
+            <Legend
+              verticalAlign="top"
+              height={36}
+              formatter={(value) => {
+                const labels = {
+                  contracts: "Контракты",
+                  realization: "Реализация",
+                  cancellation: "Отмена"
+                };
+                return <span style={{ color: '#d1d5db', fontSize: '0.9rem' }}>{labels[value]}</span>
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="contracts"
+              fill="url(#colorContractsGradient)"
+              stroke="#4f46e5"
+              strokeWidth={2}
+              activeDot={{ r: 8 }}
+            />
+            <Area
+              type="monotone"
+              dataKey="realization"
+              fill="url(#colorRealizationGradient)"
+              stroke="#10b981"
+              strokeWidth={2}
+              activeDot={{ r: 8 }}
+            />
+            <Area
+              type="monotone"
+              dataKey="cancellation"
+              fill="url(#colorCancellationGradient)"
+              stroke="#ef4444"
+              strokeWidth={2}
+              activeDot={{ r: 8 }}
+            />
+          </AreaChart>
+        );
+        break;
+        
+      case 'bar':
+        renderedChart = (
+          <BarChart data={chartData}>
+            <XAxis {...xAxisConfig} />
+            <YAxis
+              stroke="#9ca3af"
+              tickFormatter={formatNumber}
+              width={70}
+            />
+            <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+            <Tooltip content={renderCustomTooltip} />
+            <Legend
+              verticalAlign="top"
+              height={36}
+              formatter={(value) => {
+                const labels = {
+                  contracts: "Контракты",
+                  realization: "Реализация",
+                  cancellation: "Отмена"
+                };
+                return <span style={{ color: '#d1d5db', fontSize: '0.9rem' }}>{labels[value]}</span>
+              }}
+            />
+            <defs>
+              <linearGradient id="contractsBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#4f46e5" stopOpacity={1} />
+                <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.6} />
+              </linearGradient>
+              <linearGradient id="realizationBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
+                <stop offset="100%" stopColor="#10b981" stopOpacity={0.6} />
+              </linearGradient>
+              <linearGradient id="cancellationBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
+                <stop offset="100%" stopColor="#ef4444" stopOpacity={0.6} />
+              </linearGradient>
+            </defs>
+            <Bar
+              dataKey="contracts"
+              fill="url(#contractsBar)"
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar
+              dataKey="realization"
+              fill="url(#realizationBar)"
+              radius={[4, 4, 0, 0]}
+            />
+            <Bar
+              dataKey="cancellation"
+              fill="url(#cancellationBar)"
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        );
+        break;
+        
+      default:
+        renderedChart = (
+          <LineChart data={chartData}>
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Line
+              type="monotone"
+              dataKey="contracts"
+              stroke="#4f46e5"
+            />
+            <Line
+              type="monotone"
+              dataKey="realization"
+              stroke="#10b981"
+            />
+            <Line
+              type="monotone"
+              dataKey="cancellation"
+              stroke="#ef4444"
+            />
+          </LineChart>
+        );
+    }
+    
+    // Сохраняем отрисованный график
+    prevRenderedChartRef.current = renderedChart;
+    
+    return renderedChart;
+  };
   
   const renderDetailedChart = () => {
     // Проверка наличия данных
@@ -1260,88 +1280,88 @@ const renderChart = () => {
                       <div className="w-3 h-3 rounded-full bg-red-500/70 mr-1"></div>
                       <span className="text-xs text-gray-400">Очень много</span>
                     </div>
-                  </div>
                 </div>
-              );
-            })()}
-          </div>
+               </div>
+             );
+           })()}
+         </div>
 
-          {/* График по дням детализации - проверяем наличие данных в order_count */}
-          {(() => {
-            // Проверка наличия данных с ненулевым order_count для графика детализации
-            const hasDetailedData = dailyContractData &&
-              Array.isArray(dailyContractData) &&
-              dailyContractData.length > 0 &&
-              dailyContractData.some(model => {
-                // Проверяем только выбранную модель или все модели
-                if (selectedModel !== 'all' && model.model_id !== selectedModel) {
-                  return false;
-                }
-                                
-                // Проверяем наличие данных в filter_by_date
-                if (!model.filter_by_date || !Array.isArray(model.filter_by_date)) {
-                  return false;
-                }
-                                
-                // Проверяем наличие данных по выбранному региону или по всем регионам
-                const filteredRegions = selectedRegion === 'all'
-                  ? model.filter_by_date
-                  : model.filter_by_date.filter(region => region.region_id === selectedRegion);
-                                
-                // Проверяем наличие ненулевых order_count в данных
-                return filteredRegions.some(region =>
-                  region.data &&
-                  Array.isArray(region.data) &&
-                  region.data.some(item => parseInt(item.order_count || 0) > 0)
-                );
-              });
-              // Если данных нет, не показываем блок вообще
-            if (!hasDetailedData) {
-              return null;
-            }
-          
-            // Иначе показываем блок с графиком детализации
-            return (
-              <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-6">
-                <h3 className="text-xl font-bold text-white mb-4 flex items-center">
-                  <span className="text-2xl mr-2">📅</span>
-                  Детализация по дням месяца
-                </h3>
-              
-                <div className="w-full h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    {renderDetailedChart()}
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            );
-          })()}
+         {/* График по дням детализации - проверяем наличие данных в order_count */}
+         {(() => {
+           // Проверка наличия данных с ненулевым order_count для графика детализации
+           const hasDetailedData = dailyContractData &&
+             Array.isArray(dailyContractData) &&
+             dailyContractData.length > 0 &&
+             dailyContractData.some(model => {
+               // Проверяем только выбранную модель или все модели
+               if (selectedModel !== 'all' && model.model_id !== selectedModel) {
+                 return false;
+               }
+                               
+               // Проверяем наличие данных в filter_by_date
+               if (!model.filter_by_date || !Array.isArray(model.filter_by_date)) {
+                 return false;
+               }
+                               
+               // Проверяем наличие данных по выбранному региону или по всем регионам
+               const filteredRegions = selectedRegion === 'all'
+                 ? model.filter_by_date
+                 : model.filter_by_date.filter(region => region.region_id === selectedRegion);
+                               
+               // Проверяем наличие ненулевых order_count в данных
+               return filteredRegions.some(region =>
+                 region.data &&
+                 Array.isArray(region.data) &&
+                 region.data.some(item => parseInt(item.order_count || 0) > 0)
+               );
+             });
+             // Если данных нет, не показываем блок вообще
+           if (!hasDetailedData) {
+             return null;
+           }
+         
+           // Иначе показываем блок с графиком детализации
+           return (
+             <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-6">
+               <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+                 <span className="text-2xl mr-2">📅</span>
+                 Детализация по дням месяца
+               </h3>
+             
+               <div className="w-full h-64">
+                 <ResponsiveContainer width="100%" height="100%">
+                   {renderDetailedChart()}
+                 </ResponsiveContainer>
+               </div>
+             </div>
+           );
+         })()}
 
-          {/* Сравнительный анализ моделей - отображаем только если есть данные и выбраны все модели */}
-          {selectedModel === 'all' && Object.keys(modelPerformance).filter(key => key !== 'totalContracts').length > 0 && (
-            <ModelComparisonChart
-              modelPerformance={modelPerformance}
-              carModels={enhancedModels}
-              selectedPeriod={selectedPeriod}
-              getPeriodLabel={getPeriodLabel}
-              startDate={startDate}
-              endDate={endDate}
-            />
-          )}
-        </>
-      )}
-    
-      <style jsx>{`
-      .bg-clip-text {
-        -webkit-background-clip: text;
-        background-clip: text;
-      }
-      .text-transparent {
-        color: transparent;
-      }
-    `}</style>
-    </div>
-  );
+         {/* Сравнительный анализ моделей - отображаем только если есть данные и выбраны все модели */}
+         {selectedModel === 'all' && Object.keys(modelPerformance).filter(key => key !== 'totalContracts').length > 0 && (
+           <ModelComparisonChart
+             modelPerformance={modelPerformance}
+             carModels={enhancedModels}
+             selectedPeriod={selectedPeriod}
+             getPeriodLabel={getPeriodLabel}
+             startDate={startDate}
+             endDate={endDate}
+           />
+         )}
+       </>
+     )}
+   
+     <style jsx>{`
+     .bg-clip-text {
+       -webkit-background-clip: text;
+       background-clip: text;
+     }
+     .text-transparent {
+       color: transparent;
+     }
+   `}</style>
+   </div>
+ );
 }
 
 

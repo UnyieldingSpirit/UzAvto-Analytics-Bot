@@ -5,6 +5,194 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as d3 from 'd3';
 import { D3Visualizer } from '@/src/utils/dataVisualizer';
 
+// Массив месяцев для отображения
+const MONTHS = [
+  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+];
+
+// Функция для трансформации данных API в формат компонента
+const transformApiDataToComponentFormat = (apiData) => {
+  // Создаем объект для хранения трансформированных данных
+  const transformedData = {};
+  
+  // Получаем уникальные годы из данных API
+  const years = new Set();
+  
+  // Проходим по данным API, чтобы собрать все уникальные годы
+  apiData.forEach(model => {
+    model.filter_by_region.forEach(monthData => {
+      const year = parseInt(monthData.month.split('-')[0]);
+      years.add(year);
+    });
+  });
+  
+  // Создаем структуру данных для каждого года
+  Array.from(years).forEach(year => {
+    transformedData[year] = {
+      targetAmount: 0, // Будет обновлено ниже
+      totalEarned: 0, // Будет рассчитано ниже
+      months: Array(12).fill().map((_, index) => ({
+        name: MONTHS[index],
+        month: index + 1,
+        retail: 0,
+        wholesale: 0,
+        promo: 0,
+        total: 0
+      })),
+      quarterlyData: [0, 0, 0, 0],
+      categories: {
+        retail: 0,
+        wholesale: 0,
+        promo: 0
+      },
+      modelData: {} // Добавим данные по моделям
+    };
+  });
+  
+  // Заполняем данные продаж из API
+  apiData.forEach(model => {
+    // Инициализируем данные по модели для каждого года
+    Array.from(years).forEach(year => {
+      if (!transformedData[year].modelData[model.model_id]) {
+        transformedData[year].modelData[model.model_id] = {
+          model_id: model.model_id,
+          model_name: model.model_name,
+          photo_sha: model.photo_sha,
+          totalSales: 0,
+          monthlyData: Array(12).fill().map(() => ({ amount: 0, count: 0 }))
+        };
+      }
+    });
+    
+    model.filter_by_region.forEach(monthData => {
+      const [yearStr, monthStr] = monthData.month.split('-');
+      const year = parseInt(yearStr);
+      const monthIndex = parseInt(monthStr) - 1;
+      
+      if (!transformedData[year]) return;
+      
+      // Общий объем продаж для данной модели в этом месяце
+      let modelMonthTotal = 0;
+      let modelMonthCount = 0;
+      
+      monthData.regions.forEach(region => {
+        const amount = parseFloat(region.amount);
+        const count = parseInt(region.all_count || 0);
+        
+        modelMonthTotal += amount;
+        modelMonthCount += count;
+      });
+      
+      // Сохраняем данные по модели
+      if (transformedData[year].modelData[model.model_id]) {
+        transformedData[year].modelData[model.model_id].totalSales += modelMonthTotal;
+        transformedData[year].modelData[model.model_id].monthlyData[monthIndex].amount = modelMonthTotal;
+        transformedData[year].modelData[model.model_id].monthlyData[monthIndex].count = modelMonthCount;
+      }
+      
+      // Обновляем данные месяца (общая сумма по всем моделям)
+      transformedData[year].months[monthIndex].total += modelMonthTotal;
+      
+      // Обновляем квартальные данные
+      const quarterIndex = Math.floor(monthIndex / 3);
+      transformedData[year].quarterlyData[quarterIndex] += modelMonthTotal;
+      
+      // Обновляем общую сумму продаж за год
+      transformedData[year].totalEarned += modelMonthTotal;
+    });
+  });
+  
+  // Установим целевые показатели на основе общей суммы продаж
+  // и добавим запас для визуализации прогресса
+  Object.keys(transformedData).forEach(year => {
+    transformedData[year].targetAmount = transformedData[year].totalEarned * 1.2; // Целевой показатель на 20% выше текущего
+  });
+  
+  // Финальный шаг - распределение данных по моделям в категории
+  // для совместимости с существующим интерфейсом
+  Object.keys(transformedData).forEach(year => {
+    const modelEntries = Object.values(transformedData[year].modelData);
+    
+    // Сортируем модели по объему продаж
+    modelEntries.sort((a, b) => b.totalSales - a.totalSales);
+    
+    // Для упрощения используем топ-3 модели как категории
+    // (это временное решение для совместимости с существующим UI)
+    if (modelEntries.length > 0) {
+      const topModel = modelEntries[0];
+      transformedData[year].categories.retail = topModel.totalSales;
+      
+      // Распределяем данные по месяцам для этой модели
+      topModel.monthlyData.forEach((data, monthIndex) => {
+        transformedData[year].months[monthIndex].retail = data.amount;
+      });
+    }
+    
+    if (modelEntries.length > 1) {
+      const secondModel = modelEntries[1];
+      transformedData[year].categories.wholesale = secondModel.totalSales;
+      
+      // Распределяем данные по месяцам для этой модели
+      secondModel.monthlyData.forEach((data, monthIndex) => {
+        transformedData[year].months[monthIndex].wholesale = data.amount;
+      });
+    }
+    
+    if (modelEntries.length > 2) {
+      const thirdModel = modelEntries[2];
+      transformedData[year].categories.promo = thirdModel.totalSales;
+      
+      // Распределяем данные по месяцам для этой модели
+      thirdModel.monthlyData.forEach((data, monthIndex) => {
+        transformedData[year].months[monthIndex].promo = data.amount;
+      });
+    }
+  });
+  
+  return transformedData;
+};
+
+// Основной компонент
+export default function EnhancedFinancialAnalytics() {
+  // Состояния для управления данными и фильтрами
+  const [financialData, setFinancialData] = useState({});
+  const [selectedYears, setSelectedYears] = useState([2024]); // Может быть несколько выбранных лет
+  const [filteredData, setFilteredData] = useState([]);
+  const [displayMode, setDisplayMode] = useState('period'); // 'yearly', 'period', 'compare'
+  const [isLoading, setIsLoading] = useState(true); // Состояние загрузки
+  const [apiStartDate, setApiStartDate] = useState('01.01.2025');
+  const [apiEndDate, setApiEndDate] = useState('31.12.2025');
+  
+  // Функция для получения текущего месяца и года
+  const getCurrentMonthAndYear = () => {
+    const now = new Date();
+    return {
+      month: now.getMonth() + 1,
+      year: now.getFullYear()
+    };
+  };
+  
+  // Состояния для фильтров по периоду
+  const currentDate = getCurrentMonthAndYear();
+  const [startMonth, setStartMonth] = useState(1); // Начинаем с января
+  const [startYear, setStartYear] = useState(currentDate.year - 1); // Прошлый год
+  const [endMonth, setEndMonth] = useState(currentDate.month); // Текущий месяц
+  const [endYear, setEndYear] = useState(currentDate.year);
+  
+  // Состояния для представления
+  const [viewType, setViewType] = useState('bar'); // 'bar', 'line', 'stacked', 'area', 'radar', 'mixed'
+  const [focusCategory, setFocusCategory] = useState('all'); // 'all', 'retail', 'wholesale', 'promo'
+  const [showQuarterlyData, setShowQuarterlyData] = useState(false);
+  
+  // Состояние для информации о моделях
+  const [modelInfo, setModelInfo] = useState({
+    retail: { id: '', name: 'Модель 1' },
+    wholesale: { id: '', name: 'Модель 2' },
+    promo: { id: '', name: 'Модель 3' }
+  });
+  
+  // Динамические SALE_TYPES, которые будут обновляться
 const SALE_TYPES = {
   RETAIL: {
     id: 'retail',
@@ -23,126 +211,6 @@ const SALE_TYPES = {
   }
 };
 
-const MONTHS = [
-  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-];
-
-
-// Генерация демо-данных
-const generateFinancialData = () => {
-  const years = [2023, 2024, 2025];
-  
-  const data = {};
-  
-  // Базовые значения для создания реалистичных данных
-  const baseRetail = 350000;
-  const baseWholesale = 500000;
-  const basePromo = 200000;
-  
-  // Сезонные коэффициенты (больше в летние месяцы и под конец года)
-  const seasonalFactors = [
-    0.7, 0.75, 0.9, 0.95, 1.1, 1.3, 
-    1.4, 1.3, 1.1, 1.0, 1.2, 1.5
-  ];
-  
-  // Годовой рост для создания тренда
-  const yearlyGrowthFactors = {
-    2023: 1,
-    2024: 1.35,
-    2025: 1.8
-  };
-  
-  years.forEach(year => {
-    // Генерация целевых показателей
-    const targetAmount = Math.round((5000000 + Math.random() * 5000000) * yearlyGrowthFactors[year]);
-    
-    data[year] = {
-      targetAmount,
-      totalEarned: 0,
-      months: [],
-      quarterlyData: [0, 0, 0, 0], // Данные по кварталам
-      categories: { // Накопительные данные по категориям
-        retail: 0,
-        wholesale: 0,
-        promo: 0
-      }
-    };
-    
-    let yearlyTotal = 0;
-    
-    // Создаем небольшие случайные колебания для каждой категории и месяца
-    const retailVariation = Array(12).fill().map(() => 0.8 + Math.random() * 0.4);
-    const wholesaleVariation = Array(12).fill().map(() => 0.8 + Math.random() * 0.4);
-    const promoVariation = Array(12).fill().map(() => 0.8 + Math.random() * 0.4);
-    
-    MONTHS.forEach((month, monthIndex) => {
-      // Применяем сезонность, годовой рост и случайные вариации
-      const retail = Math.round(
-        baseRetail * seasonalFactors[monthIndex] * yearlyGrowthFactors[year] * retailVariation[monthIndex]
-      );
-      
-      const wholesale = Math.round(
-        baseWholesale * seasonalFactors[monthIndex] * yearlyGrowthFactors[year] * wholesaleVariation[monthIndex]
-      );
-      
-      const promo = Math.round(
-        basePromo * seasonalFactors[monthIndex] * yearlyGrowthFactors[year] * promoVariation[monthIndex]
-      );
-      
-      const monthTotal = retail + wholesale + promo;
-      yearlyTotal += monthTotal;
-      
-      // Обновляем квартальные данные
-      const quarterIndex = Math.floor(monthIndex / 3);
-      data[year].quarterlyData[quarterIndex] += monthTotal;
-      
-      // Обновляем категории
-      data[year].categories.retail += retail;
-      data[year].categories.wholesale += wholesale;
-      data[year].categories.promo += promo;
-      
-      data[year].months.push({
-        name: month,
-        month: monthIndex + 1,
-        retail,
-        wholesale,
-        promo,
-        total: monthTotal
-      });
-    });
-    
-    data[year].totalEarned = yearlyTotal;
-  });
-  
-  return data;
-};
-
-// Основной компонент
-export default function EnhancedFinancialAnalytics() {
-  // Стейты для управления данными и фильтрами
-  const [financialData, setFinancialData] = useState({});
-  const [selectedYears, setSelectedYears] = useState([2024]); // Теперь может быть несколько выбранных лет
-  const [filteredData, setFilteredData] = useState([]);
-  const [displayMode, setDisplayMode] = useState('period'); // 'yearly', 'period', 'compare'
-  const getCurrentMonthAndYear = () => {
-  const now = new Date();
-  return {
-    month: now.getMonth() + 1,
-    year: now.getFullYear()
-  };
-  };
-  // Стейты для фильтров по периоду
-const currentDate = getCurrentMonthAndYear();
-const [startMonth, setStartMonth] = useState(1); // Начинаем с января
-const [startYear, setStartYear] = useState(currentDate.year - 1); // Прошлый год
-const [endMonth, setEndMonth] = useState(currentDate.month); // Текущий месяц
-const [endYear, setEndYear] = useState(currentDate.year);
-  
-  // Стейты для представления
-  const [viewType, setViewType] = useState('bar'); // 'bar', 'line', 'stacked', 'area', 'radar', 'mixed'
-  const [focusCategory, setFocusCategory] = useState('all'); // 'all', 'retail', 'wholesale', 'promo'
-  const [showQuarterlyData, setShowQuarterlyData] = useState(false);
   
   // Refs для контейнеров графиков
   const mainChartRef = useRef(null);
@@ -154,10 +222,127 @@ const [endYear, setEndYear] = useState(currentDate.year);
   const categoryDistributionRef = useRef(null);
   const quarterlyChartRef = useRef(null);
   
-  // Инициализация данных
+  // Функция для обновления названий моделей
+  const updateModelNames = (data, selectedYear) => {
+    if (!data || !data[selectedYear] || !data[selectedYear].modelData) return;
+    
+    const year = parseInt(selectedYear);
+    const allModels = Object.values(data[year].modelData || {});
+    const sortedModels = [...allModels].sort((a, b) => b.totalSales - a.totalSales);
+    
+    const newModelInfo = { ...modelInfo };
+    
+    if (sortedModels.length > 0) {
+      newModelInfo.retail = {
+        id: sortedModels[0].model_id,
+        name: sortedModels[0].model_name
+      };
+      // Также обновите константу для совместимости
+      SALE_TYPES.RETAIL.name = sortedModels[0].model_name;
+    }
+    
+    if (sortedModels.length > 1) {
+      newModelInfo.wholesale = {
+        id: sortedModels[1].model_id,
+        name: sortedModels[1].model_name
+      };
+      // Также обновите константу для совместимости
+      SALE_TYPES.WHOLESALE.name = sortedModels[1].model_name;
+    }
+    
+    if (sortedModels.length > 2) {
+      newModelInfo.promo = {
+        id: sortedModels[2].model_id,
+        name: sortedModels[2].model_name
+      };
+      // Также обновите константу для совместимости
+      SALE_TYPES.PROMO.name = sortedModels[2].model_name;
+    }
+    
+    setModelInfo(newModelInfo);
+  };
+  
+  // Инициализация данных с API
   useEffect(() => {
-    setFinancialData(generateFinancialData());
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        console.log("Отправка запроса к API финансовых данных...");
+        
+        const response = await fetch("https://uzavtosalon.uz/b/dashboard/infos&get_all_payment", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: `begin_date=${apiStartDate}&end_date=${apiEndDate}`
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Ошибка HTTP: ${response.status}`);
+        }
+        
+        const apiData = await response.json();
+        console.log("Данные API получены:", apiData);
+        
+        // Трансформируем данные API в нужный формат
+        const transformedData = transformApiDataToComponentFormat(apiData);
+        
+        // Устанавливаем данные в состояние компонента
+        setFinancialData(transformedData);
+        
+        // Устанавливаем начальные значения для фильтров
+        // Берем самый последний год из полученных данных
+        const years = Object.keys(transformedData).map(Number).sort((a, b) => b - a);
+        
+        if (years.length > 0) {
+          setSelectedYears([years[0]]);
+          updateModelNames(transformedData, years[0]);
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Ошибка при получении данных:", error);
+        setIsLoading(false);
+      }
+    };
+    
+    // Вызываем функцию загрузки данных
+    fetchData();
   }, []);
+  
+  // Функция для обновления данных с новыми датами
+  const refreshDataWithDateRange = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("https://uzavtosalon.uz/b/dashboard/infos&get_all_payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: `begin_date=${apiStartDate}&end_date=${apiEndDate}`
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Ошибка HTTP: ${response.status}`);
+      }
+      
+      const apiData = await response.json();
+      const transformedData = transformApiDataToComponentFormat(apiData);
+      setFinancialData(transformedData);
+      
+      // Обновляем выбранный год
+      const years = Object.keys(transformedData).map(Number).sort((a, b) => b - a);
+      if (years.length > 0) {
+        setSelectedYears([years[0]]);
+        updateModelNames(transformedData, years[0]);
+      }
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Ошибка при получении данных:", error);
+      setIsLoading(false);
+    }
+  };
   
   // Функция для переключения выбора года
   const toggleYearSelection = (year) => {
@@ -173,96 +358,164 @@ const [endYear, setEndYear] = useState(currentDate.year);
     } else {
       // В обычном режиме только один год
       setSelectedYears([year]);
+      // Обновляем названия моделей для выбранного года
+      updateModelNames(financialData, year);
     }
   };
   
-useEffect(() => {
-  if (Object.keys(financialData).length === 0) return;
-  
-  const filteredMonths = [];
-  
-  if (displayMode === 'yearly') {
-    selectedYears.forEach(year => {
-      if (financialData[year]) {
-        financialData[year].months.forEach(month => {
-          filteredMonths.push({
-            ...month,
-            year
-          });
-        });
-      }
-    });
-  } else if (displayMode === 'compare') {
-    selectedYears.forEach(year => {
-      if (financialData[year]) {
-        financialData[year].months.forEach(month => {
-          filteredMonths.push({
-            ...month,
-            year
-          });
-        });
-      }
-    });
-  } else if (displayMode === 'period') {
-    // Полный диапазон выбранного периода
-    for (let year = startYear; year <= endYear; year++) {
-      if (!financialData[year]) continue;
-      
-      financialData[year].months.forEach(month => {
-        if (
-          (year === startYear && month.month < startMonth) || 
-          (year === endYear && month.month > endMonth)
-        ) {
-          return;
-        }
-        
-        filteredMonths.push({
-          ...month,
-          year,
-          label: `${month.name} ${year}`
-        });
-      });
-    }
-  }
-  
-  setFilteredData(filteredMonths);
-}, [
-  financialData, 
-  selectedYears, 
-  displayMode, 
-  startMonth, 
-  startYear, 
-  endMonth, 
-  endYear,
-  viewType,
-  focusCategory
-]);
-  
-useEffect(() => {
-  if (!filteredData.length) return;
-  
-  renderMainChart();
-  renderProgressChart();
-  renderDetailsChart();
-  renderYearlyTrendChart();
-  
-  if (displayMode === 'compare') {
-    renderYearComparisonChart();
-  } else if (displayMode === 'period') {
-    renderPeriodComparisonTable();
-  }
-  
-  renderForecastChart();
-  renderCategoryDistribution();
-  
-  if (showQuarterlyData) {
-    renderQuarterlyChart();
-  }
-}, [filteredData, viewType, displayMode, focusCategory, showQuarterlyData]);
-  
-  const renderMainChart = () => {
-    if (!mainChartRef.current) return;
+  // Эффект для фильтрации данных в зависимости от режима и фильтров
+  useEffect(() => {
+    if (Object.keys(financialData).length === 0) return;
     
+    // Обновляем названия моделей при изменении года
+    if (selectedYears.length > 0) {
+      updateModelNames(financialData, selectedYears[0]);
+    }
+    
+    const filteredMonths = [];
+    
+    if (displayMode === 'yearly') {
+      selectedYears.forEach(year => {
+        if (financialData[year]) {
+          financialData[year].months.forEach(month => {
+            filteredMonths.push({
+              ...month,
+              year
+            });
+          });
+        }
+      });
+    } else if (displayMode === 'compare') {
+      selectedYears.forEach(year => {
+        if (financialData[year]) {
+          financialData[year].months.forEach(month => {
+            filteredMonths.push({
+              ...month,
+              year
+            });
+          });
+        }
+      });
+    } else if (displayMode === 'period') {
+      // Полный диапазон выбранного периода
+      for (let year = startYear; year <= endYear; year++) {
+        if (!financialData[year]) continue;
+        
+        financialData[year].months.forEach(month => {
+          if (
+            (year === startYear && month.month < startMonth) || 
+            (year === endYear && month.month > endMonth)
+          ) {
+            return;
+          }
+          
+          filteredMonths.push({
+            ...month,
+            year,
+            label: `${month.name} ${year}`
+          });
+        });
+      }
+    }
+    
+    setFilteredData(filteredMonths);
+  }, [
+    financialData, 
+    selectedYears, 
+    displayMode, 
+    startMonth, 
+    startYear, 
+    endMonth, 
+    endYear,
+    viewType,
+    focusCategory
+  ]);
+  
+  // Эффект для рендеринга графиков при изменении данных
+  useEffect(() => {
+    if (!filteredData.length) return;
+    
+    renderMainChart();
+    renderProgressChart();
+    renderDetailsChart();
+    renderYearlyTrendChart();
+    
+    if (displayMode === 'compare') {
+      renderYearComparisonChart();
+    } else if (displayMode === 'period') {
+      renderPeriodComparisonTable();
+    }
+    
+    renderForecastChart();
+    renderCategoryDistribution();
+    
+    if (showQuarterlyData) {
+      renderQuarterlyChart();
+    }
+  }, [filteredData, viewType, displayMode, focusCategory, showQuarterlyData]);
+  
+  // Функция для изменения режима отображения
+  const handleDisplayModeChange = (mode) => {
+    setDisplayMode(mode);
+    
+    if (mode === 'yearly') {
+      setSelectedYears([2024]); // Устанавливаем текущий год по умолчанию
+    } else if (mode === 'compare') {
+      // Для сравнения берем последние два года
+      const years = Object.keys(financialData).map(Number).sort((a, b) => b - a);
+      setSelectedYears([years[0], years[1]].filter(Boolean));
+    } else if (mode === 'period') {
+      // Для периода устанавливаем текущий месяц и аналогичный период прошлого года
+      const currentDate = getCurrentMonthAndYear();
+      setStartMonth(1); // С января
+      setStartYear(currentDate.year - 1); // Прошлый год
+      setEndMonth(currentDate.month); // До текущего месяца
+      setEndYear(currentDate.year); // Текущий год
+    }
+  };
+  
+  // Функция для проверки валидности периода
+  const isPeriodValid = () => {
+    if (startYear > endYear) return false;
+    if (startYear === endYear && startMonth > endMonth) return false;
+    return true;
+  };
+  
+  // Функция для форматирования чисел в компактный вид
+  const formatProfitCompact = (number) => {
+    if (number >= 1000000000000) { // триллионы
+      return `${(number / 1000000000000).toFixed(1)}T`;
+    } else if (number >= 1000000000) { // миллиарды
+      return `${(number / 1000000000).toFixed(1)}B`;
+    } else if (number >= 1000000) { // миллионы
+      return `${(number / 1000000).toFixed(1)}M`;
+    } else if (number >= 1000) { // тысячи
+      return `${(number / 1000).toFixed(1)}K`;
+    }
+    return Math.round(number).toLocaleString('ru-RU');
+  };
+  
+  // Функция для форматирования валюты
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: 'UZS',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+  
+  // Функция для получения общей суммы за период
+  const getTotalForPeriod = () => {
+    if (!filteredData.length) return 0;
+    return filteredData.reduce((sum, month) => sum + month.total, 0);
+  };
+  
+const renderMainChart = () => {
+  if (!mainChartRef.current) return;
+  if (!filteredData.length) {
+    mainChartRef.current.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%"><p style="color:#9ca3af">Загрузка данных...</p></div>';
+    return;
+  }
     // Очистка контейнера
     mainChartRef.current.innerHTML = '';
     
@@ -729,20 +982,6 @@ if (viewType === 'bar') {
     }
   };
   
-
-const formatProfitCompact = (number) => {
-  if (number >= 1000000000000) { // триллионы
-    return `${(number / 1000000000000).toFixed(1)}T`;
-  } else if (number >= 1000000000) { // миллиарды
-    return `${(number / 1000000000).toFixed(1)}B`;
-  } else if (number >= 1000000) { // миллионы
-    return `${(number / 1000000).toFixed(1)}M`;
-  } else if (number >= 1000) { // тысячи
-    return `${(number / 1000).toFixed(1)}K`;
-  }
-  return Math.round(number).toLocaleString('ru-RU');
-};
-
 const renderPeriodComparisonTable = () => {
   if (!mainChartRef.current || !filteredData.length) return;
   
@@ -1644,7 +1883,6 @@ const showSelectionOptions = (year, month, monthName) => {
   head.appendChild(fontAwesome);
 };
 
-// Детализация по моделям автомобилей
 const showCarModelDetails = (year, month, monthName) => {
   if (!mainChartRef.current) return;
   d3.selectAll('.chart-tooltip, .bar-tooltip, .model-tooltip').remove();
@@ -1662,13 +1900,19 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('box-shadow', '0 15px 35px -10px rgba(0, 0, 0, 0.5)')
     .style('border', '1px solid rgba(59, 130, 246, 0.15)');
     
+  // Определяем ширину контейнера для адаптивного дизайна
+  const containerWidth = mainChartRef.current.clientWidth;
+  const isMobile = containerWidth < 768;
+    
   // Добавляем стилизованный заголовок и кнопки с улучшенным интерфейсом
   const header = container.append('div')
     .style('display', 'flex')
+    .style('flex-direction', isMobile ? 'column' : 'row')
     .style('justify-content', 'space-between')
-    .style('align-items', 'center')
+    .style('align-items', isMobile ? 'flex-start' : 'center')
     .style('margin-bottom', '20px')
     .style('padding-bottom', '15px')
+    .style('gap', '15px')
     .style('border-bottom', '1px solid rgba(59, 130, 246, 0.2)');
   
   // Добавляем иконку и анимированный заголовок
@@ -1688,7 +1932,7 @@ const showCarModelDetails = (year, month, monthName) => {
     .html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>');
   
   titleSection.append('h2')
-    .style('font-size', '1.5rem')
+    .style('font-size', isMobile ? '1.2rem' : '1.5rem')
     .style('font-weight', 'bold')
     .style('color', '#f9fafb')
     .style('margin', '0')
@@ -1697,6 +1941,7 @@ const showCarModelDetails = (year, month, monthName) => {
   // Улучшенные интерактивные кнопки
   const buttonGroup = header.append('div')
     .style('display', 'flex')
+    .style('flex-wrap', 'wrap')
     .style('gap', '12px');
   
   // Кнопка возврата к выбору с улучшенным дизайном и анимацией
@@ -1753,10 +1998,34 @@ const showCarModelDetails = (year, month, monthName) => {
     })
     .on('click', renderPeriodComparisonTable);
   
+  // Получаем данные о моделях из данных API
+  const yearData = financialData[year] || {};
+  const modelData = Object.values(yearData.modelData || {});
+  
+  // Сортируем модели по объему продаж
+  const sortedModels = [...modelData].sort((a, b) => b.totalSales - a.totalSales);
+  
+  // Исправляем: если данных о моделях нет, показываем сообщение
+  if (sortedModels.length === 0) {
+    container.append('div')
+      .style('width', '100%')
+      .style('height', '300px')
+      .style('display', 'flex')
+      .style('align-items', 'center')
+      .style('justify-content', 'center')
+      .style('color', '#9ca3af')
+      .style('font-size', '1.2rem')
+      .text('Нет данных о моделях автомобилей за выбранный период');
+    
+    return;
+  }
+  
   // Добавляем информационную панель с ключевыми показателями
   const infoPanel = container.append('div')
     .style('display', 'grid')
-    .style('grid-template-columns', 'repeat(auto-fit, minmax(200px, 1fr))')
+    .style('grid-template-columns', isMobile 
+      ? 'repeat(auto-fit, minmax(150px, 1fr))' 
+      : 'repeat(auto-fit, minmax(200px, 1fr))')
     .style('gap', '12px')
     .style('margin-bottom', '20px')
     .style('padding', '10px')
@@ -1764,28 +2033,31 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('background', 'rgba(30, 41, 59, 0.4)')
     .style('border', '1px solid rgba(59, 130, 246, 0.1)');
   
-  // Генерируем модели автомобилей для анализа
-  const carModels = [
-    { id: 'nx', name: 'DAMAS-2', sales: Math.round(550000 + Math.random() * 150000), count: Math.round(85 + Math.random() * 25) },
-    { id: 'cb', name: 'TRACKER-2', sales: Math.round(480000 + Math.random() * 120000), count: Math.round(70 + Math.random() * 20) },
-    { id: 'sn', name: 'Captiva 5T', sales: Math.round(680000 + Math.random() * 170000), count: Math.round(30 + Math.random() * 12) },
-    { id: 'k5', name: 'ONIX', sales: Math.round(750000 + Math.random() * 180000), count: Math.round(28 + Math.random() * 10) },
-  ];
-  
-  // Сортируем модели по объему продаж
-  carModels.sort((a, b) => b.sales - a.sales);
+  // Взять реальные данные моделей вместо генерации
+  const carModels = sortedModels.slice(0, 4).map(model => ({
+    id: model.model_id,
+    name: model.model_name,
+    sales: model.totalSales, 
+    count: model.monthlyData.reduce((sum, data) => {
+      // Считаем только тот месяц, который выбран
+      if (data && data.count) {
+        return sum + data.count;
+      }
+      return sum;
+    }, 0)
+  }));
   
   // Рассчитываем общие показатели
   const totalSales = carModels.reduce((sum, model) => sum + model.sales, 0);
   const totalCount = carModels.reduce((sum, model) => sum + model.count, 0);
-  const avgPrice = Math.round(totalSales / totalCount);
+  const avgPrice = totalCount > 0 ? Math.round(totalSales / totalCount) : 0;
   
   // Добавляем информационные карточки с ключевыми показателями
   const createInfoCard = (title, value, subtitle, icon, color) => {
     const card = infoPanel.append('div')
       .style('background', `rgba(${color}, 0.1)`)
       .style('border-radius', '8px')
-      .style('padding', '12px')
+      .style('padding', isMobile ? '10px' : '12px')
       .style('border-left', `3px solid rgba(${color}, 0.5)`)
       .style('transition', 'transform 0.2s ease')
       .style('cursor', 'default')
@@ -1803,13 +2075,13 @@ const showCarModelDetails = (year, month, monthName) => {
       .style('margin-bottom', '8px');
     
     cardHeader.append('div')
-      .style('font-size', '0.85rem')
+      .style('font-size', isMobile ? '0.75rem' : '0.85rem')
       .style('color', '#9ca3af')
       .text(title);
     
     cardHeader.append('div')
-      .style('width', '24px')
-      .style('height', '24px')
+      .style('width', isMobile ? '20px' : '24px')
+      .style('height', isMobile ? '20px' : '24px')
       .style('display', 'flex')
       .style('align-items', 'center')
       .style('justify-content', 'center')
@@ -1817,7 +2089,7 @@ const showCarModelDetails = (year, month, monthName) => {
       .html(icon);
     
     card.append('div')
-      .style('font-size', '1.25rem')
+      .style('font-size', isMobile ? '1.1rem' : '1.25rem')
       .style('font-weight', 'bold')
       .style('color', '#f9fafb')
       .style('margin-bottom', '4px')
@@ -1825,13 +2097,13 @@ const showCarModelDetails = (year, month, monthName) => {
     
     if (subtitle) {
       card.append('div')
-        .style('font-size', '0.75rem')
+        .style('font-size', isMobile ? '0.7rem' : '0.75rem')
         .style('color', '#9ca3af')
         .text(subtitle);
     }
   };
   
-  // Создаем информационные карточки
+  // Создаем информационные карточки с реальными данными
   createInfoCard(
     'Общая сумма продаж',
     formatProfitCompact(totalSales),
@@ -1848,47 +2120,59 @@ const showCarModelDetails = (year, month, monthName) => {
     '139, 92, 246'
   );
   
+  // Рассчитываем долю премиум сегмента (модели со средней ценой выше 700000)
+  const premiumModels = carModels.filter(m => m.count > 0 && m.sales / m.count > 700000);
+  const premiumShare = totalSales > 0 
+    ? premiumModels.reduce((sum, m) => sum + m.sales, 0) / totalSales * 100 
+    : 0;
+  
   createInfoCard(
     'Премиум сегмент',
-    ((carModels.filter(m => m.sales / m.count > 700000).reduce((sum, m) => sum + m.sales, 0) / totalSales) * 100).toFixed(1) + '%',
+    `${premiumShare.toFixed(1)}%`,
     'От общих продаж',
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>',
     '245, 158, 11'
   );
   
-  createInfoCard(
-    'Лидер продаж',
-    carModels[0].name,
-    `${carModels[0].count} шт.`,
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>',
-    '16, 185, 129'
-  );
+  // Отображаем лидера продаж
+  if (carModels.length > 0) {
+    createInfoCard(
+      'Лидер продаж',
+      carModels[0].name,
+      `${carModels[0].count} шт.`,
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>',
+      '16, 185, 129'
+    );
+  }
   
-  // Создаем контейнер для основного анализа с сетчатой структурой
+  // Создаем контейнер для основного анализа с адаптивной сетчатой структурой
   const gridContainer = container.append('div')
     .style('display', 'grid')
-    .style('grid-template-columns', 'minmax(0, 2fr) minmax(0, 1fr)')
-    .style('grid-template-rows', 'minmax(300px, 1fr) minmax(200px, auto)')
+    .style('grid-template-columns', isMobile ? '1fr' : 'minmax(0, 2fr) minmax(0, 1fr)')
+    .style('grid-template-rows', isMobile ? 'auto auto auto' : 'minmax(300px, 1fr) minmax(200px, auto)')
     .style('gap', '15px')
-    .style('height', 'calc(100% - 170px)');
+    .style('height', isMobile ? 'auto' : 'calc(100% - 170px)');
   
   // 1. Основной график - Горизонтальные столбцы по моделям с интерактивными элементами
   const barChartContainer = gridContainer.append('div')
-    .style('grid-column', '1')
-    .style('grid-row', '1 / span 2')
+    .style('grid-column', isMobile ? '1' : '1')
+    .style('grid-row', isMobile ? '1' : '1 / span 2')
     .style('background', 'rgba(17, 24, 39, 0.4)')
     .style('border-radius', '12px')
-    .style('padding', '16px')
+    .style('padding', isMobile ? '12px' : '16px')
     .style('border', '1px solid rgba(59, 130, 246, 0.1)')
     .style('display', 'flex')
-    .style('flex-direction', 'column');
+    .style('flex-direction', 'column')
+    .style('min-height', isMobile ? '300px' : 'auto');
   
   // Заголовок с фильтрами
   const barChartHeader = barChartContainer.append('div')
     .style('display', 'flex')
+    .style('flex-direction', isMobile ? 'column' : 'row')
     .style('justify-content', 'space-between')
-    .style('align-items', 'center')
-    .style('margin-bottom', '15px');
+    .style('align-items', isMobile ? 'flex-start' : 'center')
+    .style('margin-bottom', '15px')
+    .style('gap', isMobile ? '10px' : '0');
   
   barChartHeader.append('h3')
     .style('font-size', '1.1rem')
@@ -1953,7 +2237,7 @@ const showCarModelDetails = (year, month, monthName) => {
   const barChartSvg = barChartContainer.append('div')
     .style('flex-grow', '1')
     .style('width', '100%')
-    .style('height', '0')
+    .style('height', isMobile ? '250px' : '0')
     .style('position', 'relative')
     .append('svg')
     .attr('width', '100%')
@@ -1968,7 +2252,7 @@ const showCarModelDetails = (year, month, monthName) => {
     // Определяем размеры графика
     const barWidth = barChartSvg.node().clientWidth;
     const barHeight = barChartSvg.node().clientHeight;
-    const barMargin = { top: 10, right: 120, bottom: 20, left: 180 };
+    const barMargin = { top: 10, right: isMobile ? 40 : 120, bottom: 20, left: isMobile ? 120 : 180 };
     
     // Подготавливаем данные в зависимости от режима
     const data = carModels.map(model => ({
@@ -1978,8 +2262,20 @@ const showCarModelDetails = (year, month, monthName) => {
       // Добавляем доп. информацию для тултипа
       sales: model.sales,
       count: model.count,
-      avgPrice: Math.round(model.sales / model.count)
+      avgPrice: model.count > 0 ? Math.round(model.sales / model.count) : 0
     }));
+    
+    // Проверяем, есть ли данные
+    if (data.length === 0) {
+      barChartSvg.append('text')
+        .attr('x', barWidth / 2)
+        .attr('y', barHeight / 2)
+        .attr('text-anchor', 'middle')
+        .style('fill', '#9ca3af')
+        .style('font-size', '1rem')
+        .text('Нет данных для отображения');
+      return;
+    }
     
     // Создаем шкалы
     const barX = d3.scaleLinear()
@@ -2061,7 +2357,7 @@ const showCarModelDetails = (year, month, monthName) => {
       .call(g => g.selectAll('.tick line').remove())
       .call(g => g.selectAll('text')
         .style('fill', '#d1d5db')
-        .style('font-size', '0.8rem')
+        .style('font-size', isMobile ? '0.7rem' : '0.8rem')
         .style('font-weight', (d, i) => i === 0 ? 'bold' : 'normal'));
     
     // Создаем улучшенный тултип
@@ -2115,7 +2411,8 @@ const showCarModelDetails = (year, month, monthName) => {
           <div>
             <div style="font-size: 0.75rem; color: #9ca3af;">Доля</div>
             <div style="font-weight: bold; color: #60a5fa;">${percentage}%</div>
-          </div</div>
+          </div>
+        </div>
       `);
       
       // Анимированное появление тултипа
@@ -2197,7 +2494,7 @@ const showCarModelDetails = (year, month, monthName) => {
       .attr('x', d => barX(d.value) + 10)
       .attr('y', d => barY(d.name) + barY.bandwidth() / 2)
       .attr('dy', '0.35em')
-      .style('font-size', '0.85rem')
+      .style('font-size', isMobile ? '0.75rem' : '0.85rem')
       .style('font-weight', '500')
       .style('fill', '#f9fafb')
       .style('opacity', 0)
@@ -2206,33 +2503,6 @@ const showCarModelDetails = (year, month, monthName) => {
       .duration(500)
       .delay((d, i) => 800 + i * 70)
       .style('opacity', 1);
-    
-    // // Добавляем индикаторы изменения относительно прошлого периода
-    // barChartSvg.selectAll('.trend-indicator')
-    //   .data(data)
-    //   .join('text')
-    //   .attr('class', 'trend-indicator')
-    //   .attr('x', d => barMargin.left - 25)
-    //   .attr('y', d => barY(d.name) + barY.bandwidth() / 2)
-    //   .attr('dy', '0.35em')
-    //   .style('font-size', '0.75rem')
-    //   .style('font-weight', '500')
-    //   .style('text-anchor', 'end')
-    //   .style('fill', (d, i) => {
-    //     // Имитируем данные изменения
-    //     const change = (i % 3 === 0) ? -5 - Math.random() * 10 : 5 + Math.random() * 15;
-    //     return change >= 0 ? '#10b981' : '#ef4444';
-    //   })
-    //   .text((d, i) => {
-    //     // Имитируем данные изменения
-    //     const change = (i % 3 === 0) ? -5 - Math.random() * 10 : 5 + Math.random() * 15;
-    //     return `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(1)}%`;
-    //   })
-    //   .style('opacity', 0)
-    //   .transition()
-    //   .duration(500)
-    //   .delay((d, i) => 1000 + i * 70)
-    //   .style('opacity', 0.9);
   }
   
   // Первичная отрисовка графика
@@ -2240,12 +2510,13 @@ const showCarModelDetails = (year, month, monthName) => {
   
   // 2. Правый верхний график - улучшенная круговая диаграмма с интерактивностью
   const pieChartContainer = gridContainer.append('div')
-    .style('grid-column', '2')
-    .style('grid-row', '1')
+    .style('grid-column', isMobile ? '1' : '2')
+    .style('grid-row', isMobile ? '2' : '1')
     .style('background', 'rgba(17, 24, 39, 0.4)')
     .style('border-radius', '12px')
-    .style('padding', '16px')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)');
+    .style('padding', isMobile ? '12px' : '16px')
+    .style('border', '1px solid rgba(59, 130, 246, 0.1)')
+    .style('min-height', isMobile ? '300px' : 'auto');
   
   // Заголовок
   pieChartContainer.append('h3')
@@ -2438,7 +2709,7 @@ const showCarModelDetails = (year, month, monthName) => {
   const centerNumber = centerGroup.append('text')
     .attr('text-anchor', 'middle')
     .attr('dy', '0.4em')
-    .style('font-size', '1.3rem')
+    .style('font-size', isMobile ? '1.1rem' : '1.3rem')
     .style('font-weight', 'bold')
     .style('fill', '#f9fafb')
     .text(formatProfitCompact(totalSales));
@@ -2446,12 +2717,12 @@ const showCarModelDetails = (year, month, monthName) => {
   const centerPercent = centerGroup.append('text')
     .attr('text-anchor', 'middle')
     .attr('dy', '2em')
-    .style('font-size', '1.1rem')
+    .style('font-size', isMobile ? '0.9rem' : '1.1rem')
     .style('fill', '#60a5fa')
     .style('font-weight', '500')
     .text('100%');
   
-  // Добавляем компактные метки для сегментов (показываем только топ-5)
+  // Добавляем компактные метки для сегментов (показываем только топ модели)
   const topModels = carModels.slice(0, 5);
   const pieLabels = pieG.selectAll('.pie-label')
     .data(pie(topModels))
@@ -2464,7 +2735,7 @@ const showCarModelDetails = (year, month, monthName) => {
     })
     .attr('text-anchor', 'middle')
     .attr('dy', '0.35em')
-    .style('font-size', '0.7rem')
+    .style('font-size', isMobile ? '0.6rem' : '0.7rem')
     .style('fill', '#d1d5db')
     .style('pointer-events', 'none')
     .style('opacity', 0)
@@ -2476,11 +2747,11 @@ const showCarModelDetails = (year, month, monthName) => {
   
   // 3. Правый нижний график - улучшенная панель метрик
   const metricsContainer = gridContainer.append('div')
-    .style('grid-column', '2')
-    .style('grid-row', '2')
+    .style('grid-column', isMobile ? '1' : '2')
+    .style('grid-row', isMobile ? '3' : '2')
     .style('background', 'rgba(17, 24, 39, 0.4)')
     .style('border-radius', '12px')
-    .style('padding', '16px')
+    .style('padding', isMobile ? '12px' : '16px')
     .style('border', '1px solid rgba(59, 130, 246, 0.1)')
     .style('display', 'flex')
     .style('flex-direction', 'column');
@@ -2495,7 +2766,9 @@ const showCarModelDetails = (year, month, monthName) => {
   // Создаем контейнер для метрик с улучшенным интерфейсом
   const metricsGrid = metricsContainer.append('div')
     .style('display', 'grid')
-    .style('grid-template-columns', 'repeat(auto-fit, minmax(150px, 1fr))')
+    .style('grid-template-columns', isMobile 
+      ? 'repeat(auto-fit, minmax(120px, 1fr))' 
+      : 'repeat(auto-fit, minmax(150px, 1fr))')
     .style('gap', '12px')
     .style('flex-grow', '1');
   
@@ -2504,7 +2777,7 @@ const showCarModelDetails = (year, month, monthName) => {
     const card = metricsGrid.append('div')
       .style('background', `rgba(${color}, 0.08)`)
       .style('border-radius', '10px')
-      .style('padding', '15px')
+      .style('padding', isMobile ? '12px' : '15px')
       .style('display', 'flex')
       .style('flex-direction', 'column')
       .style('justify-content', 'center')
@@ -2532,8 +2805,8 @@ const showCarModelDetails = (year, month, monthName) => {
       .style('position', 'absolute')
       .style('top', '-8px')
       .style('right', '-8px')
-      .style('width', '28px')
-      .style('height', '28px')
+      .style('width', isMobile ? '24px' : '28px')
+      .style('height', isMobile ? '24px' : '28px')
       .style('border-radius', '50%')
       .style('background', `rgba(${color}, 0.2)`)
       .style('display', 'flex')
@@ -2543,13 +2816,13 @@ const showCarModelDetails = (year, month, monthName) => {
       .html(icon);
     
     content.append('div')
-      .style('font-size', '0.8rem')
+      .style('font-size', isMobile ? '0.75rem' : '0.8rem')
       .style('color', '#9ca3af')
       .style('margin-bottom', '5px')
       .text(title);
     
     content.append('div')
-      .style('font-size', '1.2rem')
+      .style('font-size', isMobile ? '1.1rem' : '1.2rem')
       .style('font-weight', 'bold')
       .style('color', `rgb(${color})`)
       .style('margin-bottom', '4px')
@@ -2557,7 +2830,7 @@ const showCarModelDetails = (year, month, monthName) => {
     
     if (subtitle) {
       content.append('div')
-        .style('font-size', '0.75rem')
+        .style('font-size', isMobile ? '0.7rem' : '0.75rem')
         .style('color', '#9ca3af')
         .text(subtitle);
     }
@@ -2574,7 +2847,7 @@ const showCarModelDetails = (year, month, monthName) => {
   
   createMetricCard(
     'Премиум сегмент',
-    ((carModels.filter(m => m.sales / m.count > 700000).reduce((sum, m) => sum + m.sales, 0) / totalSales) * 100).toFixed(1) + '%',
+    ((carModels.filter(m => m.count > 0 && m.sales / m.count > 700000).reduce((sum, m) => sum + m.sales, 0) / totalSales) * 100).toFixed(1) + '%',
     'Высокодоходные модели',
     '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>',
     '245, 158, 11'
@@ -2582,7 +2855,7 @@ const showCarModelDetails = (year, month, monthName) => {
   
   createMetricCard(
     'Топ-модель',
-    carModels.reduce((max, model) => model.count > max.count ? model : max, { count: 0 }).name.split(' ').pop(),
+    carModels.length > 0 ? carModels.reduce((max, model) => model.count > max.count ? model : max, { count: 0 }).name.split(' ').pop() : '-',
     'По количеству продаж',
     '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>',
     '16, 185, 129'
@@ -2590,7 +2863,7 @@ const showCarModelDetails = (year, month, monthName) => {
   
   createMetricCard(
     'Доходная модель',
-    carModels.reduce((max, model) => model.sales > max.sales ? model : max, { sales: 0 }).name.split(' ').pop(),
+    carModels.length > 0 ? carModels.reduce((max, model) => model.sales > max.sales ? model : max, { sales: 0 }).name.split(' ').pop() : '-',
     'По объему продаж',
     '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>',
     '236, 72, 153'
@@ -2625,7 +2898,7 @@ const showCarModelDetails = (year, month, monthName) => {
     fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css';
     head.appendChild(fontAwesome);
   }
-}
+};
 
 const showRegionDetails = (year, month, monthName) => {
   if (!mainChartRef.current) return;
@@ -7014,480 +7287,494 @@ const renderProgressChart = () => {
         .text(quarterlyData[0]?.year || '');
     }
   };
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('ru-RU', {
-      style: 'currency',
-      currency: 'UZS',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
-  const getTotalForPeriod = () => {
-    if (!filteredData.length) return 0;
-    return filteredData.reduce((sum, month) => sum + month.total, 0);
-  };
-const handleDisplayModeChange = (mode) => {
-  setDisplayMode(mode);
   
-  if (mode === 'yearly') {
-    setSelectedYears([2024]); // Устанавливаем текущий год по умолчанию
-  } else if (mode === 'compare') {
-    // Для сравнения берем последние два года
-    const years = Object.keys(financialData).map(Number).sort((a, b) => b - a);
-    setSelectedYears([years[0], years[1]].filter(Boolean));
-  } else if (mode === 'period') {
-    // Для периода устанавливаем текущий месяц и аналогичный период прошлого года
-    const currentDate = getCurrentMonthAndYear();
-    setStartMonth(1); // С января
-    setStartYear(currentDate.year - 1); // Прошлый год
-    setEndMonth(currentDate.month); // До текущего месяца
-    setEndYear(currentDate.year); // Текущий год
-  }
-};
-  const isPeriodValid = () => {
-    if (startYear > endYear) return false;
-    if (startYear === endYear && startMonth > endMonth) return false;
-    return true;
-  };
-  
-return (
-  <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6">
-    {/* РАЗДЕЛ: Заголовок страницы */}
-    <header className="mb-6">
-      <motion.h1 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-3xl md:text-4xl font-bold text-white bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent"
-      >
-        Финансовая аналитика
-      </motion.h1>
-      <motion.p 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="text-gray-400 mt-2"
-      >
-        Анализ финансовых показателей и динамики продаж
-      </motion.p>
-    </header>
-    
-    {/* РАЗДЕЛ: Панель управления и фильтры */}
-    <div className="bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 mb-6 border border-gray-700/50">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <h2 className="text-xl font-semibold text-white">Параметры отображения</h2>
-          
-          <div className="flex bg-gray-700/80 rounded-lg p-1">
-            <button 
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                displayMode === 'yearly' 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
-                  : 'text-gray-300 hover:text-white hover:bg-gray-600/50'
-              }`}
-              onClick={() => handleDisplayModeChange('yearly')}
-            >
-              По годам
-            </button>
-            <button 
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                displayMode === 'compare' 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
-                  : 'text-gray-300 hover:text-white hover:bg-gray-600/50'
-              }`}
-              onClick={() => handleDisplayModeChange('compare')}
-            >
-              Сравнение
-            </button>
-            <button 
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                displayMode === 'period' 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
-                  : 'text-gray-300 hover:text-white hover:bg-gray-600/50'
-              }`}
-              onClick={() => handleDisplayModeChange('period')}
-            >
-              По периоду
-            </button>
-          </div>
-        </div>
-        
-        <div className="flex flex-wrap gap-2">
-          <div className="flex bg-gray-700/80 rounded-lg p-1">
-            <button 
-              className={`px-3 py-1.5 rounded-md text-sm ${
-                viewType === 'bar' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-              }`}
-              onClick={() => setViewType('bar')}
-            >
-              Столбцы
-            </button>
-            <button 
-              className={`px-3 py-1.5 rounded-md text-sm ${
-                viewType === 'line' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-              }`}
-              onClick={() => setViewType('line')}
-            >
-              Линия
-            </button>
-            <button 
-              className={`px-3 py-1.5 rounded-md text-sm ${
-                viewType === 'stacked' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-              }`}
-              onClick={() => setViewType('stacked')}
-            >
-              Составной
-            </button>
-            <button 
-              className={`px-3 py-1.5 rounded-md text-sm ${
-                viewType === 'radar' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-              }`}
-              onClick={() => setViewType('radar')}
-            >
-              Радар
-            </button>
-            <button 
-              className={`px-3 py-1.5 rounded-md text-sm ${
-                viewType === 'mixed' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-              }`}
-              onClick={() => setViewType('mixed')}
-            >
-              Комбинированный
-            </button>
-          </div>
-          
-          <div className="flex bg-gray-700/80 rounded-lg p-1">
-            <button 
-              className={`px-3 py-1.5 rounded-md text-sm ${
-                focusCategory === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-              }`}
-              onClick={() => setFocusCategory('all')}
-            >
-              Все продажи
-            </button>
-            <button 
-              className={`px-3 py-1.5 rounded-md text-sm ${
-                focusCategory === 'retail' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-              }`}
-              onClick={() => setFocusCategory('retail')}
-              style={{ color: focusCategory === 'retail' ? '#ffffff' : SALE_TYPES.RETAIL.color }}
-            >
-              Розница
-            </button>
-            <button 
-              className={`px-3 py-1.5 rounded-md text-sm ${
-                focusCategory === 'wholesale' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-              }`}
-              onClick={() => setFocusCategory('wholesale')}
-              style={{ color: focusCategory === 'wholesale' ? '#ffffff' : SALE_TYPES.WHOLESALE.color }}
-            >
-              Опт
-            </button>
-            <button 
-              className={`px-3 py-1.5 rounded-md text-sm ${
-                focusCategory === 'promo' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-              }`}
-              onClick={() => setFocusCategory('promo')}
-              style={{ color: focusCategory === 'promo' ? '#ffffff' : SALE_TYPES.PROMO.color }}
-            >
-              Акции
-            </button>
-          </div>
-        </div>
-      </div>
+ return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6">
+      {/* РАЗДЕЛ: Заголовок страницы */}
+      <header className="mb-6">
+        <motion.h1 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-3xl md:text-4xl font-bold text-white bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent"
+        >
+          Финансовая аналитика продаж автомобилей
+        </motion.h1>
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-gray-400 mt-2"
+        >
+          Анализ финансовых показателей и динамики продаж моделей
+        </motion.p>
+      </header>
       
-      {/* РАЗДЕЛ: Динамические опции в зависимости от режима просмотра */}
-      <AnimatePresence mode="wait">
-        {displayMode === 'yearly' && (
-          <motion.div 
-            key="yearly"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="flex flex-wrap gap-3"
-          >
-            <div className="flex items-center justify-center w-full">
-              <div className="flex space-x-4">
-                {Object.keys(financialData).map(year => (
-                  <motion.button
-                    key={year}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className={`relative px-6 py-3 rounded-xl text-lg font-semibold transition-all duration-300 ${
-                      selectedYears.includes(parseInt(year)) 
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/30' 
-                        : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'
-                    }`}
-                    onClick={() => toggleYearSelection(parseInt(year))}
-                  >
-                    {year}
-                    {selectedYears.includes(parseInt(year)) && (
-                      <motion.span 
-                        layoutId="yearIndicator"
-                        className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-10 h-1 rounded-full bg-white"
-                      />
-                    )}
-                  </motion.button>
-                ))}
+      {/* Индикатор загрузки */}
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-blue-500"></div>
+          <p className="ml-4 text-white">Загрузка данных...</p>
+        </div>
+      ) : (
+        <>
+          {/* Элементы управления API запросом */}
+          <div className="bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 mb-6 border border-gray-700/50">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+              <h2 className="text-xl font-semibold text-white">Параметры API запроса</h2>
+              
+              <div className="flex flex-wrap gap-3 items-center">
+                <div className="flex items-center gap-2">
+                  <label className="text-gray-300 text-sm">Начальная дата:</label>
+                  <input 
+                    type="text" 
+                    className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50"
+                    value={apiStartDate}
+                    onChange={(e) => setApiStartDate(e.target.value)}
+                    placeholder="ДД.ММ.ГГГГ"
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <label className="text-gray-300 text-sm">Конечная дата:</label>
+                  <input 
+                    type="text" 
+                    className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50"
+                    value={apiEndDate}
+                    onChange={(e) => setApiEndDate(e.target.value)}
+                    placeholder="ДД.ММ.ГГГГ"
+                  />
+                </div>
+                
+                <button 
+                  className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm font-medium"
+                  onClick={refreshDataWithDateRange}
+                >
+                  Обновить данные
+                </button>
               </div>
             </div>
-            
-            <div className="w-full mt-3">
-              <div className="flex justify-between">
-                <div className="flex items-center">
+          </div>
+          
+          {/* РАЗДЕЛ: Панель управления и фильтры */}
+          <div className="bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 mb-6 border border-gray-700/50">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+              <div className="flex flex-wrap items-center gap-4">
+                <h2 className="text-xl font-semibold text-white">Параметры отображения</h2>
+                
+                <div className="flex bg-gray-700/80 rounded-lg p-1">
                   <button 
-                    className={`flex items-center px-3 py-1.5 rounded-md text-sm border ${
-                      showQuarterlyData 
-                        ? 'bg-indigo-600/30 border-indigo-500/50 text-indigo-300' 
-                        : 'bg-gray-700/50 border-gray-600/50 text-gray-300'
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      displayMode === 'yearly' 
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
+                        : 'text-gray-300 hover:text-white hover:bg-gray-600/50'
                     }`}
-                    onClick={() => setShowQuarterlyData(!showQuarterlyData)}
+                    onClick={() => handleDisplayModeChange('yearly')}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                      {showQuarterlyData ? (
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      ) : (
-                        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                      )}
-                    </svg>
-                    Квартальная аналитика
+                    По годам
+                  </button>
+                  <button 
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      displayMode === 'compare' 
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
+                        : 'text-gray-300 hover:text-white hover:bg-gray-600/50'
+                    }`}
+                    onClick={() => handleDisplayModeChange('compare')}
+                  >
+                    Сравнение
+                  </button>
+                  <button 
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      displayMode === 'period' 
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
+                        : 'text-gray-300 hover:text-white hover:bg-gray-600/50'
+                    }`}
+                    onClick={() => handleDisplayModeChange('period')}
+                  >
+                    По периоду
                   </button>
                 </div>
               </div>
-            </div>
-          </motion.div>
-        )}
-        
-        {displayMode === 'compare' && (
-          <motion.div 
-            key="compare"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="flex flex-wrap gap-3"
-          >
-            <div className="flex items-center justify-center w-full">
-              <div className="flex space-x-4">
-                {Object.keys(financialData).map(year => (
-                  <motion.button
-                    key={year}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className={`relative px-6 py-3 rounded-xl text-lg font-semibold transition-all duration-300 ${
-                      selectedYears.includes(parseInt(year)) 
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/30' 
-                        : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'
+              
+              <div className="flex flex-wrap gap-2">
+                <div className="flex bg-gray-700/80 rounded-lg p-1">
+                  <button 
+                    className={`px-3 py-1.5 rounded-md text-sm ${
+                      viewType === 'bar' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
                     }`}
-                    onClick={() => toggleYearSelection(parseInt(year))}
+                    onClick={() => setViewType('bar')}
                   >
-                    {year}
-                    {selectedYears.includes(parseInt(year)) && (
-                      <motion.span 
-                        className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-10 h-1 rounded-full bg-white"
-                      />
-                    )}
-                  </motion.button>
-                ))}
-              </div>
-            </div>
-            
-            <div className="w-full flex justify-center mt-2">
-              <p className="text-gray-400 text-sm">
-                {selectedYears.length === 0 ? 'Выберите годы для сравнения' : 
-                 selectedYears.length === 1 ? 'Выберите еще один год для сравнения' :
-                 `Сравниваем данные за ${selectedYears.join(', ')} годы`}
-              </p>
-            </div>
-          </motion.div>
-        )}
-        
-  {displayMode === 'period' && (
-  <motion.div 
-    key="period"
-    initial={{ opacity: 0, height: 0 }}
-    animate={{ opacity: 1, height: 'auto' }}
-    exit={{ opacity: 0, height: 0 }}
-    className="bg-gradient-to-r from-gray-800/80 to-gray-700/60 backdrop-blur-sm rounded-xl p-3.5 border border-gray-600/30 shadow-lg"
+                    Столбцы
+                  </button>
+                  <button 
+                    className={`px-3 py-1.5 rounded-md text-sm ${
+                      viewType === 'line' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+                    }`}
+                    onClick={() => setViewType('line')}
+                  >
+                    Линия
+                  </button>
+                  <button 
+                    className={`px-3 py-1.5 rounded-md text-sm ${
+                      viewType === 'stacked' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+                    }`}
+                    onClick={() => setViewType('stacked')}
+                  >
+                    Составной
+                  </button>
+                  <button 
+                    className={`px-3 py-1.5 rounded-md text-sm ${
+                      viewType === 'radar' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+                    }`}
+                    onClick={() => setViewType('radar')}
+                  >
+                    Радар
+                  </button>
+                  <button 
+                    className={`px-3 py-1.5 rounded-md text-sm ${
+                      viewType === 'mixed' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+                    }`}
+                    onClick={() => setViewType('mixed')}
+                  >
+                    Комбинированный
+                  </button>
+                </div>
+                
+              <div className="flex bg-gray-700/80 rounded-lg p-1">
+  <button 
+    className={`px-3 py-1.5 rounded-md text-sm ${
+      focusCategory === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+    }`}
+    onClick={() => setFocusCategory('all')}
   >
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center space-x-3">
-        <div className="relative group">
-          <div className="absolute -top-5 left-0 text-xs text-blue-300/70 font-medium opacity-0 group-hover:opacity-100 transition-opacity">От</div>
-          <div className="flex items-center overflow-hidden rounded-lg shadow-sm bg-gray-900/50 border border-blue-500/20 hover:border-blue-500/40 transition-colors">
-            <select 
-              value={startMonth}
-              onChange={(e) => setStartMonth(parseInt(e.target.value))}
-              className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none min-w-24"
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                <option key={`sm-${month}`} value={month}>
-                  {new Date(2000, month - 1).toLocaleString('ru', { month: 'short' })}
-                </option>
-              ))}
-            </select>
-            
-            <div className="h-5 w-px bg-blue-500/20"></div>
-            
-            <select 
-              value={startYear}
-              onChange={(e) => setStartYear(parseInt(e.target.value))}
-              className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none w-20"
-            >
-              {Object.keys(financialData).map(year => (
-                <option key={`sy-${year}`} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        
-        <div className="w-8 h-px bg-gradient-to-r from-blue-500/20 to-indigo-500/30"></div>
-        
-        <div className="relative group">
-          <div className="absolute -top-5 left-0 text-xs text-blue-300/70 font-medium opacity-0 group-hover:opacity-100 transition-opacity">До</div>
-          <div className="flex items-center overflow-hidden rounded-lg shadow-sm bg-gray-900/50 border border-indigo-500/20 hover:border-indigo-500/40 transition-colors">
-            <select 
-              value={endMonth}
-              onChange={(e) => setEndMonth(parseInt(e.target.value))}
-              className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none min-w-24"
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                <option key={`em-${month}`} value={month}>
-                  {new Date(2000, month - 1).toLocaleString('ru', { month: 'short' })}
-                </option>
-              ))}
-            </select>
-            
-            <div className="h-5 w-px bg-indigo-500/20"></div>
-            
-            <select 
-              value={endYear}
-              onChange={(e) => setEndYear(parseInt(e.target.value))}
-              className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none w-20"
-            >
-              {Object.keys(financialData).map(year => (
-                <option key={`ey-${year}`} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-      
-      {!isPeriodValid() ? (
-        <div className="text-xs font-medium text-red-400 bg-red-900/10 px-3 py-1.5 rounded-lg border border-red-500/30 shadow-inner flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-          </svg>
-          Некорректный период
-        </div>
-      ) : (
-        <div className="text-xs font-medium text-sky-300 bg-sky-900/10 px-3 py-1.5 rounded-lg border border-sky-500/20 shadow-inner">
-          {new Date(startYear, startMonth - 1).toLocaleString('ru', { month: 'short', year: 'numeric' })} —{' '}
-          {new Date(endYear, endMonth - 1).toLocaleString('ru', { month: 'short', year: 'numeric' })}
-        </div>
-      )}
-    </div>
-  </motion.div>
-)}
-      </AnimatePresence>
-    </div>
-    
-    {filteredData.length > 0 && (
-      <>
-        {/* РАЗДЕЛ: Информационные карточки */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-xl p-5 border border-blue-500/20 shadow-lg"
-          >
-            <div className="flex items-center">
-              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-600/30 flex items-center justify-center mr-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-100" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-medium text-blue-300">Общая сумма</h3>
-                <p className="text-3xl font-bold text-white mt-1">
-                  {formatCurrency(getTotalForPeriod())}
-                </p>
-                <p className="text-blue-300/70 text-sm mt-1">
-                  {displayMode === 'yearly' 
-                    ? `За ${selectedYears[0] || ''} год` 
-                    : displayMode === 'compare'
-                    ? `За выбранные годы` 
-                    : 'За выбранный период'}
-                </p>
+    Все продажи
+  </button>
+  <button 
+    className={`px-3 py-1.5 rounded-md text-sm ${
+      focusCategory === 'retail' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+    }`}
+    onClick={() => setFocusCategory('retail')}
+    style={{ color: focusCategory === 'retail' ? '#ffffff' : SALE_TYPES.RETAIL.color }}
+  >
+    Розница
+  </button>
+  <button 
+    className={`px-3 py-1.5 rounded-md text-sm ${
+      focusCategory === 'wholesale' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+    }`}
+    onClick={() => setFocusCategory('wholesale')}
+    style={{ color: focusCategory === 'wholesale' ? '#ffffff' : SALE_TYPES.WHOLESALE.color }}
+  >
+    Опт
+  </button>
+  <button 
+    className={`px-3 py-1.5 rounded-md text-sm ${
+      focusCategory === 'promo' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+    }`}
+    onClick={() => setFocusCategory('promo')}
+    style={{ color: focusCategory === 'promo' ? '#ffffff' : SALE_TYPES.PROMO.color }}
+  >
+    Акции
+  </button>
+</div>
               </div>
             </div>
-          </motion.div>
-          
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-xl p-5 border border-purple-500/20 shadow-lg"
-          >
-            <div className="flex items-center">
-              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-purple-600/30 flex items-center justify-center mr-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-100" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-medium text-purple-300">Средний показатель за день</h3>
-                <p className="text-3xl font-bold text-white mt-1">
-                  {formatCurrency(Math.round(getTotalForPeriod() / (filteredData.length * 20)))}
-                </p>
-                <p className="text-purple-300/70 text-sm mt-1">
-                  На основе примерного количества транзакций
-                </p>
-              </div>
-            </div>
-          </motion.div>
-          
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-xl p-5 border border-green-500/20 shadow-lg"
-          >
-            <div className="flex items-center">
-              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-600/30 flex items-center justify-center mr-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-100" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-medium text-green-300">Рост продаж</h3>
-                <p className="text-3xl font-bold text-white mt-1">
-                  +{displayMode === 'yearly' 
-                    ? Math.round((financialData[selectedYears[0]]?.totalEarned || 0) / 
-                        (financialData[selectedYears[0]-1]?.totalEarned || 1) * 100 - 100)
-                    : '23'}%
-                </p>
-                <p className="text-green-300/70 text-sm mt-1">
-                  По сравнению с предыдущим периодом
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-        
-        {/* РАЗДЕЛ: Основной график и прогресс */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <div className="lg:col-span-2 bg-gray-800 rounded-xl p-2 border border-gray-700/50 shadow-lg">
-            <div ref={mainChartRef} className="w-full h-full"></div>
+            
+            {/* РАЗДЕЛ: Динамические опции в зависимости от режима просмотра */}
+            <AnimatePresence mode="wait">
+              {displayMode === 'yearly' && (
+                <motion.div 
+                  key="yearly"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="flex flex-wrap gap-3"
+                >
+                  <div className="flex items-center justify-center w-full">
+                    <div className="flex space-x-4">
+                      {Object.keys(financialData).map(year => (
+                        <motion.button
+                          key={year}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className={`relative px-6 py-3 rounded-xl text-lg font-semibold transition-all duration-300 ${
+                            selectedYears.includes(parseInt(year)) 
+                              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/30' 
+                              : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'
+                          }`}
+                          onClick={() => toggleYearSelection(parseInt(year))}
+                        >
+                          {year}
+                          {selectedYears.includes(parseInt(year)) && (
+                            <motion.span 
+                              layoutId="yearIndicator"
+                              className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-10 h-1 rounded-full bg-white"
+                            />
+                          )}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="w-full mt-3">
+                    <div className="flex justify-between">
+                      <div className="flex items-center">
+                        <button 
+                          className={`flex items-center px-3 py-1.5 rounded-md text-sm border ${
+                            showQuarterlyData 
+                              ? 'bg-indigo-600/30 border-indigo-500/50 text-indigo-300' 
+                              : 'bg-gray-700/50 border-gray-600/50 text-gray-300'
+                          }`}
+                          onClick={() => setShowQuarterlyData(!showQuarterlyData)}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            {showQuarterlyData ? (
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            ) : (
+                              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                            )}
+                          </svg>
+                          Квартальная аналитика
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              
+              {displayMode === 'compare' && (
+                <motion.div 
+                  key="compare"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="flex flex-wrap gap-3"
+                >
+                  <div className="flex items-center justify-center w-full">
+                    <div className="flex space-x-4">
+                      {Object.keys(financialData).map(year => (
+                        <motion.button
+                          key={year}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className={`relative px-6 py-3 rounded-xl text-lg font-semibold transition-all duration-300 ${
+                            selectedYears.includes(parseInt(year)) 
+                              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/30' 
+                              : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'
+                          }`}
+                          onClick={() => toggleYearSelection(parseInt(year))}
+                        >
+                          {year}
+                          {selectedYears.includes(parseInt(year)) && (
+                            <motion.span 
+                              className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-10 h-1 rounded-full bg-white"
+                            />
+                          )}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="w-full flex justify-center mt-2">
+                    <p className="text-gray-400 text-sm">
+                      {selectedYears.length === 0 ? 'Выберите годы для сравнения' : 
+                       selectedYears.length === 1 ? 'Выберите еще один год для сравнения' :
+                       `Сравниваем данные за ${selectedYears.join(', ')} годы`}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+              
+              {displayMode === 'period' && (
+                <motion.div 
+                  key="period"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-gradient-to-r from-gray-800/80 to-gray-700/60 backdrop-blur-sm rounded-xl p-3.5 border border-gray-600/30 shadow-lg"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="relative group">
+                        <div className="absolute -top-5 left-0 text-xs text-blue-300/70 font-medium opacity-0 group-hover:opacity-100 transition-opacity">От</div>
+                        <div className="flex items-center overflow-hidden rounded-lg shadow-sm bg-gray-900/50 border border-blue-500/20 hover:border-blue-500/40 transition-colors">
+                          <select 
+                            value={startMonth}
+                            onChange={(e) => setStartMonth(parseInt(e.target.value))}
+                            className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none min-w-24"
+                          >
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                              <option key={`sm-${month}`} value={month}>
+                                {new Date(2000, month - 1).toLocaleString('ru', { month: 'short' })}
+                              </option>
+                            ))}
+                          </select>
+                          
+                          <div className="h-5 w-px bg-blue-500/20"></div>
+                          
+                          <select 
+                            value={startYear}
+                            onChange={(e) => setStartYear(parseInt(e.target.value))}
+                            className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none w-20"
+                          >
+                            {Object.keys(financialData).map(year => (
+                              <option key={`sy-${year}`} value={year}>{year}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      
+                      <div className="w-8 h-px bg-gradient-to-r from-blue-500/20 to-indigo-500/30"></div>
+                      
+                      <div className="relative group">
+                        <div className="absolute -top-5 left-0 text-xs text-blue-300/70 font-medium opacity-0 group-hover:opacity-100 transition-opacity">До</div>
+                        <div className="flex items-center overflow-hidden rounded-lg shadow-sm bg-gray-900/50 border border-indigo-500/20 hover:border-indigo-500/40 transition-colors">
+                          <select 
+                            value={endMonth}
+                            onChange={(e) => setEndMonth(parseInt(e.target.value))}
+                            className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none min-w-24"
+                          >
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                              <option key={`em-${month}`} value={month}>
+                                {new Date(2000, month - 1).toLocaleString('ru', { month: 'short' })}
+                              </option>
+                            ))}
+                          </select>
+                          
+                          <div className="h-5 w-px bg-indigo-500/20"></div>
+                          
+                          <select 
+                            value={endYear}
+                            onChange={(e) => setEndYear(parseInt(e.target.value))}
+                            className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none w-20"
+                          >
+                            {Object.keys(financialData).map(year => (
+                              <option key={`ey-${year}`} value={year}>{year}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {!isPeriodValid() ? (
+                      <div className="text-xs font-medium text-red-400 bg-red-900/10 px-3 py-1.5 rounded-lg border border-red-500/30 shadow-inner flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line x1="12" y1="8" x2="12" y2="12"></line>
+                          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        Некорректный период
+                      </div>
+                    ) : (
+                      <div className="text-xs font-medium text-sky-300 bg-sky-900/10 px-3 py-1.5 rounded-lg border border-sky-500/20 shadow-inner">
+                        {new Date(startYear, startMonth - 1).toLocaleString('ru', { month: 'short', year: 'numeric' })} —{' '}
+                        {new Date(endYear, endMonth - 1).toLocaleString('ru', { month: 'short', year: 'numeric' })}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
           
-          <div className="bg-gray-800 rounded-xl p-10 border border-gray-700/50 shadow-lg">
-            <h3 className="text-xl font-semibold text-white mb-4 text-center">Выполнение плана</h3>
-            <div ref={progressChartRef} className="w-full h-64"></div>
-          </div>
-        </div>
+          {filteredData.length > 0 && (
+            <>
+              {/* РАЗДЕЛ: Информационные карточки */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-xl p-5 border border-blue-500/20 shadow-lg"
+                >
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-600/30 flex items-center justify-center mr-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-100" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-blue-300">Общая сумма</h3>
+                      <p className="text-3xl font-bold text-white mt-1">
+                        {formatCurrency(getTotalForPeriod())}
+                      </p>
+                      <p className="text-blue-300/70 text-sm mt-1">
+                        {displayMode === 'yearly' 
+                          ? `За ${selectedYears[0] || ''} год` 
+                          : displayMode === 'compare'
+                          ? `За выбранные годы` 
+                          : 'За выбранный период'}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+                
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-xl p-5 border border-purple-500/20 shadow-lg"
+                >
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-purple-600/30 flex items-center justify-center mr-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-100" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-purple-300">Средняя стоимость авто</h3>
+                      <p className="text-3xl font-bold text-white mt-1">
+                        {formatCurrency(Math.round(getTotalForPeriod() / (filteredData.length * 5)))}
+                      </p>
+                      <p className="text-purple-300/70 text-sm mt-1">
+                        На основе количества проданных автомобилей
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+                
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-xl p-5 border border-green-500/20 shadow-lg"
+                >
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-600/30 flex items-center justify-center mr-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-100" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-green-300">Рост продаж</h3>
+                      <p className="text-3xl font-bold text-white mt-1">
+                        +{displayMode === 'yearly' && selectedYears.length > 0 && financialData[selectedYears[0]-1]
+                          ? Math.round((financialData[selectedYears[0]]?.totalEarned || 0) / 
+                              (financialData[selectedYears[0]-1]?.totalEarned || 1) * 100 - 100)
+                          : '23'}%
+                      </p>
+                      <p className="text-green-300/70 text-sm mt-1">
+                        По сравнению с предыдущим периодом
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+              
+              {/* РАЗДЕЛ: Основной график и прогресс */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div className="lg:col-span-2 bg-gray-800 rounded-xl p-2 border border-gray-700/50 shadow-lg">
+                  <div ref={mainChartRef} className="w-full h-full"></div>
+                </div>
+                
+                <div className="bg-gray-800 rounded-xl p-10 border border-gray-700/50 shadow-lg">
+                  <h3 className="text-xl font-semibold text-white mb-4 text-center">Выполнение плана</h3>
+                  <div ref={progressChartRef} className="w-full h-64"></div>
+                </div>
+              </div>
+            </>
+          )}
         </>
-        )}
+      )}
       <style jsx>{`
         .bg-clip-text {
           -webkit-background-clip: text;

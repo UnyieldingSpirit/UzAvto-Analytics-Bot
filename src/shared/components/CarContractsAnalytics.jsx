@@ -294,7 +294,6 @@ const calculateStats = useCallback((filteredData, activeTab) => {
     }
   }, [apiData]);
 
-  // Перерисовываем графики при изменении фильтров и загружаем данные при смене таба
   useEffect(() => {
     renderCharts();
     
@@ -303,7 +302,6 @@ const calculateStats = useCallback((filteredData, activeTab) => {
     }
   }, [activeTab, selectedRegion, selectedModel]);
   
-  // Функция для получения URL API в зависимости от таба
   const getApiUrlForTab = (tab) => {
     const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
     
