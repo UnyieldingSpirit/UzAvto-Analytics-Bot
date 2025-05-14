@@ -7364,16 +7364,6 @@ const renderProgressChart = () => {
                 <div className="flex bg-gray-700/80 rounded-lg p-1">
                   <button 
                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      displayMode === 'yearly' 
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
-                        : 'text-gray-300 hover:text-white hover:bg-gray-600/50'
-                    }`}
-                    onClick={() => handleDisplayModeChange('yearly')}
-                  >
-                    По годам
-                  </button>
-                  <button 
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                       displayMode === 'compare' 
                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
                         : 'text-gray-300 hover:text-white hover:bg-gray-600/50'
