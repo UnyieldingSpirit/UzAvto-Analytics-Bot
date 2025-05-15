@@ -136,7 +136,7 @@ const transformApiDataToComponentFormat = (apiData) => {
 export default function EnhancedFinancialAnalytics() {
   // Состояния для управления данными и фильтрами
   const [financialData, setFinancialData] = useState({});
-  const [selectedYears, setSelectedYears] = useState([2024]); // Может быть несколько выбранных лет
+  const [selectedYears, setSelectedYears] = useState([]); // Может быть несколько выбранных лет
   const [filteredData, setFilteredData] = useState([]);
   const [displayMode, setDisplayMode] = useState('period'); // 'yearly', 'period', 'compare'
   const [isLoading, setIsLoading] = useState(true); // Состояние загрузки
@@ -246,7 +246,7 @@ const SALE_TYPES = {
       try {
         console.log("Отправка запроса к API финансовых данных...");
         
-        const response = await fetch("https://uzavtosalon.uz/b/dashboard/infos&get_all_payment", {
+        const response = await fetch("https://uzavtosalon.uz/b/dashboard/infos&get_roz_payment", {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -269,12 +269,18 @@ const SALE_TYPES = {
         
         // Устанавливаем начальные значения для фильтров
         // Берем самый последний год из полученных данных
-        const years = Object.keys(transformedData).map(Number).sort((a, b) => b - a);
-        
-        if (years.length > 0) {
-          setSelectedYears([years[0]]);
-          updateModelNames(transformedData, years[0]);
-        }
+     const years = Object.keys(transformedData).map(Number).sort((a, b) => b - a);
+
+if (years.length > 0) {
+  if (displayMode === 'compare') {
+    // В режиме сравнения берем все годы
+    setSelectedYears(years);
+  } else {
+    // В остальных режимах берем последний год
+    setSelectedYears([years[0]]);
+  }
+  updateModelNames(transformedData, years[0]);
+}
         
         setIsLoading(false);
       } catch (error) {
@@ -291,7 +297,7 @@ const SALE_TYPES = {
   const refreshDataWithDateRange = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("https://uzavtosalon.uz/b/dashboard/infos&get_all_payment", {
+      const response = await fetch("https://uzavtosalon.uz/b/dashboard/infos&get_roz_payment", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -429,24 +435,28 @@ const SALE_TYPES = {
   }, [filteredData, viewType, displayMode, focusCategory]);
   
   // Функция для изменения режима отображения
-  const handleDisplayModeChange = (mode) => {
-    setDisplayMode(mode);
-    
-    if (mode === 'yearly') {
-      setSelectedYears([2024]); // Устанавливаем текущий год по умолчанию
-    } else if (mode === 'compare') {
-      // Для сравнения берем последние два года
-      const years = Object.keys(financialData).map(Number).sort((a, b) => b - a);
-      setSelectedYears([years[0], years[1]].filter(Boolean));
-    } else if (mode === 'period') {
-      // Для периода устанавливаем текущий месяц и аналогичный период прошлого года
-      const currentDate = getCurrentMonthAndYear();
-      setStartMonth(1); // С января
-      setStartYear(currentDate.year - 1); // Прошлый год
-      setEndMonth(currentDate.month); // До текущего месяца
-      setEndYear(currentDate.year); // Текущий год
+const handleDisplayModeChange = (mode) => {
+  setDisplayMode(mode);
+  
+  if (mode === 'yearly') {
+    // Устанавливаем самый последний доступный год
+    const years = Object.keys(financialData).map(Number).sort((a, b) => b - a);
+    if (years.length > 0) {
+      setSelectedYears([years[0]]);
     }
-  };
+  } else if (mode === 'compare') {
+    // Для сравнения берем все доступные годы
+    const years = Object.keys(financialData).map(Number).sort((a, b) => b - a);
+    setSelectedYears(years); // Устанавливаем все годы без ограничений
+  } else if (mode === 'period') {
+    // Для периода устанавливаем текущий месяц и аналогичный период прошлого года
+    const currentDate = getCurrentMonthAndYear();
+    setStartMonth(1); // С января
+    setStartYear(currentDate.year - 1); // Прошлый год
+    setEndMonth(currentDate.month); // До текущего месяца
+    setEndYear(currentDate.year); // Текущий год
+  }
+};
   
   // Функция для проверки валидности периода
   const isPeriodValid = () => {
@@ -495,75 +505,74 @@ const renderMainChart = () => {
   mainChartRef.current.innerHTML = '';
     
   // Подготовка данных для графика в зависимости от режима отображения
-  let chartData;
+// Подготовка данных для графика с поддержкой всех доступных годов
+let chartData;
+
+// Этот блок данных готовится для разных типов отображения
+if (displayMode === 'yearly') {
+  // Для годового представления - суммарное значение по месяцам
+  chartData = filteredData.map(month => ({
+    id: month.month,
+    label: month.name,
+    value: focusCategory === 'all' ? month.total : month[focusCategory],
+    month: month,
+    color: focusCategory === 'all' ? undefined : SALE_TYPES[focusCategory.toUpperCase()].color
+  }));
+} else if (displayMode === 'compare') {
+  // Для сравнения - данные сгруппированные по месяцам с разбивкой по годам
+  const monthGroups = {};
   
-  if (displayMode === 'yearly') {
-    // Для годового представления - суммарное значение по месяцам
-    chartData = filteredData.map(month => ({
-      id: month.month,
-      label: month.name,
-      value: focusCategory === 'all' ? month.total : month[focusCategory],
-      month: month,
-      color: focusCategory === 'all' ? undefined : SALE_TYPES[focusCategory.toUpperCase()].color
-    }));
-  } else if (displayMode === 'compare') {
-    // Для сравнения - данные сгруппированные по месяцам с разбивкой по годам
-    const monthGroups = {};
-    
-    // Изначально создаем группы для всех месяцев (1-12)
-    for (let i = 1; i <= 12; i++) {
-      monthGroups[i] = {
-        month: i,
-        name: MONTHS[i-1],
+  // Собираем все доступные месяцы и данные по годам
+  filteredData.forEach(month => {
+    if (!monthGroups[month.month]) {
+      monthGroups[month.month] = {
+        month: month.month,
+        name: month.name,
         years: {}
       };
     }
     
-    // Заполняем данные по годам
-    filteredData.forEach(month => {
-      if (!monthGroups[month.month].years[month.year]) {
-        monthGroups[month.month].years[month.year] = 0;
+    // Сохраняем значение для каждого года без ограничений
+    monthGroups[month.month].years[month.year] = focusCategory === 'all' ? 
+      month.total : month[focusCategory];
+  });
+  
+  // Получаем все уникальные годы из данных
+  const allYears = [...new Set(filteredData.map(item => item.year))].sort();
+  
+  // Конвертируем в формат для grouped bar chart, включая все годы
+  chartData = Object.values(monthGroups).map(group => {
+    // Проверяем, что данные для всех годов присутствуют
+    allYears.forEach(year => {
+      if (group.years[year] === undefined) {
+        group.years[year] = 0; // Устанавливаем 0 для отсутствующих данных
       }
-      
-      monthGroups[month.month].years[month.year] += (focusCategory === 'all' ? 
-        month.total : month[focusCategory]);
     });
     
-    // Проверяем, что у нас есть данные по всем годам в каждом месяце
-    // Если по какому-то году данных нет, добавляем нулевые значения
-    Object.values(monthGroups).forEach(group => {
-      selectedYears.forEach(year => {
-        if (group.years[year] === undefined) {
-          group.years[year] = 0;
-        }
-      });
-    });
-    
-    // Конвертируем в формат для отображения
-    chartData = Object.values(monthGroups).map(group => {
-      return {
-        category: group.name,
-        values: Object.entries(group.years).map(([year, value]) => ({
-          label: year.toString(),
-          value
-        }))
-      };
-    }).sort((a, b) => {
-      // Сортируем по номеру месяца
-      const monthA = MONTHS.indexOf(a.category);
-      const monthB = MONTHS.indexOf(b.category);
-      return monthA - monthB;
-    });
-  } else {
-    // Для периода - группировка по месяцам и годам
-    chartData = filteredData.map(month => ({
-      id: `${month.year}-${month.month}`,
-      label: month.label || `${month.name} ${month.year}`,
-      value: focusCategory === 'all' ? month.total : month[focusCategory],
-      month: month,
-      color: focusCategory === 'all' ? undefined : SALE_TYPES[focusCategory.toUpperCase()].color
-    }));
-  }
+    return {
+      category: group.name,
+      // Преобразуем в массив значений, включая все годы
+      values: Object.entries(group.years).map(([year, value]) => ({
+        label: year.toString(),
+        value
+      }))
+    };
+  }).sort((a, b) => {
+    // Сортируем по номеру месяца
+    const monthA = MONTHS.indexOf(a.category);
+    const monthB = MONTHS.indexOf(b.category);
+    return monthA - monthB;
+  });
+} else {
+  // Для периода - группировка по месяцам и годам
+  chartData = filteredData.map(month => ({
+    id: `${month.year}-${month.month}`,
+    label: month.label || `${month.name} ${month.year}`,
+    value: focusCategory === 'all' ? month.total : month[focusCategory],
+    month: month,
+    color: focusCategory === 'all' ? undefined : SALE_TYPES[focusCategory.toUpperCase()].color
+  }));
+}
   
   // Настройки графика
   let chartTitle;
@@ -596,7 +605,7 @@ const renderMainChart = () => {
     }
   } else if (viewType === 'line' || viewType === 'area') {
     if (displayMode === 'compare') {
-      renderMultiLineChart(); // Метод для линейного графика в режиме сравнения
+      // renderMultiLineChart(); // Метод для линейного графика в режиме сравнения
     } else {
       const lineData = chartData.map(item => ({
         x: item.label, 
@@ -604,7 +613,7 @@ const renderMainChart = () => {
       }));
       
       if (viewType === 'line') {
-        renderCustomLineChart(lineData, chartOptions);
+        // renderCustomLineChart(lineData, chartOptions);
       } else {
         D3Visualizer.createAreaChart(lineData, {
           ...chartOptions,
@@ -1102,7 +1111,7 @@ const renderPeriodComparisonTable = () => {
   // Определяем размеры графика
   const width = chartContainer.node().clientWidth;
   const height = 450;
-  const margin = { top: 60, right: 130, bottom: 70, left: 70 };
+  const margin = { top: 60, right: 150, bottom: 70, left: 70 }; // Увеличиваем правый отступ для легенды
  
   // Создаем SVG с более красивым стилем
   const svg = chartContainer.append('svg')
@@ -1254,6 +1263,13 @@ const renderPeriodComparisonTable = () => {
   
   // Функция обновления графика с новыми данными
   const updateChart = (data = filteredData, isDay = false, isDaysList = false) => {
+    // Очистка предыдущего графика
+    svg.selectAll('g:not(.chart-title)').remove();
+    
+    // Выводим отладочную информацию
+    console.log("Обновление графика с данными:", data.length, "записей");
+    console.log("Уникальные годы в данных:", [...new Set(data.map(item => item.year))].sort());
+    
     // Группируем данные по месяцам/дням и годам
     const groupedData = {};
     data.forEach(item => {
@@ -1275,7 +1291,10 @@ const renderPeriodComparisonTable = () => {
     });
     
     const sortedItems = Object.values(groupedData).sort((a, b) => a.key - b.key);
+    
+    // Получаем все уникальные годы из данных без ограничений
     const years = [...new Set(data.map(item => item.year))].sort();
+    console.log("Годы для отображения:", years);
     
     // Создаем шкалы
     const x0 = d3.scaleBand()
@@ -1283,13 +1302,15 @@ const renderPeriodComparisonTable = () => {
       .range([margin.left, width - margin.right])
       .padding(0.25);
     
+    // Внутренняя шкала для годов с учетом динамического количества
     const x1 = d3.scaleBand()
       .domain(years)
       .range([0, x0.bandwidth()])
       .padding(0.08);
     
+    // Вычисляем максимальное значение для масштаба оси Y
     const maxValue = d3.max(sortedItems, item => 
-      d3.max(Object.values(item.years), value => value || 0)
+      d3.max(years.map(year => item.years[year] || 0))
     );
     
     const y = d3.scaleLinear()
@@ -1297,13 +1318,16 @@ const renderPeriodComparisonTable = () => {
       .nice()
       .range([height - margin.bottom, margin.top]);
     
-    // Создаем красивую цветовую схему
+    // Создаем расширенную цветовую схему для любого количества годов
+    const colorPalette = [
+      '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981',  // Основные цвета
+      '#0ea5e9', '#6366f1', '#a855f7', '#d946ef', '#f43f5e',  // Дополнительные цвета
+      '#14b8a6', '#f97316', '#84cc16', '#22d3ee', '#a3e635'   // Дополнительные цвета 2
+    ];
+    
     const colorScale = d3.scaleOrdinal()
       .domain(years)
-      .range(['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'].slice(0, years.length));
-    
-    // Удаляем все существующие элементы, кроме заголовка
-    svg.selectAll("g:not(.chart-title)").remove();
+      .range(years.map((_, i) => colorPalette[i % colorPalette.length]));
     
     // Добавляем сетку на фон
     svg.append('g')
@@ -1384,7 +1408,7 @@ const renderPeriodComparisonTable = () => {
     // Создаем градиентные заливки для столбцов
     const defs = svg.append('defs');
     
-    years.forEach((year, i) => {
+    years.forEach(year => {
       const gradientId = `gradient-${year}`;
       const gradient = defs.append('linearGradient')
         .attr('id', gradientId)
@@ -1393,14 +1417,16 @@ const renderPeriodComparisonTable = () => {
         .attr('x2', '0%')
         .attr('y2', '100%');
       
+      const baseColor = d3.rgb(colorScale(year));
+      
       gradient.append('stop')
         .attr('offset', '0%')
-        .attr('stop-color', d3.rgb(colorScale(year)).brighter(0.5))
+        .attr('stop-color', baseColor.brighter(0.5))
         .attr('stop-opacity', 1);
       
       gradient.append('stop')
         .attr('offset', '100%')
-        .attr('stop-color', colorScale(year))
+        .attr('stop-color', baseColor)
         .attr('stop-opacity', 0.8);
     });
     
@@ -1411,15 +1437,18 @@ const renderPeriodComparisonTable = () => {
       .attr('stdDeviation', '3')
       .attr('result', 'coloredBlur');
     
-    // Для каждой группы добавляем столбцы по годам с улучшенным стилем и интерактивностью
+    // Для каждой группы добавляем столбцы по годам с учетом ширины x1
     itemGroups.selectAll('rect')
-      .data(d => years.map(year => ({
-        year,
-        value: d.years[year] || 0,
-        key: d.key,
-        name: d.name,
-        isDay: isDaysList
-      })))
+      .data(d => {
+        // Создаем данные для всех годов, даже если значение отсутствует
+        return years.map(year => ({
+          year,
+          value: d.years[year] || 0,
+          key: d.key,
+          name: d.name,
+          isDay: isDaysList
+        }));
+      })
       .join('rect')
       .attr('class', 'bar')
       .attr('x', d => x1(d.year))
@@ -1460,7 +1489,7 @@ const renderPeriodComparisonTable = () => {
         
         d3.select('body').select('.chart-tooltip').style('visibility', 'hidden');
       })
-  .on('click', (event, d) => {
+      .on('click', (event, d) => {
         // При клике показываем детализацию с выбором: по моделям или по регионам
         // Для дня передаем текущий выбранный месяц, для месяца - месяц из данных
         if (isDaysList) {
@@ -1485,7 +1514,7 @@ const renderPeriodComparisonTable = () => {
       .attr('y', d => y(d.value))
       .attr('height', d => height - margin.bottom - y(d.value));
     
-    // Добавляем текстовые метки со значениями над столбцами
+    // Добавляем текстовые метки со значениями над столбцами если значение существенное
     itemGroups.selectAll('.bar-value-label')
       .data(d => years.map(year => ({
         year,
@@ -1509,84 +1538,84 @@ const renderPeriodComparisonTable = () => {
       .delay((d, i) => 800 + i * 50) // Задержка после анимации столбцов
       .style('opacity', d => d.value > (maxValue * 0.05) ? 1 : 0); // Показываем только для значимых значений
     
-    // Добавляем красивую легенду в правой части
-    const legend = svg.append('g')
+    // Добавляем легенду с прокруткой для большого количества годов
+    const legendContainer = svg.append('g')
       .attr('transform', `translate(${width - margin.right + 30}, ${margin.top + 20})`);
     
-    // Фон для легенды
-    legend.append('rect')
-      .attr('x', -20)
-      .attr('y', -15)
-      .attr('width', 110)
-      .attr('height', years.length * 30 + 10)
-      .attr('rx', 10)
-      .attr('fill', 'rgba(17, 24, 39, 0.4)')
-      .attr('stroke', 'rgba(59, 130, 246, 0.2)')
-      .attr('stroke-width', 1);
+    // Определяем максимальное количество годов, которое можно показать без прокрутки
+    const maxVisibleLegendItems = Math.min(10, Math.floor((height - margin.top - margin.bottom) / 30));
+    const needScrolling = years.length > maxVisibleLegendItems;
     
-    // Элементы легенды
-    years.forEach((year, i) => {
-      const legendItem = legend.append('g')
-        .attr('transform', `translate(0, ${i * 30})`)
-        .style('cursor', 'pointer')
-        .on('mouseover', function() {
-          d3.select(this).select('text').style('font-weight', 'bold');
-          // Подсвечиваем все столбцы соответствующего года
-          svg.selectAll('.bar')
-            .filter(d => d.year === year)
-            .style('filter', 'url(#glow)')
-            .attr('opacity', 1);
-          
-          // Также подсвечиваем метки значений
-          svg.selectAll('.bar-value-label')
-            .filter(d => d.year === year)
-            .style('font-size', isDaysList ? '0.7rem' : '0.8rem')
-            .style('fill', '#ffffff');
-        })
-        .on('mouseout', function() {
-          d3.select(this).select('text').style('font-weight', 'normal');
-          // Возвращаем нормальный вид столбцам
-          svg.selectAll('.bar')
-            .filter(d => d.year === year)
-            .style('filter', 'none')
-            .attr('opacity', 0.9);
-          
-          // Возвращаем нормальный вид меткам
-          svg.selectAll('.bar-value-label')
-            .filter(d => d.year === year)
-            .style('font-size', isDaysList ? '0.6rem' : '0.7rem')
-            .style('fill', '#f9fafb');
-        });
-      
-      // Цветной индикатор
-      legendItem.append('rect')
-        .attr('width', 12)
-        .attr('height', 12)
-        .attr('rx', 2)
-        .attr('fill', colorScale(year));
-      
-      // Текст года
-      legendItem.append('text')
-        .attr('x', 18)
-        .attr('y', 10)
-        .style('font-size', '0.9rem')
-        .style('fill', '#f9fafb')
-        .text(year);
-    });
+    // Если много годов, добавляем фон для легенды
+    if (needScrolling) {
+      legendContainer.append('rect')
+        .attr('width', 130)
+        .attr('height', maxVisibleLegendItems * 30 + 10)
+        .attr('rx', 10)
+        .attr('fill', 'rgba(17, 24, 39, 0.6)')
+        .attr('stroke', 'rgba(59, 130, 246, 0.2)')
+        .attr('stroke-width', 1);
+    }
     
-    // Добавляем подсказку о возможности клика
-    svg.append('text')
-      .attr('x', width / 2)
-      .attr('y', height - 15)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '0.85rem')
-      .style('fill', '#9ca3af')
-      .style('font-style', 'italic')
-      .text(isDaysList 
-        ? 'Нажмите на столбец для детализации данных по дню' 
-        : isDay 
-          ? 'Детализация данных по выбранному дню' 
-          : 'Нажмите на столбец для детализации данных');
+    // Создаем группу для элементов легенды
+    const legend = legendContainer.append('g');
+    
+    // Добавляем элементы легенды для каждого года с интерактивностью
+    const pieLegendItems = legend.selectAll('.legend-item')
+      .data(years)
+      .join('g')
+      .attr('class', 'legend-item')
+      .attr('transform', (d, i) => `translate(0, ${i * 30})`)
+      .style('cursor', 'pointer')
+      .on('mouseover', function(event, year) {
+        // Подсвечиваем соответствующие столбцы
+        svg.selectAll('.bar')
+          .filter(d => d.year === year)
+          .style('filter', 'url(#glow)')
+          .attr('opacity', 1);
+        
+        // Выделяем элемент легенды
+        d3.select(this)
+          .style('opacity', 1);
+        
+        // Затемняем остальные элементы легенды
+        pieLegendItems.filter(d => d !== year)
+          .style('opacity', 0.5);
+      })
+      .on('mouseout', function() {
+        // Возвращаем нормальный вид столбцам
+        svg.selectAll('.bar')
+          .style('filter', 'none')
+          .attr('opacity', 0.9);
+        
+        // Возвращаем нормальный вид легенде
+        pieLegendItems.style('opacity', 1);
+      });
+    
+    // Добавляем маркеры и текст легенды
+    pieLegendItems.append('rect')
+      .attr('width', 12)
+      .attr('height', 12)
+      .attr('rx', 2)
+      .attr('fill', d => colorScale(d));
+    
+    pieLegendItems.append('text')
+      .attr('x', 18)
+      .attr('y', 10)
+      .style('font-size', '0.8rem')
+      .style('fill', '#f9fafb')
+      .text(d => d);
+    
+    // Добавляем подсказку о прокрутке, если много годов
+    if (needScrolling) {
+      legendContainer.append('text')
+        .attr('x', 65)
+        .attr('y', maxVisibleLegendItems * 30 + 25)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '0.7rem')
+        .style('fill', '#9ca3af')
+        .text('⟳ Прокрутите для просмотра');
+    }
   };
   
   // Инициализация графика с полными данными
@@ -4406,19 +4435,24 @@ const renderGroupedBarChart = (data, options) => {
   // Создаем шкалы
   // Внешняя шкала для месяцев
   const x0 = d3.scaleBand()
-    .domain(data.map(d => d.category))
+    .domain(data.map(d => d.name))
     .range([margin.left, width - margin.right])
     .padding(0.2);
   
-  // Внутренняя шкала для годов в каждом месяце
+  // Получаем все годы, представленные в данных
+  const allYearsInData = [...new Set(data.flatMap(group => 
+    Object.keys(group.years)
+  ))].sort((a, b) => Number(a) - Number(b));
+  
+  // Внутренняя шкала для всех годов в каждом месяце
   const x1 = d3.scaleBand()
-    .domain(selectedYears)
+    .domain(allYearsInData) // Используем все годы из данных без ограничений
     .range([0, x0.bandwidth()])
     .padding(0.05);
   
   // Находим максимальное значение для масштабирования по оси Y
   const maxValue = d3.max(data, d => 
-    d3.max(d.values, v => v.value)
+    d3.max(Object.values(d.years))
   );
   
   const y = d3.scaleLinear()
@@ -4426,10 +4460,29 @@ const renderGroupedBarChart = (data, options) => {
     .nice()
     .range([height - margin.bottom, margin.top]);
   
-  // Создаем цветовую шкалу для годов - используем разные цвета для каждого года
+  // Создаем расширенную цветовую шкалу для произвольного количества годов
   const colorScale = d3.scaleOrdinal()
-    .domain(selectedYears)
-    .range(d3.quantize(t => d3.interpolateBlues(0.3 + t * 0.6), selectedYears.length));
+    .domain(allYearsInData)
+    .range(allYearsInData.map((_, i) => {
+      if (focusCategory !== 'all') {
+        // Используем интерполяцию цветов для равномерного распределения
+        const baseColor = d3.hsl(SALE_TYPES[focusCategory.toUpperCase()].color);
+        // Вычисляем яркость цвета с учетом количества лет
+        const lightnessStep = 0.5 / (allYearsInData.length || 1);
+        baseColor.l = 0.7 - (i * lightnessStep);
+        return baseColor.toString();
+      }
+      
+      // Для разных категорий используем несколько цветовых схем для большего разнообразия
+      const combinedColorScheme = [
+        ...d3.schemeCategory10,
+        ...d3.schemePaired,
+        ...(d3.schemeTableau10 || d3.schemeSet3),
+        ...d3.schemeSet2
+      ];
+      
+      return combinedColorScheme[i % combinedColorScheme.length];
+    }));
   
   // Создаем оси
   const xAxis = g => g
@@ -4475,31 +4528,35 @@ const renderGroupedBarChart = (data, options) => {
     .selectAll('g')
     .data(data)
     .join('g')
-    .attr('transform', d => `translate(${x0(d.category)},0)`);
+    .attr('transform', d => `translate(${x0(d.name)},0)`);
   
   // Добавляем столбцы для каждого года внутри месяца
   monthGroups.selectAll('rect')
     .data(d => {
-      return d.values.map(v => ({
-        year: v.label,
-        value: v.value,
-        month: d.category
+      return allYearsInData.map(year => ({
+        year: Number(year),
+        yearStr: year.toString(),
+        value: d.years[year] || 0,
+        month: d.name
       }));
     })
     .join('rect')
-    .attr('x', d => x1(d.year))
+    .attr('x', d => x1(d.yearStr))
     .attr('y', d => y(d.value))
     .attr('width', x1.bandwidth())
     .attr('height', d => height - margin.bottom - y(d.value))
-    .attr('fill', d => colorScale(d.year))
+    .attr('fill', d => colorScale(d.yearStr))
     .attr('rx', 4)
     .attr('opacity', 0.9)
     .on('mouseover', function(event, d) {
       d3.select(this).attr('opacity', 1);
       
-      // Показываем подсказку
+      // Улучшенная подсказка с отформатированным значением
       tooltip.style('opacity', 1)
-        .html(`<strong>${d.month} ${d.year}</strong><br>${d3.format(',.0f')(d.value)}`)
+        .html(`
+          <div style="font-weight:bold">${d.month} ${d.year}</div>
+          <div>${d3.format(',.0f')(d.value)} ${focusCategory === 'all' ? '' : SALE_TYPES[focusCategory.toUpperCase()].name}</div>
+        `)
         .style('left', `${event.pageX + 15}px`)
         .style('top', `${event.pageY - 28}px`);
     })
@@ -4519,25 +4576,111 @@ const renderGroupedBarChart = (data, options) => {
     .attr('height', d => height - margin.bottom - y(d.value));
   
   // Добавляем легенду
-  const legend = svg.append('g')
-    .attr('transform', `translate(${width - margin.right - 120}, ${margin.top})`);
+  const legendContainer = svg.append('g')
+    .attr('transform', `translate(${width - margin.right - 130}, ${margin.top})`);
   
-  selectedYears.forEach((year, i) => {
-    const yearLegend = legend.append('g')
-      .attr('transform', `translate(0, ${i * 25})`);
+  // Определяем максимальное количество лет, которое можно показать без прокрутки
+  const maxVisibleLegendItems = Math.min(8, Math.floor((height - margin.top - margin.bottom) / 25));
+  const needScrolling = allYearsInData.length > maxVisibleLegendItems;
+  
+  // Если нужна прокрутка, добавляем фон и контейнер с клиппингом
+  if (needScrolling) {
+    // Создаем прямоугольник фона
+    legendContainer.append('rect')
+      .attr('width', 120)
+      .attr('height', maxVisibleLegendItems * 25 + 10)
+      .attr('fill', 'rgba(31, 41, 55, 0.7)')
+      .attr('rx', 5);
     
+    // Создаем подсказку о прокрутке
+    legendContainer.append('text')
+      .attr('x', 60)
+      .attr('y', maxVisibleLegendItems * 25 + 20)
+      .attr('text-anchor', 'middle')
+      .style('font-size', '0.7rem')
+      .style('fill', '#9ca3af')
+      .text('* Все годы в легенде');
+  }
+  
+  // Создаем группу для элементов легенды
+  const legend = legendContainer.append('g');
+  
+  // Добавляем элементы легенды для каждого года
+  allYearsInData.forEach((year, i) => {
+    const yearLegend = legend.append('g')
+      .attr('transform', `translate(0, ${i * 25})`)
+      .style('cursor', 'pointer')
+      .on('mouseover', function() {
+        // Подсветка соответствующих столбцов
+        monthGroups.selectAll('rect')
+          .filter(d => d.yearStr === year)
+          .transition()
+          .duration(200)
+          .attr('opacity', 1)
+          .attr('stroke', '#ffffff')
+          .attr('stroke-width', 1);
+          
+        d3.select(this).select('rect')
+          .transition()
+          .duration(200)
+          .attr('width', 18)
+          .attr('height', 18);
+          
+        d3.select(this).select('text')
+          .style('font-weight', 'bold');
+      })
+      .on('mouseout', function() {
+        // Возврат к нормальному виду
+        monthGroups.selectAll('rect')
+          .filter(d => d.yearStr === year)
+          .transition()
+          .duration(200)
+          .attr('opacity', 0.9)
+          .attr('stroke', 'none');
+          
+        d3.select(this).select('rect')
+          .transition()
+          .duration(200)
+          .attr('width', 15)
+          .attr('height', 15);
+          
+        d3.select(this).select('text')
+          .style('font-weight', 'normal');
+      });
+      
     yearLegend.append('rect')
       .attr('width', 15)
       .attr('height', 15)
       .attr('rx', 3)
       .attr('fill', colorScale(year));
-    
+      
     yearLegend.append('text')
       .attr('x', 25)
       .attr('y', 12)
       .style('font-size', '0.9rem')
       .style('fill', '#f9fafb')
       .text(year);
+    
+    // Если это не первый год, добавляем процент изменения
+    if (i > 0 && selectedYears.length > 1) {
+      const baseYear = allYearsInData[0]; // Первый год как базовый для сравнения
+      
+      // Рассчитываем суммарные значения для сравнения
+      const baseYearTotal = data.reduce((sum, month) => sum + (month.years[baseYear] || 0), 0);
+      const currentYearTotal = data.reduce((sum, month) => sum + (month.years[year] || 0), 0);
+      
+      // Вычисляем процент изменения
+      const growthPercent = baseYearTotal !== 0 ? 
+        ((currentYearTotal / baseYearTotal) - 1) * 100 : 0;
+      
+      // Добавляем метку с процентом
+      yearLegend.append('text')
+        .attr('x', 60)
+        .attr('y', 12)
+        .style('font-size', '0.8rem')
+        .style('fill', growthPercent >= 0 ? '#10b981' : '#ef4444')
+        .text(`${growthPercent >= 0 ? '+' : ''}${growthPercent.toFixed(1)}%`);
+    }
   });
 };
   
