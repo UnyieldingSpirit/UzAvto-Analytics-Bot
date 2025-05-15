@@ -3457,6 +3457,7 @@ const showCarModelDetails = (year, month, monthName) => {
 const showRegionDetails = (year, month, monthName) => {
   if (!mainChartRef.current) return;
   d3.selectAll('.chart-tooltip, .bar-tooltip, .model-tooltip').remove();
+  
   // Очищаем контейнер
   mainChartRef.current.innerHTML = '';
   
@@ -3469,7 +3470,7 @@ const showRegionDetails = (year, month, monthName) => {
     .style('border-radius', '1rem')
     .style('padding', '20px');
   
-  // Заголовок и навигация - модифицируем, убираем кнопку "Назад к выбору"
+  // Заголовок и навигация
   const header = container.append('div')
     .style('display', 'flex')
     .style('justify-content', 'space-between')
@@ -3486,7 +3487,7 @@ const showRegionDetails = (year, month, monthName) => {
     .style('display', 'flex')
     .style('gap', '10px');
   
-  // Оставляем только кнопку "К общему графику"
+  // Кнопка возврата к общему графику
   buttonGroup.append('button')
     .style('background', 'rgba(16, 185, 129, 0.2)')
     .style('color', '#34d399')
@@ -3498,115 +3499,124 @@ const showRegionDetails = (year, month, monthName) => {
     .text('← К общему графику')
     .on('click', renderPeriodComparisonTable);
   
-  // Получаем доступные месяцы из текущих данных
-  // Находим доступные месяцы для выбранного года
-  const availableMonths = findAvailableMonths(year);
-  
-  // Функция для получения доступных месяцев
-  function findAvailableMonths(selectedYear) {
-    if (!financialData[selectedYear]) return [];
+  // Функция для получения данных по регионам
+  function getRegionsData(dataYear, dataMonth) {
+    // Форматируем месяц в нужный формат для API (2025-01)
+    const monthStr = `${dataYear}-${String(dataMonth).padStart(2, '0')}`;
+    console.log(`Получение данных о регионах для ${monthStr}, категория: ${focusCategory}`);
     
-    // Получаем данные месяцев, которые имеют ненулевые значения
-    return financialData[selectedYear].months
-      .filter(month => month.total > 0)
-      .map(month => ({
-        month: month.month,
-        name: month.name
-      }));
-  }
-  
-  // Добавляем контроль временного периода для сравнения с учетом доступных месяцев
-  const timeControl = container.append('div')
-    .style('display', 'flex')
-    .style('align-items', 'center')
-    .style('justify-content', 'center')
-    .style('margin-bottom', '20px')
-    .style('background', 'rgba(17, 24, 39, 0.4)')
-    .style('border-radius', '8px')
-    .style('padding', '10px');
-  
-  timeControl.append('span')
-    .style('color', '#d1d5db')
-    .style('margin-right', '10px')
-    .text('Сравнить с:');
-  
-  // Создаем селектор для сравнения с другими месяцами
-  // Используем только доступные месяцы
-  const monthSelector = timeControl.append('select')
-    .style('background', 'rgba(30, 41, 59, 0.7)')
-    .style('color', '#f9fafb')
-    .style('border', '1px solid rgba(75, 85, 99, 0.5)')
-    .style('border-radius', '6px')
-    .style('padding', '5px 10px')
-    .style('margin-right', '15px')
-    .style('cursor', 'pointer')
-    .on('change', function() {
-      const selectedMonth = +this.value;
-      updateRegionComparisonData(year, selectedMonth, monthName);
-    });
-  
-  // Добавляем опции месяцев
-  availableMonths.forEach(monthData => {
-    // Пропускаем текущий месяц
-    if (monthData.month === month) return;
+    // Проверяем наличие данных
+    if (!apiData || (!apiData.retailData && !apiData.wholesaleData && !apiData.allData)) {
+      console.warn("Отсутствуют данные API");
+      return [];
+    }
     
-    monthSelector.append('option')
-      .attr('value', monthData.month)
-      .text(`${monthData.name} ${year}`);
-  });
-  
-  // Добавляем опцию "Предыдущий год"
-  if (financialData[year - 1]) {
-    monthSelector.append('option')
-      .attr('value', `prev-${month}`)
-      .text(`${MONTHS[month-1]} ${year-1}`);
+    let regionsData = [];
+    let sourceData;
+    
+    // Выбираем соответствующий источник данных в зависимости от категории
+    if (focusCategory === 'retail' && apiData.retailData) {
+      sourceData = apiData.retailData;
+    } else if (focusCategory === 'wholesale' && apiData.wholesaleData) {
+      sourceData = apiData.wholesaleData;
+    } else if (focusCategory === 'all' && apiData.allData) {
+      sourceData = apiData.allData;
+    }
+    
+    if (!sourceData) {
+      console.warn(`Нет данных для категории ${focusCategory}`);
+      return [];
+    }
+    
+    // Пробуем найти данные в filter_by_region
+    if (sourceData.filter_by_region && Array.isArray(sourceData.filter_by_region)) {
+      // Ищем данные для указанного месяца
+      const monthData = sourceData.filter_by_region.find(m => m.month === monthStr);
+      
+      if (monthData && Array.isArray(monthData.regions) && monthData.regions.length > 0) {
+        console.log(`Найдено ${monthData.regions.length} регионов для ${monthStr}`);
+        regionsData = monthData.regions;
+      }
+    }
+    
+    // Если данные найдены, преобразуем их в нужный формат
+    if (regionsData.length > 0) {
+      return regionsData.map(region => ({
+        id: region.region_id,
+        name: region.region_name,
+        sales: parseFloat(region.amount) || 0,
+        count: parseInt(region.all_count, 10) || 0
+      })).filter(r => r.sales > 0);
+    }
+    
+    console.warn(`Не найдены данные о регионах для ${monthStr}`);
+    return [];
   }
-  
-  // Создаем сетку для графиков
-  const grid = container.append('div')
-    .style('display', 'grid')
-    .style('grid-template-columns', '1fr 1fr')
-    .style('grid-template-rows', 'auto auto')
-    .style('gap', '20px')
-    .style('height', 'calc(100% - 100px)');
   
   // Получаем данные по регионам для текущего месяца/года
   const regions = getRegionsData(year, month);
   
-  // Функция для получения данных по регионам
-  function getRegionsData(dataYear, dataMonth) {
-    // Проверяем наличие данных за указанный год и месяц
-    if (!financialData[dataYear] || !financialData[dataYear].months[dataMonth - 1]) {
-      // Возвращаем тестовые данные, если нет реальных данных
-      return generateTestRegionsData();
-    }
+  // Проверяем, есть ли данные о регионах
+  if (!regions || regions.length === 0) {
+    container.append('div')
+      .style('display', 'flex')
+      .style('flex-direction', 'column')
+      .style('align-items', 'center')
+      .style('justify-content', 'center')
+      .style('height', '300px')
+      .style('padding', '20px')
+      .style('text-align', 'center')
+      .html(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" 
+          stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <p style="color:#d1d5db; margin-top:20px; font-size:1.2rem; font-weight:bold">
+          Данные о регионах отсутствуют
+        </p>
+        <p style="color:#9ca3af; margin-top:10px;">
+          К сожалению, для выбранной категории "${
+            focusCategory === 'all' ? 'Все продажи' : 
+            focusCategory === 'retail' ? 'Розница' : 'Опт'
+          }" за ${monthName} ${year} нет данных о региональном распределении.
+        </p>
+        <p style="color:#9ca3af; margin-top:10px;">
+          Попробуйте выбрать другой период или категорию продаж.
+        </p>
+      `);
+      
+    // Кнопка возврата к общему графику
+    container.append('div')
+      .style('display', 'flex')
+      .style('justify-content', 'center')
+      .style('margin-top', '20px')
+      .append('button')
+      .style('background', 'rgba(16, 185, 129, 0.2)')
+      .style('color', '#34d399')
+      .style('border', 'none')
+      .style('padding', '10px 20px')
+      .style('border-radius', '8px')
+      .style('font-size', '0.9rem')
+      .style('cursor', 'pointer')
+      .style('transition', 'background 0.2s')
+      .text('← Вернуться к общему графику')
+      .on('mouseover', function() {
+        d3.select(this)
+          .style('background', 'rgba(16, 185, 129, 0.3)')
+          .style('transform', 'translateY(-2px)');
+      })
+      .on('mouseout', function() {
+        d3.select(this)
+          .style('background', 'rgba(16, 185, 129, 0.2)')
+          .style('transform', 'translateY(0)');
+      })
+      .on('click', renderPeriodComparisonTable);
     
-    // В реальной реализации здесь должен быть код извлечения
-    // данных о регионах из API или другого источника
-    
-    // Временно возвращаем тестовые данные
-    // В реальном приложении тут должна быть логика получения региональных данных
-    return generateTestRegionsData();
+    return;
   }
-  
-  // Функция генерации тестовых данных для регионов
-  function generateTestRegionsData() {
-    return [
-      { name: 'Ташкент', sales: Math.round(920000 + Math.random() * 250000), count: Math.round(140 + Math.random() * 35) },
-      { name: 'Самарканд', sales: Math.round(680000 + Math.random() * 180000), count: Math.round(100 + Math.random() * 30) },
-      { name: 'Бухара', sales: Math.round(580000 + Math.random() * 150000), count: Math.round(85 + Math.random() * 25) },
-      { name: 'Фергана', sales: Math.round(520000 + Math.random() * 130000), count: Math.round(75 + Math.random() * 20) },
-      { name: 'Андижан', sales: Math.round(490000 + Math.random() * 120000), count: Math.round(70 + Math.random() * 20) },
-      { name: 'Наманган', sales: Math.round(450000 + Math.random() * 110000), count: Math.round(65 + Math.random() * 18) },
-      { name: 'Навои', sales: Math.round(420000 + Math.random() * 100000), count: Math.round(60 + Math.random() * 15) },
-      { name: 'Карши', sales: Math.round(380000 + Math.random() * 90000), count: Math.round(55 + Math.random() * 15) },
-      { name: 'Нукус', sales: Math.round(350000 + Math.random() * 85000), count: Math.round(50 + Math.random() * 12) },
-      { name: 'Ургенч', sales: Math.round(320000 + Math.random() * 80000), count: Math.round(45 + Math.random() * 12) },
-      { name: 'Джизак', sales: Math.round(290000 + Math.random() * 70000), count: Math.round(40 + Math.random() * 10) },
-      { name: 'Термез', sales: Math.round(260000 + Math.random() * 65000), count: Math.round(35 + Math.random() * 10) }
-    ];
-  }
-  
+
   // Сортируем по продажам
   regions.sort((a, b) => b.sales - a.sales);
   
@@ -3614,10 +3624,108 @@ const showRegionDetails = (year, month, monthName) => {
   const totalSales = regions.reduce((sum, r) => sum + r.sales, 0);
   const totalCount = regions.reduce((sum, r) => sum + r.count, 0);
   
-  // 1. Левый верхний блок - интерактивная таблица регионов с графиком доли рынка
-  const regionRankingContainer = grid.append('div')
-    .style('grid-column', '1')
-    .style('grid-row', '1')
+  // Получаем доступные месяцы из текущих данных для сравнения
+  const availableMonths = findAvailableMonths(year);
+  
+  // Функция для получения доступных месяцев
+  function findAvailableMonths(selectedYear) {
+    let months = [];
+    let sourceData;
+    
+    // Выбираем соответствующий источник данных в зависимости от категории
+    if (focusCategory === 'retail' && apiData.retailData) {
+      sourceData = apiData.retailData;
+    } else if (focusCategory === 'wholesale' && apiData.wholesaleData) {
+      sourceData = apiData.wholesaleData;
+    } else if (focusCategory === 'all' && apiData.allData) {
+      sourceData = apiData.allData;
+    }
+    
+    if (sourceData && sourceData.filter_by_region) {
+      // Получаем все доступные месяцы
+      months = sourceData.filter_by_region
+        .filter(m => m.month.startsWith(`${selectedYear}-`) && Array.isArray(m.regions) && m.regions.length > 0)
+        .map(m => {
+          const monthNum = parseInt(m.month.split('-')[1], 10);
+          return {
+            month: monthNum,
+            name: MONTHS[monthNum - 1]
+          };
+        });
+    }
+    
+    return months;
+  }
+  
+  // Добавляем контроль временного периода для сравнения с учетом доступных месяцев
+  if (availableMonths.length > 1) {
+    const timeControl = container.append('div')
+      .style('display', 'flex')
+      .style('align-items', 'center')
+      .style('justify-content', 'center')
+      .style('margin-bottom', '20px')
+      .style('background', 'rgba(17, 24, 39, 0.4)')
+      .style('border-radius', '8px')
+      .style('padding', '10px');
+    
+    timeControl.append('span')
+      .style('color', '#d1d5db')
+      .style('margin-right', '10px')
+      .text('Сравнить с:');
+    
+    // Создаем селектор для сравнения с другими месяцами
+    const monthSelector = timeControl.append('select')
+      .style('background', 'rgba(30, 41, 59, 0.7)')
+      .style('color', '#f9fafb')
+      .style('border', '1px solid rgba(75, 85, 99, 0.5)')
+      .style('border-radius', '6px')
+      .style('padding', '5px 10px')
+      .style('margin-right', '15px')
+      .style('cursor', 'pointer')
+      .on('change', function() {
+        const selectedMonth = +this.value;
+        updateRegionComparisonData(year, selectedMonth, monthName);
+      });
+    
+    // Добавляем опции месяцев
+    availableMonths.forEach(monthData => {
+      // Пропускаем текущий месяц
+      if (monthData.month === month) return;
+      
+      monthSelector.append('option')
+        .attr('value', monthData.month)
+        .text(`${monthData.name} ${year}`);
+    });
+    
+    // Добавляем опцию "Предыдущий год" если доступно
+    // Нужно проверить наличие данных прошлого года
+    const prevYearAvailable = apiData && 
+      ((focusCategory === 'retail' && apiData.prevYearRetailData) ||
+       (focusCategory === 'wholesale' && apiData.prevYearWholesaleData) ||
+       (focusCategory === 'all' && apiData.prevYearAllData));
+       
+    if (prevYearAvailable) {
+      monthSelector.append('option')
+        .attr('value', `prev-${month}`)
+        .text(`${MONTHS[month-1]} ${year-1}`);
+    }
+  }
+  
+  // Создаем сетку для графиков на всю ширину
+  const grid = container.append('div')
+    .style('display', 'grid')
+    .style('grid-template-rows', 'auto auto')
+    .style('gap', '20px')
+    .style('height', 'calc(100% - 100px)');
+  
+  // Создаем верхнюю секцию для таблицы регионов и круговой диаграммы
+  const topSection = grid.append('div')
+    .style('display', 'grid')
+    .style('grid-template-columns', 'minmax(0, 3fr) minmax(0, 2fr)')
+    .style('gap', '20px');
+  
+  // Левая колонка - таблица рейтинга регионов
+  const regionRankingContainer = topSection.append('div')
     .style('background', 'rgba(17, 24, 39, 0.4)')
     .style('border-radius', '12px')
     .style('padding', '15px')
@@ -3632,55 +3740,6 @@ const showRegionDetails = (year, month, monthName) => {
     .style('text-align', 'center')
     .text(`Рейтинг и доля регионов: ${monthName}`);
   
-  // Добавляем блок статистики по топ-5 регионам
-  const topRegionsStats = regionRankingContainer.append('div')
-    .style('display', 'flex')
-    .style('justify-content', 'space-between')
-    .style('margin-bottom', '15px')
-    .style('background', 'rgba(30, 41, 59, 0.5)')
-    .style('border-radius', '8px')
-    .style('padding', '10px')
-    .style('font-size', '0.9rem');
-  
-  // Доля топ-5 регионов
-  const top5Share = (regions.slice(0, 5).reduce((sum, r) => sum + r.sales, 0) / totalSales * 100).toFixed(1);
-  
-  topRegionsStats.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .html(`
-      <span style="color: #9ca3af">Топ-5 регионов</span>
-      <span style="color: #f9fafb; font-weight: bold; font-size: 1.2rem">${top5Share}%</span>
-      <span style="color: #60a5fa; font-size: 0.8rem">доля рынка</span>
-    `);
-  
-  // Количество авто в топ-5
-  const top5Count = regions.slice(0, 5).reduce((sum, r) => sum + r.count, 0);
-  
-  topRegionsStats.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .html(`
-      <span style="color: #9ca3af">Продано авто</span>
-      <span style="color: #f9fafb; font-weight: bold; font-size: 1.2rem">${top5Count}</span>
-      <span style="color: #60a5fa; font-size: 0.8rem">в топ-5 регионах</span>
-    `);
-  
-  // Средняя цена в регионах
-  const avgPrice = totalSales / totalCount;
-  
-  topRegionsStats.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .html(`
-      <span style="color: #9ca3af">Средняя цена</span>
-      <span style="color: #f9fafb; font-weight: bold; font-size: 1.2rem">${formatProfitCompact(avgPrice)}</span>
-      <span style="color: #60a5fa; font-size: 0.8rem">по всем регионам</span>
-    `);
-
   // Создаем таблицу с рейтингом регионов
   const rankingTable = regionRankingContainer.append('div')
     .style('flex-grow', '1')
@@ -3692,7 +3751,7 @@ const showRegionDetails = (year, month, monthName) => {
   // Заголовок таблицы
   const rankingHeader = rankingTable.append('div')
     .style('display', 'grid')
-    .style('grid-template-columns', '8% 32% 15% 15% 30%')
+    .style('grid-template-columns', '8% 32% 20% 15% 25%')
     .style('padding', '10px')
     .style('background', 'rgba(30, 41, 59, 0.8)')
     .style('border-radius', '8px 8px 0 0')
@@ -3714,7 +3773,7 @@ const showRegionDetails = (year, month, monthName) => {
     
     const row = rankingTable.append('div')
       .style('display', 'grid')
-      .style('grid-template-columns', '8% 32% 15% 15% 30%')
+      .style('grid-template-columns', '8% 32% 20% 15% 25%')
       .style('padding', '10px 8px')
       .style('background', backgroundColor)
       .style('border-left', i < 3 ? `3px solid ${d3.interpolateReds(0.3 + i * 0.2)}` : 'none')
@@ -3795,10 +3854,8 @@ const showRegionDetails = (year, month, monthName) => {
       .style('transform', 'scaleX(1)');
   });
   
-  // 2. Правый верхний блок - интерактивная круговая диаграмма
-  const pieChartContainer = grid.append('div')
-    .style('grid-column', '2')
-    .style('grid-row', '1')
+  // Правая колонка - круговая диаграмма структуры регионов
+  const pieChartContainer = topSection.append('div')
     .style('background', 'rgba(17, 24, 39, 0.4)')
     .style('border-radius', '12px')
     .style('padding', '15px')
@@ -3820,15 +3877,20 @@ const showRegionDetails = (year, month, monthName) => {
   const pieHeight = pieSvg.node().clientHeight;
   const pieRadius = Math.min(pieWidth, pieHeight) / 2 * 0.8;
   
-  // Используем топ-5 регионов и объединяем остальные в "Другие"
-  const pieData = [...regions.slice(0, 5)];
+  // Определяем максимальное количество регионов для отображения
+  // Показываем все регионы, но если их слишком много, группируем их
+  const maxRegionsInPie = 15;
+  const pieData = regions.length <= maxRegionsInPie ? 
+    [...regions] : 
+    [...regions.slice(0, maxRegionsInPie - 1)];
   
-  if (regions.length > 5) {
-    const otherSales = regions.slice(5).reduce((sum, r) => sum + r.sales, 0);
-    const otherCount = regions.slice(5).reduce((sum, r) => sum + r.count, 0);
+  if (regions.length > maxRegionsInPie) {
+    const otherSales = regions.slice(maxRegionsInPie - 1).reduce((sum, r) => sum + r.sales, 0);
+    const otherCount = regions.slice(maxRegionsInPie - 1).reduce((sum, r) => sum + r.count, 0);
     pieData.push({ name: 'Другие регионы', sales: otherSales, count: otherCount });
   }
   
+  // Создаем цветовую схему
   const pieColor = d3.scaleOrdinal()
     .domain(pieData.map(d => d.name))
     .range(d3.quantize(t => d3.interpolateBlues(t * 0.8 + 0.1), pieData.length));
@@ -3894,7 +3956,7 @@ const showRegionDetails = (year, month, monthName) => {
       
       // Показываем легенду для выбранного элемента
       pieLegendItems.style('opacity', 0.5);
-      pieLegendItems.filter(item => item.name === d.data.name)
+      pieLegendItems.filter(item => item.data.name === d.data.name)
         .style('opacity', 1)
         .style('font-weight', 'bold');
     })
@@ -3959,20 +4021,23 @@ const showRegionDetails = (year, month, monthName) => {
     .style('fill', '#60a5fa')
     .text('100%');
   
-  // Добавляем легенду для диаграммы
+  // Создаем оптимизированную легенду для диаграммы
+  // Показываем только топ-7 регионов для компактности
+  const legendData = pieData.slice(0, Math.min(7, pieData.length));
+  
   const pieLegend = pieSvg.append('g')
     .attr('transform', `translate(${pieWidth - 80}, 20)`);
   
   // Добавляем элементы легенды
   const pieLegendItems = pieLegend.selectAll('.legend-item')
-    .data(pieData)
+    .data(pie(legendData))
     .join('g')
     .attr('class', 'legend-item')
     .attr('transform', (d, i) => `translate(0, ${i * 20})`)
     .style('cursor', 'pointer')
     .on('mouseover', function(event, d) {
       // Находим соответствующий сегмент
-      const segment = pieArcs.filter(arc => arc.data.name === d.name);
+      const segment = pieArcs.filter(arc => arc.data.name === d.data.name);
       
       // Выделяем сегмент
       segment.transition()
@@ -3980,16 +4045,16 @@ const showRegionDetails = (year, month, monthName) => {
         .attr('d', arcHover);
       
       // Показываем значение в центре
-      centerText.text(d.name);
-      centerNumber.text(formatProfitCompact(d.sales));
-      centerPercent.text(`${((d.sales / totalSales) * 100).toFixed(1)}%`);
+      centerText.text(d.data.name);
+      centerNumber.text(formatProfitCompact(d.data.sales));
+      centerPercent.text(`${((d.data.sales / totalSales) * 100).toFixed(1)}%`);
       
       // Выделяем легенду
       d3.select(this)
         .style('opacity', 1)
         .style('font-weight', 'bold');
       
-      pieLegendItems.filter(item => item.name !== d.name)
+      pieLegendItems.filter(item => item.data.name !== d.data.name)
         .style('opacity', 0.5);
     })
    .on('mouseout', function(event, d) {
@@ -4013,20 +4078,23 @@ const showRegionDetails = (year, month, monthName) => {
     .attr('width', 12)
     .attr('height', 12)
     .attr('rx', 2)
-    .attr('fill', d => pieColor(d.name));
+    .attr('fill', (d, i) => pieColor(d.data.name));
  
   pieLegendItems.append('text')
     .attr('x', 18)
     .attr('y', 10)
     .style('font-size', '0.7rem')
     .style('fill', '#f9fafb')
-    .text(d => d.name.length > 10 ? d.name.substring(0, 10) + '...' : d.name);
- 
-  // 3. Нижний левый - сравнение с другим месяцем
+    .text(d => {
+      // Сокращаем длинные названия регионов
+      const name = d.data.name;
+      return name.length > 10 ? name.substring(0, 10) + '...' : name;
+    });
+  
+  // Нижняя секция - сравнение с другим месяцем на всю ширину
   const compareChartContainer = grid.append('div')
     .attr('id', 'region-comparison-container')
-    .style('grid-column', '1')
-    .style('grid-row', '2')
+    .style('grid-column', '1 / -1') // Занимает всю ширину
     .style('background', 'rgba(17, 24, 39, 0.4)')
     .style('border-radius', '12px')
     .style('padding', '15px')
@@ -4038,7 +4106,7 @@ const showRegionDetails = (year, month, monthName) => {
     .style('margin-bottom', '15px')
     .style('text-align', 'center')
     .text(`Сравнение региональных показателей`);
- 
+  
   // Функция для обновления данных сравнения
   function updateRegionComparisonData(currentYear, compareMonthIndex, currentMonthName) {
     const comparisonContainer = d3.select('#region-comparison-container');
@@ -4069,13 +4137,26 @@ const showRegionDetails = (year, month, monthName) => {
     const currentMonthData = regions;
     const compareMonthData = getRegionsData(compareYear, compareMonth);
     
+    if (!compareMonthData || compareMonthData.length === 0) {
+      comparisonContainer.append('div')
+        .style('display', 'flex')
+        .style('justify-content', 'center')
+        .style('align-items', 'center')
+        .style('height', '200px')
+        .style('color', '#9ca3af')
+        .text('Нет данных для сравнения за выбранный период');
+      return;
+    }
+    
     // Топ регионов для сравнения
-    const topRegions = regions.slice(0, 6);
+    const topRegions = regions.slice(0, 8);
     
     // Подготовка данных для сравнения
     const compareData = topRegions.map(region => {
-      const compareRegion = compareMonthData.find(r => r.name === region.name) || 
-        { name: region.name, sales: 0, count: 0 };
+      // Ищем соответствующий регион по имени или ID
+      const compareRegion = compareMonthData.find(r => 
+        r.name === region.name || (r.id && region.id && r.id === region.id)
+      ) || { name: region.name, sales: 0, count: 0 };
       
       return {
         name: region.name,
@@ -4083,8 +4164,10 @@ const showRegionDetails = (year, month, monthName) => {
         previousSales: compareRegion.sales,
         currentCount: region.count, 
         previousCount: compareRegion.count,
-        salesGrowth: ((region.sales / Math.max(1, compareRegion.sales)) - 1) * 100,
-        countGrowth: ((region.count / Math.max(1, compareRegion.count)) - 1) * 100
+        // Расчет процента изменения, избегая деления на ноль
+        salesGrowth: compareRegion.sales > 0 ? 
+          ((region.sales / compareRegion.sales) - 1) * 100 : 
+          (region.sales > 0 ? 100 : 0)
       };
     });
     
@@ -4224,18 +4307,59 @@ const showRegionDetails = (year, month, monthName) => {
       .style('font-size', '0.7rem')
       .style('fill', '#f9fafb')
       .text(compareMonthName);
+    
+    // Добавляем тултипы для полос
+    graphSvg.selectAll('.current-sales-bar, .previous-sales-bar')
+      .on('mouseover', function(event, d) {
+        const isCurrentBar = d3.select(this).classed('current-sales-bar');
+        const value = isCurrentBar ? d.currentSales : d.previousSales;
+        const count = isCurrentBar ? d.currentCount : d.previousCount;
+        
+        // Создаем тултип
+        d3.select('body').append('div')
+          .attr('class', 'chart-tooltip')
+          .style('position', 'absolute')
+          .style('background', 'rgba(17, 24, 39, 0.95)')
+          .style('color', '#f9fafb')
+          .style('border-radius', '6px')
+          .style('padding', '8px 12px')
+          .style('font-size', '0.9rem')
+          .style('pointer-events', 'none')
+          .style('z-index', 1000)
+          .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.3)')
+          .style('border', `1px solid ${isCurrentBar ? '#10b981' : '#94a3b8'}`)
+          .style('left', `${event.pageX + 10}px`)
+          .style('top', `${event.pageY - 40}px`)
+          .html(`
+            <div style="font-weight:bold">${d.name}</div>
+            <div>${isCurrentBar ? currentMonthName : compareMonthName}</div>
+            <div style="margin-top:5px">
+              <span style="color:#60a5fa">Продажи:</span> ${formatProfitCompact(value)}
+            </div>
+            <div>
+              <span style="color:#60a5fa">Количество:</span> ${count} шт.
+            </div>
+          `);
+      })
+      .on('mousemove', function(event) {
+        d3.select('.chart-tooltip')
+          .style('left', `${event.pageX + 10}px`)
+          .style('top', `${event.pageY - 40}px`);
+      })
+      .on('mouseout', function() {
+        d3.select('.chart-tooltip').remove();
+      });
   }
   
   // Проверяем, есть ли доступные месяцы для сравнения
-  if (availableMonths.length > 0) {
+  if (availableMonths.length > 1) {
     // Выбираем первый месяц из списка, если он есть
-    const compareMonth = availableMonths[0].month;
-    updateRegionComparisonData(year, compareMonth, monthName);
-  } else if (financialData[year - 1]) {
-    // Если нет других месяцев в текущем году, пробуем использовать тот же месяц прошлого года
-    updateRegionComparisonData(year, `prev-${month}`, monthName);
+    const otherMonth = availableMonths.find(m => m.month !== month);
+    if (otherMonth) {
+      updateRegionComparisonData(year, otherMonth.month, monthName);
+    }
   } else {
-    // Иначе просто показываем заглушку
+    // Если нет других месяцев, просто показываем заглушку
     const comparisonContainer = d3.select('#region-comparison-container');
     comparisonContainer.append('div')
       .style('display', 'flex')
@@ -4245,154 +4369,8 @@ const showRegionDetails = (year, month, monthName) => {
       .style('color', '#9ca3af')
       .text('Нет данных для сравнения');
   }
-  
-  // 4. Нижний правый - ключевые метрики региона
-  const metricsContainer = grid.append('div')
-    .style('grid-column', '2')
-    .style('grid-row', '2')
-    .style('background', 'rgba(17, 24, 39, 0.4)')
-    .style('border-radius', '12px')
-    .style('padding', '15px')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)');
-  
-  metricsContainer.append('h3')
-    .style('font-size', '1.1rem')
-    .style('color', '#f9fafb')
-    .style('margin-bottom', '15px')
-    .style('text-align', 'center')
-    .text(`Ключевые показатели: ${monthName}`);
-  
-  // Создаем контейнер для метрик
-  const metricsGrid = metricsContainer.append('div')
-    .style('display', 'grid')
-    .style('grid-template-columns', '1fr 1fr')
-    .style('grid-gap', '15px')
-    .style('height', 'calc(100% - 30px)');
-  
-  // Функция для создания карточки метрики
-  const createMetricCard = (title, value, unit, icon, color, subtitle) => {
-    const card = metricsGrid.append('div')
-      .style('background', 'rgba(30, 41, 59, 0.5)')
-      .style('border-radius', '10px')
-      .style('padding', '15px')
-      .style('display', 'flex')
-      .style('flex-direction', 'column')
-      .style('justify-content', 'center')
-      .style('position', 'relative')
-      .style('overflow', 'hidden');
-    
-    // Градиентный фон
-    card.append('div')
-      .style('position', 'absolute')
-      .style('top', '0')
-      .style('left', '0')
-      .style('width', '100%')
-      .style('height', '100%')
-      .style('background', `linear-gradient(135deg, ${color}15 0%, ${color}05 100%)`)
-      .style('z-index', '0');
-    
-    // Фоновая иконка
-    card.append('div')
-      .style('position', 'absolute')
-      .style('top', '10px')
-      .style('right', '10px')
-      .style('font-size', '2.5rem')
-      .style('color', `${color}25`)
-      .style('z-index', '0')
-      .html(icon);
-    
-    // Содержимое
-    const content = card.append('div')
-      .style('position', 'relative')
-      .style('z-index', '1');
-    
-    content.append('div')
-      .style('font-size', '0.9rem')
-      .style('color', '#9ca3af')
-      .style('margin-bottom', '5px')
-      .text(title);
-    
-    const valueRow = content.append('div')
-      .style('display', 'flex')
-      .style('align-items', 'baseline')
-      .style('margin-bottom', '5px');
-    
-    valueRow.append('span')
-      .style('font-size', '1.6rem')
-      .style('font-weight', 'bold')
-      .style('color', color)
-      .text(value);
-    
-    valueRow.append('span')
-      .style('font-size', '0.9rem')
-      .style('color', '#d1d5db')
-      .style('margin-left', '5px')
-      .text(unit);
-    
-    if (subtitle) {
-      content.append('div')
-        .style('font-size', '0.8rem')
-        .style('color', '#9ca3af')
-        .text(subtitle);
-    }
-  };
-  
-  // Создаем метрики для региона
-  createMetricCard(
-    'Общий объем продаж',
-    formatProfitCompact(totalSales),
-    '',
-    '<i class="fas fa-chart-line"></i>',
-    '#f87171',
-    `${totalCount} автомобилей`
-  );
-  
-  // Рассчитываем долю премиум сегмента
-  const premiumThreshold = avgPrice * 1.3; // Порог для премиум-сегмента
-  const premiumCount = regions.filter(r => r.sales / r.count > premiumThreshold)
-    .reduce((sum, r) => sum + r.count, 0);
-  const premiumShare = (premiumCount / totalCount * 100).toFixed(1);
-  
-  createMetricCard(
-    'Премиум-сегмент',
-    premiumShare,
-    '%',
-    '<i class="fas fa-star"></i>',
-    '#f59e0b',
-    'Доля премиальных авто'
-  );
-  
-  // Рассчитываем концентрацию рынка (доля топ-3 регионов)
-  const concentrationIndex = (regions.slice(0, 3).reduce((sum, r) => sum + r.sales, 0) / totalSales * 100).toFixed(1);
-  
-  createMetricCard(
-    'Индекс концентрации',
-    concentrationIndex,
-    '%',
-    '<i class="fas fa-map-marker-alt"></i>',
-    '#8b5cf6',
-    'Доля топ-3 регионов'
-  );
-  
-  // Средняя цена автомобиля
-  createMetricCard(
-    'Средняя цена',
-    formatProfitCompact(avgPrice),
-    '',
-    '<i class="fas fa-car"></i>',
-    '#10b981',
-    'По всем регионам'
-  );
-  
-  // Добавляем иконки Font Awesome
-  if (!document.querySelector('[href*="font-awesome"]')) {
-    const head = document.head || document.getElementsByTagName('head')[0];
-    const fontAwesome = document.createElement('link');
-    fontAwesome.rel = 'stylesheet';
-    fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css';
-    head.appendChild(fontAwesome);
-  }
 };
+      
       
 const showModelRegionalDistribution = (modelName, year, month, monthName) => {
   if (!mainChartRef.current) return;
