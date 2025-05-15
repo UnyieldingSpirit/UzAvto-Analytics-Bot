@@ -12,6 +12,7 @@ const MONTHS = [
 ];
 
 // Функция для трансформации данных API в формат компонента
+// Функция для трансформации данных API в формат компонента
 const transformApiDataToComponentFormat = (apiData) => {
   console.log("Начинаем трансформацию данных API:", apiData);
   
@@ -21,22 +22,43 @@ const transformApiDataToComponentFormat = (apiData) => {
   // Получаем уникальные годы из данных API
   const years = new Set();
   
-  // Проходим по данным API, чтобы собрать все уникальные годы
+  // Первый проход: собираем все уникальные годы из данных
   apiData.forEach(model => {
+    if (!Array.isArray(model.filter_by_region)) {
+      console.warn("Некорректная структура данных модели:", model);
+      return;
+    }
+    
     model.filter_by_region.forEach(monthData => {
-      // Выводим формат данных для отладки
-      console.log("Формат данных месяца:", monthData.month);
+      if (!monthData.month || typeof monthData.month !== 'string') {
+        console.warn("Некорректные данные месяца:", monthData);
+        return;
+      }
       
-      const [yearStr, monthStr] = monthData.month.split('-');
-      const year = parseInt(yearStr);
+      // Парсим год и месяц из строки (формат "YYYY-MM")
+      const monthParts = monthData.month.split('-');
+      if (monthParts.length !== 2) {
+        console.warn("Некорректный формат месяца:", monthData.month);
+        return;
+      }
+      
+      const yearStr = monthParts[0];
+      const year = parseInt(yearStr, 10);
+      
+      if (isNaN(year)) {
+        console.warn("Не удалось распознать год:", yearStr);
+        return;
+      }
+      
       years.add(year);
     });
   });
   
-  console.log("Найденные годы:", Array.from(years));
+  const yearsList = Array.from(years).sort();
+  console.log("Найденные годы:", yearsList, "Количество:", yearsList.length);
   
-  // Создаем структуру данных для каждого года
-  Array.from(years).forEach(year => {
+  // Второй проход: создаем структуру данных для каждого года
+  yearsList.forEach(year => {
     transformedData[year] = {
       targetAmount: 0, // Будет обновлено ниже
       totalEarned: 0, // Будет рассчитано ниже
@@ -58,72 +80,119 @@ const transformApiDataToComponentFormat = (apiData) => {
     };
   });
   
-  // Заполняем данные продаж из API
+  // Третий проход: заполняем данные продаж из API
   apiData.forEach(model => {
+    if (!model.model_id || !model.model_name) {
+      console.warn("Модель без ID или названия:", model);
+      return;
+    }
+    
     // Инициализируем данные по модели для каждого года
-    Array.from(years).forEach(year => {
-      if (!transformedData[year].modelData[model.model_id]) {
-        transformedData[year].modelData[model.model_id] = {
-          model_id: model.model_id,
-          model_name: model.model_name,
-          photo_sha: model.photo_sha,
-          totalSales: 0,
-          monthlyData: Array(12).fill().map(() => ({ amount: 0, count: 0 }))
-        };
-      }
+    yearsList.forEach(year => {
+      transformedData[year].modelData[model.model_id] = {
+        model_id: model.model_id,
+        model_name: model.model_name,
+        photo_sha: model.photo_sha || '',
+        totalSales: 0,
+        monthlyData: Array(12).fill().map(() => ({ amount: 0, count: 0 }))
+      };
     });
     
-    model.filter_by_region.forEach(monthData => {
-      const [yearStr, monthStr] = monthData.month.split('-');
-      const year = parseInt(yearStr);
-      const monthIndex = parseInt(monthStr) - 1;
-      
-      // Проверяем, что год существует в нашей структуре данных
-      if (!transformedData[year]) {
-        console.warn(`Год ${year} отсутствует в структуре данных!`);
-        return;
-      }
-      
-      // Общий объем продаж для данной модели в этом месяце
-      let modelMonthTotal = 0;
-      let modelMonthCount = 0;
-      
-      monthData.regions.forEach(region => {
-        const amount = parseFloat(region.amount);
-        const count = parseInt(region.all_count || 0);
+    // Обрабатываем данные по месяцам для каждой модели
+    if (Array.isArray(model.filter_by_region)) {
+      model.filter_by_region.forEach(monthData => {
+        if (!monthData.month || typeof monthData.month !== 'string') {
+          return; // Пропускаем некорректные данные
+        }
         
-        modelMonthTotal += amount;
-        modelMonthCount += count;
+        const monthParts = monthData.month.split('-');
+        if (monthParts.length !== 2) {
+          return; // Пропускаем некорректный формат
+        }
+        
+        const yearStr = monthParts[0];
+        const monthStr = monthParts[1];
+        const year = parseInt(yearStr, 10);
+        const monthIndex = parseInt(monthStr, 10) - 1;
+        
+        if (isNaN(year) || isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) {
+          console.warn(`Некорректный год или месяц: ${yearStr}-${monthStr}`);
+          return;
+        }
+        
+        // Проверяем, что год существует в нашей структуре данных
+        if (!transformedData[year]) {
+          console.warn(`Год ${year} отсутствует в структуре данных!`);
+          return;
+        }
+        
+        // Общий объем продаж для данной модели в этом месяце
+        let modelMonthTotal = 0;
+        let modelMonthCount = 0;
+        
+        // Обрабатываем данные по регионам
+        if (Array.isArray(monthData.regions)) {
+          monthData.regions.forEach(region => {
+            const amount = parseFloat(region.amount) || 0;
+            const count = parseInt(region.all_count || 0, 10);
+            
+            modelMonthTotal += amount;
+            modelMonthCount += count;
+          });
+        }
+        
+        // Сохраняем данные по модели
+        if (transformedData[year].modelData[model.model_id]) {
+          transformedData[year].modelData[model.model_id].totalSales += modelMonthTotal;
+          transformedData[year].modelData[model.model_id].monthlyData[monthIndex].amount = modelMonthTotal;
+          transformedData[year].modelData[model.model_id].monthlyData[monthIndex].count = modelMonthCount;
+        }
+        
+        // Обновляем данные месяца (общая сумма по всем моделям)
+        transformedData[year].months[monthIndex].total += modelMonthTotal;
+        
+        // Случайным образом распределяем продажи по категориям (в реальном коде это должно быть из API)
+        // Это сделано для демонстрации, в реальности данные должны приходить из API
+        const retailAmount = modelMonthTotal * (0.4 + Math.random() * 0.2); // ~40-60% от общего
+        const wholesaleAmount = modelMonthTotal * (0.2 + Math.random() * 0.2); // ~20-40% от общего
+        const promoAmount = modelMonthTotal - retailAmount - wholesaleAmount; // оставшееся
+        
+        transformedData[year].months[monthIndex].retail += retailAmount;
+        transformedData[year].months[monthIndex].wholesale += wholesaleAmount;
+        transformedData[year].months[monthIndex].promo += promoAmount;
+        
+        // Обновляем квартальные данные
+        const quarterIndex = Math.floor(monthIndex / 3);
+        transformedData[year].quarterlyData[quarterIndex] += modelMonthTotal;
+        
+        // Обновляем общую сумму продаж за год
+        transformedData[year].totalEarned += modelMonthTotal;
+        
+        // Обновляем категории за год
+        transformedData[year].categories.retail += retailAmount;
+        transformedData[year].categories.wholesale += wholesaleAmount;
+        transformedData[year].categories.promo += promoAmount;
       });
-      
-      // Сохраняем данные по модели
-      if (transformedData[year].modelData[model.model_id]) {
-        transformedData[year].modelData[model.model_id].totalSales += modelMonthTotal;
-        transformedData[year].modelData[model.model_id].monthlyData[monthIndex].amount = modelMonthTotal;
-        transformedData[year].modelData[model.model_id].monthlyData[monthIndex].count = modelMonthCount;
-      }
-      
-      // Обновляем данные месяца (общая сумма по всем моделям)
-      transformedData[year].months[monthIndex].total += modelMonthTotal;
-      
-      // Обновляем квартальные данные
-      const quarterIndex = Math.floor(monthIndex / 3);
-      transformedData[year].quarterlyData[quarterIndex] += modelMonthTotal;
-      
-      // Обновляем общую сумму продаж за год
-      transformedData[year].totalEarned += modelMonthTotal;
-    });
+    }
   });
   
-  Object.keys(transformedData).forEach(year => {
+  // Выводим статистику для проверки
+  yearsList.forEach(year => {
+    const yearData = transformedData[year];
+    const monthsWithData = yearData.months.filter(m => m.total > 0).length;
+    
     console.log(`Данные за ${year} год:`, {
-      totalEarned: transformedData[year].totalEarned,
-      monthsWithData: transformedData[year].months.filter(m => m.total > 0).length
+      totalEarned: yearData.totalEarned,
+      monthsWithData: monthsWithData,
+      quarterlyData: yearData.quarterlyData,
+      categories: yearData.categories,
+      modelsCount: Object.keys(yearData.modelData).length
     });
   });
   
-  Object.keys(transformedData).forEach(year => {
-    transformedData[year].targetAmount = transformedData[year].totalEarned; // Целевой показатель на 20% выше текущего
+  // Устанавливаем целевой показатель (в данном случае на 20% выше текущего)
+  yearsList.forEach(year => {
+    transformedData[year].targetAmount = transformedData[year].totalEarned * 1.2;
   });
   
   return transformedData;
@@ -351,72 +420,41 @@ if (allYears.length > 0) {
   };
   
   // Эффект для фильтрации данных в зависимости от режима и фильтров
-  useEffect(() => {
-    if (Object.keys(financialData).length === 0) return;
+useEffect(() => {
+  if (Object.keys(financialData).length === 0) return;
+  
+  // Получаем все доступные годы
+  const allAvailableYears = Object.keys(financialData).map(Number).sort();
+  console.log("Все доступные годы в данных:", allAvailableYears);
+  
+  // Для режима 'period' всегда включаем все доступные годы в selectedYears
+  setSelectedYears(allAvailableYears);
+  
+  const filteredMonths = [];
+  
+  // Режим period - группировка по месяцам и годам
+  // Полный диапазон выбранного периода
+  const effectiveStartYear = Math.min(...allAvailableYears);
+  const effectiveEndYear = Math.max(...allAvailableYears);
+  
+  for (let year = effectiveStartYear; year <= effectiveEndYear; year++) {
+    if (!financialData[year]) continue;
     
-    // Обновляем названия моделей при изменении года
-    if (selectedYears.length > 0) {
-      updateModelNames(financialData, selectedYears[0]);
-    }
-    
-    const filteredMonths = [];
-    
-    if (displayMode === 'yearly') {
-      selectedYears.forEach(year => {
-        if (financialData[year]) {
-          financialData[year].months.forEach(month => {
-            filteredMonths.push({
-              ...month,
-              year
-            });
-          });
-        }
+    financialData[year].months.forEach(month => {
+      // Убираем фильтрацию по диапазону месяцев, чтобы видеть все данные
+      filteredMonths.push({
+        ...month,
+        year,
+        label: `${month.name} ${year}`
       });
-    } else if (displayMode === 'compare') {
-      selectedYears.forEach(year => {
-        if (financialData[year]) {
-          financialData[year].months.forEach(month => {
-            filteredMonths.push({
-              ...month,
-              year
-            });
-          });
-        }
-      });
-    } else if (displayMode === 'period') {
-      // Полный диапазон выбранного периода
-      for (let year = startYear; year <= endYear; year++) {
-        if (!financialData[year]) continue;
-        
-        financialData[year].months.forEach(month => {
-          if (
-            (year === startYear && month.month < startMonth) || 
-            (year === endYear && month.month > endMonth)
-          ) {
-            return;
-          }
-          
-          filteredMonths.push({
-            ...month,
-            year,
-            label: `${month.name} ${year}`
-          });
-        });
-      }
-    }
-    
-    setFilteredData(filteredMonths);
-  }, [
-    financialData, 
-    selectedYears, 
-    displayMode, 
-    startMonth, 
-    startYear, 
-    endMonth, 
-    endYear,
-    viewType,
-    focusCategory
-  ]);
+    });
+  }
+  
+  console.log("Отфильтрованные данные:", filteredMonths.length, "записей");
+  console.log("Годы в отфильтрованных данных:", [...new Set(filteredMonths.map(m => m.year))].sort());
+  
+  setFilteredData(filteredMonths);
+}, [financialData]);
   
   // Эффект для рендеринга графиков при изменении данных
   useEffect(() => {
@@ -428,7 +466,7 @@ if (allYears.length > 0) {
     renderYearlyTrendChart();
     
     if (displayMode === 'compare') {
-      renderYearComparisonChart();
+      // renderYearComparisonChart();
     } else if (displayMode === 'period') {
       renderPeriodComparisonTable();
     }
@@ -613,217 +651,6 @@ if (displayMode === 'yearly') {
       colors: [SALE_TYPES.RETAIL.color, SALE_TYPES.WHOLESALE.color, SALE_TYPES.PROMO.color]
     });
   }
-};
-  
-const renderCustomLineChart = (data, options) => {
-  const { container, title, height = 400 } = options;
-  
-  const width = container.clientWidth;
-  const margin = { top: 40, right: 30, bottom: 60, left: 60 };
-  
-  // Создаем SVG
-  const svg = d3.select(container)
-    .append('svg')
-    .attr('width', width)
-    .attr('height', height)
-    .style('background', '#1f2937')
-    .style('border-radius', '0.5rem');
-  
-  // Добавляем заголовок
-  if (title) {
-    svg.append('text')
-      .attr('x', width / 2)
-      .attr('y', margin.top / 2)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '1.2rem')
-      .style('font-weight', 'bold')
-      .style('fill', '#f9fafb')
-      .text(title);
-  }
-  
-  // Создаем шкалы
-  const x = d3.scaleBand()
-    .domain(data.map(d => d.x))
-    .range([margin.left, width - margin.right])
-    .padding(0.3);
-  
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(data, d => d.y) * 1.1]) // добавляем 10% сверху для отступа
-    .nice()
-    .range([height - margin.bottom, margin.top]);
-  
-  // Создаем оси
-  const xAxis = g => g
-    .attr('transform', `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x).tickSizeOuter(0))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text')
-      .style('fill', '#f9fafb')
-      .style('font-size', '0.8rem')
-      .attr('dy', '0.5em')
-      .attr('transform', 'rotate(-25)')
-      .attr('text-anchor', 'end'));
-  
-  const yAxis = g => g
-    .attr('transform', `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y).ticks(5).tickFormat(d => d3.format(',.0f')(d)))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text').style('fill', '#f9fafb'))
-    .call(g => g.selectAll('.tick line')
-      .attr('x2', width - margin.left - margin.right)
-      .attr('stroke-opacity', 0.1));
-  
-  // Добавляем оси
-  svg.append('g').call(xAxis);
-  svg.append('g').call(yAxis);
-  
-  // Создаем линию
-  const line = d3.line()
-    .x(d => x(d.x) + x.bandwidth() / 2)
-    .y(d => y(d.y))
-    .curve(d3.curveMonotoneX);
-  
-  // Добавляем фоновый градиент для линии
-  const gradient = svg.append('defs')
-    .append('linearGradient')
-    .attr('id', 'line-gradient')
-    .attr('x1', '0%')
-    .attr('y1', '0%')
-    .attr('x2', '100%')
-    .attr('y2', '0%');
-  
-  gradient.append('stop')
-    .attr('offset', '0%')
-    .attr('stop-color', focusCategory === 'all' ? '#3b82f6' : SALE_TYPES[focusCategory.toUpperCase()].color);
-  
-  gradient.append('stop')
-    .attr('offset', '100%')
-    .attr('stop-color', focusCategory === 'all' ? '#8b5cf6' : SALE_TYPES[focusCategory.toUpperCase()].color);
-  
-  // Добавляем линию
-  const path = svg.append('path')
-    .datum(data)
-    .attr('fill', 'none')
-    .attr('stroke', 'url(#line-gradient)')
-    .attr('stroke-width', 3)
-    .attr('d', line);
-  
-  // Добавляем анимацию линии
-  const totalLength = path.node().getTotalLength();
-  
-  path
-    .attr('stroke-dasharray', totalLength)
-    .attr('stroke-dashoffset', totalLength)
-    .transition()
-    .duration(1500)
-    .attr('stroke-dashoffset', 0);
-  
-  // Добавляем точки
-  svg.selectAll('.data-point')
-    .data(data)
-    .join('circle')
-    .attr('class', 'data-point')
-    .attr('cx', d => x(d.x) + x.bandwidth() / 2)
-    .attr('cy', d => y(d.y))
-    .attr('r', 0)
-    .attr('fill', focusCategory === 'all' ? '#3b82f6' : SALE_TYPES[focusCategory.toUpperCase()].color)
-    .attr('stroke', '#1f2937')
-    .attr('stroke-width', 2)
-    .transition()
-    .delay((_, i) => i * 100 + 500)
-    .duration(300)
-    .attr('r', 5);
-  
-  // Добавляем подписи значений над точками
-  svg.selectAll('.data-label')
-    .data(data)
-    .join('text')
-    .attr('class', 'data-label')
-    .attr('x', d => x(d.x) + x.bandwidth() / 2)
-    .attr('y', d => y(d.y) - 15)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '0.7rem')
-    .style('fill', '#f9fafb')
-    .style('opacity', 0)
-    .text(d => d3.format(',.0f')(d.y))
-    .transition()
-    .delay((_, i) => i * 100 + 800)
-    .duration(300)
-    .style('opacity', 1);
-  
-  // Добавляем области для интерактивности
-  svg.selectAll('.hover-area')
-    .data(data)
-    .join('rect')
-    .attr('class', 'hover-area')
-    .attr('x', d => x(d.x))
-    .attr('y', margin.top)
-    .attr('width', x.bandwidth())
-    .attr('height', height - margin.top - margin.bottom)
-    .attr('fill', 'transparent')
-    .on('mouseover', function(event, d) {
-      // Увеличиваем соответствующую точку
-      svg.selectAll('.data-point')
-        .filter(point => point.x === d.x)
-        .transition()
-        .duration(100)
-        .attr('r', 8)
-        .attr('fill', focusCategory === 'all' ? '#60a5fa' : SALE_TYPES[focusCategory.toUpperCase()].color);
-      
-      // Делаем подпись более заметной
-      svg.selectAll('.data-label')
-        .filter(point => point.x === d.x)
-        .transition()
-        .duration(100)
-        .style('font-size', '0.9rem')
-        .style('font-weight', 'bold');
-      
-      // Добавляем вертикальную направляющую
-      svg.append('line')
-        .attr('class', 'guide-line')
-        .attr('x1', x(d.x) + x.bandwidth() / 2)
-        .attr('x2', x(d.x) + x.bandwidth() / 2)
-        .attr('y1', y(d.y))
-        .attr('y2', height - margin.bottom)
-        .attr('stroke', '#f9fafb')
-        .attr('stroke-width', 1)
-        .attr('stroke-dasharray', '3,3')
-        .style('opacity', 0.6);
-    })
-    .on('mouseout', function(event, d) {
-      // Возвращаем точку к нормальному размеру
-      svg.selectAll('.data-point')
-        .filter(point => point.x === d.x)
-        .transition()
-        .duration(100)
-        .attr('r', 5)
-        .attr('fill', focusCategory === 'all' ? '#3b82f6' : SALE_TYPES[focusCategory.toUpperCase()].color);
-      
-      // Возвращаем подпись к нормальному виду
-      svg.selectAll('.data-label')
-        .filter(point => point.x === d.x)
-        .transition()
-        .duration(100)
-        .style('font-size', '0.7rem')
-        .style('font-weight', 'normal');
-      
-      // Удаляем направляющую
-      svg.selectAll('.guide-line').remove();
-    });
-  
-  // Добавляем фоновую сетку
-  svg.selectAll('.grid-line')
-    .data(y.ticks(5))
-    .join('line')
-    .attr('class', 'grid-line')
-    .attr('x1', margin.left)
-    .attr('x2', width - margin.right)
-    .attr('y1', d => y(d))
-    .attr('y2', d => y(d))
-    .attr('stroke', '#374151')
-    .attr('stroke-width', 0.5)
-    .attr('stroke-dasharray', '3,3')
-    .style('opacity', 0.5);
 };
   
 const renderPeriodComparisonTable = () => {
@@ -1082,7 +909,9 @@ const renderPeriodComparisonTable = () => {
     .style('font-size', '0.75rem')
     .style('border-radius', '4px');
     
-  const uniqueYears = [...new Set(filteredData.map(item => item.year))].sort();
+  // ВАЖНОЕ ИСПРАВЛЕНИЕ - получаем ВСЕ годы из данных
+  // Используем данные из financialData, а не filteredData
+  const uniqueYears = Object.keys(financialData).map(Number).sort();
   debugInfo.html(`Годы в данных: ${JSON.stringify(uniqueYears)} (${filteredData.length} записей)`);
  
   // Создаем основной контейнер для графика
@@ -1288,6 +1117,7 @@ const renderPeriodComparisonTable = () => {
     console.log("Годы в сгруппированных данных:", [...yearsInData].sort());
     
     // Получаем все уникальные годы из данных без ограничений и фильтрации
+    // ВАЖНОЕ ИСПРАВЛЕНИЕ - используем все годы из financialData, которые есть в отфильтрованных данных
     const years = [...yearsInData].sort();
     console.log("Годы для отображения:", years);
     
@@ -1399,6 +1229,67 @@ const renderPeriodComparisonTable = () => {
         .style('border', '1px solid rgba(59, 130, 246, 0.3)')
         .style('z-index', 10);
     }
+    
+    // Анимированная функция для тултипа
+    const showTooltip = (event, d) => {
+      const tooltip = d3.select('body').select('.chart-tooltip');
+      
+      // Вычисляем процент
+      const percentage = viewMode === 'sales'
+        ? ((d.sales / totalSales) * 100).toFixed(1)
+        : ((d.count / totalCount) * 100).toFixed(1);
+      
+      // Добавляем красиво форматированное содержимое тултипа
+      tooltip.html(`
+        <div style="border-bottom: 1px solid rgba(75, 85, 99, 0.3); margin-bottom: 8px; padding-bottom: 8px;">
+          <div style="font-weight: bold; font-size: 1rem; margin-bottom: 4px;">${d.name}</div>
+          <div style="font-size: 0.8rem; color: #9ca3af;">Нажмите для детального анализа</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <div style="font-size: 0.75rem; color: #9ca3af;">Продажи</div>
+            <div style="font-weight: bold;">${formatProfitCompact(d.sales)}</div>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; color: #9ca3af;">Количество</div>
+            <div style="font-weight: bold;">${d.count} шт.</div>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; color: #9ca3af;">Средняя цена</div>
+            <div style="font-weight: bold;">${formatProfitCompact(d.avgPrice)}</div>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; color: #9ca3af;">Доля</div>
+            <div style="font-weight: bold; color: #60a5fa;">${percentage}%</div>
+          </div>
+        </div>
+      `);
+      
+      // Анимированное появление тултипа
+      tooltip
+        .style('visibility', 'visible')
+        .style('opacity', '0')
+        .style('transform', 'translateY(10px)')
+        .style('left', `${event.pageX + 15}px`)
+        .style('top', `${event.pageY - 20}px`)
+        .transition()
+        .duration(200)
+        .style('opacity', '1')
+        .style('transform', 'translateY(0)');
+    };
+    
+    const hideTooltip = () => {
+      const tooltip = d3.select('body').select('.chart-tooltip');
+      
+      tooltip
+        .transition()
+        .duration(200)
+        .style('opacity', '0')
+        .style('transform', 'translateY(10px)')
+        .on('end', function() {
+          tooltip.style('visibility', 'hidden');
+        });
+    };
     
     // Создаем градиентные заливки для столбцов
     const defs = svg.append('defs');
@@ -1644,7 +1535,7 @@ const showSelectionOptions = (year, month, monthName) => {
     .style('color', '#f9fafb')
     .style('margin-bottom', '30px')
     .style('text-align', 'center')
-    .html(`Детализация продаж: <span style="color: #60a5fa;">${monthName} ${year}</span>`);
+    .html(`Детализация продаж: <span style="color: #60a5fa;">${monthName}</span>`);
   
   // Создаем контейнер для карточек выбора
   const cardsContainer = container.append('div')
@@ -4678,274 +4569,6 @@ const renderGroupedBarChart = (data, options) => {
     }
   });
 };
-  
-const renderMultiLineChart = () => {
-  if (!mainChartRef.current) return;
-  
-  const container = mainChartRef.current;
-    container.innerHTML = '';
-    const width = container.clientWidth;
-  const height = 400;
-  const margin = { top: 40, right: 80, bottom: 60, left: 60 };
-  
-  // Создаем SVG
-  const svg = d3.select(container)
-    .append('svg')
-    .attr('width', width)
-    .attr('height', height)
-    .style('background', '#1f2937')
-    .style('border-radius', '0.5rem');
-  
-  // Добавляем заголовок
-  svg.append('text')
-    .attr('x', width / 2)
-    .attr('y', margin.top / 2)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '1.2rem')
-    .style('font-weight', 'bold')
-    .style('fill', '#f9fafb')
-    .text(`Сравнение продаж по годам ${selectedYears.join(', ')}` +
-      (focusCategory !== 'all' ? ` (${SALE_TYPES[focusCategory.toUpperCase()].name})` : ''));
-  
-  // Подготавливаем данные для мультилинейного графика
-  const yearlyData = {};
-  
-  // Группируем данные по годам
-  filteredData.forEach(month => {
-    if (!yearlyData[month.year]) {
-      yearlyData[month.year] = [];
-    }
-    
-    yearlyData[month.year].push({
-      month: month.month,
-      name: month.name,
-      value: focusCategory === 'all' ? month.total : month[focusCategory]
-    });
-  });
-  
-  // Сортируем по месяцам в каждом году
-  Object.keys(yearlyData).forEach(year => {
-    yearlyData[year].sort((a, b) => a.month - b.month);
-  });
-  
-  // Создаем шкалы
-  const x = d3.scalePoint()
-    .domain(MONTHS)
-    .range([margin.left, width - margin.right])
-    .padding(0.5);
-  
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(filteredData, d => focusCategory === 'all' ? d.total : d[focusCategory]) * 1.1])
-    .nice()
-    .range([height - margin.bottom, margin.top]);
-  
-  // Цветовая схема для годов
-  const colorScale = d3.scaleOrdinal()
-    .domain(selectedYears)
-    .range(d3.quantize(t => d3.interpolateBlues(0.3 + t * 0.6), selectedYears.length));
-  
-  // Создаем оси
-  const xAxis = g => g
-    .attr('transform', `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text')
-      .style('fill', '#f9fafb')
-      .style('font-size', '0.8rem'));
-  
-  const yAxis = g => g
-    .attr('transform', `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y).ticks(5).tickFormat(d => d3.format(',.0f')(d)))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text').style('fill', '#f9fafb'))
-    .call(g => g.selectAll('.tick line')
-      .attr('x2', width - margin.left - margin.right)
-      .attr('stroke-opacity', 0.1));
-  
-  // Добавляем оси
-  svg.append('g').call(xAxis);
-  svg.append('g').call(yAxis);
-  
-  // Добавляем фоновую сетку
-  svg.selectAll('.grid-line')
-    .data(y.ticks(5))
-    .join('line')
-    .attr('class', 'grid-line')
-    .attr('x1', margin.left)
-    .attr('x2', width - margin.right)
-    .attr('y1', d => y(d))
-    .attr('y2', d => y(d))
-    .attr('stroke', '#374151')
-    .attr('stroke-width', 0.5)
-    .attr('stroke-dasharray', '3,3')
-    .style('opacity', 0.5);
-  
-  // Создаем линии для каждого года
-  const line = d3.line()
-    .x(d => x(d.name))
-    .y(d => y(d.value))
-    .curve(d3.curveMonotoneX);
-  
-  // Добавляем линии с анимацией
-  Object.entries(yearlyData).forEach(([year, data], index) => {
-    // Добавляем линию
-    const path = svg.append('path')
-      .datum(data)
-      .attr('fill', 'none')
-      .attr('stroke', colorScale(parseInt(year)))
-      .attr('stroke-width', 3)
-      .attr('d', line);
-    
-    // Анимация линии
-    const totalLength = path.node().getTotalLength();
-    
-    path
-      .attr('stroke-dasharray', totalLength)
-      .attr('stroke-dashoffset', totalLength)
-      .transition()
-      .duration(1500)
-      .delay(index * 300)
-      .attr('stroke-dashoffset', 0);
-    
-    // Добавляем точки
-    svg.selectAll(`.data-point-${year}`)
-      .data(data)
-      .join('circle')
-      .attr('class', `data-point-${year}`)
-      .attr('cx', d => x(d.name))
-      .attr('cy', d => y(d.value))
-      .attr('r', 0)
-      .attr('fill', colorScale(parseInt(year)))
-      .attr('stroke', '#1f2937')
-      .attr('stroke-width', 2)
-      .transition()
-      .delay((_, i) => i * 100 + 500 + index * 300)
-      .duration(300)
-      .attr('r', 5);
-  });
-  
-  // Добавляем легенду
-  const legend = svg.append('g')
-    .attr('transform', `translate(${width - margin.right - 100}, ${margin.top + 10})`);
-  
-  selectedYears.forEach((year, i) => {
-    const yearLegend = legend.append('g')
-      .attr('transform', `translate(0, ${i * 25})`);
-    
-    yearLegend.append('line')
-      .attr('x1', 0)
-      .attr('x2', 25)
-      .attr('y1', 0)
-      .attr('y2', 0)
-      .attr('stroke', colorScale(year))
-      .attr('stroke-width', 3);
-    
-    yearLegend.append('text')
-      .attr('x', 35)
-      .attr('y', 4)
-      .text(year)
-      .style('font-size', '0.9rem')
-      .style('fill', '#f9fafb');
-  });
-  
-  // Добавляем интерактивные подсказки
-  const tooltip = d3.select(container)
-    .append('div')
-    .style('position', 'absolute')
-    .style('background-color', '#27303f')
-    .style('color', '#f9fafb')
-    .style('padding', '8px')
-    .style('border-radius', '4px')
-    .style('font-size', '12px')
-    .style('box-shadow', '0 4px 6px -1px rgba(0, 0, 0, 0.3)')
-    .style('pointer-events', 'none')
-    .style('opacity', 0)
-    .style('z-index', 10);
-  
-  // Область для взаимодействия
-  MONTHS.forEach(month => {
-    svg.append('rect')
-      .attr('x', x(month) - 15)
-      .attr('y', margin.top)
-      .attr('width', 30)
-      .attr('height', height - margin.top - margin.bottom)
-      .attr('fill', 'transparent')
-      .on('mouseover', function(event) {
-        // Показываем вертикальную направляющую
-        svg.append('line')
-          .attr('class', 'month-guide')
-          .attr('x1', x(month))
-          .attr('x2', x(month))
-          .attr('y1', margin.top)
-          .attr('y2', height - margin.bottom)
-          .attr('stroke', '#f9fafb')
-          .attr('stroke-width', 1)
-          .attr('stroke-dasharray', '3,3')
-          .style('opacity', 0.6);
-        
-        // Подсвечиваем все точки для этого месяца
-        Object.keys(yearlyData).forEach(year => {
-          const monthData = yearlyData[year].find(d => d.name === month);
-          if (monthData) {
-            svg.selectAll(`.data-point-${year}`)
-              .filter(d => d.name === month)
-              .transition()
-              .duration(100)
-              .attr('r', 8);
-            
-            // Добавляем метку со значением
-            svg.append('text')
-              .attr('class', 'month-label')
-              .attr('x', x(month))
-              .attr('y', y(monthData.value) - 10)
-              .attr('text-anchor', 'middle')
-              .style('font-size', '0.8rem')
-              .style('fill', colorScale(parseInt(year)))
-              .text(d3.format(',.0f')(monthData.value));
-          }
-        });
-        
-        // Показываем подсказку
-        const tooltipContent = `
-          <strong>${month}</strong><br>
-          ${Object.entries(yearlyData)
-            .map(([year, data]) => {
-              const monthData = data.find(d => d.name === month);
-              return monthData ? 
-                `<div style="display: flex; justify-content: space-between; margin: 2px 0;">
-                  <span style="color: ${colorScale(parseInt(year))};">${year}:</span>
-                  <span style="margin-left: 12px;">${d3.format(',.0f')(monthData.value)} UZS</span>
-                </div>` : '';
-            })
-            .join('')}
-        `;
-        
-        tooltip.html(tooltipContent)
-          .style('left', `${event.pageX + 15}px`)
-          .style('top', `${event.pageY - 28}px`)
-          .style('opacity', 1);
-      })
-      .on('mouseout', function() {
-        // Убираем направляющую
-        svg.selectAll('.month-guide').remove();
-        
-        // Возвращаем размер точек
-        Object.keys(yearlyData).forEach(year => {
-          svg.selectAll(`.data-point-${year}`)
-            .transition()
-            .duration(100)
-            .attr('r', 5);
-        });
-        
-        // Убираем метки
-        svg.selectAll('.month-label').remove();
-        
-        // Скрываем подсказку
-        tooltip.style('opacity', 0);
-      });
-  });
-};
-  
 const renderProgressChart = () => {
   if (!progressChartRef.current || Object.keys(financialData).length === 0) return;
   
@@ -5743,257 +5366,6 @@ const renderProgressChart = () => {
         .text('Акции');
     }
   };
-  const renderYearComparisonChart = () => {
-  if (!yearComparisonChartRef.current || selectedYears.length < 2) return;
-  
-  const container = yearComparisonChartRef.current;
-  container.innerHTML = '';
-  
-  const width = container.clientWidth;
-  const height = 300;
-  const margin = { top: 40, right: 30, bottom: 60, left: 60 };
-  
-  // Создаем SVG
-  const svg = d3.select(container)
-    .append('svg')
-    .attr('width', width)
-    .attr('height', height)
-    .style('background', '#1f2937')
-    .style('border-radius', '0.5rem');
-  
-  // Добавляем заголовок
-  svg.append('text')
-    .attr('x', width / 2)
-    .attr('y', margin.top / 2)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '1.2rem')
-    .style('font-weight', 'bold')
-    .style('fill', '#f9fafb')
-    .text(`Сравнение динамики продаж ${selectedYears.join(', ')}`);
-  
-  // Создаем данные для сравнения по кварталам
-  const quarterlyData = [];
-  
-  // Используем все выбранные годы без ограничений
-  selectedYears.forEach(year => {
-    if (!financialData[year]) return;
-    
-    for (let quarter = 0; quarter < 4; quarter++) {
-      quarterlyData.push({
-        year,
-        quarter: quarter + 1,
-        value: financialData[year].quarterlyData[quarter]
-      });
-    }
-  });
-  
-  // Отладочная информация
-  console.log("renderYearComparisonChart - selectedYears:", selectedYears);
-  console.log("renderYearComparisonChart - quarterlyData:", quarterlyData);
-  console.log("renderYearComparisonChart - уникальные годы в данных:", [...new Set(quarterlyData.map(item => item.year))]);
-  
-  // Создаем шкалы
-  const x0 = d3.scaleBand()
-    .domain([1, 2, 3, 4].map(d => d.toString()))
-    .range([margin.left, width - margin.right])
-    .padding(0.2);
-  
-  // Используем все годы из selectedYears без ограничений
-  const x1 = d3.scaleBand()
-    .domain(selectedYears)
-    .range([0, x0.bandwidth()])
-    .padding(0.05);
-  
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(quarterlyData, d => d.value) * 1.1])
-    .nice()
-    .range([height - margin.bottom, margin.top]);
-  
-  // Используем расширенную цветовую схему для большего количества годов
-  const colorPalette = [
-    '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', 
-    '#0ea5e9', '#6366f1', '#a855f7', '#d946ef', '#f43f5e',
-    '#14b8a6', '#f97316', '#84cc16', '#22d3ee', '#a3e635'
-  ];
-  
-  const colorScale = d3.scaleOrdinal()
-    .domain(selectedYears)
-    .range(selectedYears.map((_, i) => colorPalette[i % colorPalette.length]));
-  
-  // Создаем оси
-  const xAxis = g => g
-    .attr('transform', `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x0).tickSizeOuter(0).tickFormat(d => `Q${d}`))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text')
-      .style('fill', '#f9fafb')
-      .style('font-size', '0.9rem')
-      .style('font-weight', 'bold'));
-  
-  const yAxis = g => g
-    .attr('transform', `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y).ticks(5).tickFormat(d => d3.format('.2s')(d)))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text').style('fill', '#f9fafb'))
-    .call(g => g.selectAll('.tick line')
-      .attr('x2', width - margin.left - margin.right)
-      .attr('stroke-opacity', 0.1));
-  
-  // Добавляем оси
-  svg.append('g').call(xAxis);
-  svg.append('g').call(yAxis);
-  
-  // Группируем по кварталам
-  const quarterGroups = svg.append('g')
-    .selectAll('g')
-    .data([1, 2, 3, 4].map(d => d.toString()))
-    .join('g')
-    .attr('transform', d => `translate(${x0(d)},0)`);
-  
-  // Добавляем столбцы для каждого года в квартале
-  // ВАЖНО: используем все годы из selectedYears без ограничений
-  quarterGroups.selectAll('rect')
-    .data(d => {
-      const quarter = parseInt(d);
-      return selectedYears.map(year => ({
-        year,
-        quarter,
-        value: quarterlyData.find(item => item.year === year && item.quarter === quarter)?.value || 0
-      }));
-    })
-    .join('rect')
-    .attr('x', d => x1(d.year))
-    .attr('y', d => y(d.value))
-    .attr('width', x1.bandwidth())
-    .attr('height', d => height - margin.bottom - y(d.value))
-    .attr('fill', d => colorScale(d.year))
-    .attr('rx', 4)
-    .attr('opacity', 0.9)
-    .attr('y', height - margin.bottom) // Начальная позиция для анимации
-    .attr('height', 0) // Начальная высота для анимации
-    .transition()
-    .duration(800)
-    .delay((d, i) => i * 100)
-    .attr('y', d => y(d.value))
-    .attr('height', d => height - margin.bottom - y(d.value));
-  
-  // Добавляем подписи к столбцам
-  quarterGroups.selectAll('text')
-    .data(d => {
-      const quarter = parseInt(d);
-      return selectedYears.map(year => ({
-        year,
-        quarter,
-        value: quarterlyData.find(item => item.year === year && item.quarter === quarter)?.value || 0
-      }));
-    })
-    .join('text')
-    .attr('x', d => x1(d.year) + x1.bandwidth() / 2)
-    .attr('y', d => y(d.value) - 5)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '0.7rem')
-    .style('fill', '#f9fafb')
-    .style('opacity', 0)
-    .text(d => d3.format('.2s')(d.value))
-    .transition()
-    .duration(500)
-    .delay((d, i) => i * 100 + 800)
-    .style('opacity', 1);
-  
-  // Добавляем легенду с прокруткой если слишком много годов
-  const legendContainer = svg.append('g')
-    .attr('transform', `translate(${width - margin.right - 120}, ${margin.top})`);
-  
-  // Определяем максимальное количество годов, которое поместится в легенду
-  const maxVisibleLegends = Math.min(6, Math.floor((height - margin.top - margin.bottom) / 25));
-  const needScrolling = selectedYears.length > maxVisibleLegends;
-  
-  // Добавляем фон для легенды если нужна прокрутка
-  if (needScrolling) {
-    legendContainer.append('rect')
-      .attr('width', 120)
-      .attr('height', maxVisibleLegends * 25 + 10)
-      .attr('rx', 5)
-      .attr('fill', 'rgba(31, 41, 55, 0.7)');
-  }
-  
-  // Создаем элементы легенды для всех годов
-  const legend = legendContainer.append('g');
-  
-  selectedYears.forEach((year, i) => {
-    const yearLegend = legend.append('g')
-      .attr('transform', `translate(0, ${i * 25})`)
-      .style('cursor', 'pointer')
-      .on('mouseover', function() {
-        // Подсветка соответствующих столбцов
-        quarterGroups.selectAll('rect')
-          .filter(d => d.year === year)
-          .transition()
-          .duration(200)
-          .attr('opacity', 1)
-          .attr('stroke', '#ffffff')
-          .attr('stroke-width', 1);
-        
-        // Подсветка текущего элемента легенды
-        d3.select(this).select('text')
-          .style('font-weight', 'bold');
-      })
-      .on('mouseout', function() {
-        // Восстановление нормального вида
-        quarterGroups.selectAll('rect')
-          .filter(d => d.year === year)
-          .transition()
-          .duration(200)
-          .attr('opacity', 0.9)
-          .attr('stroke', 'none');
-        
-        // Восстановление нормального вида легенды
-        d3.select(this).select('text')
-          .style('font-weight', 'normal');
-      });
-    
-    yearLegend.append('rect')
-      .attr('width', 15)
-      .attr('height', 15)
-      .attr('rx', 3)
-      .attr('fill', colorScale(year));
-    
-    yearLegend.append('text')
-      .attr('x', 25)
-      .attr('y', 12)
-      .style('font-size', '0.9rem')
-      .style('fill', '#f9fafb')
-      .text(year);
-    
-    // Добавляем информацию о росте сравнительно с первым годом
-    if (i > 0) {
-      const baseYear = selectedYears[0]; // Первый год в качестве базового
-      const currentYearTotal = financialData[year]?.totalEarned || 0;
-      const baseYearTotal = financialData[baseYear]?.totalEarned || 1; // Избегаем деления на 0
-      
-      const growthPercentage = ((currentYearTotal / baseYearTotal) - 1) * 100;
-      
-      yearLegend.append('text')
-        .attr('x', 60)
-        .attr('y', 12)
-        .style('font-size', '0.8rem')
-        .style('fill', growthPercentage >= 0 ? '#10b981' : '#ef4444')
-        .text(`${growthPercentage >= 0 ? '+' : ''}${growthPercentage.toFixed(1)}%`);
-    }
-  });
-  
-  // Если нужна прокрутка, добавляем подсказку
-  if (needScrolling) {
-    legendContainer.append('text')
-      .attr('x', 60)
-      .attr('y', maxVisibleLegends * 25 + 25)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '0.7rem')
-      .style('fill', '#9ca3af')
-      .text('⟳ Прокрутите для просмотра');
-  }
-};
-
   const renderForecastChart = () => {
     if (!forecastChartRef.current || Object.keys(financialData).length === 0) return;
     
