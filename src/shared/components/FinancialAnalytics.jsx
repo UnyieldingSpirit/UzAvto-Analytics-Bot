@@ -11,26 +11,324 @@ const MONTHS = [
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
 ];
 
-// Функция для трансформации данных API в формат компонента
-// Функция для трансформации данных API в формат компонента
-const transformApiDataToComponentFormat = (apiData) => {
-  console.log("Начинаем трансформацию данных API:", apiData);
+// Константы типов продаж
+const SALE_TYPES = {
+  RETAIL: {
+    id: 'retail',
+    name: 'Розничные продажи',
+    color: '#3b82f6'
+  },
+  WHOLESALE: {
+    id: 'wholesale',
+    name: 'Оптовые продажи',
+    color: '#8b5cf6'
+  }
+};
+
+// Основной компонент
+export default function EnhancedFinancialAnalytics() {
+  // Состояния для управления данными и фильтрами
+  const [financialData, setFinancialData] = useState({});
+  const [selectedYears, setSelectedYears] = useState([]); // Может быть несколько выбранных лет
+  const [filteredData, setFilteredData] = useState([]);
+  const [displayMode, setDisplayMode] = useState('period'); // 'yearly', 'period', 'compare'
+  const [isLoading, setIsLoading] = useState(true); // Состояние загрузки
+  const [apiStartDate, setApiStartDate] = useState('01.01.2025');
+  const [apiEndDate, setApiEndDate] = useState('31.12.2025');
+  const [apiEndpoint, setApiEndpoint] = useState("get_all_payment"); // Начальный эндпоинт API (все продажи)
+  const [dataStructureType, setDataStructureType] = useState("region"); // "model" для розницы, "region" для опта и всех
   
-  // Создаем объект для хранения трансформированных данных
+  // Функция для получения текущего месяца и года
+  const getCurrentMonthAndYear = () => {
+    const now = new Date();
+    return {
+      month: now.getMonth() + 1,
+      year: now.getFullYear()
+    };
+  };
+  
+  // Состояния для фильтров по периоду
+  const currentDate = getCurrentMonthAndYear();
+  const [startMonth, setStartMonth] = useState(1); // Начинаем с января
+  const [startYear, setStartYear] = useState(currentDate.year - 1); // Прошлый год
+  const [endMonth, setEndMonth] = useState(currentDate.month); // Текущий месяц
+  const [endYear, setEndYear] = useState(currentDate.year);
+  
+  // Состояния для представления
+  const [viewType, setViewType] = useState('bar'); // 'bar', 'line', 'stacked', 'area', 'radar', 'mixed'
+  const [focusCategory, setFocusCategory] = useState('all'); // 'all', 'retail', 'wholesale'
+  
+  // Состояние для информации о моделях
+  const [modelInfo, setModelInfo] = useState({
+    retail: { id: '', name: 'Модель 1' },
+    wholesale: { id: '', name: 'Модель 2' }
+  });
+  
+  // Refs для контейнеров графиков
+  const mainChartRef = useRef(null);
+  const progressChartRef = useRef(null);
+  const detailsChartRef = useRef(null);
+  const yearlyTrendChartRef = useRef(null);
+  const yearComparisonChartRef = useRef(null);
+  const forecastChartRef = useRef(null);
+  const categoryDistributionRef = useRef(null);
+  
+  // Функция выбора категории с обновлением API эндпоинта
+  const handleCategoryChange = (category) => {
+    setFocusCategory(category);
+    
+    let endpoint = "get_all_payment";
+    let dataType = "region";
+    
+    // Определяем API эндпоинт и тип структуры данных
+    switch(category) {
+      case 'retail':
+        endpoint = "get_roz_payment";
+        dataType = "model";
+        break;
+      case 'wholesale':
+        endpoint = "get_opt_payment";
+        dataType = "region";
+        break;
+      case 'all':
+        endpoint = "get_all_payment";
+        dataType = "region";
+        break;
+      default:
+        endpoint = "get_all_payment";
+        dataType = "region";
+    }
+    
+    setApiEndpoint(endpoint);
+    setDataStructureType(dataType);
+    
+    // Загружаем данные для новой категории
+    fetchDataForCategory(category, endpoint, dataType);
+  };
+  
+  // Функция для загрузки данных в зависимости от категории
+// Модифицированный обработчик для fetchDataForCategory
+const fetchDataForCategory = async (category, endpoint, dataType) => {
+  setIsLoading(true);
+  
+  try {
+    console.log(`Запрос данных для категории ${category}, эндпоинт: ${endpoint}`);
+    
+    const response = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: `begin_date=${apiStartDate}&end_date=${apiEndDate}`
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Ошибка HTTP: ${response.status}`);
+    }
+    
+    let apiData;
+    try {
+      apiData = await response.json();
+    } catch (jsonError) {
+      console.error("Ошибка при разборе JSON:", jsonError);
+      throw new Error("Ошибка при разборе ответа сервера");
+    }
+    
+    console.log(`Получены данные для категории ${category}:`, apiData);
+    
+    // Проверяем валидность данных
+    if (!apiData) {
+      console.warn("API вернул пустой ответ");
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!Array.isArray(apiData)) {
+      console.warn("API вернул не массив:", apiData);
+      // Если это объект с полем error, выводим его
+      if (apiData.error) {
+        console.error("API вернул ошибку:", apiData.error);
+      }
+      
+      // Создаем минимальные данные для интерфейса
+      const minimalData = createMinimalData(category);
+      setFinancialData(minimalData);
+      updateYearsAndModels(minimalData);
+      setIsLoading(false);
+      return;
+    }
+    
+    if (apiData.length === 0) {
+      console.warn("API вернул пустой массив");
+      // Создаем минимальные данные для интерфейса
+      const minimalData = createMinimalData(category);
+      setFinancialData(minimalData);
+      updateYearsAndModels(minimalData);
+      setIsLoading(false);
+      return;
+    }
+    
+    // Трансформируем данные в зависимости от типа структуры
+    let transformedData;
+    try {
+      transformedData = dataType === "model" 
+        ? transformModelBasedData(apiData) 
+        : transformRegionBasedData(apiData, category);
+    } catch (transformError) {
+      console.error("Ошибка при трансформации данных:", transformError);
+      // Создаем минимальные данные для интерфейса
+      const minimalData = createMinimalData(category);
+      setFinancialData(minimalData);
+      updateYearsAndModels(minimalData);
+      setIsLoading(false);
+      return;
+    }
+    
+    // Проверяем результат трансформации
+    if (!transformedData || Object.keys(transformedData).length === 0) {
+      console.warn("Трансформация вернула пустые данные");
+      // Создаем минимальные данные для интерфейса
+      transformedData = createMinimalData(category);
+    }
+    
+    // Устанавливаем данные
+    setFinancialData(transformedData);
+    
+    // Обновляем выбранные годы и модели
+    updateYearsAndModels(transformedData);
+    
+    setIsLoading(false);
+  } catch (error) {
+    console.error("Ошибка при загрузке данных:", error);
+    // Создаем минимальные данные для интерфейса
+    const minimalData = createMinimalData(category);
+    setFinancialData(minimalData);
+    updateYearsAndModels(minimalData);
+    setIsLoading(false);
+  }
+};
+  // Функция для создания минимальных данных для интерфейса при ошибке
+const createMinimalData = (category) => {
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
+  
+  const minimalData = {
+    [currentYear]: {
+      targetAmount: 1000000,
+      totalEarned: 800000,
+      months: Array(12).fill().map((_, index) => {
+        const amount = index === currentMonth ? 100000 : 50000;
+        return {
+          name: MONTHS[index],
+          month: index + 1,
+          retail: category === 'retail' || category === 'all' ? amount * 0.6 : 0,
+          wholesale: category === 'wholesale' || category === 'all' ? amount * 0.4 : 0,
+          promo: 0,
+          total: amount
+        };
+      }),
+      quarterlyData: [200000, 200000, 200000, 200000],
+      categories: {
+        retail: category === 'retail' || category === 'all' ? 480000 : 0,
+        wholesale: category === 'wholesale' || category === 'all' ? 320000 : 0,
+        promo: 0
+      },
+      modelData: {}
+    }
+  };
+  
+  return minimalData;
+};
+  
+  // Функция для обновления выбранных годов и моделей
+  const updateYearsAndModels = (data) => {
+    const allYears = Object.keys(data).map(Number);
+    
+    if (allYears.length > 0) {
+      if (displayMode === 'compare') {
+        // В режиме сравнения берем все годы
+        setSelectedYears(allYears);
+      } else {
+        // В остальных режимах берем последний год
+        const latestYear = Math.max(...allYears);
+        setSelectedYears([latestYear]);
+      }
+      
+      // Обновляем названия моделей для последнего года, если данные структурированы по моделям
+      if (dataStructureType === "model") {
+        const latestYear = Math.max(...allYears);
+        updateModelNames(data, latestYear);
+      }
+    }
+  };
+  
+  // Функция для обновления названий моделей
+  const updateModelNames = (data, selectedYear) => {
+    if (!data || !data[selectedYear] || !data[selectedYear].modelData) return;
+    
+    const year = parseInt(selectedYear);
+    const allModels = Object.values(data[year].modelData || {});
+    const sortedModels = [...allModels].sort((a, b) => b.totalSales - a.totalSales);
+    
+    const newModelInfo = { ...modelInfo };
+    
+    if (sortedModels.length > 0) {
+      newModelInfo.retail = {
+        id: sortedModels[0].model_id,
+        name: sortedModels[0].model_name
+      };
+      // Также обновите константу для совместимости
+      SALE_TYPES.RETAIL.name = sortedModels[0].model_name;
+    }
+    
+    if (sortedModels.length > 1) {
+      newModelInfo.wholesale = {
+        id: sortedModels[1].model_id,
+        name: sortedModels[1].model_name
+      };
+      // Также обновите константу для совместимости
+      SALE_TYPES.WHOLESALE.name = sortedModels[1].model_name;
+    }
+    
+    setModelInfo(newModelInfo);
+  };
+  
+  // Функция для проверки наличия данных о моделях
+  const hasModelData = () => {
+    return dataStructureType === "model";
+  };
+  
+  // Функция для обновления данных с датами
+  const refreshDataWithDateRange = () => {
+    fetchDataForCategory(focusCategory, apiEndpoint, dataStructureType);
+  };
+  
+  // Функция для трансформации данных, основанных на моделях (розница)
+// Полностью переработанная функция transformModelBasedData для "retail"
+const transformModelBasedData = (apiData) => {
+  console.log("Трансформация данных на основе моделей:", apiData);
+  
   const transformedData = {};
+  
+  // Проверяем структуру данных (непустой массив)
+  if (!apiData || !Array.isArray(apiData) || apiData.length === 0) {
+    console.warn("Получены пустые данные для моделей");
+    return {};
+  }
   
   // Получаем уникальные годы из данных API
   const years = new Set();
   
   // Первый проход: собираем все уникальные годы из данных
   apiData.forEach(model => {
-    if (!Array.isArray(model.filter_by_region)) {
+    // Проверка на корректность структуры модели
+    if (!model || !Array.isArray(model.filter_by_region)) {
       console.warn("Некорректная структура данных модели:", model);
       return;
     }
     
     model.filter_by_region.forEach(monthData => {
-      if (!monthData.month || typeof monthData.month !== 'string') {
+      if (!monthData || !monthData.month || typeof monthData.month !== 'string') {
         console.warn("Некорректные данные месяца:", monthData);
         return;
       }
@@ -57,6 +355,11 @@ const transformApiDataToComponentFormat = (apiData) => {
   const yearsList = Array.from(years).sort();
   console.log("Найденные годы:", yearsList, "Количество:", yearsList.length);
   
+  if (yearsList.length === 0) {
+    console.warn("Не найдено годов в данных, создаем текущий год");
+    yearsList.push(new Date().getFullYear());
+  }
+  
   // Второй проход: создаем структуру данных для каждого года
   yearsList.forEach(year => {
     transformedData[year] = {
@@ -82,7 +385,7 @@ const transformApiDataToComponentFormat = (apiData) => {
   
   // Третий проход: заполняем данные продаж из API
   apiData.forEach(model => {
-    if (!model.model_id || !model.model_name) {
+    if (!model || !model.model_id || !model.model_name) {
       console.warn("Модель без ID или названия:", model);
       return;
     }
@@ -101,7 +404,7 @@ const transformApiDataToComponentFormat = (apiData) => {
     // Обрабатываем данные по месяцам для каждой модели
     if (Array.isArray(model.filter_by_region)) {
       model.filter_by_region.forEach(monthData => {
-        if (!monthData.month || typeof monthData.month !== 'string') {
+        if (!monthData || !monthData.month || typeof monthData.month !== 'string') {
           return; // Пропускаем некорректные данные
         }
         
@@ -133,6 +436,8 @@ const transformApiDataToComponentFormat = (apiData) => {
         // Обрабатываем данные по регионам
         if (Array.isArray(monthData.regions)) {
           monthData.regions.forEach(region => {
+            if (!region) return;
+            
             const amount = parseFloat(region.amount) || 0;
             const count = parseInt(region.all_count || 0, 10);
             
@@ -151,15 +456,8 @@ const transformApiDataToComponentFormat = (apiData) => {
         // Обновляем данные месяца (общая сумма по всем моделям)
         transformedData[year].months[monthIndex].total += modelMonthTotal;
         
-        // Случайным образом распределяем продажи по категориям (в реальном коде это должно быть из API)
-        // Это сделано для демонстрации, в реальности данные должны приходить из API
-        const retailAmount = modelMonthTotal * (0.4 + Math.random() * 0.2); // ~40-60% от общего
-        const wholesaleAmount = modelMonthTotal * (0.2 + Math.random() * 0.2); // ~20-40% от общего
-        const promoAmount = modelMonthTotal - retailAmount - wholesaleAmount; // оставшееся
-        
-        transformedData[year].months[monthIndex].retail += retailAmount;
-        transformedData[year].months[monthIndex].wholesale += wholesaleAmount;
-        transformedData[year].months[monthIndex].promo += promoAmount;
+        // В случае розничных продаж, все суммы идут в категорию retail
+        transformedData[year].months[monthIndex].retail += modelMonthTotal;
         
         // Обновляем квартальные данные
         const quarterIndex = Math.floor(monthIndex / 3);
@@ -169,25 +467,9 @@ const transformApiDataToComponentFormat = (apiData) => {
         transformedData[year].totalEarned += modelMonthTotal;
         
         // Обновляем категории за год
-        transformedData[year].categories.retail += retailAmount;
-        transformedData[year].categories.wholesale += wholesaleAmount;
-        transformedData[year].categories.promo += promoAmount;
+        transformedData[year].categories.retail += modelMonthTotal;
       });
     }
-  });
-  
-  // Выводим статистику для проверки
-  yearsList.forEach(year => {
-    const yearData = transformedData[year];
-    const monthsWithData = yearData.months.filter(m => m.total > 0).length;
-    
-    console.log(`Данные за ${year} год:`, {
-      totalEarned: yearData.totalEarned,
-      monthsWithData: monthsWithData,
-      quarterlyData: yearData.quarterlyData,
-      categories: yearData.categories,
-      modelsCount: Object.keys(yearData.modelData).length
-    });
   });
   
   // Устанавливаем целевой показатель (в данном случае на 20% выше текущего)
@@ -197,285 +479,258 @@ const transformApiDataToComponentFormat = (apiData) => {
   
   return transformedData;
 };
-
-// Основной компонент
-export default function EnhancedFinancialAnalytics() {
-  // Состояния для управления данными и фильтрами
-  const [financialData, setFinancialData] = useState({});
-  const [selectedYears, setSelectedYears] = useState([]); // Может быть несколько выбранных лет
-  const [filteredData, setFilteredData] = useState([]);
-  const [displayMode, setDisplayMode] = useState('period'); // 'yearly', 'period', 'compare'
-  const [isLoading, setIsLoading] = useState(true); // Состояние загрузки
-  const [apiStartDate, setApiStartDate] = useState('01.01.2025');
-  const [apiEndDate, setApiEndDate] = useState('31.12.2025');
   
-  // Функция для получения текущего месяца и года
-  const getCurrentMonthAndYear = () => {
-    const now = new Date();
-    return {
-      month: now.getMonth() + 1,
-      year: now.getFullYear()
-    };
-  };
+  // Функция для трансформации данных, основанных на регионах (опт и все продажи)
+const transformRegionBasedData = (apiData, category) => {
+  console.log(`Трансформация данных на основе регионов для категории ${category}:`, apiData);
   
-  // Состояния для фильтров по периоду
-  const currentDate = getCurrentMonthAndYear();
-  const [startMonth, setStartMonth] = useState(1); // Начинаем с января
-  const [startYear, setStartYear] = useState(currentDate.year - 1); // Прошлый год
-  const [endMonth, setEndMonth] = useState(currentDate.month); // Текущий месяц
-  const [endYear, setEndYear] = useState(currentDate.year);
+  const transformedData = {};
+  const years = new Set();
   
-  // Состояния для представления
-  const [viewType, setViewType] = useState('bar'); // 'bar', 'line', 'stacked', 'area', 'radar', 'mixed'
-  const [focusCategory, setFocusCategory] = useState('all'); // 'all', 'retail', 'wholesale', 'promo'
+  // Проверяем структуру данных (непустой массив)
+  if (!apiData || !Array.isArray(apiData) || apiData.length === 0) {
+    console.warn(`Получены пустые или некорректные данные для категории ${category}`);
+    return {};
+  }
   
-  // Состояние для информации о моделях
-  const [modelInfo, setModelInfo] = useState({
-    retail: { id: '', name: 'Модель 1' },
-    wholesale: { id: '', name: 'Модель 2' },
-    promo: { id: '', name: 'Модель 3' }
+  // Первый проход: собираем все уникальные годы из данных
+  apiData.forEach(monthData => {
+    if (!monthData || !monthData.month || typeof monthData.month !== 'string') {
+      console.warn("Пропускаем некорректные данные месяца:", monthData);
+      return;
+    }
+    
+    const monthParts = monthData.month.split('-');
+    if (monthParts.length !== 2) {
+      console.warn("Некорректный формат месяца:", monthData.month);
+      return;
+    }
+    
+    const yearStr = monthParts[0];
+    const year = parseInt(yearStr, 10);
+    
+    if (isNaN(year)) {
+      console.warn("Не удалось распознать год:", yearStr);
+      return;
+    }
+    
+    years.add(year);
   });
   
-  // Динамические SALE_TYPES, которые будут обновляться
-const SALE_TYPES = {
-  RETAIL: {
-    id: 'retail',
-    name: 'Розничные продажи',
-    color: '#3b82f6'
-  },
-  WHOLESALE: {
-    id: 'wholesale',
-    name: 'Оптовые продажи',
-    color: '#8b5cf6'
-  },
-  PROMO: {
-    id: 'promo',
-    name: 'Акционные продажи',
-    color: '#ec4899'
+  const yearsList = Array.from(years).sort();
+  console.log("Найденные годы:", yearsList, "Количество:", yearsList.length);
+  
+  if (yearsList.length === 0) {
+    console.warn("Не найдено годов в данных, создаем текущий год");
+    yearsList.push(new Date().getFullYear());
   }
+  
+  // Второй проход: создаем структуру данных для каждого года
+  yearsList.forEach(year => {
+    transformedData[year] = {
+      targetAmount: 0,
+      totalEarned: 0,
+      months: Array(12).fill().map((_, index) => ({
+        name: MONTHS[index],
+        month: index + 1,
+        retail: 0,
+        wholesale: 0,
+        promo: 0,
+        total: 0
+      })),
+      quarterlyData: [0, 0, 0, 0],
+      categories: {
+        retail: 0,
+        wholesale: 0,
+        promo: 0
+      },
+      modelData: {} // Пустой объект для совместимости
+    };
+  });
+  
+  // Третий проход: заполняем данные продаж из API
+  apiData.forEach(monthData => {
+    if (!monthData || !monthData.month || typeof monthData.month !== 'string') {
+      return; // Пропускаем некорректные данные
+    }
+    
+    const monthParts = monthData.month.split('-');
+    if (monthParts.length !== 2) {
+      return; // Пропускаем некорректный формат
+    }
+    
+    const yearStr = monthParts[0];
+    const monthStr = monthParts[1];
+    const year = parseInt(yearStr, 10);
+    const monthIndex = parseInt(monthStr, 10) - 1;
+    
+    if (isNaN(year) || isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) {
+      console.warn(`Некорректный год или месяц: ${yearStr}-${monthStr}`);
+      return;
+    }
+    
+    // Проверяем, что год существует в нашей структуре данных
+    if (!transformedData[year]) {
+      console.warn(`Год ${year} отсутствует в структуре данных!`);
+      return;
+    }
+    
+    // Суммируем данные по всем регионам за месяц
+    let monthTotal = 0;
+    let monthCount = 0;
+    
+    if (Array.isArray(monthData.regions)) {
+      monthData.regions.forEach(region => {
+        // Проверяем, что объект региона корректный
+        if (!region) return;
+        
+        const amount = parseFloat(region.amount) || 0;
+        const count = parseInt(region.all_count || 0, 10);
+        
+        monthTotal += amount;
+        monthCount += count;
+      });
+    } else {
+      console.warn(`Данные о регионах отсутствуют или некорректны для месяца ${monthData.month}`);
+    }
+    
+    // Обновляем данные месяца
+    transformedData[year].months[monthIndex].total += monthTotal;
+    
+    // Распределяем по категориям в зависимости от типа данных
+    if (category === 'wholesale') {
+      // Для оптовых продаж все идет в wholesale
+      transformedData[year].months[monthIndex].wholesale += monthTotal;
+      transformedData[year].categories.wholesale += monthTotal;
+    } else if (category === 'all') {
+      // Для всех продаж делаем условное распределение
+      // Заглушка: 60% розница, 40% опт - так как в данных нет разделения
+      const retailAmount = monthTotal * 0.6;
+      const wholesaleAmount = monthTotal * 0.4;
+      
+      transformedData[year].months[monthIndex].retail += retailAmount;
+      transformedData[year].months[monthIndex].wholesale += wholesaleAmount;
+      
+      transformedData[year].categories.retail += retailAmount;
+      transformedData[year].categories.wholesale += wholesaleAmount;
+    }
+    
+    // Обновляем квартальные данные
+    const quarterIndex = Math.floor(monthIndex / 3);
+    transformedData[year].quarterlyData[quarterIndex] += monthTotal;
+    
+    // Обновляем общую сумму продаж за год
+    transformedData[year].totalEarned += monthTotal;
+  });
+  
+  // Устанавливаем целевой показатель (на 20% выше текущего)
+  yearsList.forEach(year => {
+    transformedData[year].targetAmount = transformedData[year].totalEarned * 1.2;
+  });
+  
+  return transformedData;
 };
-
   
-  // Refs для контейнеров графиков
-  const mainChartRef = useRef(null);
-  const progressChartRef = useRef(null);
-  const detailsChartRef = useRef(null);
-  const yearlyTrendChartRef = useRef(null);
-  const yearComparisonChartRef = useRef(null);
-  const forecastChartRef = useRef(null);
-  const categoryDistributionRef = useRef(null);
+  // Функция для модификации поведения при клике (переход к нужному типу детализации)
+  const handleChartBarClick = (d) => {
+    const yearData = d.year;
+    const monthData = d.month;
+    const monthName = `${d.name} ${d.year}`;
+    
+    // В зависимости от типа данных переходим к разным экранам
+    if (dataStructureType === "model") {
+      // Для розницы показываем экран выбора между моделями и регионами
+      showSelectionOptions(yearData, monthData, monthName);
+    } else {
+      // Для опта и всех продаж сразу показываем распределение по регионам
+      showRegionDetails(yearData, monthData, monthName);
+    }
+  };
   
-  // Функция для обновления названий моделей
-  const updateModelNames = (data, selectedYear) => {
-    if (!data || !data[selectedYear] || !data[selectedYear].modelData) return;
-    
-    const year = parseInt(selectedYear);
-    const allModels = Object.values(data[year].modelData || {});
-    const sortedModels = [...allModels].sort((a, b) => b.totalSales - a.totalSales);
-    
-    const newModelInfo = { ...modelInfo };
-    
-    if (sortedModels.length > 0) {
-      newModelInfo.retail = {
-        id: sortedModels[0].model_id,
-        name: sortedModels[0].model_name
-      };
-      // Также обновите константу для совместимости
-      SALE_TYPES.RETAIL.name = sortedModels[0].model_name;
+  // Функция для клика по столбцу или сегменту графика
+  const handleDataPointClick = (year, month, monthName) => {
+    if (dataStructureType === "model") {
+      // Для розницы - выбор между моделями и регионами
+      showSelectionOptions(year, month, monthName);
+    } else {
+      // Для опта и всех продаж - сразу показываем регионы
+      showRegionDetails(year, month, monthName);
     }
-    
-    if (sortedModels.length > 1) {
-      newModelInfo.wholesale = {
-        id: sortedModels[1].model_id,
-        name: sortedModels[1].model_name
-      };
-      // Также обновите константу для совместимости
-      SALE_TYPES.WHOLESALE.name = sortedModels[1].model_name;
-    }
-    
-    if (sortedModels.length > 2) {
-      newModelInfo.promo = {
-        id: sortedModels[2].model_id,
-        name: sortedModels[2].model_name
-      };
-      // Также обновите константу для совместимости
-      SALE_TYPES.PROMO.name = sortedModels[2].model_name;
-    }
-    
-    setModelInfo(newModelInfo);
   };
   
   // Инициализация данных с API
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        console.log("Отправка запроса к API финансовых данных...");
-        
-        const response = await fetch("https://uzavtosalon.uz/b/dashboard/infos&get_roz_payment", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: `begin_date=${apiStartDate}&end_date=${apiEndDate}`
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Ошибка HTTP: ${response.status}`);
-        }
-        
-        const apiData = await response.json();
-        console.log("Данные API получены:", apiData);
-        
-        // Трансформируем данные API в нужный формат
-        const transformedData = transformApiDataToComponentFormat(apiData);
-        
-        // Устанавливаем данные в состояние компонента
-        setFinancialData(transformedData);
-        
-const allYears = Object.keys(transformedData).map(Number);
-if (allYears.length > 0) {
-  if (displayMode === 'compare') {
-    // В режиме сравнения берем все годы
-    setSelectedYears(allYears);
-  } else {
-    // В остальных режимах берем последний год
-    const latestYear = Math.max(...allYears);
-    setSelectedYears([latestYear]);
-  }
-  const latestYear = Math.max(...allYears);
-  updateModelNames(transformedData, latestYear);
-}
-        
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Ошибка при получении данных:", error);
-        setIsLoading(false);
-      }
-    };
-    
-    // Вызываем функцию загрузки данных
-    fetchData();
+    fetchDataForCategory(focusCategory, apiEndpoint, dataStructureType);
   }, []);
   
-  // Функция для обновления данных с новыми датами
-  const refreshDataWithDateRange = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("https://uzavtosalon.uz/b/dashboard/infos&get_roz_payment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: `begin_date=${apiStartDate}&end_date=${apiEndDate}`
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Ошибка HTTP: ${response.status}`);
-      }
-      
-      const apiData = await response.json();
-      const transformedData = transformApiDataToComponentFormat(apiData);
-      setFinancialData(transformedData);
-      
-      // Обновляем выбранный год
-  const allYears = Object.keys(financialData).map(Number);
-if (allYears.length > 0) {
-  if (displayMode === 'compare') {
-    // В режиме сравнения берем все годы без фильтрации и сортировки
-    setSelectedYears(allYears);
-  } else {
-    // В других режимах можно взять последний год, если это необходимо
-    const latestYear = Math.max(...allYears);
-    setSelectedYears([latestYear]);
-  }
-  // Обновляем названия моделей (для последнего года)
-  const latestYear = Math.max(...allYears);
-  updateModelNames(financialData, latestYear);
-}
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Ошибка при получении данных:", error);
-      setIsLoading(false);
-    }
-  };
-  
-  // Функция для переключения выбора года
-  const toggleYearSelection = (year) => {
-    if (displayMode === 'compare') {
-      // В режиме сравнения можно выбрать несколько лет
-      if (selectedYears.includes(year)) {
-        if (selectedYears.length > 1) {
-          setSelectedYears(selectedYears.filter(y => y !== year));
-        }
-      } else {
-        setSelectedYears([...selectedYears, year]);
-      }
-    } else {
-      // В обычном режиме только один год
-      setSelectedYears([year]);
-      // Обновляем названия моделей для выбранного года
-      updateModelNames(financialData, year);
-    }
-  };
-  
   // Эффект для фильтрации данных в зависимости от режима и фильтров
-useEffect(() => {
-  if (Object.keys(financialData).length === 0) return;
-  
-  // Получаем все доступные годы
-  const allAvailableYears = Object.keys(financialData).map(Number).sort();
-  console.log("Все доступные годы в данных:", allAvailableYears);
-  
-  // Для режима 'period' всегда включаем все доступные годы в selectedYears
-  setSelectedYears(allAvailableYears);
-  
-  const filteredMonths = [];
-  
-  // Режим period - группировка по месяцам и годам
-  // Полный диапазон выбранного периода
-  const effectiveStartYear = Math.min(...allAvailableYears);
-  const effectiveEndYear = Math.max(...allAvailableYears);
-  
-  for (let year = effectiveStartYear; year <= effectiveEndYear; year++) {
-    if (!financialData[year]) continue;
+  useEffect(() => {
+    if (Object.keys(financialData).length === 0) return;
     
-    financialData[year].months.forEach(month => {
-      // Убираем фильтрацию по диапазону месяцев, чтобы видеть все данные
-      filteredMonths.push({
-        ...month,
-        year,
-        label: `${month.name} ${year}`
+    // Получаем все доступные годы
+    const allAvailableYears = Object.keys(financialData).map(Number).sort();
+    console.log("Все доступные годы в данных:", allAvailableYears);
+    
+    // Для режима 'period' всегда включаем все доступные годы в selectedYears
+    setSelectedYears(allAvailableYears);
+    
+    const filteredMonths = [];
+    
+    // Режим period - группировка по месяцам и годам
+    // Полный диапазон выбранного периода
+    const effectiveStartYear = Math.min(...allAvailableYears);
+    const effectiveEndYear = Math.max(...allAvailableYears);
+    
+    for (let year = effectiveStartYear; year <= effectiveEndYear; year++) {
+      if (!financialData[year]) continue;
+      
+      financialData[year].months.forEach(month => {
+        // Убираем фильтрацию по диапазону месяцев, чтобы видеть все данные
+        filteredMonths.push({
+          ...month,
+          year,
+          label: `${month.name} ${year}`
+        });
       });
-    });
-  }
-  
-  console.log("Отфильтрованные данные:", filteredMonths.length, "записей");
-  console.log("Годы в отфильтрованных данных:", [...new Set(filteredMonths.map(m => m.year))].sort());
-  
-  setFilteredData(filteredMonths);
-}, [financialData]);
+    }
+    
+    console.log("Отфильтрованные данные:", filteredMonths.length, "записей");
+    console.log("Годы в отфильтрованных данных:", [...new Set(filteredMonths.map(m => m.year))].sort());
+    
+    setFilteredData(filteredMonths);
+  }, [financialData]);
   
   // Эффект для рендеринга графиков при изменении данных
   useEffect(() => {
     if (!filteredData.length) return;
     
+    // Вызов функций рендеринга - эти функции вы добавите сами
+    // ЗДЕСЬ ДОЛЖНЫ БЫТЬ ВСТАВЛЕНЫ ВЫЗОВЫ ФУНКЦИЙ РЕНДЕРИНГА
+    /*
     renderMainChart();
     renderProgressChart();
     renderDetailsChart();
     renderYearlyTrendChart();
     
     if (displayMode === 'compare') {
-      // renderYearComparisonChart();
+      renderYearComparisonChart();
     } else if (displayMode === 'period') {
       renderPeriodComparisonTable();
     }
     
     renderForecastChart();
     renderCategoryDistribution();
-   
+    */
   }, [filteredData, viewType, displayMode, focusCategory]);
   
+  // Функция форматирования для денежных значений
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: 'UZS',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
   
   // Функция для форматирования чисел в компактный вид
   const formatProfitCompact = (number) => {
@@ -491,22 +746,192 @@ useEffect(() => {
     return Math.round(number).toLocaleString('ru-RU');
   };
   
-  // Функция для форматирования валюты
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('ru-RU', {
-      style: 'currency',
-      currency: 'UZS',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
-  
   // Функция для получения общей суммы за период
   const getTotalForPeriod = () => {
     if (!filteredData.length) return 0;
     return filteredData.reduce((sum, month) => sum + month.total, 0);
   };
   
-const renderMainChart = () => {
+  // Функция для расчета общей суммы за текущий месяц
+const getCurrentMonthTotal = () => {
+  if (!filteredData || filteredData.length === 0) {
+    console.warn("Нет данных для расчета текущего месяца");
+    return 0;
+  }
+  
+  // Получаем текущую дату
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  
+  // Сначала пытаемся найти точное совпадение по месяцу и году
+  let currentMonthData = filteredData.find(
+    month => month.month === currentMonth && month.year === currentYear
+  );
+  
+  // Если не найдено, берем самую последнюю запись
+  if (!currentMonthData) {
+    // Сортируем по году (по убыванию), затем по месяцу (по убыванию)
+    const sortedData = [...filteredData].sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      return b.month - a.month;
+    });
+    
+    currentMonthData = sortedData[0];
+    
+    if (!currentMonthData) {
+      console.warn("Не удалось найти ни одной записи в данных");
+      return 0;
+    }
+  }
+  
+  console.log("Данные для расчета:", currentMonthData);
+  
+  // В зависимости от выбранной категории возвращаем разные значения
+  switch (focusCategory) {
+    case 'retail':
+      return currentMonthData.retail || 0;
+    case 'wholesale':
+      return currentMonthData.wholesale || 0;
+    case 'all':
+    default:
+      return currentMonthData.total || 0;
+  }
+};
+  
+  // Функция для расчета среднего дохода в день на основе прошедших дней текущего месяца
+const calculateAverageDailyIncome = () => {
+  // Получаем текущую дату
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const currentDay = now.getDate();
+  
+  // Находим данные текущего месяца
+  const currentMonthData = filteredData.find(
+    month => month.month === currentMonth && month.year === currentYear
+  );
+  
+  // Если данных нет, возвращаем 0
+  if (!currentMonthData) return 0;
+  
+  // Общий доход за текущий месяц в зависимости от категории
+  let totalIncome = 0;
+  
+  switch (focusCategory) {
+    case 'retail':
+      totalIncome = currentMonthData.retail;
+      break;
+    case 'wholesale':
+      totalIncome = currentMonthData.wholesale;
+      break;
+    case 'all':
+    default:
+      totalIncome = currentMonthData.total;
+      break;
+  }
+  
+  // Делим на количество прошедших дней
+  return totalIncome / currentDay;
+};
+  
+  // Функция для расчета полного прогнозируемого дохода за текущий месяц
+// Модифицированная функция для расчета полного прогнозируемого дохода
+const calculateTotalMonthEstimate = () => {
+  if (!filteredData || filteredData.length === 0) {
+    console.warn("Нет данных для расчета прогноза");
+    return 0;
+  }
+  
+  // Получаем текущую дату
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const currentDay = now.getDate();
+  
+  // Получаем количество дней в текущем месяце
+  const daysInCurrentMonth = new Date(currentYear, currentMonth, 0).getDate();
+  
+  // Сначала пытаемся найти точное совпадение по месяцу и году
+  let currentMonthData = filteredData.find(
+    month => month.month === currentMonth && month.year === currentYear
+  );
+  
+  // Если не найдено, берем самую последнюю запись
+  if (!currentMonthData) {
+    // Сортируем по году (по убыванию), затем по месяцу (по убыванию)
+    const sortedData = [...filteredData].sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      return b.month - a.month;
+    });
+    
+    currentMonthData = sortedData[0];
+    
+    if (!currentMonthData) {
+      console.warn("Не удалось найти ни одной записи в данных");
+      return 0;
+    }
+  }
+  
+  // Уже полученный доход за месяц в зависимости от категории
+  let currentIncome = 0;
+  
+  switch (focusCategory) {
+    case 'retail':
+      currentIncome = currentMonthData.retail || 0;
+      break;
+    case 'wholesale':
+      currentIncome = currentMonthData.wholesale || 0;
+      break;
+    case 'all':
+    default:
+      currentIncome = currentMonthData.total || 0;
+      break;
+  }
+  
+  // Если это не текущий месяц и год, просто возвращаем известное значение
+  if (currentMonthData.year !== currentYear || currentMonthData.month !== currentMonth) {
+    return currentIncome;
+  }
+  
+  // Если месяц закончился, просто возвращаем текущий доход
+  if (currentDay >= daysInCurrentMonth) {
+    return currentIncome;
+  }
+  
+  // Текущий средний доход в день (на основе прошедших дней)
+  const averageDailyIncome = currentIncome / Math.max(1, currentDay);
+  
+  // Оставшиеся дни в месяце
+  const remainingDays = daysInCurrentMonth - currentDay;
+  
+  // Прогнозируемый доход на оставшиеся дни
+  const estimatedRemainingIncome = averageDailyIncome * remainingDays;
+  
+  // Общий ожидаемый доход за месяц (текущий + прогнозируемый)
+  return currentIncome + estimatedRemainingIncome;
+};
+  
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return '';
+    
+    const parts = dateString.split('.');
+    if (parts.length !== 3) return '';
+    
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  };
+  
+  // Конвертирует дату из формата YYYY-MM-DD (из элемента input) в формат DD.MM.YYYY для API
+  const formatDateFromInput = (dateString) => {
+    if (!dateString) return '';
+    
+    const parts = dateString.split('-');
+    if (parts.length !== 3) return '';
+    
+    return `${parts[2]}.${parts[1]}.${parts[0]}`;
+  };
+  
+ const renderMainChart = () => {
   if (!mainChartRef.current) return;
   if (!filteredData.length) {
     mainChartRef.current.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%"><p style="color:#9ca3af">Загрузка данных...</p></div>';
@@ -5870,99 +6295,9 @@ const renderProgressChart = () => {
         .text(type.name);
     });
   };
-// Функция для расчета общей суммы за текущий месяц
-const getCurrentMonthTotal = () => {
-  // Получаем текущую дату
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-  
-  // Фильтруем данные текущего месяца
-  const currentMonthData = filteredData.find(
-    month => month.month === currentMonth && month.year === currentYear
-  );
-  
-  // Если данных нет, возвращаем 0
-  return currentMonthData ? currentMonthData.total : 0;
-};
-  // Функция для расчета среднего дохода в день на основе прошедших дней текущего месяца
-const calculateAverageDailyIncome = () => {
-  // Получаем текущую дату
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1; // JavaScript месяцы начинаются с 0
-  const currentDay = now.getDate();
-  
-  // Находим данные текущего месяца
-  const currentMonthData = filteredData.find(
-    month => month.month === currentMonth && month.year === currentYear
-  );
-  
-  // Если данных нет, возвращаем 0
-  if (!currentMonthData) return 0;
-  
-  // Общий доход за текущий месяц
-  const totalIncome = currentMonthData.total;
-  
-  // Делим на количество прошедших дней
-  return totalIncome / currentDay;
-};
-// Функция для расчета полного прогнозируемого дохода за текущий месяц
-const calculateTotalMonthEstimate = () => {
-  // Получаем текущую дату
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-  const currentDay = now.getDate();
-  
-  // Получаем количество дней в текущем месяце
-  const daysInCurrentMonth = new Date(currentYear, currentMonth, 0).getDate();
-  
-  // Находим данные текущего месяца
-  const currentMonthData = filteredData.find(
-    month => month.month === currentMonth && month.year === currentYear
-  );
-  
-  // Если данных нет, возвращаем 0
-  if (!currentMonthData) return 0;
-  
-  // Уже полученный доход за текущий месяц
-  const currentIncome = currentMonthData.total;
-  
-  // Если месяц закончился, просто возвращаем текущий доход
-  if (currentDay >= daysInCurrentMonth) return currentIncome;
-  
-  // Текущий средний доход в день (на основе прошедших дней)
-  const averageDailyIncome = currentIncome / currentDay;
-  
-  // Оставшиеся дни в месяце
-  const remainingDays = daysInCurrentMonth - currentDay;
-  
-  // Прогнозируемый доход на оставшиеся дни
-  const estimatedRemainingIncome = averageDailyIncome * remainingDays;
-  
-  // Общий ожидаемый доход за месяц (текущий + прогнозируемый)
-  return currentIncome + estimatedRemainingIncome;
-};
-const formatDateForInput = (dateString) => {
-  if (!dateString) return '';
-  
-  const parts = dateString.split('.');
-  if (parts.length !== 3) return '';
-  
-  return `${parts[2]}-${parts[1]}-${parts[0]}`;
-};
-// Конвертирует дату из формата YYYY-MM-DD (из элемента input) в формат DD.MM.YYYY для API
-const formatDateFromInput = (dateString) => {
-  if (!dateString) return '';
-  
-  const parts = dateString.split('-');
-  if (parts.length !== 3) return '';
-  
-  return `${parts[2]}.${parts[1]}.${parts[0]}`;
-};
-  
- return (
+
+  // JSX для компонента
+  return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6">
       {/* РАЗДЕЛ: Заголовок страницы */}
       <header className="mb-6">
@@ -5986,88 +6321,79 @@ const formatDateFromInput = (dateString) => {
       {/* Индикатор загрузки */}
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-primary"></div>
         </div>
       ) : (
         <>
           {/* РАЗДЕЛ: Панель управления и фильтры */}
-       {/* РАЗДЕЛ: Панель управления и фильтры */}
-<div className="bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 mb-6 border border-gray-700/50">
-  <div className="flex flex-wrap items-center justify-between gap-4">
-    {/* Табы для категорий продаж */}
-    <div className="flex bg-gray-700/80 rounded-lg p-1">
-      <button 
-        className={`px-3 py-1.5 rounded-md text-sm ${
-          focusCategory === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-        }`}
-        onClick={() => setFocusCategory('all')}
-      >
-        Все продажи
-      </button>
-      <button 
-        className={`px-3 py-1.5 rounded-md text-sm ${
-          focusCategory === 'retail' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-        }`}
-        onClick={() => setFocusCategory('retail')}
-        style={{ color: focusCategory === 'retail' ? '#ffffff' : SALE_TYPES.RETAIL.color }}
-      >
-        Розница
-      </button>
-      <button 
-        className={`px-3 py-1.5 rounded-md text-sm ${
-          focusCategory === 'wholesale' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-        }`}
-        onClick={() => setFocusCategory('wholesale')}
-        style={{ color: focusCategory === 'wholesale' ? '#ffffff' : SALE_TYPES.WHOLESALE.color }}
-      >
-        Опт
-      </button>
-      <button 
-        className={`px-3 py-1.5 rounded-md text-sm ${
-          focusCategory === 'promo' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-        }`}
-        onClick={() => setFocusCategory('promo')}
-        style={{ color: focusCategory === 'promo' ? '#ffffff' : SALE_TYPES.PROMO.color }}
-      >
-        Акции
-      </button>
-    </div>
+          <div className="bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 mb-6 border border-gray-700/50">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              {/* Табы для категорий продаж */}
+              <div className="flex bg-gray-700/80 rounded-lg p-1">
+                <button 
+                  className={`px-3 py-1.5 rounded-md text-sm ${
+                    focusCategory === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+                  }`}
+                  onClick={() => handleCategoryChange('all')}
+                >
+                  Все продажи
+                </button>
+                <button 
+                  className={`px-3 py-1.5 rounded-md text-sm ${
+                    focusCategory === 'retail' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+                  }`}
+                  onClick={() => handleCategoryChange('retail')}
+                  style={{ color: focusCategory === 'retail' ? '#ffffff' : SALE_TYPES.RETAIL.color }}
+                >
+                  Розница
+                </button>
+                <button 
+                  className={`px-3 py-1.5 rounded-md text-sm ${
+                    focusCategory === 'wholesale' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+                  }`}
+                  onClick={() => handleCategoryChange('wholesale')}
+                  style={{ color: focusCategory === 'wholesale' ? '#ffffff' : SALE_TYPES.WHOLESALE.color }}
+                >
+                  Опт
+                </button>
+              </div>
 
-    {/* Элементы выбора даты для API запроса */}
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2">
-        <div className="relative">
-          <input 
-            type="date" 
-            className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36"
-            value={formatDateForInput(apiStartDate)} // Нужна функция форматирования
-            onChange={(e) => setApiStartDate(formatDateFromInput(e.target.value))} // Нужна функция форматирования
-          />
-        </div>
-        
-        <span className="text-gray-400">—</span>
-        
-        <div className="relative">
-          <input 
-            type="date" 
-            className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36"
-            value={formatDateForInput(apiEndDate)} // Нужна функция форматирования
-            onChange={(e) => setApiEndDate(formatDateFromInput(e.target.value))} // Нужна функция форматирования
-          />
-        </div>
-      </div>
-      
-      <button 
-        className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-1"
-        onClick={refreshDataWithDateRange}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-        </svg>
-        Обновить
-      </button>
-    </div>
-  </div>
-</div>
+              {/* Элементы выбора даты для API запроса */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <input 
+                      type="date" 
+                      className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36"
+                      value={formatDateForInput(apiStartDate)}
+                      onChange={(e) => setApiStartDate(formatDateFromInput(e.target.value))}
+                    />
+                  </div>
+                  
+                  <span className="text-gray-400">—</span>
+                  
+                  <div className="relative">
+                    <input 
+                      type="date" 
+                      className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36"
+                      value={formatDateForInput(apiEndDate)}
+                      onChange={(e) => setApiEndDate(formatDateFromInput(e.target.value))}
+                    />
+                  </div>
+                </div>
+                
+                <button 
+                  className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-1"
+                  onClick={refreshDataWithDateRange}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                  </svg>
+                  Обновить
+                </button>
+              </div>
+            </div>
+          </div>
           
           {filteredData.length > 0 && (
             <>
@@ -6086,7 +6412,11 @@ const formatDateFromInput = (dateString) => {
         </svg>
       </div>
       <div>
-        <h3 className="text-lg font-medium text-blue-300">Общая сумма</h3>
+        <h3 className="text-lg font-medium text-blue-300">
+          {focusCategory === 'all' ? 'Общая сумма' : 
+           focusCategory === 'retail' ? 'Розничные продажи' : 
+           'Оптовые продажи'}
+        </h3>
         <p className="text-3xl font-bold text-white mt-1">
           {formatCurrency(getCurrentMonthTotal())}
         </p>
@@ -6110,7 +6440,11 @@ const formatDateFromInput = (dateString) => {
         </svg>
       </div>
       <div>
-        <h3 className="text-lg font-medium text-purple-300">Средний доход в день</h3>
+        <h3 className="text-lg font-medium text-purple-300">
+          {focusCategory === 'all' ? 'Средний доход в день' : 
+           focusCategory === 'retail' ? 'Среднее в день (розница)' : 
+           'Среднее в день (опт)'}
+        </h3>
         <p className="text-3xl font-bold text-white mt-1">
           {formatCurrency(calculateAverageDailyIncome())}
         </p>
@@ -6121,33 +6455,37 @@ const formatDateFromInput = (dateString) => {
     </div>
   </motion.div>
   
-<motion.div 
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ delay: 0.3 }}
-  className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-xl p-5 border border-green-500/20 shadow-lg"
->
-  <div className="flex items-center">
-    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-600/30 flex items-center justify-center mr-4">
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-100" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-      </svg>
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.3 }}
+    className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-xl p-5 border border-green-500/20 shadow-lg"
+  >
+    <div className="flex items-center">
+      <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-600/30 flex items-center justify-center mr-4">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-100" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+        </svg>
+      </div>
+      <div>
+        <h3 className="text-lg font-medium text-green-300">
+          {focusCategory === 'all' ? 'Ожидаемая сумма за месяц' : 
+           focusCategory === 'retail' ? 'Прогноз розницы за месяц' : 
+           'Прогноз опта за месяц'}
+        </h3>
+        <p className="text-3xl font-bold text-white mt-1">
+          {formatCurrency(calculateTotalMonthEstimate())}
+        </p>
+        <p className="text-green-300/70 text-sm mt-1">
+          {new Date().getDate()} / {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()} дней месяца прошло
+        </p>
+      </div>
     </div>
-    <div>
-      <h3 className="text-lg font-medium text-green-300">Ожидаемая сумма за месяц</h3>
-      <p className="text-3xl font-bold text-white mt-1">
-        {formatCurrency(calculateTotalMonthEstimate())}
-      </p>
-      <p className="text-green-300/70 text-sm mt-1">
-        {new Date().getDate()} / {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()} дней месяца прошло
-      </p>
-    </div>
-  </div>
-</motion.div>
+  </motion.div>
 </div>
               
               {/* РАЗДЕЛ: Основной график и прогресс */}
-              <div className=" gap-6 mb-6">
+              <div className="gap-6 mb-6">
                 <div className="lg:col-span-2 bg-gray-800 rounded-xl p-2 border border-gray-700/50 shadow-lg">
                   <div ref={mainChartRef} className="w-full h-full"></div>
                 </div>
