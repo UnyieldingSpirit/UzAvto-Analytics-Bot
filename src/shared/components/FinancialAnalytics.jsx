@@ -183,7 +183,6 @@ export default function EnhancedFinancialAnalytics() {
   // Состояния для представления
   const [viewType, setViewType] = useState('bar'); // 'bar', 'line', 'stacked', 'area', 'radar', 'mixed'
   const [focusCategory, setFocusCategory] = useState('all'); // 'all', 'retail', 'wholesale', 'promo'
-  const [showQuarterlyData, setShowQuarterlyData] = useState(false);
   
   // Состояние для информации о моделях
   const [modelInfo, setModelInfo] = useState({
@@ -220,7 +219,6 @@ const SALE_TYPES = {
   const yearComparisonChartRef = useRef(null);
   const forecastChartRef = useRef(null);
   const categoryDistributionRef = useRef(null);
-  const quarterlyChartRef = useRef(null);
   
   // Функция для обновления названий моделей
   const updateModelNames = (data, selectedYear) => {
@@ -448,11 +446,8 @@ const SALE_TYPES = {
     
     renderForecastChart();
     renderCategoryDistribution();
-    
-    if (showQuarterlyData) {
-      renderQuarterlyChart();
-    }
-  }, [filteredData, viewType, displayMode, focusCategory, showQuarterlyData]);
+   
+  }, [filteredData, viewType, displayMode, focusCategory]);
   
   // Функция для изменения режима отображения
   const handleDisplayModeChange = (mode) => {
@@ -4977,629 +4972,6 @@ const renderGroupedBarChart = (data, options) => {
         });
     });
   };
-  const renderRadarChart = () => {
-    if (!mainChartRef.current) return;
-    
-    const container = mainChartRef.current;
-    container.innerHTML = '';
-    
-    const width = container.clientWidth;
-    const height = 400;
-    const margin = 60;
-    
-    // Создаем SVG
-    const svg = d3.select(container)
-      .append('svg')
-      .attr('width', width)
-      .attr('height', height)
-      .style('background', '#1f2937')
-      .style('border-radius', '0.5rem');
-    
-    // Центр графика
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const radius = Math.min(width, height) / 2 - margin;
-    
-    // Добавляем заголовок
-    svg.append('text')
-      .attr('x', width / 2)
-      .attr('y', 30)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '1.2rem')
-      .style('font-weight', 'bold')
-      .style('fill', '#f9fafb')
-      .text(`Радарная диаграмма продаж по месяцам` +
-        (focusCategory !== 'all' ? ` (${SALE_TYPES[focusCategory.toUpperCase()].name})` : ''));
-    
-    // Подготавливаем данные
-    let chartData;
-    
-    if (displayMode === 'compare') {
-      // Для режима сравнения создаем многоуровневый радар по годам
-      chartData = selectedYears.map(year => {
-        const yearData = filteredData.filter(month => month.year === year);
-        
-        return {
-          year,
-          values: MONTHS.map((month, i) => {
-            const monthData = yearData.find(m => m.name === month);
-            return {
-              axis: month,
-              value: monthData ? 
-                (focusCategory === 'all' ? monthData.total : monthData[focusCategory]) : 0
-            };
-          })
-        };
-      });
-    } else {
-      // Для обычного режима создаем один уровень с тремя категориями продаж
-      chartData = Object.values(SALE_TYPES).map(type => {
-        return {
-          category: type.name,
-          color: type.color,
-          values: MONTHS.map((month, i) => {
-            const monthData = filteredData.find(m => m.name === month && 
-              (displayMode === 'yearly' ? m.year === selectedYears[0] : true));
-            
-            return {
-              axis: month,
-              value: monthData ? monthData[type.id] : 0
-            };
-          })
-        };
-      });
-    }
-    
-    // Находим максимальное значение для нормализации
-    const maxValue = d3.max(chartData, d => d3.max(d.values, v => v.value));
-    
-    // Создаем шкалы
-    const angleSlice = Math.PI * 2 / MONTHS.length;
-    
-    // Цветовая схема
-    const colorScale = displayMode === 'compare' ?
-      d3.scaleOrdinal()
-        .domain(selectedYears)
-        .range(d3.schemeCategory10.slice(0, selectedYears.length)) :
-      d3.scaleOrdinal()
-        .domain(Object.values(SALE_TYPES).map(t => t.name))
-        .range(Object.values(SALE_TYPES).map(t => t.color));
-    
-    // Создаем радиальную шкалу
-    const rScale = d3.scaleLinear()
-      .domain([0, maxValue])
-      .range([0, radius]);
-    
-    // Функция для генерации пути радара
-    const radarLine = d3.lineRadial()
-      .radius(d => rScale(d.value))
-      .angle((d, i) => i * angleSlice)
-      .curve(d3.curveLinearClosed);
-    
-    // Создаем группу для радара
-    const radarGroup = svg.append('g')
-      .attr('transform', `translate(${centerX},${centerY})`);
-    
-    // Добавляем концентрические круги
-    const axisGrid = radarGroup.append('g').attr('class', 'axis-grid');
-    
-    // Добавляем круги-уровни
-    const levels = 5;
-    axisGrid.selectAll('.level')
-      .data(d3.range(1, levels + 1).reverse())
-      .join('circle')
-      .attr('class', 'level')
-      .attr('r', d => radius * d / levels)
-      .style('fill', 'none')
-      .style('stroke', '#4b5563')
-      .style('stroke-dasharray', '3,3')
-      .style('stroke-width', '0.5px');
-    
-    // Добавляем подписи к уровням
-    axisGrid.selectAll('.level-label')
-      .data(d3.range(1, levels + 1).reverse())
-      .join('text')
-      .attr('class', 'level-label')
-      .attr('x', 5)
-      .attr('y', d => -radius * d / levels)
-      .attr('dy', '0.4em')
-      .style('font-size', '10px')
-      .style('fill', '#9ca3af')
-      .text(d => d3.format(',.0f')(maxValue * d / levels));
-    
-    // Добавляем оси
-    const axes = radarGroup.selectAll('.axis')
-      .data(MONTHS)
-      .join('g')
-      .attr('class', 'axis');
-    
-    // Добавляем линии осей
-    axes.append('line')
-      .attr('x1', 0)
-      .attr('y1', 0)
-      .attr('x2', (d, i) => radius * Math.cos(angleSlice * i - Math.PI / 2))
-      .attr('y2', (d, i) => radius * Math.sin(angleSlice * i - Math.PI / 2))
-      .style('stroke', '#4b5563')
-      .style('stroke-width', '1px');
-    
-    // Добавляем подписи к осям
-    axes.append('text')
-      .attr('class', 'axis-label')
-      .attr('text-anchor', 'middle')
-      .attr('dy', '0.35em')
-      .attr('x', (d, i) => (radius + 10) * Math.cos(angleSlice * i - Math.PI / 2))
-      .attr('y', (d, i) => (radius + 10) * Math.sin(angleSlice * i - Math.PI / 2))
-      .text(d => d)
-      .style('font-size', '0.7rem')
-      .style('fill', '#f9fafb');
-    
-    // Добавляем радарные области с анимацией
-    chartData.forEach((d, i) => {
-      // Преобразуем данные для радарной линии
-      const dataValues = d.values.map(v => ({ ...v }));
-      
-      // Добавляем полупрозрачную заливку
-      radarGroup.append('path')
-        .datum(dataValues)
-        .attr('class', 'radar-area')
-        .attr('d', d => radarLine(d))
-        .style('fill', displayMode === 'compare' ? colorScale(d.year) : d.color)
-        .style('fill-opacity', 0.1)
-        .style('stroke', 'none')
-        .style('filter', 'blur(2px)')
-        .style('opacity', 0)
-        .transition()
-        .duration(800)
-        .delay(i * 300)
-        .style('opacity', 0.7);
-      
-      // Добавляем контур
-      const path = radarGroup.append('path')
-        .datum(dataValues)
-        .attr('class', 'radar-stroke')
-        .attr('d', d => radarLine(d))
-        .style('fill', 'none')
-        .style('stroke-width', 2)
-        .style('stroke', displayMode === 'compare' ? colorScale(d.year) : d.color)
-        .style('filter', `drop-shadow(0 0 2px ${displayMode === 'compare' ? colorScale(d.year) : d.color})`)
-        .style('opacity', 0)
-        .transition()
-        .duration(800)
-        .delay(i * 300)
-        .style('opacity', 1);
-      
-      // Анимация отрисовки контура
-      const pathLength = path.node().getTotalLength();
-      path
-        .attr('stroke-dasharray', pathLength)
-        .attr('stroke-dashoffset', pathLength)
-        .transition()
-        .duration(1500)
-        .delay(i * 300)
-        .attr('stroke-dashoffset', 0);
-      
-      // Добавляем точки данных
-      radarGroup.selectAll(`.radar-circle-${i}`)
-        .data(dataValues)
-        .join('circle')
-        .attr('class', `radar-circle-${i}`)
-        .attr('cx', (d, j) => rScale(d.value) * Math.cos(angleSlice * j - Math.PI / 2))
-        .attr('cy', (d, j) => rScale(d.value) * Math.sin(angleSlice * j - Math.PI / 2))
-        .attr('r', 0)
-        .style('fill', displayMode === 'compare' ? colorScale(d.year) : d.color)
-        .style('stroke', '#1f2937')
-        .style('stroke-width', 2)
-        .transition()
-        .duration(800)
-        .delay((_, j) => i * 300 + j * 50 + 800)
-        .attr('r', 4);
-    });
-    
-    // Добавляем легенду
-    const legend = svg.append('g')
-      .attr('transform', `translate(${width - 120}, 60)`);
-    
-    chartData.forEach((d, i) => {
-      const legendItem = legend.append('g')
-        .attr('transform', `translate(0, ${i * 25})`);
-      
-      legendItem.append('rect')
-        .attr('width', 15)
-        .attr('height', 15)
-        .attr('rx', 2)
-        .attr('fill', displayMode === 'compare' ? colorScale(d.year) : d.color);
-      
-      legendItem.append('text')
-        .attr('x', 25)
-        .attr('y', 12)
-        .style('font-size', '0.8rem')
-        .style('fill', '#f9fafb')
-        .text(displayMode === 'compare' ? `${d.year} год` : d.category);
-    });
-  };
-  
-  const renderMixedChart = () => {
-    if (!mainChartRef.current) return;
-    
-    const container = mainChartRef.current;
-    container.innerHTML = '';
-    
-    const width = container.clientWidth;
-    const height = 400;
-    const margin = { top: 40, right: 30, bottom: 60, left: 60 };
-    
-    // Создаем SVG
-    const svg = d3.select(container)
-      .append('svg')
-      .attr('width', width)
-      .attr('height', height)
-      .style('background', '#1f2937')
-      .style('border-radius', '0.5rem');
-    
-    // Добавляем заголовок
-    svg.append('text')
-      .attr('x', width / 2)
-      .attr('y', margin.top / 2)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '1.2rem')
-      .style('font-weight', 'bold')
-      .style('fill', '#f9fafb')
-      .text('Комбинированный анализ продаж');
-    
-    // Подготавливаем данные
-    let barData, lineData;
-    
-    if (displayMode === 'yearly') {
-      // Для годового режима: столбцы для категорий, линия для общих продаж
-      barData = [];
-      
-      // Данные для столбцов (категории продаж)
-      filteredData.forEach(month => {
-        barData.push(
-          { month: month.month, name: month.name, category: 'retail', value: month.retail },
-          { month: month.month, name: month.name, category: 'wholesale', value: month.wholesale },
-          { month: month.month, name: month.name, category: 'promo', value: month.promo }
-        );
-      });
-      
-      // Данные для линии (общие продажи)
-      lineData = filteredData.map(month => ({
-        month: month.month,
-        name: month.name,
-        value: month.total
-      })).sort((a, b) => a.month - b.month);
-    } else if (displayMode === 'compare') {
-      // Для режима сравнения: столбцы для текущего года, линия для предыдущего
-      const currentYear = Math.max(...selectedYears);
-      const previousYear = Math.max(...selectedYears.filter(y => y !== currentYear));
-      
-      // Данные для столбцов (текущий год)
-      barData = filteredData
-        .filter(month => month.year === currentYear)
-        .map(month => ({
-          month: month.month,
-          name: month.name,
-          category: 'current',
-          value: focusCategory === 'all' ? month.total : month[focusCategory]
-        }));
-      
-      // Данные для линии (предыдущий год)
-      lineData = filteredData
-        .filter(month => month.year === previousYear)
-        .map(month => ({
-          month: month.month,
-          name: month.name,
-          value: focusCategory === 'all' ? month.total : month[focusCategory],
-          year: previousYear
-        }))
-        .sort((a, b) => a.month - b.month);
-    } else {
-      // Для периода: столбцы для последних 6 месяцев, линия для тренда
-      const sortedData = [...filteredData].sort((a, b) => {
-        if (a.year !== b.year) return a.year - b.year;
-        return a.month - b.month;
-      });
-      
-      // Берем последние 6 месяцев для столбцов
-      const recentMonths = sortedData.slice(-6);
-      
-      barData = [];
-      recentMonths.forEach(month => {
-        barData.push(
-          { 
-            month: month.month, 
-            name: month.name,
-            year: month.year,
-            fullName: `${month.name} ${month.year}`,
-            category: 'retail', 
-            value: month.retail 
-          },
-          { 
-            month: month.month, 
-            name: month.name,
-            year: month.year,
-            fullName: `${month.name} ${month.year}`,
-            category: 'wholesale', 
-            value: month.wholesale 
-          },
-          { 
-            month: month.month, 
-            name: month.name,
-            year: month.year,
-            fullName: `${month.name} ${month.year}`,
-            category: 'promo', 
-            value: month.promo 
-          }
-        );
-      });
-      
-      // Линейный тренд для всего периода
-      lineData = sortedData.map(month => ({
-        month: month.month,
-        year: month.year,
-        name: month.name,
-        fullName: `${month.name} ${month.year}`,
-        value: month.total
-      }));
-    }
-    
-    // Создаем шкалы
-    const x = d3.scaleBand()
-      .domain(displayMode === 'yearly' ? 
-        MONTHS : 
-        [...new Set(barData.map(d => d.fullName || d.name))])
-      .range([margin.left, width - margin.right])
-      .padding(0.3);
-    
-    const xSubgroup = d3.scaleBand()
-      .domain(displayMode === 'yearly' ? 
-        ['retail', 'wholesale', 'promo'] : 
-        [...new Set(barData.map(d => d.category))])
-      .range([0, x.bandwidth()])
-      .padding(0.05);
-    
-    const y = d3.scaleLinear()
-      .domain([0, Math.max(
-        d3.max(barData, d => d.value) * 1.1,
-        d3.max(lineData, d => d.value) * 1.1
-      )])
-      .nice()
-      .range([height - margin.bottom, margin.top]);
-    
-    // Цветовая схема для столбцов
-    const colorScale = displayMode === 'yearly' ?
-      d3.scaleOrdinal()
-        .domain(['retail', 'wholesale', 'promo'])
-        .range([SALE_TYPES.RETAIL.color, SALE_TYPES.WHOLESALE.color, SALE_TYPES.PROMO.color]) :
-      d3.scaleOrdinal()
-        .domain(['current', 'retail', 'wholesale', 'promo'])
-        .range(['#3b82f6', SALE_TYPES.RETAIL.color, SALE_TYPES.WHOLESALE.color, SALE_TYPES.PROMO.color]);
-    
-    // Создаем оси
-    const xAxis = g => g
-      .attr('transform', `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('text')
-        .style('fill', '#f9fafb')
-        .style('font-size', '0.8rem')
-        .attr('dy', '0.5em')
-        .attr('transform', 'rotate(-25)')
-        .attr('text-anchor', 'end'));
-    
-    const yAxis = g => g
-      .attr('transform', `translate(${margin.left},0)`)
-      .call(d3.axisLeft(y).ticks(5).tickFormat(d => d3.format(',.0f')(d)))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('text').style('fill', '#f9fafb'))
-      .call(g => g.selectAll('.tick line')
-        .attr('x2', width - margin.left - margin.right)
-        .attr('stroke-opacity', 0.1));
-    
-    // Добавляем оси
-    svg.append('g').call(xAxis);
-    svg.append('g').call(yAxis);
-    
-    // Добавляем столбцы с группировкой
- // Добавляем столбцы с группировкой
-    const groups = svg.append('g')
-      .selectAll('g')
-      .data(displayMode === 'yearly' ?
-        MONTHS.map(month => {
-          return {
-            name: month,
-            month: MONTHS.indexOf(month) + 1
-          };
-        }) :
-        [...new Set(barData.map(d => d.fullName || d.name))])
-      .join('g')
-      .attr('transform', d => `translate(${x(d.name || d)},0)`);
-    
-    // Группируем столбцы по категориям
-    groups.selectAll('rect')
-      .data(d => {
-        const monthName = d.name || d;
-        const monthNum = d.month;
-        
-        return barData
-          .filter(item => (item.name === monthName) || (item.fullName === monthName))
-          .map(item => ({
-            ...item,
-            parentMonth: monthName
-          }));
-      })
-      .join('rect')
-      .attr('x', d => xSubgroup(d.category))
-      .attr('y', d => y(d.value))
-      .attr('width', xSubgroup.bandwidth())
-      .attr('height', d => height - margin.bottom - y(d.value))
-      .attr('fill', d => colorScale(d.category))
-      .attr('rx', 2)
-      .attr('opacity', 0)
-      .transition()
-      .duration(800)
-      .delay((_, i) => i * 20)
-      .attr('opacity', 0.8);
-    
-    // Добавляем линию тренда
-    const line = d3.line()
-      .x(d => x(d.fullName || d.name) + x.bandwidth() / 2)
-      .y(d => y(d.value))
-      .curve(d3.curveMonotoneX);
-    
-    // Добавляем линию с анимацией
-    const path = svg.append('path')
-      .datum(lineData)
-      .attr('fill', 'none')
-      .attr('stroke', displayMode === 'compare' ? '#10b981' : '#f59e0b')
-      .attr('stroke-width', 3)
-      .attr('d', line);
-    
-    // Анимация линии
-    const totalLength = path.node().getTotalLength();
-    
-    path
-      .attr('stroke-dasharray', totalLength)
-      .attr('stroke-dashoffset', totalLength)
-      .transition()
-      .duration(1500)
-      .delay(800)
-      .attr('stroke-dashoffset', 0);
-    
-    // Добавляем точки на линию
-    svg.selectAll('.line-point')
-      .data(lineData)
-      .join('circle')
-      .attr('class', 'line-point')
-      .attr('cx', d => x(d.fullName || d.name) + x.bandwidth() / 2)
-      .attr('cy', d => y(d.value))
-      .attr('r', 0)
-      .attr('fill', displayMode === 'compare' ? '#10b981' : '#f59e0b')
-      .attr('stroke', '#1f2937')
-      .attr('stroke-width', 2)
-      .transition()
-      .duration(300)
-      .delay((_, i) => i * 100 + 2000)
-      .attr('r', 5);
-    
-    // Добавляем легенду
-    const legend = svg.append('g')
-      .attr('transform', `translate(${width - margin.right - 150}, ${margin.top + 10})`);
-    
-    // Легенда для столбцов
-    if (displayMode === 'yearly') {
-      // Легенда для категорий продаж
-      Object.values(SALE_TYPES).forEach((type, i) => {
-        const legendItem = legend.append('g')
-          .attr('transform', `translate(0, ${i * 25})`);
-        
-        legendItem.append('rect')
-          .attr('width', 15)
-          .attr('height', 15)
-          .attr('rx', 2)
-          .attr('fill', type.color);
-        
-        legendItem.append('text')
-          .attr('x', 25)
-          .attr('y', 12)
-          .style('font-size', '0.8rem')
-          .style('fill', '#f9fafb')
-          .text(type.name);
-      });
-      
-      // Легенда для линии (общие продажи)
-      const lineLegend = legend.append('g')
-        .attr('transform', `translate(0, ${Object.values(SALE_TYPES).length * 25})`);
-      
-      lineLegend.append('line')
-        .attr('x1', 0)
-        .attr('x2', 15)
-        .attr('y1', 8)
-        .attr('y2', 8)
-        .attr('stroke', '#f59e0b')
-        .attr('stroke-width', 3);
-      
-      lineLegend.append('text')
-        .attr('x', 25)
-        .attr('y', 12)
-        .style('font-size', '0.8rem')
-        .style('fill', '#f9fafb')
-        .text('Общие продажи');
-    } else if (displayMode === 'compare') {
-      // Легенда для текущего года (столбцы)
-      const barLegend = legend.append('g');
-      
-      barLegend.append('rect')
-        .attr('width', 15)
-        .attr('height', 15)
-        .attr('rx', 2)
-        .attr('fill', '#3b82f6');
-      
-      barLegend.append('text')
-        .attr('x', 25)
-        .attr('y', 12)
-        .style('font-size', '0.8rem')
-        .style('fill', '#f9fafb')
-        .text(`${Math.max(...selectedYears)} год`);
-      
-      // Легенда для предыдущего года (линия)
-      const lineLegend = legend.append('g')
-        .attr('transform', 'translate(0, 25)');
-      
-      lineLegend.append('line')
-        .attr('x1', 0)
-        .attr('x2', 15)
-        .attr('y1', 8)
-        .attr('y2', 8)
-        .attr('stroke', '#10b981')
-        .attr('stroke-width', 3);
-      
-      lineLegend.append('text')
-        .attr('x', 25)
-        .attr('y', 12)
-        .style('font-size', '0.8rem')
-        .style('fill', '#f9fafb')
-        .text(`${Math.max(...selectedYears.filter(y => y !== Math.max(...selectedYears)))} год`);
-    } else {
-      // Легенда для категорий продаж
-      Object.values(SALE_TYPES).forEach((type, i) => {
-        const legendItem = legend.append('g')
-          .attr('transform', `translate(0, ${i * 25})`);
-        
-        legendItem.append('rect')
-          .attr('width', 15)
-          .attr('height', 15)
-          .attr('rx', 2)
-          .attr('fill', type.color);
-        
-        legendItem.append('text')
-          .attr('x', 25)
-          .attr('y', 12)
-          .style('font-size', '0.8rem')
-          .style('fill', '#f9fafb')
-          .text(type.name);
-      });
-      
-      // Легенда для линии тренда
-      const lineLegend = legend.append('g')
-        .attr('transform', `translate(0, ${Object.values(SALE_TYPES).length * 25})`);
-      
-      lineLegend.append('line')
-        .attr('x1', 0)
-        .attr('x2', 15)
-        .attr('y1', 8)
-        .attr('y2', 8)
-        .attr('stroke', '#f59e0b')
-        .attr('stroke-width', 3);
-      
-      lineLegend.append('text')
-        .attr('x', 25)
-        .attr('y', 12)
-        .style('font-size', '0.8rem')
-        .style('fill', '#f9fafb')
-        .text('Тренд общих продаж');
-    }
-  };
   
 const renderProgressChart = () => {
   if (!progressChartRef.current || Object.keys(financialData).length === 0) return;
@@ -7092,201 +6464,138 @@ const renderProgressChart = () => {
         .text(type.name);
     });
   };
-  const renderQuarterlyChart = () => {
-    if (!quarterlyChartRef.current || Object.keys(financialData).length === 0) return;
-    
-    const container = quarterlyChartRef.current;
-    container.innerHTML = '';
-    
-    const width = container.clientWidth;
-    const height = 300;
-    const margin = { top: 40, right: 30, bottom: 60, left: 60 };
-    
-    // Создаем SVG
-    const svg = d3.select(container)
-      .append('svg')
-      .attr('width', width)
-      .attr('height', height)
-      .style('background', '#1f2937')
-      .style('border-radius', '0.5rem');
-    
-    // Добавляем заголовок
-    svg.append('text')
-      .attr('x', width / 2)
-      .attr('y', margin.top / 2)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '1.2rem')
-      .style('font-weight', 'bold')
-      .style('fill', '#f9fafb')
-      .text('Динамика по кварталам');
-    
-    // Подготовка данных
-    const quarterlyData = [];
-    
-    // Для режима сравнения используем все выбранные годы
-    if (displayMode === 'compare') {
-      selectedYears.forEach(year => {
-        if (!financialData[year]) return;
-        
-        financialData[year].quarterlyData.forEach((value, quarter) => {
-          quarterlyData.push({
-            year,
-            quarter: quarter + 1,
-            value
-          });
-        });
-      });
-    } 
-    // Для остальных режимов берем последний доступный год
-    else {
-      const year = displayMode === 'yearly' ? 
-        selectedYears[0] : Math.max(...Object.keys(financialData).map(Number));
-      
-      if (financialData[year]) {
-        financialData[year].quarterlyData.forEach((value, quarter) => {
-          quarterlyData.push({
-            year,
-            quarter: quarter + 1,
-            value
-          });
-        });
-      }
-    }
-    
-    // Создаем шкалы
-    const x = d3.scaleBand()
-      .domain(quarterlyData.map(d => `Q${d.quarter}${displayMode === 'compare' ? `-${d.year}` : ''}`))
-      .range([margin.left, width - margin.right])
-      .padding(0.3);
-    
-    const y = d3.scaleLinear()
-      .domain([0, d3.max(quarterlyData, d => d.value) * 1.1])
-      .nice()
-      .range([height - margin.bottom, margin.top]);
-    
-    // Создаем цветовую схему
-    const colorScale = displayMode === 'compare' ?
-      d3.scaleOrdinal()
-        .domain(selectedYears)
-        .range(d3.schemeCategory10.slice(0, selectedYears.length)) :
-      d3.scaleOrdinal()
-        .domain([1, 2, 3, 4])
-        .range(['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b']);
-    // Создаем оси
-    const xAxis = g => g
-      .attr('transform', `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('text')
-        .style('fill', '#f9fafb')
-        .style('font-size', '0.9rem')
-        .style('font-weight', 'bold'));
-    
-    const yAxis = g => g
-      .attr('transform', `translate(${margin.left},0)`)
-      .call(d3.axisLeft(y).ticks(5).tickFormat(d => d3.format('.2s')(d)))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('text').style('fill', '#f9fafb'))
-      .call(g => g.selectAll('.tick line')
-        .attr('x2', width - margin.left - margin.right)
-        .attr('stroke-opacity', 0.1));
-    
-    // Добавляем оси
-    svg.append('g').call(xAxis);
-    svg.append('g').call(yAxis);
-    
-    // Добавляем столбцы
-    svg.selectAll('.quarter-bar')
-      .data(quarterlyData)
-      .join('rect')
-      .attr('class', 'quarter-bar')
-      .attr('x', d => x(`Q${d.quarter}${displayMode === 'compare' ? `-${d.year}` : ''}`))
-      .attr('y', d => y(d.value))
-      .attr('width', x.bandwidth())
-      .attr('height', d => height - margin.bottom - y(d.value))
-      .attr('fill', d => displayMode === 'compare' ? colorScale(d.year) : colorScale(d.quarter))
-      .attr('rx', 6)
-      .attr('opacity', 0.9)
-      .attr('y', height - margin.bottom) // Начальная позиция для анимации
-      .attr('height', 0) // Начальная высота для анимации
-      .transition()
-      .duration(800)
-      .delay((_, i) => i * 100)
-      .attr('y', d => y(d.value))
-      .attr('height', d => height - margin.bottom - y(d.value));
-    
-    // Добавляем подписи со значениями
-    svg.selectAll('.quarter-label')
-      .data(quarterlyData)
-      .join('text')
-      .attr('class', 'quarter-label')
-      .attr('x', d => x(`Q${d.quarter}${displayMode === 'compare' ? `-${d.year}` : ''}`) + x.bandwidth() / 2)
-      .attr('y', d => y(d.value) - 10)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '0.8rem')
-      .style('fill', '#f9fafb')
-      .style('opacity', 0)
-      .text(d => d3.format('.2s')(d.value))
-      .transition()
-      .duration(500)
-      .delay((_, i) => i * 100 + 800)
-      .style('opacity', 1);
-    
-    // Добавляем процентный рост между кварталами
-    if (displayMode !== 'compare') {
-      for (let i = 1; i < quarterlyData.length; i++) {
-        const current = quarterlyData[i];
-        const previous = quarterlyData[i - 1];
-        const growthPercentage = ((current.value / previous.value) - 1) * 100;
-        
-        svg.append('text')
-          .attr('x', x(`Q${current.quarter}`) + x.bandwidth() / 2)
-          .attr('y', y(current.value) - 30)
-          .attr('text-anchor', 'middle')
-          .style('font-size', '0.8rem')
-          .style('fill', growthPercentage >= 0 ? '#10b981' : '#ef4444')
-          .style('opacity', 0)
-          .text(`${growthPercentage >= 0 ? '+' : ''}${growthPercentage.toFixed(1)}%`)
-          .transition()
-          .duration(500)
-          .delay(900 + i * 100)
-          .style('opacity', 1);
-      }
-    }
-    
-    // Если это режим сравнения, добавляем легенду
-    if (displayMode === 'compare') {
-      const legend = svg.append('g')
-        .attr('transform', `translate(${width - margin.right - 100}, ${margin.top})`);
-      
-      selectedYears.forEach((year, i) => {
-        const yearLegend = legend.append('g')
-          .attr('transform', `translate(0, ${i * 25})`);
-        
-        yearLegend.append('rect')
-          .attr('width', 15)
-          .attr('height', 15)
-          .attr('rx', 3)
-          .attr('fill', colorScale(year));
-        
-        yearLegend.append('text')
-          .attr('x', 25)
-          .attr('y', 12)
-          .style('font-size', '0.9rem')
-          .style('fill', '#f9fafb')
-          .text(year);
-      });
-    } else {
-      // Добавляем подпись года
-      svg.append('text')
-        .attr('x', width - margin.right - 50)
-        .attr('y', margin.top + 20)
-        .style('font-size', '1rem')
-        .style('font-weight', 'bold')
-        .style('fill', '#f9fafb')
-        .text(quarterlyData[0]?.year || '');
-    }
-  };
+// Функция для расчета общей суммы за текущий месяц
+const getCurrentMonthTotal = () => {
+  // Получаем текущую дату
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  
+  // Фильтруем данные текущего месяца
+  const currentMonthData = filteredData.find(
+    month => month.month === currentMonth && month.year === currentYear
+  );
+  
+  // Если данных нет, возвращаем 0
+  return currentMonthData ? currentMonthData.total : 0;
+};
+  // Функция для расчета среднего дохода в день на основе прошедших дней текущего месяца
+const calculateAverageDailyIncome = () => {
+  // Получаем текущую дату
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // JavaScript месяцы начинаются с 0
+  const currentDay = now.getDate();
+  
+  // Находим данные текущего месяца
+  const currentMonthData = filteredData.find(
+    month => month.month === currentMonth && month.year === currentYear
+  );
+  
+  // Если данных нет, возвращаем 0
+  if (!currentMonthData) return 0;
+  
+  // Общий доход за текущий месяц
+  const totalIncome = currentMonthData.total;
+  
+  // Делим на количество прошедших дней
+  return totalIncome / currentDay;
+};
+
+  // Функция для расчета процента роста по сравнению с прошлым месяцем
+const calculateGrowthRate = () => {
+  // Получаем текущую дату
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  
+  // Определяем предыдущий месяц и год
+  let prevMonth = currentMonth - 1;
+  let prevYear = currentYear;
+  
+  // Если текущий месяц январь, то предыдущий будет декабрь прошлого года
+  if (prevMonth === 0) {
+    prevMonth = 12;
+    prevYear--;
+  }
+  
+  // Находим данные текущего и предыдущего месяцев
+  const currentMonthData = filteredData.find(
+    month => month.month === currentMonth && month.year === currentYear
+  );
+  
+  const prevMonthData = filteredData.find(
+    month => month.month === prevMonth && month.year === prevYear
+  );
+  
+  // Если данных нет, возвращаем 0
+  if (!currentMonthData || !prevMonthData || prevMonthData.total === 0) return 0;
+  
+  // Расчет процента роста
+  const growthRate = ((currentMonthData.total / prevMonthData.total) - 1) * 100;
+  
+  return Math.round(growthRate);
+};
+  
+// Функция для расчета прогнозируемого дохода до конца текущего месяца
+// Функция для расчета полного прогнозируемого дохода за текущий месяц
+const calculateTotalMonthEstimate = () => {
+  // Получаем текущую дату
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const currentDay = now.getDate();
+  
+  // Получаем количество дней в текущем месяце
+  const daysInCurrentMonth = new Date(currentYear, currentMonth, 0).getDate();
+  
+  // Находим данные текущего месяца
+  const currentMonthData = filteredData.find(
+    month => month.month === currentMonth && month.year === currentYear
+  );
+  
+  // Если данных нет, возвращаем 0
+  if (!currentMonthData) return 0;
+  
+  // Уже полученный доход за текущий месяц
+  const currentIncome = currentMonthData.total;
+  
+  // Если месяц закончился, просто возвращаем текущий доход
+  if (currentDay >= daysInCurrentMonth) return currentIncome;
+  
+  // Текущий средний доход в день (на основе прошедших дней)
+  const averageDailyIncome = currentIncome / currentDay;
+  
+  // Оставшиеся дни в месяце
+  const remainingDays = daysInCurrentMonth - currentDay;
+  
+  // Прогнозируемый доход на оставшиеся дни
+  const estimatedRemainingIncome = averageDailyIncome * remainingDays;
+  
+  // Общий ожидаемый доход за месяц (текущий + прогнозируемый)
+  return currentIncome + estimatedRemainingIncome;
+};
+
+  // Добавьте эти функции для работы с форматами дат
+// Конвертирует дату из формата DD.MM.YYYY в формат YYYY-MM-DD для элемента input type="date"
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  
+  const parts = dateString.split('.');
+  if (parts.length !== 3) return '';
+  
+  return `${parts[2]}-${parts[1]}-${parts[0]}`;
+};
+
+// Конвертирует дату из формата YYYY-MM-DD (из элемента input) в формат DD.MM.YYYY для API
+const formatDateFromInput = (dateString) => {
+  if (!dateString) return '';
+  
+  const parts = dateString.split('-');
+  if (parts.length !== 3) return '';
+  
+  return `${parts[2]}.${parts[1]}.${parts[0]}`;
+};
   
  return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6">
@@ -7312,454 +6621,176 @@ const renderProgressChart = () => {
       {/* Индикатор загрузки */}
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-blue-500"></div>
-          <p className="ml-4 text-white">Загрузка данных...</p>
         </div>
       ) : (
         <>
-          {/* Элементы управления API запросом */}
-          <div className="bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 mb-6 border border-gray-700/50">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-              <h2 className="text-xl font-semibold text-white">Параметры API запроса</h2>
-              
-              <div className="flex flex-wrap gap-3 items-center">
-                <div className="flex items-center gap-2">
-                  <label className="text-gray-300 text-sm">Начальная дата:</label>
-                  <input 
-                    type="text" 
-                    className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50"
-                    value={apiStartDate}
-                    onChange={(e) => setApiStartDate(e.target.value)}
-                    placeholder="ДД.ММ.ГГГГ"
-                  />
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <label className="text-gray-300 text-sm">Конечная дата:</label>
-                  <input 
-                    type="text" 
-                    className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50"
-                    value={apiEndDate}
-                    onChange={(e) => setApiEndDate(e.target.value)}
-                    placeholder="ДД.ММ.ГГГГ"
-                  />
-                </div>
-                
-                <button 
-                  className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm font-medium"
-                  onClick={refreshDataWithDateRange}
-                >
-                  Обновить данные
-                </button>
-              </div>
-            </div>
-          </div>
-          
           {/* РАЗДЕЛ: Панель управления и фильтры */}
-          <div className="bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 mb-6 border border-gray-700/50">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-              <div className="flex flex-wrap items-center gap-4">
-                <h2 className="text-xl font-semibold text-white">Параметры отображения</h2>
-                
-                <div className="flex bg-gray-700/80 rounded-lg p-1">
-                  <button 
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      displayMode === 'compare' 
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
-                        : 'text-gray-300 hover:text-white hover:bg-gray-600/50'
-                    }`}
-                    onClick={() => handleDisplayModeChange('compare')}
-                  >
-                    Сравнение
-                  </button>
-                  <button 
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      displayMode === 'period' 
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
-                        : 'text-gray-300 hover:text-white hover:bg-gray-600/50'
-                    }`}
-                    onClick={() => handleDisplayModeChange('period')}
-                  >
-                    По периоду
-                  </button>
-                </div>
-              </div>
-              
-              <div className="flex flex-wrap gap-2">
-                <div className="flex bg-gray-700/80 rounded-lg p-1">
-                  <button 
-                    className={`px-3 py-1.5 rounded-md text-sm ${
-                      viewType === 'bar' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-                    }`}
-                    onClick={() => setViewType('bar')}
-                  >
-                    Столбцы
-                  </button>
-                  <button 
-                    className={`px-3 py-1.5 rounded-md text-sm ${
-                      viewType === 'line' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-                    }`}
-                    onClick={() => setViewType('line')}
-                  >
-                    Линия
-                  </button>
-                  <button 
-                    className={`px-3 py-1.5 rounded-md text-sm ${
-                      viewType === 'stacked' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-                    }`}
-                    onClick={() => setViewType('stacked')}
-                  >
-                    Составной
-                  </button>
-                  <button 
-                    className={`px-3 py-1.5 rounded-md text-sm ${
-                      viewType === 'radar' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-                    }`}
-                    onClick={() => setViewType('radar')}
-                  >
-                    Радар
-                  </button>
-                  <button 
-                    className={`px-3 py-1.5 rounded-md text-sm ${
-                      viewType === 'mixed' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-                    }`}
-                    onClick={() => setViewType('mixed')}
-                  >
-                    Комбинированный
-                  </button>
-                </div>
-                
-              <div className="flex bg-gray-700/80 rounded-lg p-1">
-  <button 
-    className={`px-3 py-1.5 rounded-md text-sm ${
-      focusCategory === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-    }`}
-    onClick={() => setFocusCategory('all')}
-  >
-    Все продажи
-  </button>
-  <button 
-    className={`px-3 py-1.5 rounded-md text-sm ${
-      focusCategory === 'retail' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-    }`}
-    onClick={() => setFocusCategory('retail')}
-    style={{ color: focusCategory === 'retail' ? '#ffffff' : SALE_TYPES.RETAIL.color }}
-  >
-    Розница
-  </button>
-  <button 
-    className={`px-3 py-1.5 rounded-md text-sm ${
-      focusCategory === 'wholesale' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-    }`}
-    onClick={() => setFocusCategory('wholesale')}
-    style={{ color: focusCategory === 'wholesale' ? '#ffffff' : SALE_TYPES.WHOLESALE.color }}
-  >
-    Опт
-  </button>
-  <button 
-    className={`px-3 py-1.5 rounded-md text-sm ${
-      focusCategory === 'promo' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-    }`}
-    onClick={() => setFocusCategory('promo')}
-    style={{ color: focusCategory === 'promo' ? '#ffffff' : SALE_TYPES.PROMO.color }}
-  >
-    Акции
-  </button>
+       {/* РАЗДЕЛ: Панель управления и фильтры */}
+<div className="bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 mb-6 border border-gray-700/50">
+  <div className="flex flex-wrap items-center justify-between gap-4">
+    {/* Табы для категорий продаж */}
+    <div className="flex bg-gray-700/80 rounded-lg p-1">
+      <button 
+        className={`px-3 py-1.5 rounded-md text-sm ${
+          focusCategory === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+        }`}
+        onClick={() => setFocusCategory('all')}
+      >
+        Все продажи
+      </button>
+      <button 
+        className={`px-3 py-1.5 rounded-md text-sm ${
+          focusCategory === 'retail' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+        }`}
+        onClick={() => setFocusCategory('retail')}
+        style={{ color: focusCategory === 'retail' ? '#ffffff' : SALE_TYPES.RETAIL.color }}
+      >
+        Розница
+      </button>
+      <button 
+        className={`px-3 py-1.5 rounded-md text-sm ${
+          focusCategory === 'wholesale' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+        }`}
+        onClick={() => setFocusCategory('wholesale')}
+        style={{ color: focusCategory === 'wholesale' ? '#ffffff' : SALE_TYPES.WHOLESALE.color }}
+      >
+        Опт
+      </button>
+      <button 
+        className={`px-3 py-1.5 rounded-md text-sm ${
+          focusCategory === 'promo' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+        }`}
+        onClick={() => setFocusCategory('promo')}
+        style={{ color: focusCategory === 'promo' ? '#ffffff' : SALE_TYPES.PROMO.color }}
+      >
+        Акции
+      </button>
+    </div>
+
+    {/* Элементы выбора даты для API запроса */}
+    <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
+        <div className="relative">
+          <input 
+            type="date" 
+            className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36"
+            value={formatDateForInput(apiStartDate)} // Нужна функция форматирования
+            onChange={(e) => setApiStartDate(formatDateFromInput(e.target.value))} // Нужна функция форматирования
+          />
+        </div>
+        
+        <span className="text-gray-400">—</span>
+        
+        <div className="relative">
+          <input 
+            type="date" 
+            className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36"
+            value={formatDateForInput(apiEndDate)} // Нужна функция форматирования
+            onChange={(e) => setApiEndDate(formatDateFromInput(e.target.value))} // Нужна функция форматирования
+          />
+        </div>
+      </div>
+      
+      <button 
+        className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-1"
+        onClick={refreshDataWithDateRange}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+        </svg>
+        Обновить
+      </button>
+    </div>
+  </div>
 </div>
-              </div>
-            </div>
-            
-            {/* РАЗДЕЛ: Динамические опции в зависимости от режима просмотра */}
-            <AnimatePresence mode="wait">
-              {displayMode === 'yearly' && (
-                <motion.div 
-                  key="yearly"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="flex flex-wrap gap-3"
-                >
-                  <div className="flex items-center justify-center w-full">
-                    <div className="flex space-x-4">
-                      {Object.keys(financialData).map(year => (
-                        <motion.button
-                          key={year}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          className={`relative px-6 py-3 rounded-xl text-lg font-semibold transition-all duration-300 ${
-                            selectedYears.includes(parseInt(year)) 
-                              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/30' 
-                              : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'
-                          }`}
-                          onClick={() => toggleYearSelection(parseInt(year))}
-                        >
-                          {year}
-                          {selectedYears.includes(parseInt(year)) && (
-                            <motion.span 
-                              layoutId="yearIndicator"
-                              className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-10 h-1 rounded-full bg-white"
-                            />
-                          )}
-                        </motion.button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="w-full mt-3">
-                    <div className="flex justify-between">
-                      <div className="flex items-center">
-                        <button 
-                          className={`flex items-center px-3 py-1.5 rounded-md text-sm border ${
-                            showQuarterlyData 
-                              ? 'bg-indigo-600/30 border-indigo-500/50 text-indigo-300' 
-                              : 'bg-gray-700/50 border-gray-600/50 text-gray-300'
-                          }`}
-                          onClick={() => setShowQuarterlyData(!showQuarterlyData)}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                            {showQuarterlyData ? (
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            ) : (
-                              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                            )}
-                          </svg>
-                          Квартальная аналитика
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-              
-              {displayMode === 'compare' && (
-                <motion.div 
-                  key="compare"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="flex flex-wrap gap-3"
-                >
-                  <div className="flex items-center justify-center w-full">
-                    <div className="flex space-x-4">
-                      {Object.keys(financialData).map(year => (
-                        <motion.button
-                          key={year}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          className={`relative px-6 py-3 rounded-xl text-lg font-semibold transition-all duration-300 ${
-                            selectedYears.includes(parseInt(year)) 
-                              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/30' 
-                              : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'
-                          }`}
-                          onClick={() => toggleYearSelection(parseInt(year))}
-                        >
-                          {year}
-                          {selectedYears.includes(parseInt(year)) && (
-                            <motion.span 
-                              className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-10 h-1 rounded-full bg-white"
-                            />
-                          )}
-                        </motion.button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="w-full flex justify-center mt-2">
-                    <p className="text-gray-400 text-sm">
-                      {selectedYears.length === 0 ? 'Выберите годы для сравнения' : 
-                       selectedYears.length === 1 ? 'Выберите еще один год для сравнения' :
-                       `Сравниваем данные за ${selectedYears.join(', ')} годы`}
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-              
-              {displayMode === 'period' && (
-                <motion.div 
-                  key="period"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="bg-gradient-to-r from-gray-800/80 to-gray-700/60 backdrop-blur-sm rounded-xl p-3.5 border border-gray-600/30 shadow-lg"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="relative group">
-                        <div className="absolute -top-5 left-0 text-xs text-blue-300/70 font-medium opacity-0 group-hover:opacity-100 transition-opacity">От</div>
-                        <div className="flex items-center overflow-hidden rounded-lg shadow-sm bg-gray-900/50 border border-blue-500/20 hover:border-blue-500/40 transition-colors">
-                          <select 
-                            value={startMonth}
-                            onChange={(e) => setStartMonth(parseInt(e.target.value))}
-                            className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none min-w-24"
-                          >
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                              <option key={`sm-${month}`} value={month}>
-                                {new Date(2000, month - 1).toLocaleString('ru', { month: 'short' })}
-                              </option>
-                            ))}
-                          </select>
-                          
-                          <div className="h-5 w-px bg-blue-500/20"></div>
-                          
-                          <select 
-                            value={startYear}
-                            onChange={(e) => setStartYear(parseInt(e.target.value))}
-                            className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none w-20"
-                          >
-                            {Object.keys(financialData).map(year => (
-                              <option key={`sy-${year}`} value={year}>{year}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                      
-                      <div className="w-8 h-px bg-gradient-to-r from-blue-500/20 to-indigo-500/30"></div>
-                      
-                      <div className="relative group">
-                        <div className="absolute -top-5 left-0 text-xs text-blue-300/70 font-medium opacity-0 group-hover:opacity-100 transition-opacity">До</div>
-                        <div className="flex items-center overflow-hidden rounded-lg shadow-sm bg-gray-900/50 border border-indigo-500/20 hover:border-indigo-500/40 transition-colors">
-                          <select 
-                            value={endMonth}
-                            onChange={(e) => setEndMonth(parseInt(e.target.value))}
-                            className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none min-w-24"
-                          >
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                              <option key={`em-${month}`} value={month}>
-                                {new Date(2000, month - 1).toLocaleString('ru', { month: 'short' })}
-                              </option>
-                            ))}
-                          </select>
-                          
-                          <div className="h-5 w-px bg-indigo-500/20"></div>
-                          
-                          <select 
-                            value={endYear}
-                            onChange={(e) => setEndYear(parseInt(e.target.value))}
-                            className="bg-transparent text-white text-sm font-medium px-3 py-2 focus:outline-none w-20"
-                          >
-                            {Object.keys(financialData).map(year => (
-                              <option key={`ey-${year}`} value={year}>{year}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {!isPeriodValid() ? (
-                      <div className="text-xs font-medium text-red-400 bg-red-900/10 px-3 py-1.5 rounded-lg border border-red-500/30 shadow-inner flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <line x1="12" y1="8" x2="12" y2="12"></line>
-                          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                        </svg>
-                        Некорректный период
-                      </div>
-                    ) : (
-                      <div className="text-xs font-medium text-sky-300 bg-sky-900/10 px-3 py-1.5 rounded-lg border border-sky-500/20 shadow-inner">
-                        {new Date(startYear, startMonth - 1).toLocaleString('ru', { month: 'short', year: 'numeric' })} —{' '}
-                        {new Date(endYear, endMonth - 1).toLocaleString('ru', { month: 'short', year: 'numeric' })}
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
           
           {filteredData.length > 0 && (
             <>
               {/* РАЗДЕЛ: Информационные карточки */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-xl p-5 border border-blue-500/20 shadow-lg"
-                >
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-600/30 flex items-center justify-center mr-4">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-100" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-medium text-blue-300">Общая сумма</h3>
-                      <p className="text-3xl font-bold text-white mt-1">
-                        {formatCurrency(getTotalForPeriod())}
-                      </p>
-                      <p className="text-blue-300/70 text-sm mt-1">
-                        {displayMode === 'yearly' 
-                          ? `За ${selectedYears[0] || ''} год` 
-                          : displayMode === 'compare'
-                          ? `За выбранные годы` 
-                          : 'За выбранный период'}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-                
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-xl p-5 border border-purple-500/20 shadow-lg"
-                >
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-purple-600/30 flex items-center justify-center mr-4">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-100" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-medium text-purple-300">Средняя стоимость авто</h3>
-                      <p className="text-3xl font-bold text-white mt-1">
-                        {formatCurrency(Math.round(getTotalForPeriod() / (filteredData.length * 5)))}
-                      </p>
-                      <p className="text-purple-300/70 text-sm mt-1">
-                        На основе количества проданных автомобилей
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-                
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-xl p-5 border border-green-500/20 shadow-lg"
-                >
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-600/30 flex items-center justify-center mr-4">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-100" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-medium text-green-300">Рост продаж</h3>
-                      <p className="text-3xl font-bold text-white mt-1">
-                        +{displayMode === 'yearly' && selectedYears.length > 0 && financialData[selectedYears[0]-1]
-                          ? Math.round((financialData[selectedYears[0]]?.totalEarned || 0) / 
-                              (financialData[selectedYears[0]-1]?.totalEarned || 1) * 100 - 100)
-                          : '23'}%
-                      </p>
-                      <p className="text-green-300/70 text-sm mt-1">
-                        По сравнению с предыдущим периодом
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.1 }}
+    className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-xl p-5 border border-blue-500/20 shadow-lg"
+  >
+    <div className="flex items-center">
+      <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-600/30 flex items-center justify-center mr-4">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-100" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+        </svg>
+      </div>
+      <div>
+        <h3 className="text-lg font-medium text-blue-300">Общая сумма</h3>
+        <p className="text-3xl font-bold text-white mt-1">
+          {formatCurrency(getCurrentMonthTotal())}
+        </p>
+        <p className="text-blue-300/70 text-sm mt-1">
+          За текущий месяц
+        </p>
+      </div>
+    </div>
+  </motion.div>
+  
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.2 }}
+    className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-xl p-5 border border-purple-500/20 shadow-lg"
+  >
+    <div className="flex items-center">
+      <div className="flex-shrink-0 w-12 h-12 rounded-full bg-purple-600/30 flex items-center justify-center mr-4">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-100" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clipRule="evenodd" />
+        </svg>
+      </div>
+      <div>
+        <h3 className="text-lg font-medium text-purple-300">Средний доход в день</h3>
+        <p className="text-3xl font-bold text-white mt-1">
+          {formatCurrency(calculateAverageDailyIncome())}
+        </p>
+        <p className="text-purple-300/70 text-sm mt-1">
+          На основе {new Date().getDate()} прошедших дней
+        </p>
+      </div>
+    </div>
+  </motion.div>
+  
+<motion.div 
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ delay: 0.3 }}
+  className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-xl p-5 border border-green-500/20 shadow-lg"
+>
+  <div className="flex items-center">
+    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-600/30 flex items-center justify-center mr-4">
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-100" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+      </svg>
+    </div>
+    <div>
+      <h3 className="text-lg font-medium text-green-300">Ожидаемая сумма за месяц</h3>
+      <p className="text-3xl font-bold text-white mt-1">
+        {formatCurrency(calculateTotalMonthEstimate())}
+      </p>
+      <p className="text-green-300/70 text-sm mt-1">
+        {new Date().getDate()} / {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()} дней месяца прошло
+      </p>
+    </div>
+  </div>
+</motion.div>
+</div>
               
               {/* РАЗДЕЛ: Основной график и прогресс */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              <div className=" gap-6 mb-6">
                 <div className="lg:col-span-2 bg-gray-800 rounded-xl p-2 border border-gray-700/50 shadow-lg">
                   <div ref={mainChartRef} className="w-full h-full"></div>
                 </div>
                 
-                <div className="bg-gray-800 rounded-xl p-10 border border-gray-700/50 shadow-lg">
+                {/* <div className="bg-gray-800 rounded-xl p-10 border border-gray-700/50 shadow-lg">
                   <h3 className="text-xl font-semibold text-white mb-4 text-center">Выполнение плана</h3>
                   <div ref={progressChartRef} className="w-full h-64"></div>
-                </div>
+                </div> */}
               </div>
             </>
           )}

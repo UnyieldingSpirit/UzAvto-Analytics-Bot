@@ -25,7 +25,7 @@ export default function StatisticsPage() {
 
   return (
     <>
-      <FinancialAnalytics/>
+      {/* <FinancialAnalytics/>
       <AnalyticsDashboard/>
       <ModelTrackingDashboard/>
       <InstallmentDashboard/>
@@ -34,7 +34,7 @@ export default function StatisticsPage() {
       <CarContractsAnalytics/>
       <WarehouseAnalytics/>
       <CarWarehouseAnalytics/>
-      <WarehouseDashboard/>
+      <WarehouseDashboard/> */}
     </>
   );
 }
