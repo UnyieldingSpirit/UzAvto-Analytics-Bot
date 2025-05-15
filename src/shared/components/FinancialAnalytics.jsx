@@ -136,34 +136,50 @@ const fetchDataForCategory = async (category, endpoint, dataType) => {
     
     console.log(`Получены данные для категории ${category}:`, apiData);
     
-    // Проверяем валидность данных
+    // Проверяем валидность данных с более подробным логированием
     if (!apiData) {
       console.warn("API вернул пустой ответ");
+      // НЕ создаем минимальные данные, а возвращаем пустой объект
+      setFinancialData({});
       setIsLoading(false);
       return;
     }
     
+    // Проверка на массив с более детальным логированием
     if (!Array.isArray(apiData)) {
       console.warn("API вернул не массив:", apiData);
-      // Если это объект с полем error, выводим его
-      if (apiData.error) {
-        console.error("API вернул ошибку:", apiData.error);
-      }
+      console.log("Тип данных:", typeof apiData);
       
-      // Создаем минимальные данные для интерфейса
-      const minimalData = createMinimalData(category);
-      setFinancialData(minimalData);
-      updateYearsAndModels(minimalData);
-      setIsLoading(false);
-      return;
+      if (typeof apiData === 'object' && apiData !== null) {
+        console.log("Ключи объекта:", Object.keys(apiData));
+        
+        // Если apiData имеет поле, которое является массивом, используем его
+        const possibleArrayFields = Object.keys(apiData).filter(key => 
+          Array.isArray(apiData[key])
+        );
+        
+        if (possibleArrayFields.length > 0) {
+          console.log(`Найдены поля-массивы: ${possibleArrayFields.join(", ")}`);
+          // Используем первое поле-массив
+          apiData = apiData[possibleArrayFields[0]];
+          console.log("Используем поле-массив:", apiData);
+        } else {
+          // Если это объект с полем error, выводим его
+          if (apiData.error) {
+            console.error("API вернул ошибку:", apiData.error);
+          }
+          
+          // НЕ создаем минимальные данные, а используем что есть
+          console.log("Пробуем обработать имеющиеся данные без создания моков");
+        }
+      }
     }
     
-    if (apiData.length === 0) {
+    if (Array.isArray(apiData) && apiData.length === 0) {
       console.warn("API вернул пустой массив");
-      // Создаем минимальные данные для интерфейса
-      const minimalData = createMinimalData(category);
-      setFinancialData(minimalData);
-      updateYearsAndModels(minimalData);
+      // Вместо создания моков, просто возвращаем пустой объект
+      console.log("Возвращаем пустой объект вместо создания моков");
+      setFinancialData({});
       setIsLoading(false);
       return;
     }
@@ -171,17 +187,54 @@ const fetchDataForCategory = async (category, endpoint, dataType) => {
     // Трансформируем данные в зависимости от типа структуры
     let transformedData;
     try {
+      console.log(`Трансформируем данные для ${category} с типом ${dataType}`);
       transformedData = dataType === "model" 
         ? transformModelBasedData(apiData) 
         : transformRegionBasedData(apiData, category);
+        
+      console.log(`Результат трансформации для ${category}:`, transformedData);
     } catch (transformError) {
       console.error("Ошибка при трансформации данных:", transformError);
-      // Создаем минимальные данные для интерфейса
-      const minimalData = createMinimalData(category);
-      setFinancialData(minimalData);
-      updateYearsAndModels(minimalData);
-      setIsLoading(false);
-      return;
+      console.log("Стек вызовов:", transformError.stack);
+      
+      // Вместо создания моков, пытаемся разобраться с данными иначе
+      console.log("Попытка альтернативной обработки данных...");
+      
+      if (Array.isArray(apiData)) {
+        if (apiData.length > 0 && apiData[0].month) {
+          // Данные уже в формате месяцев
+          console.log("Данные уже в формате месяцев, используем их напрямую");
+          transformedData = convertMonthsArrayToFinancialData(apiData, category);
+        } else if (apiData.length > 0 && typeof apiData[0] === 'object') {
+          console.log("Пытаемся найти месячные данные в объектах");
+          
+          // Ищем месячные данные в объектах
+          let monthsData = null;
+          for (const item of apiData) {
+            if (Array.isArray(item.filter_by_region)) {
+              console.log("Найдены filter_by_region данные");
+              monthsData = item.filter_by_region;
+              break;
+            }
+          }
+          
+          if (monthsData) {
+            transformedData = convertMonthsArrayToFinancialData(monthsData, category);
+          } else {
+            // Если не нашли месячные данные, создаем минимальные данные
+            console.warn("Не удалось найти месячные данные, создаем минимальные данные");
+            transformedData = createMinimalData(category);
+          }
+        } else {
+          // Если не получилось обработать, создаем минимальные данные
+          console.warn("Не удалось обработать данные, создаем минимальные данные");
+          transformedData = createMinimalData(category);
+        }
+      } else {
+        // Если не массив и не получилось обработать, создаем минимальные данные
+        console.warn("Не удалось обработать данные, создаем минимальные данные");
+        transformedData = createMinimalData(category);
+      }
     }
     
     // Проверяем результат трансформации
@@ -192,6 +245,7 @@ const fetchDataForCategory = async (category, endpoint, dataType) => {
     }
     
     // Устанавливаем данные
+    console.log("Устанавливаем финальные данные:", transformedData);
     setFinancialData(transformedData);
     
     // Обновляем выбранные годы и модели
@@ -200,12 +254,118 @@ const fetchDataForCategory = async (category, endpoint, dataType) => {
     setIsLoading(false);
   } catch (error) {
     console.error("Ошибка при загрузке данных:", error);
+    console.log("Стек вызовов:", error.stack);
+    
     // Создаем минимальные данные для интерфейса
     const minimalData = createMinimalData(category);
     setFinancialData(minimalData);
     updateYearsAndModels(minimalData);
     setIsLoading(false);
   }
+};
+
+// Вспомогательная функция для преобразования массива месяцев в формат финансовых данных
+const convertMonthsArrayToFinancialData = (monthsArray, category) => {
+  console.log("Конвертация массива месяцев в финансовые данные:", monthsArray);
+  
+  const result = {};
+  const years = new Set();
+  
+  // Собираем годы
+  monthsArray.forEach(month => {
+    if (!month || !month.month || typeof month.month !== 'string') return;
+    
+    const parts = month.month.split('-');
+    if (parts.length !== 2) return;
+    
+    const year = parseInt(parts[0], 10);
+    if (isNaN(year)) return;
+    
+    years.add(year);
+  });
+  
+  console.log("Найденные годы:", Array.from(years));
+  
+  // Создаем структуру данных для каждого года
+  Array.from(years).forEach(year => {
+    result[year] = {
+      targetAmount: 0,
+      totalEarned: 0,
+      months: Array(12).fill().map((_, index) => ({
+        name: MONTHS[index],
+        month: index + 1,
+        retail: 0,
+        wholesale: 0,
+        promo: 0,
+        total: 0
+      })),
+      quarterlyData: [0, 0, 0, 0],
+      categories: {
+        retail: 0,
+        wholesale: 0,
+        promo: 0
+      },
+      modelData: {} // Пустой объект для совместимости
+    };
+  });
+  
+  // Заполняем данные
+  monthsArray.forEach(monthData => {
+    if (!monthData || !monthData.month || typeof monthData.month !== 'string') return;
+    
+    const parts = monthData.month.split('-');
+    if (parts.length !== 2) return;
+    
+    const year = parseInt(parts[0], 10);
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    
+    if (isNaN(year) || isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) return;
+    if (!result[year]) return;
+    
+    let monthTotal = 0;
+    
+    if (Array.isArray(monthData.regions)) {
+      monthData.regions.forEach(region => {
+        if (!region) return;
+        
+        const amount = parseFloat(region.amount) || 0;
+        monthTotal += amount;
+      });
+    }
+    
+    // Обновляем данные
+    result[year].months[monthIndex].total += monthTotal;
+    
+    // Распределяем по категориям
+    if (category === 'wholesale') {
+      result[year].months[monthIndex].wholesale += monthTotal;
+      result[year].categories.wholesale += monthTotal;
+    } else if (category === 'all') {
+      const retailAmount = monthTotal * 0.6;
+      const wholesaleAmount = monthTotal * 0.4;
+      
+      result[year].months[monthIndex].retail += retailAmount;
+      result[year].months[monthIndex].wholesale += wholesaleAmount;
+      
+      result[year].categories.retail += retailAmount;
+      result[year].categories.wholesale += wholesaleAmount;
+    }
+    
+    // Обновляем квартальные данные
+    const quarterIndex = Math.floor(monthIndex / 3);
+    result[year].quarterlyData[quarterIndex] += monthTotal;
+    
+    // Обновляем общую сумму
+    result[year].totalEarned += monthTotal;
+  });
+  
+  // Устанавливаем целевой показатель
+  Object.keys(result).forEach(year => {
+    result[year].targetAmount = result[year].totalEarned * 1.2;
+  });
+  
+  console.log("Результат конвертации:", result);
+  return result;
 };
   // Функция для создания минимальных данных для интерфейса при ошибке
 const createMinimalData = (category) => {
@@ -484,17 +644,82 @@ const transformModelBasedData = (apiData) => {
 const transformRegionBasedData = (apiData, category) => {
   console.log(`Трансформация данных на основе регионов для категории ${category}:`, apiData);
   
-  const transformedData = {};
-  const years = new Set();
-  
-  // Проверяем структуру данных (непустой массив)
-  if (!apiData || !Array.isArray(apiData) || apiData.length === 0) {
-    console.warn(`Получены пустые или некорректные данные для категории ${category}`);
+  // Проверяем, что у нас есть данные для обработки
+  if (!apiData) {
+    console.warn(`Пустые данные для категории ${category}`);
     return {};
   }
   
+  // Определяем, как извлечь массив месяцев из данных
+  let monthsData = null;
+  
+  if (Array.isArray(apiData)) {
+    console.log("API вернул массив");
+    
+    // Проверяем первый элемент на наличие месяца - если есть, это массив месяцев
+    if (apiData.length > 0 && apiData[0].month) {
+      console.log("Это массив месяцев");
+      monthsData = apiData;
+    } 
+    // Проверяем, может быть это массив объектов с filter_by_region
+    else if (apiData.length > 0 && apiData[0].filter_by_region) {
+      console.log("Это массив объектов с filter_by_region");
+      monthsData = apiData[0].filter_by_region;
+    }
+    // Может быть это нечто другое?
+    else {
+      console.warn("Неизвестный формат массива:", apiData);
+      return {};
+    }
+  } 
+  // Если это объект, возможно, месячные данные в его поле
+  else if (typeof apiData === 'object' && apiData !== null) {
+    console.log("API вернул объект");
+    
+    // Проверяем наличие filter_by_region
+    if (Array.isArray(apiData.filter_by_region)) {
+      console.log("Объект содержит filter_by_region");
+      monthsData = apiData.filter_by_region;
+    }
+    // Проверяем другие возможные поля
+    else {
+      const possibleArrayFields = Object.keys(apiData).filter(key => 
+        Array.isArray(apiData[key])
+      );
+      
+      if (possibleArrayFields.length > 0) {
+        console.log(`Найдены поля-массивы: ${possibleArrayFields.join(", ")}`);
+        monthsData = apiData[possibleArrayFields[0]];
+      } else {
+        console.warn("Не удалось найти массив месяцев в объекте:", apiData);
+        return {};
+      }
+    }
+  } else {
+    console.warn("API вернул неожиданный тип данных:", typeof apiData);
+    return {};
+  }
+  
+  // Проверяем, что мы нашли месячные данные
+  if (!monthsData || !Array.isArray(monthsData)) {
+    console.warn("Не удалось извлечь массив месяцев из данных");
+    return {};
+  }
+  
+  console.log("Найдено месячных данных:", monthsData.length);
+  
+  // Проверим первый элемент для понимания структуры
+  if (monthsData.length > 0) {
+    console.log("Пример месячных данных:", monthsData[0]);
+  }
+  
+  // Дальше продолжаем как обычно с monthsData
+  
+  const transformedData = {};
+  const years = new Set();
+  
   // Первый проход: собираем все уникальные годы из данных
-  apiData.forEach(monthData => {
+  monthsData.forEach(monthData => {
     if (!monthData || !monthData.month || typeof monthData.month !== 'string') {
       console.warn("Пропускаем некорректные данные месяца:", monthData);
       return;
@@ -521,8 +746,8 @@ const transformRegionBasedData = (apiData, category) => {
   console.log("Найденные годы:", yearsList, "Количество:", yearsList.length);
   
   if (yearsList.length === 0) {
-    console.warn("Не найдено годов в данных, создаем текущий год");
-    yearsList.push(new Date().getFullYear());
+    console.warn("Не найдено годов в данных");
+    return {};
   }
   
   // Второй проход: создаем структуру данных для каждого года
@@ -549,7 +774,8 @@ const transformRegionBasedData = (apiData, category) => {
   });
   
   // Третий проход: заполняем данные продаж из API
-  apiData.forEach(monthData => {
+  let processedMonths = 0;
+  monthsData.forEach(monthData => {
     if (!monthData || !monthData.month || typeof monthData.month !== 'string') {
       return; // Пропускаем некорректные данные
     }
@@ -592,6 +818,7 @@ const transformRegionBasedData = (apiData, category) => {
       });
     } else {
       console.warn(`Данные о регионах отсутствуют или некорректны для месяца ${monthData.month}`);
+      return;
     }
     
     // Обновляем данные месяца
@@ -621,13 +848,24 @@ const transformRegionBasedData = (apiData, category) => {
     
     // Обновляем общую сумму продаж за год
     transformedData[year].totalEarned += monthTotal;
+    
+    processedMonths++;
   });
+  
+  console.log(`Обработано месяцев: ${processedMonths}`);
+  
+  // Проверяем, что у нас есть хоть какие-то данные
+  if (processedMonths === 0) {
+    console.warn("Не удалось обработать ни одного месяца");
+    return {};
+  }
   
   // Устанавливаем целевой показатель (на 20% выше текущего)
   yearsList.forEach(year => {
     transformedData[year].targetAmount = transformedData[year].totalEarned * 1.2;
   });
   
+  console.log("Преобразованные данные:", transformedData);
   return transformedData;
 };
   
