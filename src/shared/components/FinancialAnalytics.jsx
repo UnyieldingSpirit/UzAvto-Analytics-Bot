@@ -3453,6 +3453,8 @@ const showCarModelDetails = (year, month, monthName) => {
     head.appendChild(fontAwesome);
   }
 };
+  
+  
 
 const showRegionDetails = (year, month, monthName) => {
   if (!mainChartRef.current) return;
