@@ -9710,46 +9710,6 @@ const renderDailySalesTableRows = () => {
           <div className="text-sm font-medium text-purple-400">{formatProfitCompact(wholesaleAmount)}</div>
           <div className="text-xs text-gray-400">{wholesaleCount} шт.</div>
         </td>
-        
-        {/* Модели розничных продаж */}
-        <td className="px-3 py-4">
-          {retailSalesData.models && retailSalesData.models.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {/* Показываем первые 3 модели */}
-              {retailSalesData.models.slice(0, 3).map(model => {
-                // Убедимся, что значения корректные
-                const modelAmount = parseFloat(model.amount) || 0;
-                const modelCount = parseInt(model.all_count) || 0;
-                
-                return (
-                  <div 
-                    key={model.model_id} 
-                    className="bg-blue-600/20 text-blue-300 text-xs rounded-full py-1 px-2 flex items-center justify-between gap-1"
-                    title={`${model.model_name}: ${formatProfitCompact(modelAmount)} (${modelCount} шт.)`}
-                  >
-                    <span className="mr-1">{model.model_name || 'Модель'}</span>
-                    <div className="flex items-center">
-                      <span className="text-xs bg-blue-600/40 rounded-full px-1.5 mr-1">{modelCount}</span>
-                      <span className="text-green-300 text-xs">{formatProfitCompact(modelAmount)}</span>
-                    </div>
-                  </div>
-                );
-              })}
-              
-              {/* Показываем кнопку "Еще", если есть дополнительные модели */}
-              {retailSalesData.models.length > 3 && (
-                <button 
-                  className="py-1 px-2 text-xs rounded-full bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
-                  onClick={() => showModelsModal(date, displayDate, retailSalesData.models)}
-                >
-                  Еще {retailSalesData.models.length - 3}...
-                </button>
-              )}
-            </div>
-          ) : (
-            <span className="text-sm text-gray-500">Нет данных о моделях</span>
-          )}
-        </td>
       </tr>
     );
   });
@@ -10148,7 +10108,6 @@ return (
                     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Общие продажи</th>
                     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Розничные продажи</th>
                     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Оптовые продажи</th>
-                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Модели (розница)</th>
                   </tr>
                 </thead>
                 <tbody className="bg-gray-800 divide-y divide-gray-700">
