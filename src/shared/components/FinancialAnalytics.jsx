@@ -37,7 +37,14 @@ export default function EnhancedFinancialAnalytics() {
   const [apiEndDate, setApiEndDate] = useState('31.12.2025');
   const [apiEndpoint, setApiEndpoint] = useState("get_all_payment"); // Начальный эндпоинт API (все продажи)
   const [dataStructureType, setDataStructureType] = useState("region"); // "model" для розницы, "region" для опта и всех
-  
+  const [dailySalesData, setDailySalesData] = useState({
+  all: [],
+  retail: [],
+  wholesale: []
+});
+const [isLoadingDailySales, setIsLoadingDailySales] = useState(false);
+const [tableDateStart, setTableDateStart] = useState(apiStartDate);
+const [tableDateEnd, setTableDateEnd] = useState(apiEndDate);
   // Функция для получения текущего месяца и года
   const getCurrentMonthAndYear = () => {
     const now = new Date();
@@ -3578,106 +3585,829 @@ const showRegionDetails = async (year, month, monthName) => {
     .on('click', renderPeriodComparisonTable);
 
   // Функция для загрузки данных с API
-  const loadRegionData = async (startDate, endDate, category, showLoader = true) => {
-    try {
-      // Показываем индикатор загрузки, если нужно
-      if (showLoader) {
-        container.append('div')
-          .attr('class', 'region-data-loader')
-          .style('display', 'flex')
-          .style('align-items', 'center')
-          .style('justify-content', 'center')
-          .style('height', '100px')
-          .style('color', '#9ca3af')
-          .html(`
-            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-            <span class="ml-3">Загрузка данных о регионах...</span>
-          `);
-      }
+const loadRegionData = async (startDate, endDate, category, showLoader = true) => {
+  try {
+    // Показываем индикатор загрузки, если нужно
+    if (showLoader) {
+      container.append('div')
+        .attr('class', 'region-data-loader')
+        .style('display', 'flex')
+        .style('align-items', 'center')
+        .style('justify-content', 'center')
+        .style('height', '100px')
+        .style('color', '#9ca3af')
+        .html(`
+          <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+          <span class="ml-3">Загрузка данных о регионах...</span>
+        `);
+    }
+    
+    // Определяем соответствующий эндпоинт API в зависимости от категории
+    let endpoint = "get_all_payment";
+    if (category === 'retail') {
+      endpoint = "get_roz_payment";
+    } else if (category === 'wholesale') {
+      endpoint = "get_opt_payment";
+    }
+    
+    console.log(`Выполняется запрос к API: ${endpoint} с датами ${startDate}-${endDate}`);
+    
+    // Выполняем запрос к API
+    const response = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: `begin_date=${startDate}&end_date=${endDate}`
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Ошибка HTTP: ${response.status}`);
+    }
+    
+    // Парсим ответ
+    const apiData = await response.json();
+    console.log("Получены данные от API:", apiData);
+    
+    // Формируем месяц в формате YYYY-MM для поиска
+    const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+    
+    // Извлекаем данные о регионах
+    let regionData = [];
+    
+    // Проверяем, какой тип данных мы обрабатываем на основе категории
+    if (category === 'retail') {
+      // Для розничных продаж обрабатываем данные аналогично transformModelBasedData
+      console.log("Обрабатываем данные розничных продаж");
       
-      // Определяем соответствующий эндпоинт API в зависимости от категории
-      let endpoint = "get_all_payment";
-      if (category === 'retail') {
-        endpoint = "get_roz_payment";
-      } else if (category === 'wholesale') {
-        endpoint = "get_opt_payment";
-      }
-      
-      console.log(`Выполняется запрос к API: ${endpoint} с датами ${startDate}-${endDate}`);
-      
-      // Выполняем запрос к API
-      const response = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: `begin_date=${startDate}&end_date=${endDate}`
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Ошибка HTTP: ${response.status}`);
-      }
-      
-      // Парсим ответ
-      const apiData = await response.json();
-      console.log("Получены данные от API:", apiData);
-      
-      // Формируем месяц в формате YYYY-MM для поиска
-      const monthStr = `${year}-${String(month).padStart(2, '0')}`;
-      
-      // Извлекаем данные о регионах
-      let regionData = [];
-      
-      // Ищем данные о регионах в ответе API
       if (Array.isArray(apiData)) {
-        // Ищем в массиве объектов с filter_by_region
-        for (const item of apiData) {
-          if (Array.isArray(item.filter_by_region)) {
-            const monthData = item.filter_by_region.find(m => m.month === monthStr);
-            if (monthData && Array.isArray(monthData.regions)) {
-              regionData = monthData.regions;
-              break;
+        // Объединяем данные по регионам из всех моделей
+        const regionMap = new Map();
+        
+        apiData.forEach(model => {
+          if (!model || !Array.isArray(model.filter_by_region)) {
+            console.warn("Модель без данных о регионах:", model);
+            return;
+          }
+          
+          // Ищем данные для выбранного месяца
+          const monthData = model.filter_by_region.find(m => m.month === monthStr);
+          if (!monthData || !Array.isArray(monthData.regions)) {
+            console.log(`Нет данных о регионах для месяца ${monthStr} в модели ${model.model_name || 'неизвестная модель'}`);
+            return;
+          }
+          
+          // Агрегируем данные о регионах для всех моделей
+          monthData.regions.forEach(region => {
+            if (!region || !region.region_id) return;
+            
+            const regionId = region.region_id;
+            if (!regionMap.has(regionId)) {
+              regionMap.set(regionId, {
+                region_id: regionId,
+                region_name: region.region_name || `Регион ${regionId}`,
+                amount: 0,
+                all_count: 0
+              });
+            }
+            
+            // Суммируем значения для этого региона
+            const regionEntry = regionMap.get(regionId);
+            regionEntry.amount += parseFloat(region.amount || 0);
+            regionEntry.all_count += parseInt(region.all_count || 0, 10);
+          });
+        });
+        
+        // Преобразуем Map в массив
+        regionData = Array.from(regionMap.values());
+        console.log(`Объединены данные о ${regionData.length} регионах из розничных продаж`);
+      } else {
+        console.warn("Данные розничных продаж не являются массивом:", apiData);
+      }
+    } else {
+      // Для оптовых и общих продаж - стандартная обработка
+      console.log("Обрабатываем данные оптовых/общих продаж");
+      
+      // Логируем для отладки
+      console.log(`Ищем месяц ${monthStr} в данных`);
+      
+      // Функция для извлечения данных о регионах из ответа API
+      const extractRegions = (apiData, monthStr) => {
+        if (!apiData) return [];
+        
+        // Проверяем разные структуры данных
+        if (Array.isArray(apiData)) {
+          // Если ответ - массив
+          for (const item of apiData) {
+            if (Array.isArray(item.filter_by_region)) {
+              const monthData = item.filter_by_region.find(m => m.month === monthStr);
+              if (monthData && Array.isArray(monthData.regions)) {
+                console.log(`Найдены данные о регионах для месяца ${monthStr}: ${monthData.regions.length} регионов`);
+                return monthData.regions;
+              }
             }
           }
+        } else if (apiData && typeof apiData === 'object') {
+          // Если ответ - объект
+          if (Array.isArray(apiData.filter_by_region)) {
+            const monthData = apiData.filter_by_region.find(m => m.month === monthStr);
+            if (monthData && Array.isArray(monthData.regions)) {
+              console.log(`Найдены данные о регионах для месяца ${monthStr}: ${monthData.regions.length} регионов`);
+              return monthData.regions;
+            }
+          }
+          
+          // Проверяем прямой доступ к regions
+          if (Array.isArray(apiData.regions)) {
+            console.log(`Найдены данные о регионах напрямую: ${apiData.regions.length} регионов`);
+            return apiData.regions;
+          }
         }
-      } else if (apiData && Array.isArray(apiData.filter_by_region)) {
-        // Если apiData - это объект с filter_by_region
-        const monthData = apiData.filter_by_region.find(m => m.month === monthStr);
-        if (monthData && Array.isArray(monthData.regions)) {
-          regionData = monthData.regions;
-        }
-      }
+        
+        return [];
+      };
       
-      // Удаляем индикатор загрузки, если он есть
-      container.selectAll('.region-data-loader').remove();
-      
-      if (regionData.length === 0) {
-        console.log("Не найдены данные о регионах в API");
-        return null;
-      }
-      
-      console.log(`Найдены данные о регионах: ${regionData.length} записей`);
-      return regionData;
-      
-    } catch (error) {
-      // Удаляем индикатор загрузки, если он есть
-      container.selectAll('.region-data-loader').remove();
-      
-      console.error('Ошибка при получении данных о регионах:', error);
-      
-      // Показываем сообщение об ошибке
-      container.append('div')
-        .style('color', '#ef4444')
-        .style('padding', '10px')
-        .style('background', 'rgba(239, 68, 68, 0.1)')
-        .style('border', '1px solid rgba(239, 68, 68, 0.3)')
-        .style('border-radius', '6px')
-        .style('margin-top', '10px')
-        .text(`Ошибка при загрузке данных: ${error.message}`);
-      
+      regionData = extractRegions(apiData, monthStr);
+    }
+    
+    // Удаляем индикатор загрузки, если он есть
+    container.selectAll('.region-data-loader').remove();
+    
+    if (regionData.length === 0) {
+      console.log("Не найдено данных о регионах в API-ответе");
       return null;
     }
+    
+    console.log(`Найдено ${regionData.length} регионов в API-ответе`);
+    return regionData;
+    
+  } catch (error) {
+    // Удаляем индикатор загрузки, если он есть
+    container.selectAll('.region-data-loader').remove();
+    
+    console.error('Ошибка при получении данных о регионах:', error);
+    
+    // Показываем сообщение об ошибке
+    container.append('div')
+      .style('color', '#ef4444')
+      .style('padding', '10px')
+      .style('background', 'rgba(239, 68, 68, 0.1)')
+      .style('border', '1px solid rgba(239, 68, 68, 0.3)')
+      .style('border-radius', '6px')
+      .style('margin-top', '10px')
+      .text(`Ошибка при загрузке данных: ${error.message}`);
+    
+    return null;
+  }
+};
+  
+  // Функция для отображения таблицы статистики продаж
+const renderDailySalesTable = () => {
+  // Создаем контейнер для таблицы в нижней части страницы
+  const tableContainer = document.createElement('div');
+  tableContainer.className = 'mt-6 bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 border border-gray-700/50';
+  
+  // Заголовок секции
+  const header = document.createElement('div');
+  header.className = 'flex justify-between items-center mb-4';
+  
+  const headerTitle = document.createElement('h2');
+  headerTitle.className = 'text-xl md:text-2xl font-bold text-white bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent';
+  headerTitle.textContent = 'Детальная статистика продаж по дням';
+  
+  const controlPanel = document.createElement('div');
+  controlPanel.className = 'flex items-center gap-2';
+  
+  // Добавляем элементы выбора дат
+  const dateRangeContainer = document.createElement('div');
+  dateRangeContainer.className = 'flex items-center gap-3';
+  
+  // Создаем элементы выбора дат
+  const startDateContainer = document.createElement('div');
+  startDateContainer.className = 'relative';
+  
+  const startDateInput = document.createElement('input');
+  startDateInput.type = 'date';
+  startDateInput.className = 'bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36';
+  startDateInput.value = formatDateForInput(apiStartDate);
+  startDateInput.addEventListener('change', (e) => {
+    tableDateStart = formatDateFromInput(e.target.value);
+  });
+  
+  startDateContainer.appendChild(startDateInput);
+  
+  const dateRangeSeparator = document.createElement('span');
+  dateRangeSeparator.className = 'text-gray-400';
+  dateRangeSeparator.textContent = '—';
+  
+  const endDateContainer = document.createElement('div');
+  endDateContainer.className = 'relative';
+  
+  const endDateInput = document.createElement('input');
+  endDateInput.type = 'date';
+  endDateInput.className = 'bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36';
+  endDateInput.value = formatDateForInput(apiEndDate);
+  endDateInput.addEventListener('change', (e) => {
+    tableDateEnd = formatDateFromInput(e.target.value);
+  });
+  
+  endDateContainer.appendChild(endDateInput);
+  dateRangeContainer.appendChild(startDateContainer);
+  dateRangeContainer.appendChild(dateRangeSeparator);
+  dateRangeContainer.appendChild(endDateContainer);
+  
+  // Кнопка обновления данных
+  const refreshButton = document.createElement('button');
+  refreshButton.className = 'bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-1';
+  refreshButton.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"></path>
+    </svg>
+    Загрузить данные
+  `;
+  refreshButton.addEventListener('click', fetchDailySalesData);
+  
+  controlPanel.appendChild(dateRangeContainer);
+  controlPanel.appendChild(refreshButton);
+  
+  header.appendChild(headerTitle);
+  header.appendChild(controlPanel);
+  tableContainer.appendChild(header);
+  
+  // Контейнер для таблицы с возможностью горизонтальной прокрутки
+  const tableWrapper = document.createElement('div');
+  tableWrapper.className = 'overflow-x-auto';
+  
+  // Индикатор загрузки
+  const loadingIndicator = document.createElement('div');
+  loadingIndicator.className = 'flex justify-center items-center py-10';
+  loadingIndicator.innerHTML = `
+    <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+    <span class="ml-3 text-gray-300">Загрузка данных...</span>
+  `;
+  
+  // Сообщение при отсутствии данных
+  const noDataMessage = document.createElement('div');
+  noDataMessage.className = 'flex flex-col items-center justify-center py-10 text-gray-400';
+  noDataMessage.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+    <p class="text-lg">Данные отсутствуют для выбранного периода</p>
+    <p class="text-sm mt-1">Выберите другой диапазон дат или обновите данные</p>
+  `;
+  noDataMessage.style.display = 'none';
+  
+  // Содержимое таблицы (будет заполнено при загрузке данных)
+  const tableSalesContent = document.createElement('div');
+  tableSalesContent.id = 'daily-sales-table-content';
+  tableSalesContent.className = 'hidden'; // Скрыто до загрузки данных
+  
+  tableWrapper.appendChild(loadingIndicator);
+  tableWrapper.appendChild(noDataMessage);
+  tableWrapper.appendChild(tableSalesContent);
+  tableContainer.appendChild(tableWrapper);
+  
+  // Добавляем таблицу в DOM
+  document.querySelector('.min-h-screen').appendChild(tableContainer);
+  
+  // Инициализируем переменные для хранения дат и данных
+  let tableDateStart = apiStartDate;
+  let tableDateEnd = apiEndDate;
+  let salesData = {
+    all: [],
+    retail: [],
+    wholesale: []
   };
+  
+  // Функция для загрузки данных о продажах по дням
+const fetchDailySalesData = async () => {
+  setIsLoadingDailySales(true);
+  
+  try {
+    // Загружаем данные из всех трех API-эндпоинтов параллельно
+    const [allSalesResponse, retailSalesResponse, wholesaleSalesResponse] = await Promise.all([
+      fetch(`https://uzavtosalon.uz/b/dashboard/infos&get_all_payment_by_day`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `begin_date=${tableDateStart}&end_date=${tableDateEnd}`
+      }),
+      fetch(`https://uzavtosalon.uz/b/dashboard/infos&get_roz_payment_by_day`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `begin_date=${tableDateStart}&end_date=${tableDateEnd}`
+      }),
+      fetch(`https://uzavtosalon.uz/b/dashboard/infos&get_opt_payment_by_day`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `begin_date=${tableDateStart}&end_date=${tableDateEnd}`
+      })
+    ]);
+    
+    // Проверяем успешность запросов
+    if (!allSalesResponse.ok || !retailSalesResponse.ok || !wholesaleSalesResponse.ok) {
+      throw new Error('Ошибка при получении данных от API');
+    }
+    
+    // Парсим ответы
+    const allSalesData = await allSalesResponse.json();
+    const retailSalesData = await retailSalesResponse.json();
+    const wholesaleSalesData = await wholesaleSalesResponse.json();
+    
+    // Сохраняем данные
+    setDailySalesData({
+      all: Array.isArray(allSalesData) ? allSalesData : [],
+      retail: Array.isArray(retailSalesData) ? retailSalesData : [],
+      wholesale: Array.isArray(wholesaleSalesData) ? wholesaleSalesData : []
+    });
+    
+    console.log('Загружены данные о продажах по дням:', {allSalesData, retailSalesData, wholesaleSalesData});
+  } catch (error) {
+    console.error('Ошибка при загрузке данных о продажах:', error);
+  } finally {
+    setIsLoadingDailySales(false);
+  }
+};
+  
+  // Функция для проверки наличия данных
+  function hasData(salesData) {
+    return salesData.all.length > 0 || salesData.retail.length > 0 || salesData.wholesale.length > 0;
+  }
+  
+  // Функция для отображения данных в таблице
+  function renderSalesTable(data) {
+    // Получаем элемент для таблицы
+    const tableContainer = document.getElementById('daily-sales-table-content');
+    tableContainer.innerHTML = '';
+    
+    // Создаем структуру таблицы
+    const table = document.createElement('table');
+    table.className = 'min-w-full divide-y divide-gray-700 table-fixed';
+    
+    // Создаем заголовок таблицы
+    const thead = document.createElement('thead');
+    thead.className = 'bg-gray-700/50';
+    
+    const headerRow = document.createElement('tr');
+    
+    // Заголовки столбцов
+    const headers = [
+      { text: 'Дата', className: 'w-32' },
+      { text: 'Общие продажи', className: 'w-44' },
+      { text: 'Розничные продажи', className: 'w-44' },
+      { text: 'Оптовые продажи', className: 'w-44' },
+      { text: 'Модели (розница)', className: '' }
+    ];
+    
+    headers.forEach(header => {
+      const th = document.createElement('th');
+      th.scope = 'col';
+      th.className = `px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider ${header.className}`;
+      th.textContent = header.text;
+      headerRow.appendChild(th);
+    });
+    
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    // Создаем тело таблицы
+    const tbody = document.createElement('tbody');
+    tbody.className = 'bg-gray-800 divide-y divide-gray-700';
+    
+    // Создаем объединенный набор дат из всех трех источников
+    const allDates = new Set();
+    
+    // Функция для получения даты из строки формата YYYY-MM-DD
+    const getDateFromString = (dateStr) => {
+      if (!dateStr) return null;
+      return dateStr;
+    };
+    
+    // Собираем все даты
+    data.all.forEach(item => {
+      const date = getDateFromString(item.day);
+      if (date) allDates.add(date);
+    });
+    
+    data.retail.forEach(item => {
+      const date = getDateFromString(item.day);
+      if (date) allDates.add(date);
+    });
+    
+    data.wholesale.forEach(item => {
+      const date = getDateFromString(item.day);
+      if (date) allDates.add(date);
+    });
+    
+    // Преобразуем Set в массив и сортируем даты
+    const sortedDates = Array.from(allDates).sort((a, b) => {
+      return new Date(a) - new Date(b);
+    });
+    
+    // Создаем индексы данных по датам для быстрого доступа
+    const allSalesIndex = {};
+    const retailSalesIndex = {};
+    const wholesaleSalesIndex = {};
+    
+    data.all.forEach(item => {
+      allSalesIndex[item.day] = item;
+    });
+    
+    data.retail.forEach(item => {
+      retailSalesIndex[item.day] = item;
+    });
+    
+    data.wholesale.forEach(item => {
+      wholesaleSalesIndex[item.day] = item;
+    });
+    
+    // Для каждой даты создаем строку таблицы
+    sortedDates.forEach((date, index) => {
+      const row = document.createElement('tr');
+      row.className = index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-750';
+      
+      // Форматируем дату из YYYY-MM-DD в DD.MM.YYYY
+      const displayDate = formatDisplayDate(date);
+      
+      // Получаем данные для текущей даты
+      const allSalesData = allSalesIndex[date] || { amount: 0, all_count: 0 };
+      const retailSalesData = retailSalesIndex[date] || { amount: 0, all_count: 0, models: [] };
+      const wholesaleSalesData = wholesaleSalesIndex[date] || { amount: 0, all_count: 0 };
+      
+      // Ячейка даты
+      const dateCell = document.createElement('td');
+      dateCell.className = 'px-3 py-4 whitespace-nowrap';
+      dateCell.innerHTML = `
+        <div class="text-sm font-medium text-white">${displayDate}</div>
+        <div class="text-xs text-gray-400">${getDayOfWeek(date)}</div>
+      `;
+      row.appendChild(dateCell);
+      
+      // Ячейка общих продаж
+      const allSalesCell = document.createElement('td');
+      allSalesCell.className = 'px-3 py-4 whitespace-nowrap';
+      allSalesCell.innerHTML = `
+        <div class="text-sm font-medium text-white">${formatProfitCompact(allSalesData.amount)}</div>
+        <div class="text-xs text-gray-400">${allSalesData.all_count || 0} шт.</div>
+      `;
+      row.appendChild(allSalesCell);
+      
+      // Ячейка розничных продаж
+      const retailSalesCell = document.createElement('td');
+      retailSalesCell.className = 'px-3 py-4 whitespace-nowrap';
+      retailSalesCell.innerHTML = `
+        <div class="text-sm font-medium text-blue-400">${formatProfitCompact(retailSalesData.amount)}</div>
+        <div class="text-xs text-gray-400">${retailSalesData.all_count || 0} шт.</div>
+      `;
+      row.appendChild(retailSalesCell);
+      
+      // Ячейка оптовых продаж
+      const wholesaleSalesCell = document.createElement('td');
+      wholesaleSalesCell.className = 'px-3 py-4 whitespace-nowrap';
+      wholesaleSalesCell.innerHTML = `
+        <div class="text-sm font-medium text-purple-400">${formatProfitCompact(wholesaleSalesData.amount)}</div>
+        <div class="text-xs text-gray-400">${wholesaleSalesData.all_count || 0} шт.</div>
+      `;
+      row.appendChild(wholesaleSalesCell);
+      
+      // Ячейка с моделями розничных продаж
+      const modelsCell = document.createElement('td');
+      modelsCell.className = 'px-3 py-4';
+      
+      // Проверяем наличие данных о моделях
+      if (retailSalesData.models && retailSalesData.models.length > 0) {
+        const modelsContainer = document.createElement('div');
+        modelsContainer.className = 'flex flex-wrap gap-2';
+        
+        // Отображаем до 3 моделей, остальные скрываем под кнопкой "Еще"
+        const visibleModels = retailSalesData.models.slice(0, 3);
+        const hiddenModels = retailSalesData.models.slice(3);
+        
+        // Создаем чипы для видимых моделей
+        visibleModels.forEach(model => {
+          const modelChip = createModelChip(model);
+          modelsContainer.appendChild(modelChip);
+        });
+        
+        // Если есть скрытые модели, добавляем кнопку "Еще"
+        if (hiddenModels.length > 0) {
+          const moreButton = document.createElement('button');
+          moreButton.className = 'py-1 px-2 text-xs rounded-full bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors';
+          moreButton.textContent = `Еще ${hiddenModels.length}...`;
+          
+          // Обработчик клика для отображения всех моделей
+          moreButton.addEventListener('click', () => {
+            // Создаем модальное окно с полным списком моделей
+            showModelsModal(date, displayDate, retailSalesData.models);
+          });
+          
+          modelsContainer.appendChild(moreButton);
+        }
+        
+        modelsCell.appendChild(modelsContainer);
+      } else {
+        // Сообщение при отсутствии данных о моделях
+        modelsCell.innerHTML = `<span class="text-sm text-gray-500">Нет данных о моделях</span>`;
+      }
+      
+      row.appendChild(modelsCell);
+      tbody.appendChild(row);
+    });
+    
+    table.appendChild(tbody);
+    tableContainer.appendChild(table);
+    
+    // Создаем итоговую строку с суммарными данными
+    const totalRow = createTotalRow(data);
+    tbody.appendChild(totalRow);
+  }
+  
+  // Функция для создания чипа модели
+  function createModelChip(model) {
+    const chip = document.createElement('div');
+    chip.className = 'bg-blue-600/20 text-blue-300 text-xs rounded-full py-1 px-2 flex items-center';
+    
+    // Название и количество
+    chip.innerHTML = `
+      <span class="mr-1">${model.model_name || 'Модель'}</span>
+      <span class="text-xs bg-blue-600/40 rounded-full px-1.5">${model.all_count || 0}</span>
+    `;
+    
+    // Добавляем тултип с информацией
+    chip.title = `${model.model_name}: ${formatProfitCompact(model.amount)} (${model.all_count} шт.)`;
+    
+    return chip;
+  }
+  
+  // Функция для создания итоговой строки
+  function createTotalRow(data) {
+    const totalRow = document.createElement('tr');
+    totalRow.className = 'bg-gray-700/30 font-medium';
+    
+    // Ячейка с надписью "Итого"
+    const totalLabelCell = document.createElement('td');
+    totalLabelCell.className = 'px-3 py-4 whitespace-nowrap text-sm text-white';
+    totalLabelCell.textContent = 'ИТОГО:';
+    totalRow.appendChild(totalLabelCell);
+    
+    // Функция для расчета общей суммы и количества
+    const calculateTotal = (dataArray) => {
+      return dataArray.reduce((acc, item) => {
+        return {
+          amount: acc.amount + (parseFloat(item.amount) || 0),
+          all_count: acc.all_count + (parseInt(item.all_count) || 0)
+        };
+      }, { amount: 0, all_count: 0 });
+    };
+    
+    // Расчет итогов по всем категориям
+    const allTotal = calculateTotal(data.all);
+    const retailTotal = calculateTotal(data.retail);
+    const wholesaleTotal = calculateTotal(data.wholesale);
+    
+    // Ячейка итогов общих продаж
+    const allTotalCell = document.createElement('td');
+    allTotalCell.className = 'px-3 py-4 whitespace-nowrap';
+    allTotalCell.innerHTML = `
+      <div class="text-sm font-bold text-white">${formatProfitCompact(allTotal.amount)}</div>
+      <div class="text-xs text-gray-300">${allTotal.all_count} шт.</div>
+    `;
+    totalRow.appendChild(allTotalCell);
+    
+    // Ячейка итогов розничных продаж
+    const retailTotalCell = document.createElement('td');
+    retailTotalCell.className = 'px-3 py-4 whitespace-nowrap';
+    retailTotalCell.innerHTML = `
+      <div class="text-sm font-bold text-blue-300">${formatProfitCompact(retailTotal.amount)}</div>
+      <div class="text-xs text-gray-300">${retailTotal.all_count} шт.</div>
+    `;
+    totalRow.appendChild(retailTotalCell);
+    
+    // Ячейка итогов оптовых продаж
+    const wholesaleTotalCell = document.createElement('td');
+    wholesaleTotalCell.className = 'px-3 py-4 whitespace-nowrap';
+    wholesaleTotalCell.innerHTML = `
+      <div class="text-sm font-bold text-purple-300">${formatProfitCompact(wholesaleTotal.amount)}</div>
+      <div class="text-xs text-gray-300">${wholesaleTotal.all_count} шт.</div>
+    `;
+    totalRow.appendChild(wholesaleTotalCell);
+    
+    // Пустая ячейка для соблюдения структуры
+    const emptyCell = document.createElement('td');
+    totalRow.appendChild(emptyCell);
+    
+    return totalRow;
+  }
+  
+  // Функция для отображения модального окна со всеми моделями
+  function showModelsModal(date, displayDate, models) {
+    // Создаем затемненный фон
+    const modalBackdrop = document.createElement('div');
+    modalBackdrop.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    document.body.appendChild(modalBackdrop);
+    
+    // Создаем модальное окно
+    const modalContent = document.createElement('div');
+    modalContent.className = 'bg-gray-800 rounded-xl shadow-xl p-5 max-w-3xl w-full max-h-[80vh] flex flex-col border border-gray-700';
+    
+    // Заголовок модального окна
+    const modalHeader = document.createElement('div');
+    modalHeader.className = 'flex justify-between items-center mb-4 pb-3 border-b border-gray-700';
+    
+    const modalTitle = document.createElement('h3');
+    modalTitle.className = 'text-lg font-bold text-white';
+    modalTitle.textContent = `Модели автомобилей за ${displayDate}`;
+    
+    const closeButton = document.createElement('button');
+    closeButton.className = 'text-gray-400 hover:text-white';
+    closeButton.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    `;
+    closeButton.addEventListener('click', () => {
+      document.body.removeChild(modalBackdrop);
+    });
+    
+    modalHeader.appendChild(modalTitle);
+    modalHeader.appendChild(closeButton);
+    modalContent.appendChild(modalHeader);
+    
+    // Содержимое модального окна
+    const modalBody = document.createElement('div');
+    modalBody.className = 'overflow-y-auto flex-grow';
+    
+    // Проверяем наличие моделей
+    if (models && models.length > 0) {
+      // Создаем таблицу для отображения данных о моделях
+      const modelsTable = document.createElement('table');
+      modelsTable.className = 'min-w-full divide-y divide-gray-700';
+      
+      // Заголовок таблицы
+      const tableHead = document.createElement('thead');
+      tableHead.className = 'bg-gray-700/50';
+      
+      const headerRow = document.createElement('tr');
+      
+      // Заголовки столбцов
+      const headers = [
+        { text: '№', className: 'w-10' },
+        { text: 'Модель', className: 'w-1/3' },
+        { text: 'Продажи', className: 'w-1/5' },
+        { text: 'Количество', className: 'w-1/5' },
+        { text: 'Средняя цена', className: 'w-1/5' }
+      ];
+      
+      headers.forEach(header => {
+        const th = document.createElement('th');
+        th.scope = 'col';
+        th.className = `px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider ${header.className}`;
+        th.textContent = header.text;
+        headerRow.appendChild(th);
+      });
+      
+      tableHead.appendChild(headerRow);
+      modelsTable.appendChild(tableHead);
+      
+      // Тело таблицы
+      const tableBody = document.createElement('tbody');
+      tableBody.className = 'bg-gray-800 divide-y divide-gray-700';
+      
+      // Сортируем модели по сумме продаж (от большей к меньшей)
+      const sortedModels = [...models].sort((a, b) => {
+        return (parseFloat(b.amount) || 0) - (parseFloat(a.amount) || 0);
+      });
+      
+      // Для каждой модели создаем строку
+      sortedModels.forEach((model, index) => {
+        const row = document.createElement('tr');
+        row.className = index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-750';
+        
+        // Номер по порядку
+        const indexCell = document.createElement('td');
+        indexCell.className = 'px-3 py-3 whitespace-nowrap text-sm text-gray-300';
+        indexCell.textContent = index + 1;
+        row.appendChild(indexCell);
+        
+        // Название модели
+        const nameCell = document.createElement('td');
+        nameCell.className = 'px-3 py-3 whitespace-nowrap';
+        nameCell.innerHTML = `
+          <div class="text-sm font-medium text-white">${model.model_name || 'Модель'}</div>
+          <div class="text-xs text-gray-400">${model.model_id || ''}</div>
+        `;
+        row.appendChild(nameCell);
+        
+        // Сумма продаж
+        const amountCell = document.createElement('td');
+        amountCell.className = 'px-3 py-3 whitespace-nowrap text-sm text-blue-400';
+        amountCell.textContent = formatProfitCompact(model.amount);
+        row.appendChild(amountCell);
+        
+        // Количество
+        const countCell = document.createElement('td');
+        countCell.className = 'px-3 py-3 whitespace-nowrap text-sm text-white';
+        countCell.textContent = `${model.all_count || 0} шт.`;
+        row.appendChild(countCell);
+        
+        // Средняя цена
+        const avgPriceCell = document.createElement('td');
+        avgPriceCell.className = 'px-3 py-3 whitespace-nowrap text-sm text-green-400';
+        const avgPrice = model.all_count > 0 ? model.amount / model.all_count : 0;
+        avgPriceCell.textContent = formatProfitCompact(avgPrice);
+        row.appendChild(avgPriceCell);
+        
+        tableBody.appendChild(row);
+      });
+      
+      modelsTable.appendChild(tableBody);
+      modalBody.appendChild(modelsTable);
+    } else {
+      // Сообщение при отсутствии данных
+      const noDataMessage = document.createElement('div');
+      noDataMessage.className = 'flex flex-col items-center justify-center py-10 text-gray-400';
+      noDataMessage.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <p class="text-lg">Нет данных о моделях</p>
+      `;
+      modalBody.appendChild(noDataMessage);
+    }
+    
+    modalContent.appendChild(modalBody);
+    
+    // Футер модального окна
+    const modalFooter = document.createElement('div');
+    modalFooter.className = 'pt-3 mt-3 border-t border-gray-700 flex justify-end';
+    
+    const closeModalButton = document.createElement('button');
+    closeModalButton.className = 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded';
+    closeModalButton.textContent = 'Закрыть';
+    closeModalButton.addEventListener('click', () => {
+      document.body.removeChild(modalBackdrop);
+    });
+    
+    modalFooter.appendChild(closeModalButton);
+    modalContent.appendChild(modalFooter);
+    
+    modalBackdrop.appendChild(modalContent);
+    
+    // Закрытие модального окна при клике на фон
+    modalBackdrop.addEventListener('click', (e) => {
+      if (e.target === modalBackdrop) {
+        document.body.removeChild(modalBackdrop);
+      }
+    });
+  }
+  
+  // Функция для форматирования даты YYYY-MM-DD в DD.MM.YYYY
+  function formatDisplayDate(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    return `${parts[2]}.${parts[1]}.${parts[0]}`;
+  }
+  
+  // Функция для получения дня недели
+  function getDayOfWeek(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const days = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+    return days[date.getDay()];
+  }
+  
+  // Загружаем данные при первой отрисовке компонента
+  fetchDailySalesData();
+};
+  
+  useEffect(() => {
+  fetchDataForCategory(focusCategory, apiEndpoint, dataStructureType);
+}, []);
+
+// Добавляем таблицу статистики продаж по дням
+useEffect(() => {
+  renderDailySalesTable();
+}, []);
+  
+  // Если этих функций нет, добавьте их
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  
+  const parts = dateString.split('.');
+  if (parts.length !== 3) return '';
+  
+  return `${parts[2]}-${parts[1]}-${parts[0]}`;
+};
+
+const formatDateFromInput = (dateString) => {
+  if (!dateString) return '';
+  
+  const parts = dateString.split('-');
+  if (parts.length !== 3) return '';
+  
+  return `${parts[2]}.${parts[1]}.${parts[0]}`;
+};
   
   // Функция преобразования данных API в удобный формат
   const processRegionData = (apiRegions) => {
@@ -8872,213 +9602,548 @@ const renderCategoryDistribution = () => {
   }
 };
 
-  // JSX для компонента
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6">
-      {/* РАЗДЕЛ: Заголовок страницы */}
-      <header className="mb-6">
-        <motion.h1 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-3xl md:text-4xl font-bold text-white bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent"
-        >
-          Финансовая аналитика продаж автомобилей
-        </motion.h1>
-        <motion.p 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="text-gray-400 mt-2"
-        >
-          Анализ финансовых показателей и динамики продаж моделей
-        </motion.p>
-      </header>
-      
-      {/* Индикатор загрузки */}
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-primary"></div>
-        </div>
-      ) : (
-        <>
-          {/* РАЗДЕЛ: Панель управления и фильтры */}
-          <div className="bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 mb-6 border border-gray-700/50">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              {/* Табы для категорий продаж */}
-              <div className="flex bg-gray-700/80 rounded-lg p-1">
-                <button 
-                  className={`px-3 py-1.5 rounded-md text-sm ${
-                    focusCategory === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-                  }`}
-                  onClick={() => handleCategoryChange('all')}
-                >
-                  Все продажи
-                </button>
-                <button 
-                  className={`px-3 py-1.5 rounded-md text-sm ${
-                    focusCategory === 'retail' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-                  }`}
-                  onClick={() => handleCategoryChange('retail')}
-                  style={{ color: focusCategory === 'retail' ? '#ffffff' : SALE_TYPES.RETAIL.color }}
-                >
-                  Розница
-                </button>
-                <button 
-                  className={`px-3 py-1.5 rounded-md text-sm ${
-                    focusCategory === 'wholesale' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-                  }`}
-                  onClick={() => handleCategoryChange('wholesale')}
-                  style={{ color: focusCategory === 'wholesale' ? '#ffffff' : SALE_TYPES.WHOLESALE.color }}
-                >
-                  Опт
-                </button>
-              </div>
+  // Функция для форматирования даты YYYY-MM-DD в DD.MM.YYYY
+const formatDisplayDate = (dateStr) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  return `${parts[2]}.${parts[1]}.${parts[0]}`;
+};
 
-              {/* Элементы выбора даты для API запроса */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <input 
-                      type="date" 
-                      className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36"
-                      value={formatDateForInput(apiStartDate)}
-                      onChange={(e) => setApiStartDate(formatDateFromInput(e.target.value))}
-                    />
-                  </div>
-                  
-                  <span className="text-gray-400">—</span>
-                  
-                  <div className="relative">
-                    <input 
-                      type="date" 
-                      className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36"
-                      value={formatDateForInput(apiEndDate)}
-                      onChange={(e) => setApiEndDate(formatDateFromInput(e.target.value))}
-                    />
-                  </div>
+// Функция для получения дня недели
+const getDayOfWeek = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const days = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+  return days[date.getDay()];
+};
+
+// Функция для рендеринга строк таблицы с данными
+const renderDailySalesTableRows = () => {
+  // Создаем объединенный набор дат из всех трех источников
+  const allDates = new Set();
+  
+  // Собираем все даты
+  dailySalesData.all.forEach(item => {
+    if (item.day) allDates.add(item.day);
+  });
+  
+  dailySalesData.retail.forEach(item => {
+    if (item.day) allDates.add(item.day);
+  });
+  
+  dailySalesData.wholesale.forEach(item => {
+    if (item.day) allDates.add(item.day);
+  });
+  
+  // Преобразуем Set в массив и сортируем даты
+  const sortedDates = Array.from(allDates).sort((a, b) => {
+    return new Date(a) - new Date(b);
+  });
+  
+  // Создаем индексы данных по датам для быстрого доступа
+  const allSalesIndex = {};
+  const retailSalesIndex = {};
+  const wholesaleSalesIndex = {};
+  
+  dailySalesData.all.forEach(item => {
+    allSalesIndex[item.day] = item;
+  });
+  
+  dailySalesData.retail.forEach(item => {
+    retailSalesIndex[item.day] = item;
+  });
+  
+  dailySalesData.wholesale.forEach(item => {
+    wholesaleSalesIndex[item.day] = item;
+  });
+  
+  // Рендерим строки для каждой даты
+  return sortedDates.map((date, index) => {
+    // Форматируем дату из YYYY-MM-DD в DD.MM.YYYY
+    const displayDate = formatDisplayDate(date);
+    
+    // Получаем данные для текущей даты
+    const allSalesData = allSalesIndex[date] || { amount: 0, all_count: 0 };
+    const retailSalesData = retailSalesIndex[date] || { amount: 0, all_count: 0, models: [] };
+    const wholesaleSalesData = wholesaleSalesIndex[date] || { amount: 0, all_count: 0 };
+    
+    return (
+      <tr key={date} className={index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-750'}>
+        {/* Дата */}
+        <td className="px-3 py-4 whitespace-nowrap">
+          <div className="text-sm font-medium text-white">{displayDate}</div>
+          <div className="text-xs text-gray-400">{getDayOfWeek(date)}</div>
+        </td>
+        
+        {/* Общие продажи */}
+        <td className="px-3 py-4 whitespace-nowrap">
+          <div className="text-sm font-medium text-white">{formatProfitCompact(allSalesData.amount)}</div>
+          <div className="text-xs text-gray-400">{allSalesData.all_count || 0} шт.</div>
+        </td>
+        
+        {/* Розничные продажи */}
+        <td className="px-3 py-4 whitespace-nowrap">
+          <div className="text-sm font-medium text-blue-400">{formatProfitCompact(retailSalesData.amount)}</div>
+          <div className="text-xs text-gray-400">{retailSalesData.all_count || 0} шт.</div>
+        </td>
+        
+        {/* Оптовые продажи */}
+        <td className="px-3 py-4 whitespace-nowrap">
+          <div className="text-sm font-medium text-purple-400">{formatProfitCompact(wholesaleSalesData.amount)}</div>
+          <div className="text-xs text-gray-400">{wholesaleSalesData.all_count || 0} шт.</div>
+        </td>
+        
+        {/* Модели розничных продаж */}
+        <td className="px-3 py-4">
+          {retailSalesData.models && retailSalesData.models.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {/* Показываем первые 3 модели */}
+              {retailSalesData.models.slice(0, 3).map(model => (
+                <div 
+                  key={model.model_id} 
+                  className="bg-blue-600/20 text-blue-300 text-xs rounded-full py-1 px-2 flex items-center"
+                  title={`${model.model_name}: ${formatProfitCompact(model.amount)} (${model.all_count} шт.)`}
+                >
+                  <span className="mr-1">{model.model_name || 'Модель'}</span>
+                  <span className="text-xs bg-blue-600/40 rounded-full px-1.5">{model.all_count || 0}</span>
+                </div>
+              ))}
+              
+              {/* Показываем кнопку "Еще", если есть дополнительные модели */}
+              {retailSalesData.models.length > 3 && (
+                <button 
+                  className="py-1 px-2 text-xs rounded-full bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
+                  onClick={() => showModelsModal(date, displayDate, retailSalesData.models)}
+                >
+                  Еще {retailSalesData.models.length - 3}...
+                </button>
+              )}
+            </div>
+          ) : (
+            <span className="text-sm text-gray-500">Нет данных о моделях</span>
+          )}
+        </td>
+      </tr>
+    );
+  });
+};
+
+// Функция для рендеринга итоговой строки
+const renderDailySalesTotalRow = () => {
+  // Функция для расчета общей суммы и количества
+  const calculateTotal = (dataArray) => {
+    return dataArray.reduce((acc, item) => {
+      return {
+        amount: acc.amount + (parseFloat(item.amount) || 0),
+        all_count: acc.all_count + (parseInt(item.all_count) || 0)
+      };
+    }, { amount: 0, all_count: 0 });
+  };
+  
+  // Расчет итогов по всем категориям
+  const allTotal = calculateTotal(dailySalesData.all);
+  const retailTotal = calculateTotal(dailySalesData.retail);
+  const wholesaleTotal = calculateTotal(dailySalesData.wholesale);
+  
+  return (
+    <tr className="bg-gray-700/30 font-medium">
+      <td className="px-3 py-4 whitespace-nowrap text-sm text-white">ИТОГО:</td>
+      
+      <td className="px-3 py-4 whitespace-nowrap">
+        <div className="text-sm font-bold text-white">{formatProfitCompact(allTotal.amount)}</div>
+        <div className="text-xs text-gray-300">{allTotal.all_count} шт.</div>
+      </td>
+      
+      <td className="px-3 py-4 whitespace-nowrap">
+        <div className="text-sm font-bold text-blue-300">{formatProfitCompact(retailTotal.amount)}</div>
+        <div className="text-xs text-gray-300">{retailTotal.all_count} шт.</div>
+      </td>
+      
+      <td className="px-3 py-4 whitespace-nowrap">
+        <div className="text-sm font-bold text-purple-300">{formatProfitCompact(wholesaleTotal.amount)}</div>
+        <div className="text-xs text-gray-300">{wholesaleTotal.all_count} шт.</div>
+      </td>
+      
+      <td></td>
+    </tr>
+  );
+};
+
+// Функция для отображения модального окна с моделями
+const showModelsModal = (date, displayDate, models) => {
+  // Создаем модальное окно
+  const modalRoot = document.createElement('div');
+  modalRoot.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+  document.body.appendChild(modalRoot);
+  
+  // Рендерим содержимое модального окна с помощью React
+  ReactDOM.render(
+    <div className="bg-gray-800 rounded-xl shadow-xl p-5 max-w-3xl w-full max-h-[80vh] flex flex-col border border-gray-700">
+      {/* Заголовок модального окна */}
+      <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-700">
+        <h3 className="text-lg font-bold text-white">Модели автомобилей за {displayDate}</h3>
+        <button 
+          className="text-gray-400 hover:text-white"
+          onClick={() => {
+            document.body.removeChild(modalRoot);
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      
+      {/* Содержимое модального окна */}
+      <div className="overflow-y-auto flex-grow">
+        {models && models.length > 0 ? (
+          <table className="min-w-full divide-y divide-gray-700">
+            <thead className="bg-gray-700/50">
+              <tr>
+                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-10">№</th>
+                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/3">Модель</th>
+                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/5">Продажи</th>
+                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/5">Количество</th>
+                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/5">Средняя цена</th>
+              </tr>
+            </thead>
+            <tbody className="bg-gray-800 divide-y divide-gray-700">
+              {/* Сортируем модели по сумме продаж (от большей к меньшей) */}
+              {[...models].sort((a, b) => (parseFloat(b.amount) || 0) - (parseFloat(a.amount) || 0)).map((model, index) => {
+                const avgPrice = model.all_count > 0 ? model.amount / model.all_count : 0;
+                
+                return (
+                  <tr key={model.model_id} className={index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-750'}>
+                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-300">{index + 1}</td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <div className="text-sm font-medium text-white">{model.model_name || 'Модель'}</div>
+                      <div className="text-xs text-gray-400">{model.model_id || ''}</div>
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap text-sm text-blue-400">{formatProfitCompact(model.amount)}</td>
+                    <td className="px-3 py-3 whitespace-nowrap text-sm text-white">{model.all_count || 0} шт.</td>
+                    <td className="px-3 py-3 whitespace-nowrap text-sm text-green-400">{formatProfitCompact(avgPrice)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p className="text-lg">Нет данных о моделях</p>
+          </div>
+        )}
+      </div>
+      
+      {/* Футер модального окна */}
+      <div className="pt-3 mt-3 border-t border-gray-700 flex justify-end">
+        <button 
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+          onClick={() => {
+            document.body.removeChild(modalRoot);
+          }}
+        >
+          Закрыть
+        </button>
+      </div>
+    </div>,
+    modalRoot
+  );
+};
+
+  // JSX для компонента
+return (
+  <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6">
+    {/* РАЗДЕЛ: Заголовок страницы */}
+    <header className="mb-6">
+      <motion.h1 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-3xl md:text-4xl font-bold text-white bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent"
+      >
+        Финансовая аналитика продаж автомобилей
+      </motion.h1>
+      <motion.p 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="text-gray-400 mt-2"
+      >
+        Анализ финансовых показателей и динамики продаж моделей
+      </motion.p>
+    </header>
+    
+    {/* Индикатор загрузки */}
+    {isLoading ? (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-primary"></div>
+      </div>
+    ) : (
+      <>
+        {/* РАЗДЕЛ: Панель управления и фильтры */}
+        <div className="bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 mb-6 border border-gray-700/50">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Табы для категорий продаж */}
+            <div className="flex bg-gray-700/80 rounded-lg p-1">
+              <button 
+                className={`px-3 py-1.5 rounded-md text-sm ${
+                  focusCategory === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+                }`}
+                onClick={() => handleCategoryChange('all')}
+              >
+                Все продажи
+              </button>
+              <button 
+                className={`px-3 py-1.5 rounded-md text-sm ${
+                  focusCategory === 'retail' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+                }`}
+                onClick={() => handleCategoryChange('retail')}
+                style={{ color: focusCategory === 'retail' ? '#ffffff' : SALE_TYPES.RETAIL.color }}
+              >
+                Розница
+              </button>
+              <button 
+                className={`px-3 py-1.5 rounded-md text-sm ${
+                  focusCategory === 'wholesale' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
+                }`}
+                onClick={() => handleCategoryChange('wholesale')}
+                style={{ color: focusCategory === 'wholesale' ? '#ffffff' : SALE_TYPES.WHOLESALE.color }}
+              >
+                Опт
+              </button>
+            </div>
+
+            {/* Элементы выбора даты для API запроса */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <input 
+                    type="date" 
+                    className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36"
+                    value={formatDateForInput(apiStartDate)}
+                    onChange={(e) => setApiStartDate(formatDateFromInput(e.target.value))}
+                  />
                 </div>
                 
-                <button 
-                  className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-1"
-                  onClick={refreshDataWithDateRange}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                  </svg>
-                  Обновить
-                </button>
+                <span className="text-gray-400">—</span>
+                
+                <div className="relative">
+                  <input 
+                    type="date" 
+                    className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36"
+                    value={formatDateForInput(apiEndDate)}
+                    onChange={(e) => setApiEndDate(formatDateFromInput(e.target.value))}
+                  />
+                </div>
               </div>
+              
+              <button 
+                className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-1"
+                onClick={refreshDataWithDateRange}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                </svg>
+                Обновить
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {filteredData.length > 0 && (
+          <>
+            {/* РАЗДЕЛ: Информационные карточки */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-xl p-5 border border-blue-500/20 shadow-lg"
+              >
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-600/30 flex items-center justify-center mr-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-100" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-blue-300">
+                      {focusCategory === 'all' ? 'Общая сумма' : 
+                      focusCategory === 'retail' ? 'Розничные продажи' : 
+                      'Оптовые продажи'}
+                    </h3>
+                    <p className="text-3xl font-bold text-white mt-1">
+                      {formatCurrency(getCurrentMonthTotal())}
+                    </p>
+                    <p className="text-blue-300/70 text-sm mt-1">
+                      За текущий месяц
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+              
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-xl p-5 border border-purple-500/20 shadow-lg"
+              >
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-purple-600/30 flex items-center justify-center mr-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-100" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-purple-300">
+                      {focusCategory === 'all' ? 'Средний доход в день' : 
+                      focusCategory === 'retail' ? 'Среднее в день (розница)' : 
+                      'Среднее в день (опт)'}
+                    </h3>
+                    <p className="text-3xl font-bold text-white mt-1">
+                      {formatCurrency(calculateAverageDailyIncome())}
+                    </p>
+                    <p className="text-purple-300/70 text-sm mt-1">
+                      На основе {new Date().getDate()} прошедших дней
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+              
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-xl p-5 border border-green-500/20 shadow-lg"
+              >
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-600/30 flex items-center justify-center mr-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-100" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-green-300">
+                      {focusCategory === 'all' ? 'Ожидаемая сумма за месяц' : 
+                      focusCategory === 'retail' ? 'Прогноз розницы за месяц' : 
+                      'Прогноз опта за месяц'}
+                    </h3>
+                    <p className="text-3xl font-bold text-white mt-1">
+                      {formatCurrency(calculateTotalMonthEstimate())}
+                    </p>
+                    <p className="text-green-300/70 text-sm mt-1">
+                      {new Date().getDate()} / {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()} дней месяца прошло
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+            
+            {/* РАЗДЕЛ: Основной график и прогресс */}
+            <div className="gap-6 mb-6">
+              <div className="lg:col-span-2 bg-gray-800 rounded-xl p-2 border border-gray-700/50 shadow-lg">
+                <div ref={mainChartRef} className="w-full h-full"></div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* РАЗДЕЛ: Таблица детальной статистики продаж по дням */}
+        <div className="mt-6 bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 border border-gray-700/50">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl md:text-2xl font-bold text-white bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+              Детальная статистика продаж по дням
+            </h2>
+            
+            {/* Панель управления таблицей */}
+            <div className="flex items-center gap-2">
+              {/* Выбор дат для таблицы */}
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <input 
+                    type="date" 
+                    className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36"
+                    value={formatDateForInput(tableDateStart || apiStartDate)}
+                    onChange={(e) => setTableDateStart(formatDateFromInput(e.target.value))}
+                  />
+                </div>
+                
+                <span className="text-gray-400">—</span>
+                
+                <div className="relative">
+                  <input 
+                    type="date" 
+                    className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36"
+                    value={formatDateForInput(tableDateEnd || apiEndDate)}
+                    onChange={(e) => setTableDateEnd(formatDateFromInput(e.target.value))}
+                  />
+                </div>
+              </div>
+              
+              {/* Кнопка обновления таблицы */}
+              <button 
+                className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-1"
+                onClick={fetchDailySalesData}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                </svg>
+                Загрузить данные
+              </button>
             </div>
           </div>
           
-          {filteredData.length > 0 && (
-            <>
-              {/* РАЗДЕЛ: Информационные карточки */}
-<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-  <motion.div 
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.1 }}
-    className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-xl p-5 border border-blue-500/20 shadow-lg"
-  >
-    <div className="flex items-center">
-      <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-600/30 flex items-center justify-center mr-4">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-100" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-        </svg>
-      </div>
-      <div>
-        <h3 className="text-lg font-medium text-blue-300">
-          {focusCategory === 'all' ? 'Общая сумма' : 
-           focusCategory === 'retail' ? 'Розничные продажи' : 
-           'Оптовые продажи'}
-        </h3>
-        <p className="text-3xl font-bold text-white mt-1">
-          {formatCurrency(getCurrentMonthTotal())}
-        </p>
-        <p className="text-blue-300/70 text-sm mt-1">
-          За текущий месяц
-        </p>
-      </div>
-    </div>
-  </motion.div>
-  
-  <motion.div 
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.2 }}
-    className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-xl p-5 border border-purple-500/20 shadow-lg"
-  >
-    <div className="flex items-center">
-      <div className="flex-shrink-0 w-12 h-12 rounded-full bg-purple-600/30 flex items-center justify-center mr-4">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-100" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clipRule="evenodd" />
-        </svg>
-      </div>
-      <div>
-        <h3 className="text-lg font-medium text-purple-300">
-          {focusCategory === 'all' ? 'Средний доход в день' : 
-           focusCategory === 'retail' ? 'Среднее в день (розница)' : 
-           'Среднее в день (опт)'}
-        </h3>
-        <p className="text-3xl font-bold text-white mt-1">
-          {formatCurrency(calculateAverageDailyIncome())}
-        </p>
-        <p className="text-purple-300/70 text-sm mt-1">
-          На основе {new Date().getDate()} прошедших дней
-        </p>
-      </div>
-    </div>
-  </motion.div>
-  
-  <motion.div 
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.3 }}
-    className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-xl p-5 border border-green-500/20 shadow-lg"
-  >
-    <div className="flex items-center">
-      <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-600/30 flex items-center justify-center mr-4">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-100" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-        </svg>
-      </div>
-      <div>
-        <h3 className="text-lg font-medium text-green-300">
-          {focusCategory === 'all' ? 'Ожидаемая сумма за месяц' : 
-           focusCategory === 'retail' ? 'Прогноз розницы за месяц' : 
-           'Прогноз опта за месяц'}
-        </h3>
-        <p className="text-3xl font-bold text-white mt-1">
-          {formatCurrency(calculateTotalMonthEstimate())}
-        </p>
-        <p className="text-green-300/70 text-sm mt-1">
-          {new Date().getDate()} / {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()} дней месяца прошло
-        </p>
-      </div>
-    </div>
-  </motion.div>
-</div>
-              
-              {/* РАЗДЕЛ: Основной график и прогресс */}
-              <div className="gap-6 mb-6">
-                <div className="lg:col-span-2 bg-gray-800 rounded-xl p-2 border border-gray-700/50 shadow-lg">
-                  <div ref={mainChartRef} className="w-full h-full"></div>
-                </div>
+          {/* Контейнер таблицы с обработкой состояний загрузки */}
+          <div className="overflow-x-auto">
+            {isLoadingDailySales ? (
+              <div className="flex justify-center items-center py-10">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                <span className="ml-3 text-gray-300">Загрузка данных...</span>
               </div>
-            </>
-          )}
-        </>
-      )}
-      <style jsx>{`
-        .bg-clip-text {
-          -webkit-background-clip: text;
-          background-clip: text;
-        }
-        .text-transparent {
-          color: transparent;
-        }
-      `}</style>
-    </div>
-  );
+            ) : dailySalesData.all.length === 0 && dailySalesData.retail.length === 0 && dailySalesData.wholesale.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p className="text-lg">Данные отсутствуют для выбранного периода</p>
+                <p className="text-sm mt-1">Выберите другой диапазон дат или обновите данные</p>
+              </div>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-700 table-fixed">
+                <thead className="bg-gray-700/50">
+                  <tr>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-32">Дата</th>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Общие продажи</th>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Розничные продажи</th>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Оптовые продажи</th>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Модели (розница)</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-gray-800 divide-y divide-gray-700">
+                  {/* Генерируем строки таблицы */}
+                  {renderDailySalesTableRows()}
+                  
+                  {/* Итоговая строка */}
+                  {renderDailySalesTotalRow()}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </>
+    )}
+    <style jsx>{`
+      .bg-clip-text {
+        -webkit-background-clip: text;
+        background-clip: text;
+      }
+      .text-transparent {
+        color: transparent;
+      }
+    `}</style>
+  </div>
+);
 }
