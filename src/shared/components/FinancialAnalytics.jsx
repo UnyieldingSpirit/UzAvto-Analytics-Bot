@@ -967,18 +967,18 @@ const transformRegionBasedData = (apiData, category) => {
   };
   
   // Функция для форматирования чисел в компактный вид
-  const formatProfitCompact = (number) => {
-    if (number >= 1000000000000) { // триллионы
-      return `${(number / 1000000000000).toFixed(1)}T`;
-    } else if (number >= 1000000000) { // миллиарды
-      return `${(number / 1000000000).toFixed(1)}B`;
-    } else if (number >= 1000000) { // миллионы
-      return `${(number / 1000000).toFixed(1)}M`;
-    } else if (number >= 1000) { // тысячи
-      return `${(number / 1000).toFixed(1)}K`;
-    }
-    return Math.round(number).toLocaleString('ru-RU');
-  };
+const formatProfitCompact = (number) => {
+  // Проверяем, является ли number числом
+  if (number === null || number === undefined || isNaN(number)) {
+    return '0 UZS';
+  }
+  
+  // Округляем до целого числа и форматируем с разделителями тысяч
+  const formattedNumber = Math.round(number).toLocaleString('ru-RU');
+  
+  // Добавляем обозначение валюты
+  return `${formattedNumber} UZS`;
+};
   
   // Функция для получения общей суммы за период
   const getTotalForPeriod = () => {
@@ -2017,10 +2017,6 @@ const renderPeriodComparisonTable = () => {
             <div style="font-weight: bold;">${d.count} шт.</div>
           </div>
           <div>
-            <div style="font-size: 0.75rem; color: #9ca3af;">Средняя цена</div>
-            <div style="font-weight: bold;">${formatProfitCompact(d.avgPrice)}</div>
-          </div>
-          <div>
             <div style="font-size: 0.75rem; color: #9ca3af;">Доля</div>
             <div style="font-weight: bold; color: #60a5fa;">${percentage}%</div>
           </div>
@@ -2440,20 +2436,18 @@ const showSelectionOptions = (year, month, monthName) => {
 const showCarModelDetails = (year, month, monthName) => {
   if (!mainChartRef.current) return;
   d3.selectAll('.chart-tooltip, .bar-tooltip, .model-tooltip').remove();
+  
   // Очищаем контейнер
   mainChartRef.current.innerHTML = '';
   
-  // Создаем основной контейнер с современным градиентным фоном
+  // Создаем основной контейнер
   const container = d3.select(mainChartRef.current)
     .append('div')
     .style('width', '100%')
-    .style('height', '100%')
     .style('background', 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)')
     .style('border-radius', '1rem')
-    .style('padding', '20px')
-    .style('box-shadow', '0 15px 35px -10px rgba(0, 0, 0, 0.5)')
-    .style('border', '1px solid rgba(59, 130, 246, 0.15)');
-    
+    .style('padding', '20px');
+  
   // Определяем ширину контейнера для адаптивного дизайна
   const containerWidth = mainChartRef.current.clientWidth;
   const isMobile = containerWidth < 768;
@@ -2490,7 +2484,7 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('font-weight', 'bold')
     .style('color', '#f9fafb')
     .style('margin', '0')
-    .html(`Аналитика продаж: <span style="background: linear-gradient(90deg, #60a5fa, #93c5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${monthName} ${year}</span>`);
+    .html(`Аналитика продаж: <span style="background: linear-gradient(90deg, #60a5fa, #93c5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${monthName}</span>`);
   
   // Улучшенные интерактивные кнопки
   const buttonGroup = header.append('div')
@@ -2556,6 +2550,9 @@ const showCarModelDetails = (year, month, monthName) => {
   const yearData = financialData[year] || {};
   const modelData = Object.values(yearData.modelData || {});
   
+  // Проверяем наличие моделей
+  console.log(`Найдено моделей: ${modelData.length}`, modelData);
+  
   // Сортируем модели по объему продаж
   const sortedModels = [...modelData].sort((a, b) => b.totalSales - a.totalSales);
   
@@ -2587,23 +2584,11 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('background', 'rgba(30, 41, 59, 0.4)')
     .style('border', '1px solid rgba(59, 130, 246, 0.1)');
   
-  // Взять реальные данные моделей вместо генерации
-  const carModels = sortedModels.slice(0, 4).map(model => ({
-    id: model.model_id,
-    name: model.model_name,
-    sales: model.totalSales, 
-    count: model.monthlyData.reduce((sum, data) => {
-      // Считаем только тот месяц, который выбран
-      if (data && data.count) {
-        return sum + data.count;
-      }
-      return sum;
-    }, 0)
-  }));
-  
-  // Рассчитываем общие показатели
-  const totalSales = carModels.reduce((sum, model) => sum + model.sales, 0);
-  const totalCount = carModels.reduce((sum, model) => sum + model.count, 0);
+  // Рассчитываем общие показатели на основе реальных данных
+  const totalSales = sortedModels.reduce((sum, model) => sum + model.totalSales, 0);
+  const totalCount = sortedModels.reduce((sum, model) => {
+    return sum + model.monthlyData.reduce((mSum, m) => mSum + (m.count || 0), 0);
+  }, 0);
   const avgPrice = totalCount > 0 ? Math.round(totalSales / totalCount) : 0;
   
   // Добавляем информационные карточки с ключевыми показателями
@@ -2665,35 +2650,27 @@ const showCarModelDetails = (year, month, monthName) => {
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
     '59, 130, 246'
   );
+
   
-  createInfoCard(
-    'Средняя цена',
-    formatProfitCompact(avgPrice),
-    'За единицу',
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
-    '139, 92, 246'
-  );
+  // Рассчитываем долю премиум сегмента (модели со средней ценой выше среднего)
+  const avgAllModelsPrice = avgPrice || 1;
+  const premiumModels = sortedModels.filter(m => {
+    const modelAvgPrice = m.monthlyData.reduce((sum, d) => sum + (d.count ? d.amount / d.count : 0), 0) / 12;
+    return modelAvgPrice > avgAllModelsPrice * 1.3; // Премиум если на 30% дороже среднего
+  });
   
-  // Рассчитываем долю премиум сегмента (модели со средней ценой выше 700000)
-  const premiumModels = carModels.filter(m => m.count > 0 && m.sales / m.count > 700000);
-  const premiumShare = totalSales > 0 
-    ? premiumModels.reduce((sum, m) => sum + m.sales, 0) / totalSales * 100 
-    : 0;
-  
-  createInfoCard(
-    'Премиум сегмент',
-    `${premiumShare.toFixed(1)}%`,
-    'От общих продаж',
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>',
-    '245, 158, 11'
-  );
+  const premiumSales = premiumModels.reduce((sum, m) => sum + m.totalSales, 0);
+  const premiumShare = totalSales > 0 ? (premiumSales / totalSales * 100) : 0;
   
   // Отображаем лидера продаж
-  if (carModels.length > 0) {
+  if (sortedModels.length > 0) {
+    const topModel = sortedModels[0];
+    const topModelCount = topModel.monthlyData.reduce((sum, m) => sum + (m.count || 0), 0);
+    
     createInfoCard(
       'Лидер продаж',
-      carModels[0].name,
-      `${carModels[0].count} шт.`,
+      topModel.model_name,
+      `${topModelCount} шт.`,
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>',
       '16, 185, 129'
     );
@@ -2732,7 +2709,7 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('font-size', '1.1rem')
     .style('color', '#f9fafb')
     .style('margin', '0')
-    .text('Объем продаж по моделям');
+    .text(`Объем продаж по моделям`);
   
   const barChartFilters = barChartHeader.append('div')
     .style('display', 'flex')
@@ -2752,13 +2729,13 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('padding', '2px');
   
   // Переменная для хранения текущего режима просмотра
-  let currentView = 'sales';
+  let viewMode = 'sales';
   
   viewOptions.forEach((option, i) => {
     viewToggle.append('button')
       .attr('id', `view-${option.id}`)
-      .style('background', option.id === currentView ? 'rgba(59, 130, 246, 0.4)' : 'transparent')
-      .style('color', option.id === currentView ? '#f9fafb' : '#9ca3af')
+      .style('background', option.id === viewMode ? 'rgba(59, 130, 246, 0.4)' : 'transparent')
+      .style('color', option.id === viewMode ? '#f9fafb' : '#9ca3af')
       .style('border', 'none')
       .style('border-radius', '4px')
       .style('padding', '5px 8px')
@@ -2780,10 +2757,10 @@ const showCarModelDetails = (year, month, monthName) => {
           .style('color', '#f9fafb');
         
         // Обновляем текущий режим просмотра
-        currentView = option.id;
+        viewMode = option.id;
         
         // Перерисовываем график
-        updateBarChart(currentView);
+        updateBarChart(viewMode);
       });
   });
   
@@ -2808,16 +2785,27 @@ const showCarModelDetails = (year, month, monthName) => {
     const barHeight = barChartSvg.node().clientHeight;
     const barMargin = { top: 10, right: isMobile ? 40 : 120, bottom: 20, left: isMobile ? 120 : 180 };
     
-    // Подготавливаем данные в зависимости от режима
-    const data = carModels.map(model => ({
-      id: model.id,
-      name: model.name,
-      value: viewMode === 'sales' ? model.sales : model.count,
-      // Добавляем доп. информацию для тултипа
-      sales: model.sales,
-      count: model.count,
-      avgPrice: model.count > 0 ? Math.round(model.sales / model.count) : 0
-    }));
+    // Определяем, какие данные использовать для отображения
+    // Берем данные текущего месяца для всех моделей
+    const data = sortedModels.map(model => {
+      // Получаем данные модели за текущий месяц
+      const monthData = model.monthlyData[month-1] || { amount: 0, count: 0 };
+      
+      return {
+        id: model.model_id,
+        name: model.model_name,
+        value: viewMode === 'sales' ? monthData.amount : monthData.count,
+        // Полные данные для тултипа
+        sales: monthData.amount,
+        count: monthData.count,
+        avgPrice: monthData.count > 0 ? monthData.amount / monthData.count : 0,
+        totalSales: model.totalSales,
+        photo_sha: model.photo_sha,
+        image_url: model.photo_sha ? `https://uzavtosalon.uz/b/img/img-model.php?sha=${model.photo_sha}` : null
+      };
+    })
+    .sort((a, b) => b.value - a.value) // Сортируем по значению
+    .slice(0, 10); // Берем только топ-10 моделей для наглядности
     
     // Проверяем, есть ли данные
     if (data.length === 0) {
@@ -2939,16 +2927,32 @@ const showCarModelDetails = (year, month, monthName) => {
       const tooltip = d3.select('body').select('.model-tooltip');
       
       // Вычисляем процент
+      const totalValue = viewMode === 'sales'
+        ? data.reduce((sum, m) => sum + m.sales, 0)
+        : data.reduce((sum, m) => sum + m.count, 0);
+      
       const percentage = viewMode === 'sales'
-        ? ((d.sales / totalSales) * 100).toFixed(1)
-        : ((d.count / totalCount) * 100).toFixed(1);
+        ? ((d.sales / totalValue) * 100).toFixed(1)
+        : ((d.count / totalValue) * 100).toFixed(1);
       
       // Добавляем красиво форматированное содержимое тултипа
-      tooltip.html(`
+      let tooltipHTML = `
         <div style="border-bottom: 1px solid rgba(75, 85, 99, 0.3); margin-bottom: 8px; padding-bottom: 8px;">
           <div style="font-weight: bold; font-size: 1rem; margin-bottom: 4px;">${d.name}</div>
           <div style="font-size: 0.8rem; color: #9ca3af;">Нажмите для детального анализа</div>
         </div>
+      `;
+      
+      // Если есть изображение, добавляем его
+      if (d.image_url) {
+        tooltipHTML += `
+          <div style="text-align: center; margin-bottom: 8px;">
+            <img src="${d.image_url}" style="max-width: 100%; max-height: 100px; object-fit: contain; border-radius: 4px;">
+          </div>
+        `;
+      }
+      
+      tooltipHTML += `
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
           <div>
             <div style="font-size: 0.75rem; color: #9ca3af;">Продажи</div>
@@ -2967,7 +2971,9 @@ const showCarModelDetails = (year, month, monthName) => {
             <div style="font-weight: bold; color: #60a5fa;">${percentage}%</div>
           </div>
         </div>
-      `);
+      `;
+      
+      tooltip.html(tooltipHTML);
       
       // Анимированное появление тултипа
       tooltip
@@ -2995,6 +3001,41 @@ const showCarModelDetails = (year, month, monthName) => {
         });
     };
     
+    // Создаем градиентные заливки для столбцов
+    const defs = barChartSvg.append('defs');
+    
+    data.forEach((d, i) => {
+      const id = `bar-gradient-${i}`;
+      
+      const gradient = defs.append('linearGradient')
+        .attr('id', id)
+        .attr('x1', '0%')
+        .attr('y1', '0%')
+        .attr('x2', '100%')
+        .attr('y2', '0%');
+      
+      const baseColor = d3.rgb(i === 0 ? '#3b82f6' : '#4b5563');
+      const startColor = baseColor.brighter(0.5);
+      const endColor = baseColor;
+      
+      gradient.append('stop')
+        .attr('offset', '0%')
+        .attr('stop-color', startColor.toString())
+        .attr('stop-opacity', 0.9);
+      
+      gradient.append('stop')
+        .attr('offset', '100%')
+        .attr('stop-color', endColor.toString())
+        .attr('stop-opacity', 0.7);
+    });
+    
+    // Создаем эффект свечения для выделения
+    defs.append('filter')
+      .attr('id', 'glow')
+      .append('feGaussianBlur')
+      .attr('stdDeviation', '3')
+      .attr('result', 'coloredBlur');
+    
     // Добавляем полосы для моделей с улучшенной анимацией и интерактивностью
     const bars = barChartSvg.selectAll('.car-model-bar')
       .data(data)
@@ -3003,7 +3044,7 @@ const showCarModelDetails = (year, month, monthName) => {
       .attr('x', barMargin.left)
       .attr('y', d => barY(d.name))
       .attr('height', barY.bandwidth())
-      .attr('fill', 'url(#sales-bar-gradient)')
+      .attr('fill', (d, i) => `url(#bar-gradient-${i})`)
       .attr('rx', 6)
       .attr('ry', 6)
       .style('cursor', 'pointer')
@@ -3022,44 +3063,40 @@ const showCarModelDetails = (year, month, monthName) => {
           .style('left', `${event.pageX + 15}px`)
           .style('top', `${event.pageY - 20}px`);
       })
-      .on('mouseout', function() {
+      .on('mouseout', function(event, d, i) {
         d3.select(this)
-          .attr('fill', 'url(#sales-bar-gradient)')
+          .attr('fill', (d, i) => `url(#bar-gradient-${i})`)
           .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))');
           
         hideTooltip();
       })
-      .on('click', (event, d) => {
-        showModelRegionalDistribution(d.name, year, month, monthName);
-      })
-      // Анимированное появление
+      // Анимация появления
       .attr('width', 0)
       .transition()
       .duration(800)
-      .delay((d, i) => i * 70)
-      .ease(d3.easeElasticOut.amplitude(0.8).period(1))
+      .delay((d, i) => i * 50)
       .attr('width', d => barX(d.value) - barMargin.left);
     
-    // Добавляем подписи значений с анимацией
-    barChartSvg.selectAll('.car-model-label')
+    // Добавляем текстовые метки со значениями над столбцами если значение существенное
+    barChartSvg.selectAll('.bar-value-label')
       .data(data)
       .join('text')
-      .attr('class', 'car-model-label')
+      .attr('class', 'bar-value-label')
       .attr('x', d => barX(d.value) + 10)
       .attr('y', d => barY(d.name) + barY.bandwidth() / 2)
       .attr('dy', '0.35em')
-      .style('font-size', isMobile ? '0.75rem' : '0.85rem')
-      .style('font-weight', '500')
+      .style('font-size', '0.7rem')
+      .style('font-weight', 'bold')
       .style('fill', '#f9fafb')
       .style('opacity', 0)
       .text(d => viewMode === 'sales' ? formatProfitCompact(d.value) : `${d.value} шт.`)
       .transition()
       .duration(500)
-      .delay((d, i) => 800 + i * 70)
+      .delay((d, i) => 800 + i * 50)
       .style('opacity', 1);
   }
   
-  // Первичная отрисовка графика
+  // Первичная отрисовка графика в режиме "продажи"
   updateBarChart('sales');
   
   // 2. Правый верхний график - улучшенная круговая диаграмма с интерактивностью
@@ -3089,9 +3126,28 @@ const showCarModelDetails = (year, month, monthName) => {
   const pieHeight = pieSvg.node().clientHeight;
   const pieRadius = Math.min(pieWidth, pieHeight) / 2 * 0.8;
   
+  // Берем топ-5 моделей для пирога
+  const pieData = sortedModels.slice(0, 5).map(model => ({
+    id: model.model_id,
+    name: model.model_name,
+    value: model.totalSales
+  }));
+  
+  // Если есть больше моделей, добавляем "Другие"
+  if (sortedModels.length > 5) {
+    const otherModelsTotal = sortedModels.slice(5).reduce((sum, model) => sum + model.totalSales, 0);
+    if (otherModelsTotal > 0) {
+      pieData.push({
+        id: 'others',
+        name: 'Другие модели',
+        value: otherModelsTotal
+      });
+    }
+  }
+  
   // Создаем улучшенную цветовую схему
   const pieColor = d3.scaleOrdinal()
-    .domain(carModels.map(d => d.name))
+    .domain(pieData.map(d => d.name))
     .range([
       '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981',
       '#0ea5e9', '#6366f1', '#a855f7', '#d946ef', '#f43f5e'
@@ -3099,7 +3155,7 @@ const showCarModelDetails = (year, month, monthName) => {
   
   // Создаем генератор пончика с закругленными краями
   const pie = d3.pie()
-    .value(d => d.sales)
+    .value(d => d.value)
     .sort(null)
     .padAngle(0.02);
   
@@ -3120,7 +3176,7 @@ const showCarModelDetails = (year, month, monthName) => {
   // Создаем градиенты для каждого сегмента
   const pieDefs = pieSvg.append('defs');
   
-  carModels.forEach((model, i) => {
+  pieData.forEach((model, i) => {
     const color = pieColor(model.name);
     const gradientId = `pie-gradient-${model.id}`;
     
@@ -3171,7 +3227,7 @@ const showCarModelDetails = (year, month, monthName) => {
   
   // Создаем сегменты пончика с новыми визуальными эффектами
   const pieArcs = pieG.selectAll('path')
-    .data(pie(carModels))
+    .data(pie(pieData))
     .join('path')
     .attr('d', arc)
     .attr('fill', d => `url(#pie-gradient-${d.data.id})`)
@@ -3190,8 +3246,12 @@ const showCarModelDetails = (year, month, monthName) => {
       centerText.text(d.data.name)
         .style('font-size', d.data.name.length > 15 ? '0.8rem' : '0.9rem');
         
-      centerNumber.text(formatProfitCompact(d.data.sales));
-      centerPercent.text(`${((d.data.sales / totalSales) * 100).toFixed(1)}%`);
+      centerNumber.text(formatProfitCompact(d.data.value));
+      
+      // Вычисляем процент
+      const total = pieData.reduce((sum, d) => sum + d.value, 0);
+      const percentage = ((d.data.value / total) * 100).toFixed(1);
+      centerPercent.text(`${percentage}%`);
       
       // Подсвечиваем соответствующую метку
       pieG.selectAll('.pie-label')
@@ -3217,9 +3277,6 @@ const showCarModelDetails = (year, month, monthName) => {
         .style('font-weight', 'normal')
         .style('fill', '#d1d5db');
     })
-    .on('click', (event, d) => {
-      showModelRegionalDistribution(d.data.name, year, month, monthName);
-    });
   
   // Добавляем анимацию с поочередным появлением сегментов
   pieArcs.each(function(d, i) {
@@ -3277,9 +3334,9 @@ const showCarModelDetails = (year, month, monthName) => {
     .text('100%');
   
   // Добавляем компактные метки для сегментов (показываем только топ модели)
-  const topModels = carModels.slice(0, 5);
+  const topPieModels = pieData.slice(0, Math.min(5, pieData.length));
   const pieLabels = pieG.selectAll('.pie-label')
-    .data(pie(topModels))
+    .data(pie(topPieModels))
     .join('text')
     .attr('class', 'pie-label')
     .attr('transform', d => {
@@ -3293,7 +3350,11 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('fill', '#d1d5db')
     .style('pointer-events', 'none')
     .style('opacity', 0)
-    .text(d => d.data.name.split(' ').pop()) // Отображаем только модель
+    .text(d => {
+      // Сокращаем длинные названия
+      const name = d.data.name;
+      return name.length > 10 ? name.substring(0, 10) + '...' : name;
+    })
     .transition()
     .duration(500)
     .delay((d, i) => 1000 + i * 100)
@@ -3326,7 +3387,7 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('gap', '12px')
     .style('flex-grow', '1');
   
-  // Функция для создания улучшенной карточки метрики
+  // Метрика "Средняя цена" на основе реальных данных
   const createMetricCard = (title, value, subtitle, icon, color) => {
     const card = metricsGrid.append('div')
       .style('background', `rgba(${color}, 0.08)`)
@@ -3390,39 +3451,50 @@ const showCarModelDetails = (year, month, monthName) => {
     }
   };
   
-  // Создаем метрики с улучшенными иконками и стилем
-  createMetricCard(
-    'Средняя цена продажи',
-    formatProfitCompact(totalSales / totalCount),
-    `На базе ${totalCount} авто`,
-    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
-    '59, 130, 246'
-  );
+  // Топ-модель по количеству продаж
+  if (sortedModels.length > 0) {
+    // Найдем модель с максимальным количеством продаж
+    const topModelByCount = [...sortedModels].sort((a, b) => {
+      const countA = a.monthlyData.reduce((sum, m) => sum + (m.count || 0), 0);
+      const countB = b.monthlyData.reduce((sum, m) => sum + (m.count || 0), 0);
+      return countB - countA;
+    })[0];
+    
+    const topModelCount = topModelByCount.monthlyData.reduce((sum, m) => sum + (m.count || 0), 0);
+    
+    // Сокращаем слишком длинные названия
+    let modelName = topModelByCount.model_name;
+    if (modelName.length > 15) {
+      modelName = modelName.substring(0, 12) + '...';
+    }
+    
+    createMetricCard(
+      'Топ-модель',
+      modelName,
+      `${topModelCount} шт.`,
+      '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>',
+      '16, 185, 129'
+    );
+  }
   
-  createMetricCard(
-    'Премиум сегмент',
-    ((carModels.filter(m => m.count > 0 && m.sales / m.count > 700000).reduce((sum, m) => sum + m.sales, 0) / totalSales) * 100).toFixed(1) + '%',
-    'Высокодоходные модели',
-    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>',
-    '245, 158, 11'
-  );
-  
-  createMetricCard(
-    'Топ-модель',
-    carModels.length > 0 ? carModels.reduce((max, model) => model.count > max.count ? model : max, { count: 0 }).name.split(' ').pop() : '-',
-    'По количеству продаж',
-    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>',
-    '16, 185, 129'
-  );
-  
-  createMetricCard(
-    'Доходная модель',
-    carModels.length > 0 ? carModels.reduce((max, model) => model.sales > max.sales ? model : max, { sales: 0 }).name.split(' ').pop() : '-',
-    'По объему продаж',
-    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>',
-    '236, 72, 153'
-  );
-  
+  // Доходная модель (по объему продаж)
+  if (sortedModels.length > 0) {
+    const topModelBySales = sortedModels[0];
+    
+    // Сокращаем слишком длинные названия
+    let modelName = topModelBySales.model_name;
+    if (modelName.length > 15) {
+      modelName = modelName.substring(0, 12) + '...';
+    }
+    
+    createMetricCard(
+      'Доходная модель',
+      modelName,
+      `${formatProfitCompact(topModelBySales.totalSales)}`,
+      '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>',
+      '236, 72, 153'
+    );
+  }
   // Добавляем подсказку о возможности интерактивности с улучшенным стилем
   container.append('div')
     .style('text-align', 'center')
@@ -3443,6 +3515,7 @@ const showCarModelDetails = (year, month, monthName) => {
       </svg>
       <span style="color: #9ca3af; font-size: 0.9rem;">Нажмите на любую модель для анализа распределения по регионам</span>
     `);
+  
   
   // Загружаем Font Awesome для иконок
   if (!document.querySelector('[href*="font-awesome"]')) {
