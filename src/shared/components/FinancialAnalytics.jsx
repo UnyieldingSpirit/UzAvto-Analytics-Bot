@@ -54,6 +54,191 @@ const [tableDateEnd, setTableDateEnd] = useState(apiEndDate);
     };
   };
   
+const fetchDailySalesData = async () => {
+  setIsLoadingDailySales(true);
+  
+  try {
+    // Получаем первое число текущего месяца и текущую дату
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Форматируем даты в формат DD.MM.YYYY для API
+    const formatDate = (date) => {
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}.${month}.${year}`;
+    };
+    
+    const startDateFormatted = formatDate(firstDayOfMonth);
+    const endDateFormatted = formatDate(currentDay);
+    
+    console.log(`Загрузка данных с ${startDateFormatted} по ${endDateFormatted}`);
+    
+    // Загружаем данные из всех трех API-эндпоинтов параллельно
+    const [allSalesResponse, retailSalesResponse, wholesaleSalesResponse] = await Promise.all([
+      fetch(`https://uzavtosalon.uz/b/dashboard/infos&get_all_payment_by_day`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `begin_date=${startDateFormatted}&end_date=${endDateFormatted}`
+      }),
+      fetch(`https://uzavtosalon.uz/b/dashboard/infos&get_roz_payment_by_day`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `begin_date=${startDateFormatted}&end_date=${endDateFormatted}`
+      }),
+      fetch(`https://uzavtosalon.uz/b/dashboard/infos&get_opt_payment_by_day`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `begin_date=${startDateFormatted}&end_date=${endDateFormatted}`
+      })
+    ]);
+    
+    // Проверяем успешность запросов
+    if (!allSalesResponse.ok || !retailSalesResponse.ok || !wholesaleSalesResponse.ok) {
+      throw new Error('Ошибка при получении данных от API');
+    }
+    
+    // Парсим ответы
+    const allSalesJsonData = await allSalesResponse.json();
+    const retailSalesJsonData = await retailSalesResponse.json();
+    const wholesaleSalesJsonData = await wholesaleSalesResponse.json();
+    
+    console.log('Исходные данные:', { allSalesJsonData, retailSalesJsonData, wholesaleSalesJsonData });
+    
+    // Преобразуем ответы API в нужный формат
+    const transformData = (data, type) => {
+      // Для общих продаж и оптовых продаж
+      if (type === 'all' || type === 'wholesale') {
+        // Проверяем, есть ли filter_by_region
+        if (Array.isArray(data.filter_by_region)) {
+          return data.filter_by_region;
+        } 
+        // Если filter_by_region отсутствует, но данные уже в массиве
+        else if (Array.isArray(data)) {
+          // Проверяем, имеет ли первый элемент поле day
+          if (data.length > 0 && data[0].day) {
+            return data;
+          }
+          // Проверяем, есть ли filter_by_region в первом элементе
+          else if (data.length > 0 && Array.isArray(data[0].filter_by_region)) {
+            return data[0].filter_by_region;
+          }
+        }
+      } 
+      // Для розничных продаж (retail)
+      else if (type === 'retail') {
+        // Если данные - массив моделей
+        if (Array.isArray(data)) {
+          // Собираем все filter_by_region из всех моделей
+          const allDaysData = [];
+          
+          data.forEach(model => {
+            if (model && Array.isArray(model.filter_by_region)) {
+              model.filter_by_region.forEach(dayData => {
+                // Добавляем информацию о модели к каждому дню
+                if (dayData && dayData.day) {
+                  // Ищем, есть ли уже день в массиве
+                  const existingDayIndex = allDaysData.findIndex(item => item.day === dayData.day);
+                  
+                  if (existingDayIndex >= 0) {
+                    // Добавляем модель к существующему дню
+                    if (!allDaysData[existingDayIndex].models) {
+                      allDaysData[existingDayIndex].models = [];
+                    }
+                    
+                    allDaysData[existingDayIndex].models.push({
+                      model_id: model.model_id,
+                      model_name: model.model_name,
+                      photo_sha: model.photo_sha,
+                      amount: dayData.regions ? 
+                        dayData.regions.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0) : 0,
+                      all_count: dayData.regions ? 
+                        dayData.regions.reduce((sum, r) => sum + (parseInt(r.all_count) || 0), 0) : 0,
+                    });
+                    
+                    // Обновляем общую сумму и количество
+                    let totalAmount = 0;
+                    let totalCount = 0;
+                    
+                    if (dayData.regions && Array.isArray(dayData.regions)) {
+                      dayData.regions.forEach(region => {
+                        totalAmount += parseFloat(region.amount) || 0;
+                        totalCount += parseInt(region.all_count) || 0;
+                      });
+                    }
+                    
+                    allDaysData[existingDayIndex].amount = 
+                      (parseFloat(allDaysData[existingDayIndex].amount) || 0) + totalAmount;
+                    allDaysData[existingDayIndex].all_count = 
+                      (parseInt(allDaysData[existingDayIndex].all_count) || 0) + totalCount;
+                  } else {
+                    // Создаем новый день
+                    let totalAmount = 0;
+                    let totalCount = 0;
+                    
+                    if (dayData.regions && Array.isArray(dayData.regions)) {
+                      dayData.regions.forEach(region => {
+                        totalAmount += parseFloat(region.amount) || 0;
+                        totalCount += parseInt(region.all_count) || 0;
+                      });
+                    }
+                    
+                    const newDayData = {
+                      day: dayData.day,
+                      amount: totalAmount.toString(),
+                      all_count: totalCount.toString(),
+                      regions: dayData.regions || [],
+                      models: [{
+                        model_id: model.model_id,
+                        model_name: model.model_name,
+                        photo_sha: model.photo_sha,
+                        amount: totalAmount,
+                        all_count: totalCount
+                      }]
+                    };
+                    
+                    allDaysData.push(newDayData);
+                  }
+                }
+              });
+            }
+          });
+          
+          return allDaysData;
+        }
+      }
+      
+      // Если не сработали известные шаблоны, возвращаем пустой массив
+      console.warn(`Не удалось определить структуру данных для типа ${type}`, data);
+      return [];
+    };
+    
+    // Преобразуем данные для каждого типа
+    const allSalesData = transformData(allSalesJsonData, 'all');
+    const retailSalesData = transformData(retailSalesJsonData, 'retail');
+    const wholesaleSalesData = transformData(wholesaleSalesJsonData, 'wholesale');
+    
+    console.log('Преобразованные данные:', { allSalesData, retailSalesData, wholesaleSalesData });
+    
+    // Сохраняем данные
+    setDailySalesData({
+      all: Array.isArray(allSalesData) ? allSalesData : [],
+      retail: Array.isArray(retailSalesData) ? retailSalesData : [],
+      wholesale: Array.isArray(wholesaleSalesData) ? wholesaleSalesData : []
+    });
+    
+    // Также обновляем значения для полей ввода дат
+    setTableDateStart(startDateFormatted);
+    setTableDateEnd(endDateFormatted);
+    
+  } catch (error) {
+    console.error('Ошибка при загрузке данных о продажах:', error);
+  } finally {
+    setIsLoadingDailySales(false);
+  }
+};
   // Состояния для фильтров по периоду
   const currentDate = getCurrentMonthAndYear();
   const [startMonth, setStartMonth] = useState(1); // Начинаем с января
@@ -3881,53 +4066,7 @@ const renderDailySalesTable = () => {
   };
   
   // Функция для загрузки данных о продажах по дням
-const fetchDailySalesData = async () => {
-  setIsLoadingDailySales(true);
-  
-  try {
-    // Загружаем данные из всех трех API-эндпоинтов параллельно
-    const [allSalesResponse, retailSalesResponse, wholesaleSalesResponse] = await Promise.all([
-      fetch(`https://uzavtosalon.uz/b/dashboard/infos&get_all_payment_by_day`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `begin_date=${tableDateStart}&end_date=${tableDateEnd}`
-      }),
-      fetch(`https://uzavtosalon.uz/b/dashboard/infos&get_roz_payment_by_day`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `begin_date=${tableDateStart}&end_date=${tableDateEnd}`
-      }),
-      fetch(`https://uzavtosalon.uz/b/dashboard/infos&get_opt_payment_by_day`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `begin_date=${tableDateStart}&end_date=${tableDateEnd}`
-      })
-    ]);
-    
-    // Проверяем успешность запросов
-    if (!allSalesResponse.ok || !retailSalesResponse.ok || !wholesaleSalesResponse.ok) {
-      throw new Error('Ошибка при получении данных от API');
-    }
-    
-    // Парсим ответы
-    const allSalesData = await allSalesResponse.json();
-    const retailSalesData = await retailSalesResponse.json();
-    const wholesaleSalesData = await wholesaleSalesResponse.json();
-    
-    // Сохраняем данные
-    setDailySalesData({
-      all: Array.isArray(allSalesData) ? allSalesData : [],
-      retail: Array.isArray(retailSalesData) ? retailSalesData : [],
-      wholesale: Array.isArray(wholesaleSalesData) ? wholesaleSalesData : []
-    });
-    
-    console.log('Загружены данные о продажах по дням:', {allSalesData, retailSalesData, wholesaleSalesData});
-  } catch (error) {
-    console.error('Ошибка при загрузке данных о продажах:', error);
-  } finally {
-    setIsLoadingDailySales(false);
-  }
-};
+
   
   // Функция для проверки наличия данных
   function hasData(salesData) {
