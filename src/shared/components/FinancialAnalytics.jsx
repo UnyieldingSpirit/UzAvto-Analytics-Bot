@@ -109,28 +109,63 @@ const fetchDailySalesData = async () => {
     
     // Преобразуем ответы API в нужный формат
     const transformData = (data, type) => {
+      console.log(`Обработка данных для типа: ${type}`);
+      console.log("Структура данных:", data);
+      
       // Для общих продаж и оптовых продаж
       if (type === 'all' || type === 'wholesale') {
-        // Проверяем, есть ли filter_by_region
+        // Проверяем структуру данных
+        let dailyData = [];
+        
+        // Если данные уже представлены как массив с filter_by_region
         if (Array.isArray(data.filter_by_region)) {
-          return data.filter_by_region;
-        } 
-        // Если filter_by_region отсутствует, но данные уже в массиве
-        else if (Array.isArray(data)) {
-          // Проверяем, имеет ли первый элемент поле day
-          if (data.length > 0 && data[0].day) {
-            return data;
-          }
-          // Проверяем, есть ли filter_by_region в первом элементе
-          else if (data.length > 0 && Array.isArray(data[0].filter_by_region)) {
-            return data[0].filter_by_region;
-          }
+          dailyData = data.filter_by_region;
+          console.log(`Используем data.filter_by_region для ${type}`);
         }
+        // Если данные представлены как массив дней
+        else if (Array.isArray(data) && data.length > 0 && data[0].day) {
+          dailyData = data;
+          console.log(`Используем массив дней для ${type}`);
+        }
+        // Если данные представлены как массив с filter_by_region внутри первого элемента
+        else if (Array.isArray(data) && data.length > 0 && Array.isArray(data[0].filter_by_region)) {
+          dailyData = data[0].filter_by_region;
+          console.log(`Используем data[0].filter_by_region для ${type}`);
+        }
+        
+        // Обрабатываем каждый день
+        return dailyData.map(dayData => {
+          if (!dayData || !dayData.day) {
+            console.warn("Некорректные данные дня:", dayData);
+            return null;
+          }
+          
+          // Суммируем данные по всем регионам
+          let totalAmount = 0;
+          let totalCount = 0;
+          
+          if (Array.isArray(dayData.regions)) {
+            dayData.regions.forEach(region => {
+              if (region) {
+                totalAmount += parseFloat(region.amount) || 0;
+                totalCount += parseInt(region.all_count) || 0;
+              }
+            });
+          }
+          
+          return {
+            day: dayData.day,
+            amount: totalAmount.toString(),
+            all_count: totalCount.toString(),
+            regions: dayData.regions || []
+          };
+        }).filter(Boolean); // Удаляем null элементы
       } 
       // Для розничных продаж (retail)
       else if (type === 'retail') {
         // Если данные - массив моделей
         if (Array.isArray(data)) {
+          console.log(`Данные retail - массив моделей`);
           // Собираем все filter_by_region из всех моделей
           const allDaysData = [];
           
@@ -148,40 +183,43 @@ const fetchDailySalesData = async () => {
                       allDaysData[existingDayIndex].models = [];
                     }
                     
+                    // Рассчитываем суммы для модели в этот день
+                    let modelAmount = 0;
+                    let modelCount = 0;
+                    
+                    if (Array.isArray(dayData.regions)) {
+                      dayData.regions.forEach(region => {
+                        if (region) {
+                          modelAmount += parseFloat(region.amount) || 0;
+                          modelCount += parseInt(region.all_count) || 0;
+                        }
+                      });
+                    }
+                    
                     allDaysData[existingDayIndex].models.push({
                       model_id: model.model_id,
                       model_name: model.model_name,
                       photo_sha: model.photo_sha,
-                      amount: dayData.regions ? 
-                        dayData.regions.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0) : 0,
-                      all_count: dayData.regions ? 
-                        dayData.regions.reduce((sum, r) => sum + (parseInt(r.all_count) || 0), 0) : 0,
+                      amount: modelAmount,
+                      all_count: modelCount
                     });
                     
                     // Обновляем общую сумму и количество
-                    let totalAmount = 0;
-                    let totalCount = 0;
-                    
-                    if (dayData.regions && Array.isArray(dayData.regions)) {
-                      dayData.regions.forEach(region => {
-                        totalAmount += parseFloat(region.amount) || 0;
-                        totalCount += parseInt(region.all_count) || 0;
-                      });
-                    }
-                    
                     allDaysData[existingDayIndex].amount = 
-                      (parseFloat(allDaysData[existingDayIndex].amount) || 0) + totalAmount;
+                      (parseFloat(allDaysData[existingDayIndex].amount) || 0) + modelAmount;
                     allDaysData[existingDayIndex].all_count = 
-                      (parseInt(allDaysData[existingDayIndex].all_count) || 0) + totalCount;
+                      (parseInt(allDaysData[existingDayIndex].all_count) || 0) + modelCount;
                   } else {
                     // Создаем новый день
                     let totalAmount = 0;
                     let totalCount = 0;
                     
-                    if (dayData.regions && Array.isArray(dayData.regions)) {
+                    if (Array.isArray(dayData.regions)) {
                       dayData.regions.forEach(region => {
-                        totalAmount += parseFloat(region.amount) || 0;
-                        totalCount += parseInt(region.all_count) || 0;
+                        if (region) {
+                          totalAmount += parseFloat(region.amount) || 0;
+                          totalCount += parseInt(region.all_count) || 0;
+                        }
                       });
                     }
                     
@@ -206,6 +244,7 @@ const fetchDailySalesData = async () => {
             }
           });
           
+          console.log(`Обработано ${allDaysData.length} дней для retail`);
           return allDaysData;
         }
       }
@@ -220,7 +259,16 @@ const fetchDailySalesData = async () => {
     const retailSalesData = transformData(retailSalesJsonData, 'retail');
     const wholesaleSalesData = transformData(wholesaleSalesJsonData, 'wholesale');
     
-    console.log('Преобразованные данные:', { allSalesData, retailSalesData, wholesaleSalesData });
+    console.log('Преобразованные данные:', { 
+      all: allSalesData.length, 
+      retail: retailSalesData.length, 
+      wholesale: wholesaleSalesData.length 
+    });
+    
+    // Логируем первые элементы каждого массива для проверки
+    if (allSalesData.length > 0) console.log('Пример all:', allSalesData[0]);
+    if (retailSalesData.length > 0) console.log('Пример retail:', retailSalesData[0]);
+    if (wholesaleSalesData.length > 0) console.log('Пример wholesale:', wholesaleSalesData[0]);
     
     // Сохраняем данные
     setDailySalesData({
@@ -239,6 +287,7 @@ const fetchDailySalesData = async () => {
     setIsLoadingDailySales(false);
   }
 };
+  
   // Состояния для фильтров по периоду
   const currentDate = getCurrentMonthAndYear();
   const [startMonth, setStartMonth] = useState(1); // Начинаем с января
@@ -306,6 +355,9 @@ const fetchDataForCategory = async (category, endpoint, dataType) => {
   try {
     console.log(`Запрос данных для категории ${category}, эндпоинт: ${endpoint}`);
     
+    // Добавляем логирование для отслеживания параметров запроса
+    console.log(`Параметры запроса: begin_date=${apiStartDate}, end_date=${apiEndDate}`);
+    
     const response = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
       method: "POST",
       headers: {
@@ -328,116 +380,35 @@ const fetchDataForCategory = async (category, endpoint, dataType) => {
     
     console.log(`Получены данные для категории ${category}:`, apiData);
     
-    // Проверяем валидность данных с более подробным логированием
-    if (!apiData) {
-      console.warn("API вернул пустой ответ");
-      // НЕ создаем минимальные данные, а возвращаем пустой объект
-      setFinancialData({});
-      setIsLoading(false);
-      return;
-    }
-    
-    // Проверка на массив с более детальным логированием
-    if (!Array.isArray(apiData)) {
-      console.warn("API вернул не массив:", apiData);
-      console.log("Тип данных:", typeof apiData);
-      
-      if (typeof apiData === 'object' && apiData !== null) {
-        console.log("Ключи объекта:", Object.keys(apiData));
-        
-        // Если apiData имеет поле, которое является массивом, используем его
-        const possibleArrayFields = Object.keys(apiData).filter(key => 
-          Array.isArray(apiData[key])
-        );
-        
-        if (possibleArrayFields.length > 0) {
-          console.log(`Найдены поля-массивы: ${possibleArrayFields.join(", ")}`);
-          // Используем первое поле-массив
-          apiData = apiData[possibleArrayFields[0]];
-          console.log("Используем поле-массив:", apiData);
-        } else {
-          // Если это объект с полем error, выводим его
-          if (apiData.error) {
-            console.error("API вернул ошибку:", apiData.error);
-          }
-          
-          // НЕ создаем минимальные данные, а используем что есть
-          console.log("Пробуем обработать имеющиеся данные без создания моков");
-        }
-      }
-    }
-    
-    if (Array.isArray(apiData) && apiData.length === 0) {
-      console.warn("API вернул пустой массив");
-      // Вместо создания моков, просто возвращаем пустой объект
-      console.log("Возвращаем пустой объект вместо создания моков");
-      setFinancialData({});
-      setIsLoading(false);
-      return;
-    }
-    
-    // Трансформируем данные в зависимости от типа структуры
+    // Преобразуем данные в зависимости от типа структуры
     let transformedData;
     try {
-      console.log(`Трансформируем данные для ${category} с типом ${dataType}`);
-      transformedData = dataType === "model" 
-        ? transformModelBasedData(apiData) 
-        : transformRegionBasedData(apiData, category);
-        
+      if (!apiData) {
+        throw new Error("Получены пустые данные от API");
+      }
+      
+      // Используем разные функции преобразования в зависимости от категории
+      if (category === 'retail') {
+        console.log("Преобразование данных розничных продаж");
+        transformedData = transformModelBasedData(apiData);
+      } else if (category === 'wholesale') {
+        console.log("Преобразование данных оптовых продаж");
+        transformedData = transformRegionBasedData(apiData, 'wholesale');
+      } else {
+        console.log("Преобразование данных общих продаж");
+        transformedData = transformRegionBasedData(apiData, 'all');
+      }
+      
       console.log(`Результат трансформации для ${category}:`, transformedData);
     } catch (transformError) {
       console.error("Ошибка при трансформации данных:", transformError);
-      console.log("Стек вызовов:", transformError.stack);
       
-      // Вместо создания моков, пытаемся разобраться с данными иначе
-      console.log("Попытка альтернативной обработки данных...");
-      
-      if (Array.isArray(apiData)) {
-        if (apiData.length > 0 && apiData[0].month) {
-          // Данные уже в формате месяцев
-          console.log("Данные уже в формате месяцев, используем их напрямую");
-          transformedData = convertMonthsArrayToFinancialData(apiData, category);
-        } else if (apiData.length > 0 && typeof apiData[0] === 'object') {
-          console.log("Пытаемся найти месячные данные в объектах");
-          
-          // Ищем месячные данные в объектах
-          let monthsData = null;
-          for (const item of apiData) {
-            if (Array.isArray(item.filter_by_region)) {
-              console.log("Найдены filter_by_region данные");
-              monthsData = item.filter_by_region;
-              break;
-            }
-          }
-          
-          if (monthsData) {
-            transformedData = convertMonthsArrayToFinancialData(monthsData, category);
-          } else {
-            // Если не нашли месячные данные, создаем минимальные данные
-            console.warn("Не удалось найти месячные данные, создаем минимальные данные");
-            transformedData = createMinimalData(category);
-          }
-        } else {
-          // Если не получилось обработать, создаем минимальные данные
-          console.warn("Не удалось обработать данные, создаем минимальные данные");
-          transformedData = createMinimalData(category);
-        }
-      } else {
-        // Если не массив и не получилось обработать, создаем минимальные данные
-        console.warn("Не удалось обработать данные, создаем минимальные данные");
-        transformedData = createMinimalData(category);
-      }
-    }
-    
-    // Проверяем результат трансформации
-    if (!transformedData || Object.keys(transformedData).length === 0) {
-      console.warn("Трансформация вернула пустые данные");
       // Создаем минимальные данные для интерфейса
       transformedData = createMinimalData(category);
+      console.log("Созданы минимальные данные для отображения");
     }
     
     // Устанавливаем данные
-    console.log("Устанавливаем финальные данные:", transformedData);
     setFinancialData(transformedData);
     
     // Обновляем выбранные годы и модели
@@ -446,7 +417,6 @@ const fetchDataForCategory = async (category, endpoint, dataType) => {
     setIsLoading(false);
   } catch (error) {
     console.error("Ошибка при загрузке данных:", error);
-    console.log("Стек вызовов:", error.stack);
     
     // Создаем минимальные данные для интерфейса
     const minimalData = createMinimalData(category);
@@ -455,7 +425,6 @@ const fetchDataForCategory = async (category, endpoint, dataType) => {
     setIsLoading(false);
   }
 };
-
 // Вспомогательная функция для преобразования массива месяцев в формат финансовых данных
 const convertMonthsArrayToFinancialData = (monthsArray, category) => {
   console.log("Конвертация массива месяцев в финансовые данные:", monthsArray);
@@ -655,25 +624,20 @@ const createMinimalData = (category) => {
     fetchDataForCategory(focusCategory, apiEndpoint, dataStructureType);
   };
   
-  // Функция для трансформации данных, основанных на моделях (розница)
-// Полностью переработанная функция transformModelBasedData для "retail"
 const transformModelBasedData = (apiData) => {
-  console.log("Трансформация данных на основе моделей:", apiData);
+  console.log("Начало трансформации данных на основе моделей:", apiData);
   
-  const transformedData = {};
-  
-  // Проверяем структуру данных (непустой массив)
+  // Проверяем структуру входных данных
   if (!apiData || !Array.isArray(apiData) || apiData.length === 0) {
-    console.warn("Получены пустые данные для моделей");
-    return {};
+    console.warn("Получены некорректные данные для моделей");
+    return createMinimalData('retail');
   }
   
-  // Получаем уникальные годы из данных API
+  const transformedData = {};
   const years = new Set();
   
-  // Первый проход: собираем все уникальные годы из данных
+  // Собираем все уникальные годы из данных
   apiData.forEach(model => {
-    // Проверка на корректность структуры модели
     if (!model || !Array.isArray(model.filter_by_region)) {
       console.warn("Некорректная структура данных модели:", model);
       return;
@@ -681,269 +645,26 @@ const transformModelBasedData = (apiData) => {
     
     model.filter_by_region.forEach(monthData => {
       if (!monthData || !monthData.month || typeof monthData.month !== 'string') {
-        console.warn("Некорректные данные месяца:", monthData);
         return;
       }
       
-      // Парсим год и месяц из строки (формат "YYYY-MM")
-      const monthParts = monthData.month.split('-');
-      if (monthParts.length !== 2) {
-        console.warn("Некорректный формат месяца:", monthData.month);
-        return;
-      }
-      
-      const yearStr = monthParts[0];
+      // Парсим год из строки формата "YYYY-MM"
+      const yearStr = monthData.month.split('-')[0];
       const year = parseInt(yearStr, 10);
       
-      if (isNaN(year)) {
-        console.warn("Не удалось распознать год:", yearStr);
-        return;
+      if (!isNaN(year)) {
+        years.add(year);
       }
-      
-      years.add(year);
     });
   });
   
-  const yearsList = Array.from(years).sort();
-  console.log("Найденные годы:", yearsList, "Количество:", yearsList.length);
-  
-  if (yearsList.length === 0) {
-    console.warn("Не найдено годов в данных, создаем текущий год");
-    yearsList.push(new Date().getFullYear());
+  // Если не найдено годов, добавляем текущий
+  if (years.size === 0) {
+    years.add(new Date().getFullYear());
   }
   
-  // Второй проход: создаем структуру данных для каждого года
-  yearsList.forEach(year => {
-    transformedData[year] = {
-      targetAmount: 0, // Будет обновлено ниже
-      totalEarned: 0, // Будет рассчитано ниже
-      months: Array(12).fill().map((_, index) => ({
-        name: MONTHS[index],
-        month: index + 1,
-        retail: 0,
-        wholesale: 0,
-        promo: 0,
-        total: 0
-      })),
-      quarterlyData: [0, 0, 0, 0],
-      categories: {
-        retail: 0,
-        wholesale: 0,
-        promo: 0
-      },
-      modelData: {} // Добавим данные по моделям
-    };
-  });
-  
-  // Третий проход: заполняем данные продаж из API
-  apiData.forEach(model => {
-    if (!model || !model.model_id || !model.model_name) {
-      console.warn("Модель без ID или названия:", model);
-      return;
-    }
-    
-    // Инициализируем данные по модели для каждого года
-    yearsList.forEach(year => {
-      transformedData[year].modelData[model.model_id] = {
-        model_id: model.model_id,
-        model_name: model.model_name,
-        photo_sha: model.photo_sha || '',
-        totalSales: 0,
-        monthlyData: Array(12).fill().map(() => ({ amount: 0, count: 0 }))
-      };
-    });
-    
-    // Обрабатываем данные по месяцам для каждой модели
-    if (Array.isArray(model.filter_by_region)) {
-      model.filter_by_region.forEach(monthData => {
-        if (!monthData || !monthData.month || typeof monthData.month !== 'string') {
-          return; // Пропускаем некорректные данные
-        }
-        
-        const monthParts = monthData.month.split('-');
-        if (monthParts.length !== 2) {
-          return; // Пропускаем некорректный формат
-        }
-        
-        const yearStr = monthParts[0];
-        const monthStr = monthParts[1];
-        const year = parseInt(yearStr, 10);
-        const monthIndex = parseInt(monthStr, 10) - 1;
-        
-        if (isNaN(year) || isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) {
-          console.warn(`Некорректный год или месяц: ${yearStr}-${monthStr}`);
-          return;
-        }
-        
-        // Проверяем, что год существует в нашей структуре данных
-        if (!transformedData[year]) {
-          console.warn(`Год ${year} отсутствует в структуре данных!`);
-          return;
-        }
-        
-        // Общий объем продаж для данной модели в этом месяце
-        let modelMonthTotal = 0;
-        let modelMonthCount = 0;
-        
-        // Обрабатываем данные по регионам
-        if (Array.isArray(monthData.regions)) {
-          monthData.regions.forEach(region => {
-            if (!region) return;
-            
-            const amount = parseFloat(region.amount) || 0;
-            const count = parseInt(region.all_count || 0, 10);
-            
-            modelMonthTotal += amount;
-            modelMonthCount += count;
-          });
-        }
-        
-        // Сохраняем данные по модели
-        if (transformedData[year].modelData[model.model_id]) {
-          transformedData[year].modelData[model.model_id].totalSales += modelMonthTotal;
-          transformedData[year].modelData[model.model_id].monthlyData[monthIndex].amount = modelMonthTotal;
-          transformedData[year].modelData[model.model_id].monthlyData[monthIndex].count = modelMonthCount;
-        }
-        
-        // Обновляем данные месяца (общая сумма по всем моделям)
-        transformedData[year].months[monthIndex].total += modelMonthTotal;
-        
-        // В случае розничных продаж, все суммы идут в категорию retail
-        transformedData[year].months[monthIndex].retail += modelMonthTotal;
-        
-        // Обновляем квартальные данные
-        const quarterIndex = Math.floor(monthIndex / 3);
-        transformedData[year].quarterlyData[quarterIndex] += modelMonthTotal;
-        
-        // Обновляем общую сумму продаж за год
-        transformedData[year].totalEarned += modelMonthTotal;
-        
-        // Обновляем категории за год
-        transformedData[year].categories.retail += modelMonthTotal;
-      });
-    }
-  });
-  
-  // Устанавливаем целевой показатель (в данном случае на 20% выше текущего)
-  yearsList.forEach(year => {
-    transformedData[year].targetAmount = transformedData[year].totalEarned * 1.2;
-  });
-  
-  return transformedData;
-};
-  
-  // Функция для трансформации данных, основанных на регионах (опт и все продажи)
-const transformRegionBasedData = (apiData, category) => {
-  console.log(`Трансформация данных на основе регионов для категории ${category}:`, apiData);
-  
-  // Проверяем, что у нас есть данные для обработки
-  if (!apiData) {
-    console.warn(`Пустые данные для категории ${category}`);
-    return {};
-  }
-  
-  // Определяем, как извлечь массив месяцев из данных
-  let monthsData = null;
-  
-  if (Array.isArray(apiData)) {
-    console.log("API вернул массив");
-    
-    // Проверяем первый элемент на наличие месяца - если есть, это массив месяцев
-    if (apiData.length > 0 && apiData[0].month) {
-      console.log("Это массив месяцев");
-      monthsData = apiData;
-    } 
-    // Проверяем, может быть это массив объектов с filter_by_region
-    else if (apiData.length > 0 && apiData[0].filter_by_region) {
-      console.log("Это массив объектов с filter_by_region");
-      monthsData = apiData[0].filter_by_region;
-    }
-    // Может быть это нечто другое?
-    else {
-      console.warn("Неизвестный формат массива:", apiData);
-      return {};
-    }
-  } 
-  // Если это объект, возможно, месячные данные в его поле
-  else if (typeof apiData === 'object' && apiData !== null) {
-    console.log("API вернул объект");
-    
-    // Проверяем наличие filter_by_region
-    if (Array.isArray(apiData.filter_by_region)) {
-      console.log("Объект содержит filter_by_region");
-      monthsData = apiData.filter_by_region;
-    }
-    // Проверяем другие возможные поля
-    else {
-      const possibleArrayFields = Object.keys(apiData).filter(key => 
-        Array.isArray(apiData[key])
-      );
-      
-      if (possibleArrayFields.length > 0) {
-        console.log(`Найдены поля-массивы: ${possibleArrayFields.join(", ")}`);
-        monthsData = apiData[possibleArrayFields[0]];
-      } else {
-        console.warn("Не удалось найти массив месяцев в объекте:", apiData);
-        return {};
-      }
-    }
-  } else {
-    console.warn("API вернул неожиданный тип данных:", typeof apiData);
-    return {};
-  }
-  
-  // Проверяем, что мы нашли месячные данные
-  if (!monthsData || !Array.isArray(monthsData)) {
-    console.warn("Не удалось извлечь массив месяцев из данных");
-    return {};
-  }
-  
-  console.log("Найдено месячных данных:", monthsData.length);
-  
-  // Проверим первый элемент для понимания структуры
-  if (monthsData.length > 0) {
-    console.log("Пример месячных данных:", monthsData[0]);
-  }
-  
-  // Дальше продолжаем как обычно с monthsData
-  
-  const transformedData = {};
-  const years = new Set();
-  
-  // Первый проход: собираем все уникальные годы из данных
-  monthsData.forEach(monthData => {
-    if (!monthData || !monthData.month || typeof monthData.month !== 'string') {
-      console.warn("Пропускаем некорректные данные месяца:", monthData);
-      return;
-    }
-    
-    const monthParts = monthData.month.split('-');
-    if (monthParts.length !== 2) {
-      console.warn("Некорректный формат месяца:", monthData.month);
-      return;
-    }
-    
-    const yearStr = monthParts[0];
-    const year = parseInt(yearStr, 10);
-    
-    if (isNaN(year)) {
-      console.warn("Не удалось распознать год:", yearStr);
-      return;
-    }
-    
-    years.add(year);
-  });
-  
-  const yearsList = Array.from(years).sort();
-  console.log("Найденные годы:", yearsList, "Количество:", yearsList.length);
-  
-  if (yearsList.length === 0) {
-    console.warn("Не найдено годов в данных");
-    return {};
-  }
-  
-  // Второй проход: создаем структуру данных для каждого года
-  yearsList.forEach(year => {
+  // Создаем базовую структуру данных для каждого года
+  Array.from(years).forEach(year => {
     transformedData[year] = {
       targetAmount: 0,
       totalEarned: 0,
@@ -961,103 +682,247 @@ const transformRegionBasedData = (apiData, category) => {
         wholesale: 0,
         promo: 0
       },
-      modelData: {} // Пустой объект для совместимости
+      modelData: {}
     };
   });
   
-  // Третий проход: заполняем данные продаж из API
-  let processedMonths = 0;
-  monthsData.forEach(monthData => {
-    if (!monthData || !monthData.month || typeof monthData.month !== 'string') {
-      return; // Пропускаем некорректные данные
-    }
-    
-    const monthParts = monthData.month.split('-');
-    if (monthParts.length !== 2) {
-      return; // Пропускаем некорректный формат
-    }
-    
-    const yearStr = monthParts[0];
-    const monthStr = monthParts[1];
-    const year = parseInt(yearStr, 10);
-    const monthIndex = parseInt(monthStr, 10) - 1;
-    
-    if (isNaN(year) || isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) {
-      console.warn(`Некорректный год или месяц: ${yearStr}-${monthStr}`);
+  // Заполняем данные по моделям и месяцам
+  apiData.forEach(model => {
+    if (!model || !model.model_id || !model.model_name || !Array.isArray(model.filter_by_region)) {
       return;
     }
     
-    // Проверяем, что год существует в нашей структуре данных
-    if (!transformedData[year]) {
-      console.warn(`Год ${year} отсутствует в структуре данных!`);
-      return;
-    }
+    // Для каждого года инициализируем данные модели
+    Array.from(years).forEach(year => {
+      transformedData[year].modelData[model.model_id] = {
+        model_id: model.model_id,
+        model_name: model.model_name,
+        photo_sha: model.photo_sha || '',
+        totalSales: 0,
+        monthlyData: Array(12).fill().map(() => ({ amount: 0, count: 0 }))
+      };
+    });
     
-    // Суммируем данные по всем регионам за месяц
-    let monthTotal = 0;
-    let monthCount = 0;
-    
-    if (Array.isArray(monthData.regions)) {
+    // Обрабатываем данные по месяцам
+    model.filter_by_region.forEach(monthData => {
+      if (!monthData || !monthData.month || typeof monthData.month !== 'string') {
+        return;
+      }
+      
+      const parts = monthData.month.split('-');
+      if (parts.length !== 2) return;
+      
+      const year = parseInt(parts[0], 10);
+      const monthIndex = parseInt(parts[1], 10) - 1;
+      
+      if (isNaN(year) || isNaN(monthIndex) || !transformedData[year]) {
+        return;
+      }
+      
+      // Обрабатываем данные по регионам
+      if (!Array.isArray(monthData.regions)) {
+        return;
+      }
+      
+      let modelMonthTotal = 0;
+      let modelMonthCount = 0;
+      
       monthData.regions.forEach(region => {
-        // Проверяем, что объект региона корректный
         if (!region) return;
         
         const amount = parseFloat(region.amount) || 0;
         const count = parseInt(region.all_count || 0, 10);
         
-        monthTotal += amount;
-        monthCount += count;
+        modelMonthTotal += amount;
+        modelMonthCount += count;
       });
-    } else {
-      console.warn(`Данные о регионах отсутствуют или некорректны для месяца ${monthData.month}`);
+      
+      // Обновляем данные модели для месяца
+      if (transformedData[year].modelData[model.model_id]) {
+        transformedData[year].modelData[model.model_id].totalSales += modelMonthTotal;
+        transformedData[year].modelData[model.model_id].monthlyData[monthIndex].amount = modelMonthTotal;
+        transformedData[year].modelData[model.model_id].monthlyData[monthIndex].count = modelMonthCount;
+      }
+      
+      // Обновляем общие данные по месяцу
+      transformedData[year].months[monthIndex].retail += modelMonthTotal;
+      transformedData[year].months[monthIndex].total += modelMonthTotal;
+      
+      // Обновляем квартальные данные
+      const quarterIndex = Math.floor(monthIndex / 3);
+      transformedData[year].quarterlyData[quarterIndex] += modelMonthTotal;
+      
+      // Обновляем общую сумму и категории
+      transformedData[year].totalEarned += modelMonthTotal;
+      transformedData[year].categories.retail += modelMonthTotal;
+    });
+  });
+  
+  // Устанавливаем целевой показатель
+  Array.from(years).forEach(year => {
+    transformedData[year].targetAmount = transformedData[year].totalEarned * 1.2;
+  });
+  
+  console.log("Результат трансформации:", transformedData);
+  return transformedData;
+};
+  
+  // Функция для трансформации данных, основанных на регионах (опт и все продажи)
+const transformRegionBasedData = (apiData, category) => {
+  console.log(`Начало трансформации данных по регионам для категории ${category}:`, apiData);
+  
+  if (!apiData) {
+    console.warn(`Получены пустые данные для категории ${category}`);
+    return createMinimalData(category);
+  }
+  
+  // Функция для извлечения данных о месяцах
+  const extractMonthsData = (data) => {
+    if (Array.isArray(data)) {
+      // Проверяем, является ли первый элемент данными месяца
+      if (data.length > 0 && data[0].month) {
+        return data;
+      }
+      
+      // Пытаемся найти месячные данные в первом объекте
+      if (data.length > 0 && data[0].filter_by_region) {
+        return data[0].filter_by_region;
+      }
+    } 
+    else if (typeof data === 'object' && data !== null) {
+      // Проверяем наличие filter_by_region в объекте
+      if (Array.isArray(data.filter_by_region)) {
+        return data.filter_by_region;
+      }
+      
+      // Пытаемся найти массив в любом поле объекта
+      for (const key in data) {
+        if (Array.isArray(data[key])) {
+          return data[key];
+        }
+      }
+    }
+    
+    console.warn("Не удалось извлечь данные о месяцах");
+    return [];
+  };
+  
+  // Получаем данные о месяцах
+  const monthsData = extractMonthsData(apiData);
+  
+  if (!Array.isArray(monthsData) || monthsData.length === 0) {
+    console.warn("Не найдены данные о месяцах");
+    return createMinimalData(category);
+  }
+  
+  // Собираем все уникальные годы
+  const years = new Set();
+  monthsData.forEach(monthData => {
+    if (!monthData || !monthData.month || typeof monthData.month !== 'string') {
       return;
     }
     
-    // Обновляем данные месяца
-    transformedData[year].months[monthIndex].total += monthTotal;
+    const parts = monthData.month.split('-');
+    if (parts.length !== 2) return;
     
-    // Распределяем по категориям в зависимости от типа данных
+    const year = parseInt(parts[0], 10);
+    if (!isNaN(year)) {
+      years.add(year);
+    }
+  });
+  
+  // Если не найдено годов, добавляем текущий
+  if (years.size === 0) {
+    years.add(new Date().getFullYear());
+  }
+  
+  // Создаем структуру данных
+  const transformedData = {};
+  
+  // Создаем базовую структуру данных для каждого года
+  Array.from(years).forEach(year => {
+    transformedData[year] = {
+      targetAmount: 0,
+      totalEarned: 0,
+      months: Array(12).fill().map((_, index) => ({
+        name: MONTHS[index],
+        month: index + 1,
+        retail: 0,
+        wholesale: 0,
+        promo: 0,
+        total: 0
+      })),
+      quarterlyData: [0, 0, 0, 0],
+      categories: {
+        retail: 0,
+        wholesale: 0,
+        promo: 0
+      },
+      modelData: {}
+    };
+  });
+  
+  // Заполняем данные по месяцам
+  monthsData.forEach(monthData => {
+    if (!monthData || !monthData.month || typeof monthData.month !== 'string') {
+      return;
+    }
+    
+    const parts = monthData.month.split('-');
+    if (parts.length !== 2) return;
+    
+    const year = parseInt(parts[0], 10);
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    
+    if (isNaN(year) || isNaN(monthIndex) || !transformedData[year]) {
+      return;
+    }
+    
+    // Обрабатываем данные по регионам
+    if (!Array.isArray(monthData.regions)) {
+      return;
+    }
+    
+    let monthTotal = 0;
+    
+    monthData.regions.forEach(region => {
+      if (!region) return;
+      
+      const amount = parseFloat(region.amount) || 0;
+      monthTotal += amount;
+    });
+    
+    // Обновляем данные месяца
     if (category === 'wholesale') {
-      // Для оптовых продаж все идет в wholesale
       transformedData[year].months[monthIndex].wholesale += monthTotal;
       transformedData[year].categories.wholesale += monthTotal;
-    } else if (category === 'all') {
-      // Для всех продаж делаем условное распределение
-      // Заглушка: 60% розница, 40% опт - так как в данных нет разделения
-      const retailAmount = monthTotal * 0.6;
-      const wholesaleAmount = monthTotal * 0.4;
-      
-      transformedData[year].months[monthIndex].retail += retailAmount;
-      transformedData[year].months[monthIndex].wholesale += wholesaleAmount;
-      
-      transformedData[year].categories.retail += retailAmount;
-      transformedData[year].categories.wholesale += wholesaleAmount;
+    } else {
+      // Для общих продаж распределяем между розницей и оптом
+      // 60% розница, 40% опт (или используем реальное соотношение, если доступно)
+      const retailRatio = 0.6;
+      transformedData[year].months[monthIndex].retail += monthTotal * retailRatio;
+      transformedData[year].months[monthIndex].wholesale += monthTotal * (1 - retailRatio);
+      transformedData[year].categories.retail += monthTotal * retailRatio;
+      transformedData[year].categories.wholesale += monthTotal * (1 - retailRatio);
     }
+    
+    // Обновляем общую сумму месяца
+    transformedData[year].months[monthIndex].total += monthTotal;
     
     // Обновляем квартальные данные
     const quarterIndex = Math.floor(monthIndex / 3);
     transformedData[year].quarterlyData[quarterIndex] += monthTotal;
     
-    // Обновляем общую сумму продаж за год
+    // Обновляем общую сумму
     transformedData[year].totalEarned += monthTotal;
-    
-    processedMonths++;
   });
   
-  console.log(`Обработано месяцев: ${processedMonths}`);
-  
-  // Проверяем, что у нас есть хоть какие-то данные
-  if (processedMonths === 0) {
-    console.warn("Не удалось обработать ни одного месяца");
-    return {};
-  }
-  
-  // Устанавливаем целевой показатель (на 20% выше текущего)
-  yearsList.forEach(year => {
+  // Устанавливаем целевой показатель
+  Array.from(years).forEach(year => {
     transformedData[year].targetAmount = transformedData[year].totalEarned * 1.2;
   });
   
-  console.log("Преобразованные данные:", transformedData);
+  console.log("Результат трансформации:", transformedData);
   return transformedData;
 };
   
@@ -4519,15 +4384,6 @@ const renderDailySalesTable = () => {
   // Загружаем данные при первой отрисовке компонента
   fetchDailySalesData();
 };
-  
-  useEffect(() => {
-  fetchDataForCategory(focusCategory, apiEndpoint, dataStructureType);
-}, []);
-
-// Добавляем таблицу статистики продаж по дням
-useEffect(() => {
-  renderDailySalesTable();
-}, []);
   
   // Если этих функций нет, добавьте их
 const formatDateForInput = (dateString) => {
@@ -9757,7 +9613,7 @@ const getDayOfWeek = (dateStr) => {
   return days[date.getDay()];
 };
 
-// Функция для рендеринга строк таблицы с данными
+// Функция для рендеринга строк таблицы с данными// Функция для улучшенного отображения моделей в таблице с указанием суммы
 const renderDailySalesTableRows = () => {
   // Создаем объединенный набор дат из всех трех источников
   const allDates = new Set();
@@ -9807,6 +9663,28 @@ const renderDailySalesTableRows = () => {
     const retailSalesData = retailSalesIndex[date] || { amount: 0, all_count: 0, models: [] };
     const wholesaleSalesData = wholesaleSalesIndex[date] || { amount: 0, all_count: 0 };
     
+    // Проверяем формат и приводим к числу для безопасности
+    const allAmount = parseFloat(allSalesData.amount) || 0;
+    const retailAmount = parseFloat(retailSalesData.amount) || 0;
+    const wholesaleAmount = parseFloat(wholesaleSalesData.amount) || 0;
+    
+    const allCount = parseInt(allSalesData.all_count) || 0;
+    const retailCount = parseInt(retailSalesData.all_count) || 0;
+    const wholesaleCount = parseInt(wholesaleSalesData.all_count) || 0;
+    
+    // Логируем для отладки
+    if (index === 0) {
+      console.log("Пример данных:", {
+        date,
+        allData: allSalesData,
+        retailData: retailSalesData,
+        wholesaleData: wholesaleSalesData,
+        allAmount,
+        retailAmount,
+        wholesaleAmount
+      });
+    }
+    
     return (
       <tr key={date} className={index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-750'}>
         {/* Дата */}
@@ -9817,20 +9695,20 @@ const renderDailySalesTableRows = () => {
         
         {/* Общие продажи */}
         <td className="px-3 py-4 whitespace-nowrap">
-          <div className="text-sm font-medium text-white">{formatProfitCompact(allSalesData.amount)}</div>
-          <div className="text-xs text-gray-400">{allSalesData.all_count || 0} шт.</div>
+          <div className="text-sm font-medium text-white">{formatProfitCompact(allAmount)}</div>
+          <div className="text-xs text-gray-400">{allCount} шт.</div>
         </td>
         
         {/* Розничные продажи */}
         <td className="px-3 py-4 whitespace-nowrap">
-          <div className="text-sm font-medium text-blue-400">{formatProfitCompact(retailSalesData.amount)}</div>
-          <div className="text-xs text-gray-400">{retailSalesData.all_count || 0} шт.</div>
+          <div className="text-sm font-medium text-blue-400">{formatProfitCompact(retailAmount)}</div>
+          <div className="text-xs text-gray-400">{retailCount} шт.</div>
         </td>
         
         {/* Оптовые продажи */}
         <td className="px-3 py-4 whitespace-nowrap">
-          <div className="text-sm font-medium text-purple-400">{formatProfitCompact(wholesaleSalesData.amount)}</div>
-          <div className="text-xs text-gray-400">{wholesaleSalesData.all_count || 0} шт.</div>
+          <div className="text-sm font-medium text-purple-400">{formatProfitCompact(wholesaleAmount)}</div>
+          <div className="text-xs text-gray-400">{wholesaleCount} шт.</div>
         </td>
         
         {/* Модели розничных продаж */}
@@ -9838,16 +9716,25 @@ const renderDailySalesTableRows = () => {
           {retailSalesData.models && retailSalesData.models.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {/* Показываем первые 3 модели */}
-              {retailSalesData.models.slice(0, 3).map(model => (
-                <div 
-                  key={model.model_id} 
-                  className="bg-blue-600/20 text-blue-300 text-xs rounded-full py-1 px-2 flex items-center"
-                  title={`${model.model_name}: ${formatProfitCompact(model.amount)} (${model.all_count} шт.)`}
-                >
-                  <span className="mr-1">{model.model_name || 'Модель'}</span>
-                  <span className="text-xs bg-blue-600/40 rounded-full px-1.5">{model.all_count || 0}</span>
-                </div>
-              ))}
+              {retailSalesData.models.slice(0, 3).map(model => {
+                // Убедимся, что значения корректные
+                const modelAmount = parseFloat(model.amount) || 0;
+                const modelCount = parseInt(model.all_count) || 0;
+                
+                return (
+                  <div 
+                    key={model.model_id} 
+                    className="bg-blue-600/20 text-blue-300 text-xs rounded-full py-1 px-2 flex items-center justify-between gap-1"
+                    title={`${model.model_name}: ${formatProfitCompact(modelAmount)} (${modelCount} шт.)`}
+                  >
+                    <span className="mr-1">{model.model_name || 'Модель'}</span>
+                    <div className="flex items-center">
+                      <span className="text-xs bg-blue-600/40 rounded-full px-1.5 mr-1">{modelCount}</span>
+                      <span className="text-green-300 text-xs">{formatProfitCompact(modelAmount)}</span>
+                    </div>
+                  </div>
+                );
+              })}
               
               {/* Показываем кнопку "Еще", если есть дополнительные модели */}
               {retailSalesData.models.length > 3 && (
@@ -9868,14 +9755,17 @@ const renderDailySalesTableRows = () => {
   });
 };
 
-// Функция для рендеринга итоговой строки
+// Функция для рендеринга итоговой строки с правильным расчетом сумм
 const renderDailySalesTotalRow = () => {
   // Функция для расчета общей суммы и количества
   const calculateTotal = (dataArray) => {
     return dataArray.reduce((acc, item) => {
+      const amount = parseFloat(item.amount) || 0;
+      const count = parseInt(item.all_count) || 0;
+      
       return {
-        amount: acc.amount + (parseFloat(item.amount) || 0),
-        all_count: acc.all_count + (parseInt(item.all_count) || 0)
+        amount: acc.amount + amount,
+        all_count: acc.all_count + count
       };
     }, { amount: 0, all_count: 0 });
   };
