@@ -43,11 +43,24 @@ const ModelTrackingDashboard = () => {
     }
   };
 
-  // Переключение между оптом и розницей
-  const toggleWholesale = (wholesale) => {
-    setIsWholesale(wholesale);
-    fetchData(wholesale);
-  };
+// Переключение между оптом и розницей
+const toggleWholesale = (wholesale) => {
+  setIsWholesale(wholesale);
+  
+  // Сбрасываем детальный режим просмотра при переключении
+  if (currentView === 'model') {
+    setSelectedModel(null);
+    setCurrentView('general');
+    setFilterModel('all');
+    setFilterRegion('all');
+    setSelectedRegion(null);
+  }
+  
+  // Загружаем новые данные
+  fetchData(wholesale);
+};
+  
+  
   
   // Загрузка начальных данных при монтировании компонента
   useEffect(() => {
@@ -217,7 +230,7 @@ const ModelTrackingDashboard = () => {
     
     // ИЗМЕНЕННЫЙ ПОРЯДОК СТАТУСОВ СОГЛАСНО ТРЕБОВАНИЮ
     return [
-      { id: 'new', name: 'Не оплачено', value: totalNew, color: '#ef4444' },
+      { id: 'new', name: 'Частично оплачено', value: totalNew, color: '#ef4444' },
       { id: 'waiting', name: 'Оплачено', value: totalWaiting, color: '#f59e0b' },
       { id: 'binding', name: 'На распределении', value: totalBinding, color: '#60a5fa' },
       { id: 'reserved', name: 'Распределён', value: totalReserved, color: '#3b82f6' },
@@ -250,7 +263,7 @@ const ModelTrackingDashboard = () => {
     
     return {
       'oplachen': { name: 'ОПЛАЧЕНО', value: totalPaid, color: '#10b981' },
-      'neoplachen': { name: 'НЕ ОПЛАЧЕНО', value: totalUnpaid, color: '#ef4444' }
+      'neoplachen': { name: 'Частично оплачено', value: totalUnpaid, color: '#ef4444' }
     };
   };
   
@@ -755,7 +768,7 @@ const ModelTrackingDashboard = () => {
           .style('color', '#94a3b8')
           .style('font-size', '11px')
           .style('margin-bottom', '2px')
-          .text('НЕ ОПЛАЧЕНО');
+          .text('Частично оплачено');
         
         unpaidBlock.append('div')
           .style('color', '#ef4444')
@@ -778,7 +791,7 @@ const ModelTrackingDashboard = () => {
         newStatus.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Не оплачено:');
+          .text('Частично оплачено:');
           
         newStatus.append('div')
           .style('color', '#ef4444')
@@ -1055,7 +1068,7 @@ const ModelTrackingDashboard = () => {
         unpaidBlock.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Не оплачено');
+          .text('Частично оплачено');
         
         unpaidBlock.append('div')
           .style('color', '#ef4444')
@@ -1072,7 +1085,7 @@ const ModelTrackingDashboard = () => {
         newBlock.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Не оплачено');
+          .text('Частично оплачено');
 
         newBlock.append('div')
           .style('color', '#ef4444')
@@ -1219,7 +1232,7 @@ if (currentView === 'model' && selectedModel) {
     .style('color', '#94a3b8')
     .style('font-size', '12px')
     .style('margin-bottom', '5px')
-    .text('НЕ ОПЛАЧЕНО');
+    .text('ЧАСТИЧНО ОПЛАЧЕНО');
   
   unpaidStats.append('div')
     .style('font-size', '22px')
@@ -1241,7 +1254,7 @@ if (currentView === 'model' && selectedModel) {
   
   // Создаем прогресс-бар с подписями
   const progressData = [
-    { name: 'Не оплачено', value: selectedModel.state_new || 0, color: '#ef4444' },
+    { name: 'Частчично оплачено', value: selectedModel.state_new || 0, color: '#ef4444' },
     { name: 'Оплачено', value: selectedModel.state_waiting || 0, color: '#f59e0b' },
     { name: 'На распределении', value: selectedModel.state_binding || 0, color: '#60a5fa' },
     { name: 'Распределён', value: selectedModel.state_reserved || 0, color: '#3b82f6' },
@@ -1701,7 +1714,7 @@ const renderStatusChart = () => {
     <>
       {isLoading && <ContentReadyLoader timeout={2000} />}
       
-      <div className="bg-slate-900 text-white p-6 rounded-xl shadow-2xl border border-slate-800">
+      <div className="bg-dark text-white p-6 rounded-xl shadow-2xl border border-slate-800">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 text-transparent bg-clip-text">
             {isWholesale ? 'ОПТОВЫЕ ЗАКАЗЫ' : 'РОЗНИЧНЫЕ ЗАКАЗЫ'}: СТАТУС И РАСПРЕДЕЛЕНИЕ
@@ -1824,7 +1837,7 @@ const renderStatusChart = () => {
         
         <p className="text-slate-400 mb-6 font-medium">
           {currentView === 'general' 
-            ? `СТАТУСЫ ЗАКАЗОВ ${isWholesale ? '(ОПТОВЫЕ)' : '(РОЗНИЧНЫЕ)'}: НЕ ОПЛАЧЕНО, ОПЛАЧЕНО, НА РАСПРЕДЕЛЕНИИ, РАСПРЕДЕЛЁН, В ПУТИ, У ДИЛЕРА, БРОНЬ`
+            ? `СТАТУСЫ ЗАКАЗОВ ${isWholesale ? '(ОПТОВЫЕ)' : '(РОЗНИЧНЫЕ)'}: ЧАСТИЧНО ОПЛАЧЕНО, ОПЛАЧЕНО, НА РАСПРЕДЕЛЕНИИ, РАСПРЕДЕЛЁН, В ПУТИ, У ДИЛЕРА, БРОНЬ`
             : currentView === 'region'
               ? `СТАТИСТИКА ПО РЕГИОНУ: ${selectedRegion?.name}`
               : `ДЕТАЛЬНАЯ ИНФОРМАЦИЯ ПО МОДЕЛИ: ${selectedModel?.name}`}
@@ -1837,7 +1850,7 @@ const renderStatusChart = () => {
               <div className="relative z-10">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-bold text-slate-200">СТАТУС ЗАКАЗОВ</h2>
-                  <div className="text-sm font-medium text-purple-400">
+                  <div className="text-[18px] font-medium text-purple-400">
                     Всего заказов: {statusData.reduce((acc, curr) => acc + curr.value, 0)}
                   </div>
                 </div>
@@ -1905,7 +1918,7 @@ const renderStatusChart = () => {
                           : models.reduce((sum, model) => sum + (model.no_paid_count || 0), 0)}
                       </span>
                     </div>
-                    <span className="text-sm font-medium text-slate-300">НЕ ОПЛАЧЕНО</span>
+                    <span className="text-sm font-medium text-slate-300">ЧАСТИЧНО ОПЛАЧЕНО</span>
                   </div>
                 </div>
                 

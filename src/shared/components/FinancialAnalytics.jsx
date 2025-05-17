@@ -33,7 +33,7 @@ export default function EnhancedFinancialAnalytics() {
   const [filteredData, setFilteredData] = useState([]);
   const [displayMode, setDisplayMode] = useState('period'); // 'yearly', 'period', 'compare'
   const [isLoading, setIsLoading] = useState(true); // Состояние загрузки
-  const [apiStartDate, setApiStartDate] = useState('01.01.2025');
+  const [apiStartDate, setApiStartDate] = useState('01.01.2024');
   const [apiEndDate, setApiEndDate] = useState('31.12.2025');
   const [apiEndpoint, setApiEndpoint] = useState("get_all_payment"); // Начальный эндпоинт API (все продажи)
   const [dataStructureType, setDataStructureType] = useState("region"); // "model" для розницы, "region" для опта и всех
@@ -956,6 +956,7 @@ const transformRegionBasedData = (apiData, category) => {
   // Инициализация данных с API
   useEffect(() => {
     fetchDataForCategory(focusCategory, apiEndpoint, dataStructureType);
+      fetchDailySalesData();
   }, []);
   
   // Эффект для фильтрации данных в зависимости от режима и фильтров
@@ -2070,10 +2071,6 @@ const renderPeriodComparisonTable = () => {
             <div style="font-weight: bold;">${formatProfitCompact(d.sales)}</div>
           </div>
           <div>
-            <div style="font-size: 0.75rem; color: #9ca3af;">Количество</div>
-            <div style="font-weight: bold;">${d.count} шт.</div>
-          </div>
-          <div>
             <div style="font-size: 0.75rem; color: #9ca3af;">Доля</div>
             <div style="font-weight: bold; color: #60a5fa;">${percentage}%</div>
           </div>
@@ -2703,9 +2700,6 @@ const showCarModelDetails = (year, month, monthName) => {
   createInfoCard(
     'Общая сумма продаж',
     formatProfitCompact(totalSales),
-    `${totalCount} автомобилей`,
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
-    '59, 130, 246'
   );
 
   
@@ -2727,9 +2721,6 @@ const showCarModelDetails = (year, month, monthName) => {
     createInfoCard(
       'Лидер продаж',
       topModel.model_name,
-      `${topModelCount} шт.`,
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>',
-      '16, 185, 129'
     );
   }
   
@@ -3016,10 +3007,6 @@ const showCarModelDetails = (year, month, monthName) => {
             <div style="font-weight: bold;">${formatProfitCompact(d.sales)}</div>
           </div>
           <div>
-            <div style="font-size: 0.75rem; color: #9ca3af;">Количество</div>
-            <div style="font-weight: bold;">${d.count} шт.</div>
-          </div>
-          <div>
             <div style="font-size: 0.75rem; color: #9ca3af;">Средняя цена</div>
             <div style="font-weight: bold;">${formatProfitCompact(d.avgPrice)}</div>
           </div>
@@ -3146,7 +3133,6 @@ const showCarModelDetails = (year, month, monthName) => {
       .style('font-weight', 'bold')
       .style('fill', '#f9fafb')
       .style('opacity', 0)
-      .text(d => viewMode === 'sales' ? formatProfitCompact(d.value) : `${d.value} шт.`)
       .transition()
       .duration(500)
       .delay((d, i) => 800 + i * 50)
@@ -3524,14 +3510,6 @@ const showCarModelDetails = (year, month, monthName) => {
     if (modelName.length > 15) {
       modelName = modelName.substring(0, 12) + '...';
     }
-    
-    createMetricCard(
-      'Топ-модель',
-      modelName,
-      `${topModelCount} шт.`,
-      '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>',
-      '16, 185, 129'
-    );
   }
   
   // Доходная модель (по объему продаж)
@@ -3811,7 +3789,6 @@ const loadRegionData = async (startDate, endDate, category, showLoader = true) =
   }
 };
   
-  // Функция для отображения таблицы статистики продаж
 const renderDailySalesTable = () => {
   // Создаем контейнер для таблицы в нижней части страницы
   const tableContainer = document.createElement('div');
@@ -4052,7 +4029,6 @@ const renderDailySalesTable = () => {
       allSalesCell.className = 'px-3 py-4 whitespace-nowrap';
       allSalesCell.innerHTML = `
         <div class="text-sm font-medium text-white">${formatProfitCompact(allSalesData.amount)}</div>
-        <div class="text-xs text-gray-400">${allSalesData.all_count || 0} шт.</div>
       `;
       row.appendChild(allSalesCell);
       
@@ -4061,7 +4037,6 @@ const renderDailySalesTable = () => {
       retailSalesCell.className = 'px-3 py-4 whitespace-nowrap';
       retailSalesCell.innerHTML = `
         <div class="text-sm font-medium text-blue-400">${formatProfitCompact(retailSalesData.amount)}</div>
-        <div class="text-xs text-gray-400">${retailSalesData.all_count || 0} шт.</div>
       `;
       row.appendChild(retailSalesCell);
       
@@ -4070,7 +4045,6 @@ const renderDailySalesTable = () => {
       wholesaleSalesCell.className = 'px-3 py-4 whitespace-nowrap';
       wholesaleSalesCell.innerHTML = `
         <div class="text-sm font-medium text-purple-400">${formatProfitCompact(wholesaleSalesData.amount)}</div>
-        <div class="text-xs text-gray-400">${wholesaleSalesData.all_count || 0} шт.</div>
       `;
       row.appendChild(wholesaleSalesCell);
       
@@ -4138,7 +4112,6 @@ const renderDailySalesTable = () => {
     `;
     
     // Добавляем тултип с информацией
-    chip.title = `${model.model_name}: ${formatProfitCompact(model.amount)} (${model.all_count} шт.)`;
     
     return chip;
   }
@@ -4174,7 +4147,6 @@ const renderDailySalesTable = () => {
     allTotalCell.className = 'px-3 py-4 whitespace-nowrap';
     allTotalCell.innerHTML = `
       <div class="text-sm font-bold text-white">${formatProfitCompact(allTotal.amount)}</div>
-      <div class="text-xs text-gray-300">${allTotal.all_count} шт.</div>
     `;
     totalRow.appendChild(allTotalCell);
     
@@ -4183,7 +4155,6 @@ const renderDailySalesTable = () => {
     retailTotalCell.className = 'px-3 py-4 whitespace-nowrap';
     retailTotalCell.innerHTML = `
       <div class="text-sm font-bold text-blue-300">${formatProfitCompact(retailTotal.amount)}</div>
-      <div class="text-xs text-gray-300">${retailTotal.all_count} шт.</div>
     `;
     totalRow.appendChild(retailTotalCell);
     
@@ -4192,7 +4163,6 @@ const renderDailySalesTable = () => {
     wholesaleTotalCell.className = 'px-3 py-4 whitespace-nowrap';
     wholesaleTotalCell.innerHTML = `
       <div class="text-sm font-bold text-purple-300">${formatProfitCompact(wholesaleTotal.amount)}</div>
-      <div class="text-xs text-gray-300">${wholesaleTotal.all_count} шт.</div>
     `;
     totalRow.appendChild(wholesaleTotalCell);
     
@@ -4258,7 +4228,6 @@ const renderDailySalesTable = () => {
         { text: '№', className: 'w-10' },
         { text: 'Модель', className: 'w-1/3' },
         { text: 'Продажи', className: 'w-1/5' },
-        { text: 'Количество', className: 'w-1/5' },
         { text: 'Средняя цена', className: 'w-1/5' }
       ];
       
@@ -4311,7 +4280,6 @@ const renderDailySalesTable = () => {
         // Количество
         const countCell = document.createElement('td');
         countCell.className = 'px-3 py-3 whitespace-nowrap text-sm text-white';
-        countCell.textContent = `${model.all_count || 0} шт.`;
         row.appendChild(countCell);
         
         // Средняя цена
@@ -4487,7 +4455,7 @@ const formatDateFromInput = (dateString) => {
     rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', '#f9fafb').text('№');
     rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', '#f9fafb').text('Регион');
     rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'center').text('Продажи');
-    rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'center').text('Контракты');
+    rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'center').text('');
     rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'center').text('Доля рынка');
 
     // Строки таблицы с анимацией
@@ -4544,7 +4512,6 @@ const formatDateFromInput = (dateString) => {
         .style('display', 'flex')
         .style('align-items', 'center')
         .style('justify-content', 'center')
-        .text(region.count + ' шт.');
       
       // Доля рынка с графиком
       const marketShareCell = row.append('div')
@@ -4700,7 +4667,6 @@ const formatDateFromInput = (dateString) => {
           centerPercent.text(`${((d.data.sales / total) * 100).toFixed(1)}%`);
           
           // Показываем количество контрактов
-          centerCount.text(`${d.data.count} шт.`);
           
           // Показываем легенду для выбранного элемента
           pieLegendItems.style('opacity', 0.5);
@@ -4719,7 +4685,6 @@ const formatDateFromInput = (dateString) => {
           centerText.text('Общий объем');
           centerNumber.text(formatProfitCompact(total));
           centerPercent.text('100%');
-          centerCount.text(`${totalCount} шт.`);
           
           // Восстанавливаем легенду
           pieLegendItems.style('opacity', 1)
@@ -4776,7 +4741,6 @@ const formatDateFromInput = (dateString) => {
         .attr('dy', '3em')
         .style('font-size', '0.9rem')
         .style('fill', '#9ca3af')
-        .text(`${totalCount} шт.`);
       
       // Создаем оптимизированную легенду для диаграммы
       const legendData = pieData.slice(0, Math.min(7, pieData.length));
@@ -5037,8 +5001,6 @@ const formatDateFromInput = (dateString) => {
     return selectableMonths;
   };
   
-  // Функция для обновления данных сравнения по выбранному диапазону
-// Функция для обновления данных сравнения по выбранному диапазону
 async function updateRangeComparisonData(startMonthId, endMonthId, providedMonths = null) {
   console.log(`Запуск сравнения периодов: ${startMonthId} - ${endMonthId}`);
   
@@ -5265,9 +5227,8 @@ async function updateRangeComparisonData(startMonthId, endMonthId, providedMonth
         const id = region.region_id || '0';
         const name = region.region_name || 'Неизвестный регион';
         const sales = parseFloat(region.amount || 0);
-        const count = parseInt(region.all_count || 0, 10);
         
-        return { id, name, sales, count };
+        return { id, name, sales };
       });
     };
     
@@ -5297,9 +5258,7 @@ async function updateRangeComparisonData(startMonthId, endMonthId, providedMonth
       regionMap.set(region.id, {
         name: region.name,
         currentSales: region.sales,
-        currentCount: region.count,
-        previousSales: 0,
-        previousCount: 0
+        previousSales: 0
       });
     });
     
@@ -5308,26 +5267,17 @@ async function updateRangeComparisonData(startMonthId, endMonthId, providedMonth
       if (regionMap.has(region.id)) {
         const existingRegion = regionMap.get(region.id);
         existingRegion.previousSales = region.sales;
-        existingRegion.previousCount = region.count;
       } else {
         regionMap.set(region.id, {
           name: region.name,
           currentSales: 0,
-          currentCount: 0,
-          previousSales: region.sales,
-          previousCount: region.count
+          previousSales: region.sales
         });
       }
     });
     
-    // Преобразуем Map в массив и вычисляем проценты роста
+    // Преобразуем Map в массив
     const compareData = Array.from(regionMap.values())
-      .map(region => ({
-        ...region,
-        salesGrowth: region.previousSales > 0 ? 
-          ((region.currentSales / region.previousSales) - 1) * 100 : 
-          (region.currentSales > 0 ? 100 : 0)
-      }))
       .filter(region => region.currentSales > 0 || region.previousSales > 0) // Убираем регионы без данных
       .sort((a, b) => b.currentSales - a.currentSales); // Сортируем по текущим продажам
     
@@ -5347,8 +5297,8 @@ async function updateRangeComparisonData(startMonthId, endMonthId, providedMonth
       return;
     }
     
-    // Берем топ-10 регионов для графика
-    const topRegions = compareData.slice(0, 10);
+    // Берем топ-8 регионов для графика
+    const topRegions = compareData.slice(0, 8);
     
     // Создаем контейнер для графика сравнения
     const graphContainer = comparisonContainer.append('div')
@@ -5356,7 +5306,7 @@ async function updateRangeComparisonData(startMonthId, endMonthId, providedMonth
       .style('background', 'rgba(17, 24, 39, 0.6)')
       .style('border-radius', '8px')
       .style('padding', '15px')
-      .style('height', '350px');
+      .style('height', '400px');
     
     graphContainer.append('h4')
       .style('font-size', '1rem')
@@ -5372,83 +5322,192 @@ async function updateRangeComparisonData(startMonthId, endMonthId, providedMonth
     
     const graphWidth = graphSvg.node().clientWidth;
     const graphHeight = graphSvg.node().clientHeight;
-    const graphMargin = { top: 20, right: 100, bottom: 40, left: 180 };
+    const graphMargin = { top: 20, right: 30, bottom: 120, left: 60 };
     
     // Максимальное значение для масштаба
     const maxValue = d3.max(topRegions, d => Math.max(d.currentSales, d.previousSales)) * 1.1;
     
-    // Шкалы для графика
-    const salesX = d3.scaleLinear()
-      .domain([0, maxValue])
-      .range([graphMargin.left, graphWidth - graphMargin.right]);
-    
-    const salesY = d3.scaleBand()
+    // Шкалы для графика (для вертикальных столбцов)
+    const xScale = d3.scaleBand()
       .domain(topRegions.map(d => d.name))
-      .range([graphMargin.top, graphHeight - graphMargin.bottom])
-      .padding(0.3);
+      .range([graphMargin.left, graphWidth - graphMargin.right])
+      .padding(0.2);
+    
+    const yScale = d3.scaleLinear()
+      .domain([0, maxValue])
+      .range([graphHeight - graphMargin.bottom, graphMargin.top]);
+    
+    // Внутренняя шкала для группировки столбцов
+    const xSubScale = d3.scaleBand()
+      .domain([0, 1]) // 0 - предыдущий период, 1 - текущий период
+      .range([0, xScale.bandwidth()])
+      .padding(0.1);
     
     // Оси для графика
+    // Ось X (регионы)
     graphSvg.append('g')
       .attr('transform', `translate(0,${graphHeight - graphMargin.bottom})`)
-      .call(d3.axisBottom(salesX)
+      .call(d3.axisBottom(xScale))
+      .call(g => g.select('.domain').remove())
+      .call(g => g.selectAll('text')
+        .style('fill', '#d1d5db')
+        .style('font-size', '0.8rem')
+        .attr('transform', 'rotate(-45)')
+        .attr('text-anchor', 'end')
+        .attr('dx', '-0.8em')
+        .attr('dy', '0.15em'));
+    
+    // Ось Y (продажи)
+    graphSvg.append('g')
+      .attr('transform', `translate(${graphMargin.left},0)`)
+      .call(d3.axisLeft(yScale)
         .ticks(5)
         .tickFormat(d => formatProfitCompact(d)))
       .call(g => g.select('.domain').remove())
       .call(g => g.selectAll('text')
         .style('fill', '#d1d5db')
-        .style('font-size', '0.85rem'));
+        .style('font-size', '0.8rem'))
+      .call(g => g.selectAll('.tick line')
+        .attr('x2', graphWidth - graphMargin.left - graphMargin.right)
+        .attr('stroke', 'rgba(148, 163, 184, 0.1)')
+        .attr('stroke-dasharray', '2,2'));
     
+    // Добавляем фоновую сетку
     graphSvg.append('g')
-      .attr('transform', `translate(${graphMargin.left},0)`)
-      .call(d3.axisLeft(salesY))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('text')
-        .style('fill', '#d1d5db')
-        .style('font-size', '0.85rem'));
+      .selectAll('line.grid')
+      .data(yScale.ticks(5))
+      .join('line')
+      .attr('class', 'grid')
+      .attr('x1', graphMargin.left)
+      .attr('x2', graphWidth - graphMargin.right)
+      .attr('y1', d => yScale(d))
+      .attr('y2', d => yScale(d))
+      .attr('stroke', 'rgba(148, 163, 184, 0.1)')
+      .attr('stroke-width', 1);
     
-    // Текущий период (голубые полосы)
-    graphSvg.selectAll('.current-sales-bar')
-      .data(topRegions)
-      .join('rect')
-      .attr('class', 'current-sales-bar')
-      .attr('x', graphMargin.left)
-      .attr('y', d => salesY(d.name))
-      .attr('height', salesY.bandwidth() / 2 - 2)
-      .attr('fill', '#3b82f6') // Голубой для текущего периода
-      .attr('rx', 4)
-      .attr('width', 0)
-      .transition()
-      .duration(800)
-      .delay((d, i) => i * 100)
-      .attr('width', d => salesX(d.currentSales) - graphMargin.left);
+    // Создаем градиенты для столбцов
+    const defs = graphSvg.append('defs');
     
-    // Начальный период (серые полосы)
+    // Градиент для текущего периода
+    const currentGradient = defs.append('linearGradient')
+      .attr('id', 'current-period-gradient')
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '0%')
+      .attr('y2', '100%');
+    
+    currentGradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', '#60a5fa')
+      .attr('stop-opacity', 1);
+    
+    currentGradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', '#3b82f6')
+      .attr('stop-opacity', 0.8);
+    
+    // Градиент для предыдущего периода
+    const previousGradient = defs.append('linearGradient')
+      .attr('id', 'previous-period-gradient')
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '0%')
+      .attr('y2', '100%');
+    
+    previousGradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', '#cbd5e1')
+      .attr('stop-opacity', 1);
+    
+    previousGradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', '#94a3b8')
+      .attr('stop-opacity', 0.8);
+    
+    // Добавляем столбцы для предыдущего периода
     graphSvg.selectAll('.previous-sales-bar')
       .data(topRegions)
       .join('rect')
       .attr('class', 'previous-sales-bar')
-      .attr('x', graphMargin.left)
-      .attr('y', d => salesY(d.name) + salesY.bandwidth() / 2 + 2)
-      .attr('height', salesY.bandwidth() / 2 - 2)
-      .attr('fill', '#94a3b8')
+      .attr('x', d => xScale(d.name) + xSubScale(0))
+      .attr('y', graphHeight - graphMargin.bottom)
+      .attr('width', xSubScale.bandwidth())
+      .attr('height', 0)
+      .attr('fill', 'url(#previous-period-gradient)')
       .attr('rx', 4)
-      .attr('width', 0)
+      .attr('stroke', '#1f2937')
+      .attr('stroke-width', 1)
+      .attr('stroke-opacity', 0.5)
+      .transition()
+      .duration(800)
+      .delay((d, i) => i * 100)
+      .attr('y', d => yScale(d.previousSales))
+      .attr('height', d => graphHeight - graphMargin.bottom - yScale(d.previousSales));
+    
+    // Добавляем столбцы для текущего периода
+    graphSvg.selectAll('.current-sales-bar')
+      .data(topRegions)
+      .join('rect')
+      .attr('class', 'current-sales-bar')
+      .attr('x', d => xScale(d.name) + xSubScale(1))
+      .attr('y', graphHeight - graphMargin.bottom)
+      .attr('width', xSubScale.bandwidth())
+      .attr('height', 0)
+      .attr('fill', 'url(#current-period-gradient)')
+      .attr('rx', 4)
+      .attr('stroke', '#1f2937')
+      .attr('stroke-width', 1)
+      .attr('stroke-opacity', 0.5)
       .transition()
       .duration(800)
       .delay((d, i) => i * 100 + 300)
-      .attr('width', d => salesX(d.previousSales) - graphMargin.left);
-
+      .attr('y', d => yScale(d.currentSales))
+      .attr('height', d => graphHeight - graphMargin.bottom - yScale(d.currentSales));
+    
+    // Добавляем текстовые метки со значениями для предыдущего периода
+    graphSvg.selectAll('.previous-sales-label')
+      .data(topRegions)
+      .join('text')
+      .attr('class', 'previous-sales-label')
+      .attr('x', d => xScale(d.name) + xSubScale(0) + xSubScale.bandwidth() / 2)
+      .attr('y', d => yScale(d.previousSales) - 5)
+      .attr('text-anchor', 'middle')
+      .style('font-size', '0.7rem')
+      .style('fill', '#cbd5e1')
+      .style('opacity', 0)
+      .text(d => formatProfitCompact(d.previousSales))
+      .transition()
+      .duration(400)
+      .delay((d, i) => i * 100 + 900)
+      .style('opacity', 1);
+    
+    // Добавляем текстовые метки со значениями для текущего периода
+    graphSvg.selectAll('.current-sales-label')
+      .data(topRegions)
+      .join('text')
+      .attr('class', 'current-sales-label')
+      .attr('x', d => xScale(d.name) + xSubScale(1) + xSubScale.bandwidth() / 2)
+      .attr('y', d => yScale(d.currentSales) - 5)
+      .attr('text-anchor', 'middle')
+      .style('font-size', '0.7rem')
+      .style('fill', '#93c5fd')
+      .style('opacity', 0)
+      .text(d => formatProfitCompact(d.currentSales))
+      .transition()
+      .duration(400)
+      .delay((d, i) => i * 100 + 1100)
+      .style('opacity', 1);
     
     // Добавляем легенду
     const legend = graphSvg.append('g')
-      .attr('transform', `translate(${graphMargin.left}, 5)`);
+      .attr('transform', `translate(${graphWidth - graphMargin.right - 130}, ${graphMargin.top})`);
     
     // Текущий период
     legend.append('rect')
       .attr('width', 15)
       .attr('height', 15)
       .attr('rx', 3)
-      .attr('fill', '#3b82f6'); // Цвет для текущего периода
+      .attr('fill', 'url(#current-period-gradient)');
     
     legend.append('text')
       .attr('x', 22)
@@ -5462,76 +5521,75 @@ async function updateRangeComparisonData(startMonthId, endMonthId, providedMonth
       .attr('width', 15)
       .attr('height', 15)
       .attr('rx', 3)
-      .attr('fill', '#94a3b8')
-      .attr('transform', 'translate(120, 0)');
+      .attr('fill', 'url(#previous-period-gradient)')
+      .attr('transform', 'translate(0, 25)');
     
     legend.append('text')
-      .attr('x', 142)
-      .attr('y', 12)
+      .attr('x', 22)
+      .attr('y', 37)
       .style('font-size', '0.9rem')
       .style('fill', '#f9fafb')
       .text(startPeriodName);
     
-    // Добавляем тултипы для полос
-    graphSvg.selectAll('.current-sales-bar, .previous-sales-bar')
-      .on('mouseover', function(event, d) {
-        const isCurrentBar = d3.select(this).classed('current-sales-bar');
-        const value = isCurrentBar ? d.currentSales : d.previousSales;
-        const periodName = isCurrentBar ? endPeriodName : startPeriodName;
-        const count = isCurrentBar ? d.currentCount : d.previousCount;
-        
-        // Создаем тултип с улучшенным стилем
-        d3.select('body').append('div')
-          .attr('class', 'chart-tooltip')
-          .style('position', 'absolute')
-          .style('background', 'rgba(17, 24, 39, 0.95)')
-          .style('color', '#f9fafb')
-          .style('border-radius', '6px')
-          .style('padding', '10px 15px')
-          .style('font-size', '0.95rem')
-          .style('pointer-events', 'none')
-          .style('z-index', 1000)
-          .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.3)')
-          .style('border', `1px solid ${isCurrentBar ? '#3b82f6' : '#94a3b8'}`)
-          .style('left', `${event.pageX + 10}px`)
-          .style('top', `${event.pageY - 40}px`)
-          .html(`
-            <div style="font-weight:bold;font-size:1rem;margin-bottom:5px;">${d.name}</div>
-            <div style="color:#a1a1aa">${periodName}</div>
-            <div style="margin-top:8px">
-              <span style="color:#60a5fa;font-weight:bold;">Объем продаж:</span> 
-              <span style="font-weight:600;">${formatProfitCompact(value)}</span>
-            </div>
-            <div style="margin-top:3px">
-              <span style="color:#60a5fa;font-weight:bold;">Количество:</span> 
-              <span style="font-weight:600;">${count} шт.</span>
-            </div>
-          `);
+    // Добавляем тултипы для столбцов
+    const addBarInteractivity = (selector, isPrevious) => {
+      graphSvg.selectAll(selector)
+        .on('mouseover', function(event, d) {
+          const value = isPrevious ? d.previousSales : d.currentSales;
+          const periodName = isPrevious ? startPeriodName : endPeriodName;
+          const color = isPrevious ? '#94a3b8' : '#3b82f6';
           
-        // Увеличиваем полосу при наведении
-        d3.select(this)
-          .transition()
-          .duration(200)
-          .attr('opacity', 0.9)
-          .attr('height', salesY.bandwidth() / 2);
-      })
-      .on('mousemove', function(event) {
-        d3.select('.chart-tooltip')
-          .style('left', `${event.pageX + 10}px`)
-          .style('top', `${event.pageY - 40}px`);
-      })
-      .on('mouseout', function() {
-        d3.select('.chart-tooltip').remove();
-        
-        // Возвращаем исходный размер
-        d3.select(this)
-          .transition()
-          .duration(200)
-          .attr('opacity', 1)
-          .attr('height', salesY.bandwidth() / 2 - 2);
-      });
+          // Увеличиваем столбец при наведении
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr('fill', d3.rgb(color).brighter(0.2))
+            .attr('filter', 'brightness(1.2)');
+          
+          // Показываем тултип
+          d3.select('body').append('div')
+            .attr('class', 'chart-tooltip')
+            .style('position', 'absolute')
+            .style('background', 'rgba(17, 24, 39, 0.95)')
+            .style('color', '#f9fafb')
+            .style('border-radius', '6px')
+            .style('padding', '10px 15px')
+            .style('font-size', '0.95rem')
+            .style('pointer-events', 'none')
+            .style('z-index', 1000)
+            .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.3)')
+            .style('border', `1px solid ${color}`)
+            .style('left', `${event.pageX + 10}px`)
+            .style('top', `${event.pageY - 80}px`)
+            .html(`
+              <div style="font-weight:bold;font-size:1rem;margin-bottom:5px;">${d.name}</div>
+              <div style="color:#a1a1aa">${periodName}</div>
+              <div style="margin-top:8px">
+                <span style="font-weight:600;">${formatProfitCompact(value)}</span>
+              </div>
+            `);
+        })
+        .on('mousemove', function(event) {
+          d3.select('.chart-tooltip')
+            .style('left', `${event.pageX + 10}px`)
+            .style('top', `${event.pageY - 80}px`);
+        })
+        .on('mouseout', function() {
+          // Возвращаем исходный вид столбца
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr('fill', isPrevious ? 'url(#previous-period-gradient)' : 'url(#current-period-gradient)')
+            .attr('filter', 'none');
+          
+          // Удаляем тултип
+          d3.select('.chart-tooltip').remove();
+        });
+    };
     
-    // Секция со статистикой полностью удалена
+    // Добавляем интерактивность столбцам
+    addBarInteractivity('.previous-sales-bar', true);
+    addBarInteractivity('.current-sales-bar', false);
     
   } catch (error) {
     // Удаляем индикатор загрузки
@@ -9613,8 +9671,10 @@ const getDayOfWeek = (dateStr) => {
   return days[date.getDay()];
 };
 
-// Функция для рендеринга строк таблицы с данными// Функция для улучшенного отображения моделей в таблице с указанием суммы
 const renderDailySalesTableRows = () => {
+  // Модели, которые нужно отображать отдельно
+  const specificModels = ["DAMAS-2", "ONIX", "TRACKER-2", "Captiva 5T"];
+  
   // Создаем объединенный набор дат из всех трех источников
   const allDates = new Set();
   
@@ -9672,17 +9732,39 @@ const renderDailySalesTableRows = () => {
     const retailCount = parseInt(retailSalesData.all_count) || 0;
     const wholesaleCount = parseInt(wholesaleSalesData.all_count) || 0;
     
-    // Логируем для отладки
-    if (index === 0) {
-      console.log("Пример данных:", {
-        date,
-        allData: allSalesData,
-        retailData: retailSalesData,
-        wholesaleData: wholesaleSalesData,
-        allAmount,
-        retailAmount,
-        wholesaleAmount
+    // Обработка данных по моделям
+    const modelData = {};
+    let otherModelsAmount = 0;
+    let otherModelsCount = 0;
+    
+    // Инициализация данных для всех моделей
+    specificModels.forEach(modelName => {
+      modelData[modelName] = { amount: 0, count: 0 };
+    });
+    
+    // Если есть данные о моделях, обрабатываем их
+    if (retailSalesData.models && Array.isArray(retailSalesData.models)) {
+      retailSalesData.models.forEach(model => {
+        const modelName = model.model_name || '';
+        const modelAmount = parseFloat(model.amount) || 0;
+        const modelCount = parseInt(model.all_count) || 0;
+        
+        // Если модель входит в список специфических, добавляем данные
+        if (specificModels.includes(modelName)) {
+          modelData[modelName] = {
+            amount: modelAmount,
+            count: modelCount
+          };
+        } else {
+          // Иначе добавляем к "Остальным"
+          otherModelsAmount += modelAmount;
+          otherModelsCount += modelCount;
+        }
       });
+    } else {
+      // Если данных о моделях нет, считаем все как "Остальные"
+      otherModelsAmount = retailAmount;
+      otherModelsCount = retailCount;
     }
     
     return (
@@ -9696,19 +9778,28 @@ const renderDailySalesTableRows = () => {
         {/* Общие продажи */}
         <td className="px-3 py-4 whitespace-nowrap">
           <div className="text-sm font-medium text-white">{formatProfitCompact(allAmount)}</div>
-          <div className="text-xs text-gray-400">{allCount} шт.</div>
         </td>
         
         {/* Розничные продажи */}
         <td className="px-3 py-4 whitespace-nowrap">
           <div className="text-sm font-medium text-blue-400">{formatProfitCompact(retailAmount)}</div>
-          <div className="text-xs text-gray-400">{retailCount} шт.</div>
         </td>
         
         {/* Оптовые продажи */}
         <td className="px-3 py-4 whitespace-nowrap">
           <div className="text-sm font-medium text-purple-400">{formatProfitCompact(wholesaleAmount)}</div>
-          <div className="text-xs text-gray-400">{wholesaleCount} шт.</div>
+        </td>
+        
+        {/* Данные по конкретным моделям */}
+        {specificModels.map(modelName => (
+          <td key={modelName} className="px-3 py-4 whitespace-nowrap">
+            <div className="text-sm font-medium text-green-400">{formatProfitCompact(modelData[modelName].amount)}</div>
+          </td>
+        ))}
+        
+        {/* Остальные модели */}
+        <td className="px-3 py-4 whitespace-nowrap">
+          <div className="text-sm font-medium text-yellow-400">{formatProfitCompact(otherModelsAmount)}</div>
         </td>
       </tr>
     );
@@ -9716,7 +9807,11 @@ const renderDailySalesTableRows = () => {
 };
 
 // Функция для рендеринга итоговой строки с правильным расчетом сумм
+// Функция для рендеринга итоговой строки с правильным расчетом сумм
 const renderDailySalesTotalRow = () => {
+  // Модели, которые нужно отображать отдельно
+  const specificModels = ["DAMAS-2", "ONIX", "TRACKER-2", "Captiva 5T"];
+  
   // Функция для расчета общей суммы и количества
   const calculateTotal = (dataArray) => {
     return dataArray.reduce((acc, item) => {
@@ -9735,26 +9830,60 @@ const renderDailySalesTotalRow = () => {
   const retailTotal = calculateTotal(dailySalesData.retail);
   const wholesaleTotal = calculateTotal(dailySalesData.wholesale);
   
+  // Расчет итогов по моделям
+  const modelTotals = {};
+  specificModels.forEach(model => {
+    modelTotals[model] = { amount: 0, count: 0 };
+  });
+  
+  let otherModelsTotal = { amount: 0, count: 0 };
+  
+  // Собираем данные по моделям
+  dailySalesData.retail.forEach(dayData => {
+    if (dayData.models && Array.isArray(dayData.models)) {
+      dayData.models.forEach(model => {
+        const modelName = model.model_name || '';
+        const modelAmount = parseFloat(model.amount) || 0;
+        const modelCount = parseInt(model.all_count) || 0;
+        
+        if (specificModels.includes(modelName)) {
+          modelTotals[modelName].amount += modelAmount;
+          modelTotals[modelName].count += modelCount;
+        } else {
+          otherModelsTotal.amount += modelAmount;
+          otherModelsTotal.count += modelCount;
+        }
+      });
+    }
+  });
+  
   return (
     <tr className="bg-gray-700/30 font-medium">
       <td className="px-3 py-4 whitespace-nowrap text-sm text-white">ИТОГО:</td>
       
       <td className="px-3 py-4 whitespace-nowrap">
         <div className="text-sm font-bold text-white">{formatProfitCompact(allTotal.amount)}</div>
-        <div className="text-xs text-gray-300">{allTotal.all_count} шт.</div>
       </td>
       
       <td className="px-3 py-4 whitespace-nowrap">
         <div className="text-sm font-bold text-blue-300">{formatProfitCompact(retailTotal.amount)}</div>
-        <div className="text-xs text-gray-300">{retailTotal.all_count} шт.</div>
       </td>
       
       <td className="px-3 py-4 whitespace-nowrap">
         <div className="text-sm font-bold text-purple-300">{formatProfitCompact(wholesaleTotal.amount)}</div>
-        <div className="text-xs text-gray-300">{wholesaleTotal.all_count} шт.</div>
       </td>
       
-      <td></td>
+      {/* Итоги по моделям */}
+      {specificModels.map(model => (
+        <td key={model} className="px-3 py-4 whitespace-nowrap">
+          <div className="text-sm font-bold text-green-300">{formatProfitCompact(modelTotals[model].amount)}</div>
+        </td>
+      ))}
+      
+      {/* Итоги по остальным моделям */}
+      <td className="px-3 py-4 whitespace-nowrap">
+        <div className="text-sm font-bold text-yellow-300">{formatProfitCompact(otherModelsTotal.amount)}</div>
+      </td>
     </tr>
   );
 };
@@ -9788,15 +9917,19 @@ const showModelsModal = (date, displayDate, models) => {
       <div className="overflow-y-auto flex-grow">
         {models && models.length > 0 ? (
           <table className="min-w-full divide-y divide-gray-700">
-            <thead className="bg-gray-700/50">
-              <tr>
-                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-10">№</th>
-                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/3">Модель</th>
-                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/5">Продажи</th>
-                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/5">Количество</th>
-                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/5">Средняя цена</th>
-              </tr>
-            </thead>
+          <thead className="bg-gray-700/50">
+  <tr>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-32">Дата</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Общие продажи</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Розничные продажи</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Оптовые продажи</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">DAMAS-2</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">ONIX</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">TRACKER-2</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Captiva 5T</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Остальные</th>
+  </tr>
+</thead>
             <tbody className="bg-gray-800 divide-y divide-gray-700">
               {/* Сортируем модели по сумме продаж (от большей к меньшей) */}
               {[...models].sort((a, b) => (parseFloat(b.amount) || 0) - (parseFloat(a.amount) || 0)).map((model, index) => {
@@ -10102,14 +10235,21 @@ return (
               </div>
             ) : (
               <table className="min-w-full divide-y divide-gray-700 table-fixed">
-                <thead className="bg-gray-700/50">
-                  <tr>
-                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-32">Дата</th>
-                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Общие продажи</th>
-                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Розничные продажи</th>
-                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Оптовые продажи</th>
-                  </tr>
-                </thead>
+             <thead className="bg-gray-700/50">
+  <tr>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-32">Дата</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Общие продажи</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Розничные продажи</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Оптовые продажи</th>
+    
+    {/* Новые заголовки для моделей */}
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">DAMAS-2</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">ONIX</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">TRACKER-2</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Captiva 5T</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Остальные</th>
+  </tr>
+</thead>
                 <tbody className="bg-gray-800 divide-y divide-gray-700">
                   {/* Генерируем строки таблицы */}
                   {renderDailySalesTableRows()}

@@ -1031,7 +1031,7 @@ const SalesDashboard = () => {
             </div>
             
             {/* Карточка с рекомендациями */}
-            <div className="bg-gray-800/70 rounded-lg p-4 border border-gray-700 shadow-md">
+            {/* <div className="bg-gray-800/70 rounded-lg p-4 border border-gray-700 shadow-md">
               <h4 className="font-medium text-white mb-3 flex items-center gap-2">
                 <Zap size={16} className="text-yellow-400" />
                 Рекомендуемые действия
@@ -1059,7 +1059,7 @@ const SalesDashboard = () => {
                   </div>
                 </li>
               </ul>
-            </div>
+            </div> */}
           </div>
         </div>
       );
@@ -1139,7 +1139,7 @@ const SalesDashboard = () => {
           <div className="flex justify-between items-center p-3 border-b border-gray-700">
             <h2 className="text-base font-medium text-white flex items-center gap-2">
               <Activity size={18} className="text-blue-400" />
-              Задолженность по общим контрактам
+             Статус автомобилей
               {selectedModel && (
                 <span className="ml-2 text-sm text-gray-400">
                   • {carModels.find(m => m.id === selectedModel)?.name}
@@ -1227,7 +1227,7 @@ const SalesDashboard = () => {
                   </span>
                 )}
               </h3>
-              <div className="text-sm text-yellow-300">
+              <div className="text-[16px] text-yellow-300">
                 Общее количество: <span className="font-bold">{totalFrozenCount}</span>
               </div>
             </div>

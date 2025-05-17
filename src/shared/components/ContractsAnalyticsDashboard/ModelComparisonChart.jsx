@@ -30,6 +30,7 @@ const ModelComparisonChart = ({ modelPerformance, carModels, selectedPeriod, get
       const perfData = modelPerformance[model.id] || {};
       return {
         name: model.name,
+        shortName: model.name.length > 12 ? model.name.substring(0, 10) + '...' : model.name,
         contracts: perfData.contracts || 0,
         realization: perfData.realization || 0,
         cancellation: perfData.cancellation || 0,
@@ -78,34 +79,41 @@ const ModelComparisonChart = ({ modelPerformance, carModels, selectedPeriod, get
         Сравнительный анализ моделей {getPeriodLabel(selectedPeriod).toLowerCase()} {getFormattedPeriod()}
       </h3>
       
-      <div className="w-full h-72">
+      <div className="w-full h-[500px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart 
             data={comparisonData}
-            layout="vertical"
-            margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+            margin={{ top: 5, right: 30, left: 20, bottom: 80 }}
+            barGap={4}
+            barCategoryGap={16}
           >
-            <XAxis type="number" stroke="#9ca3af" tickFormatter={formatNumber} />
-            <YAxis 
-              dataKey="name" 
-              type="category" 
-              stroke="#9ca3af" 
-              width={80}
-              tick={{
-                fill: '#e5e7eb',
-                fontSize: 12
-              }}
-            />
             <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="shortName" 
+              stroke="#9ca3af"
+              tick={{ fill: '#e5e7eb', fontSize: 12 }}
+              angle={-45}
+              textAnchor="end"
+              height={80}
+              interval={0}
+            />
+            <YAxis 
+              stroke="#9ca3af" 
+              tickFormatter={formatNumber}
+            />
             <Tooltip 
               formatter={(value, name) => {
                 const labels = {
                   contracts: "Контракты",
                   realization: "Реализация",
-                  cancellation: "Отмена",
-                  conversion: "Конверсия"
+                  cancellation: "Отмена"
                 };
                 return [formatNumber(value), labels[name] || name];
+              }}
+              labelFormatter={(value, entry) => {
+                // Найти полное название в данных
+                const fullName = entry[0]?.payload?.name || value;
+                return fullName;
               }}
               wrapperStyle={{ backgroundColor: '#1f2937', border: '1px solid #4b5563' }}
               contentStyle={{ backgroundColor: '#1f2937', border: 'none' }}
@@ -117,15 +125,32 @@ const ModelComparisonChart = ({ modelPerformance, carModels, selectedPeriod, get
                 const labels = {
                   contracts: "Контракты",
                   realization: "Реализация",
-                  cancellation: "Отмена",
-                  conversion: "Конверсия (%)"
+                  cancellation: "Отмена"
                 };
                 return <span style={{color: '#d1d5db', fontSize: '0.9rem'}}>{labels[value]}</span>
               }}
+              wrapperStyle={{ bottom: 0 }}
             />
-            <Bar dataKey="contracts" fill="#4f46e5" radius={[0, 4, 4, 0]} />
-            <Bar dataKey="realization" fill="#10b981" radius={[0, 4, 4, 0]} />
-            <Bar dataKey="cancellation" fill="#ef4444" radius={[0, 4, 4, 0]} />
+            <Bar 
+              dataKey="contracts" 
+              fill="#4f46e5" 
+              radius={[4, 4, 0, 0]}
+              animationDuration={800}
+            />
+            <Bar 
+              dataKey="realization" 
+              fill="#10b981" 
+              radius={[4, 4, 0, 0]}
+              animationDuration={800}
+              animationBegin={100}
+            />
+            <Bar 
+              dataKey="cancellation" 
+              fill="#ef4444" 
+              radius={[4, 4, 0, 0]}
+              animationDuration={800}
+              animationBegin={200}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>

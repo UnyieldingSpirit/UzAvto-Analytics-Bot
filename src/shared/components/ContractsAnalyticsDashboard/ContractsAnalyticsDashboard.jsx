@@ -641,204 +641,288 @@ function ContractsAnalyticsDashboard() {
     return renderedChart;
   };
   
-  const renderDetailedChart = () => {
-    // Проверка наличия данных
-    if (!dailyContractData || !Array.isArray(dailyContractData)) {
-      return (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-gray-400">Нет данных для отображения детализации.</p>
-        </div>
-      );
-    }
-  
-    // Фильтруем данные по выбранной модели
-    const filteredData = selectedModel === 'all'
-      ? dailyContractData
-      : dailyContractData.filter(model => model.model_id === selectedModel);
-  
-    // Фильтруем также по выбранному региону, если он указан
-    const filteredByRegion = (selectedRegion === 'all')
-      ? filteredData
-      : filteredData.map(model => {
-        const newModel = { ...model };
-        if (newModel.filter_by_date && Array.isArray(newModel.filter_by_date)) {
-          newModel.filter_by_date = newModel.filter_by_date.filter(
-            region => region.region_id === selectedRegion
-          );
-        }
-        return newModel;
-      }).filter(model =>
-        model.filter_by_date &&
-        model.filter_by_date.length > 0 &&
-        model.filter_by_date.some(region => region.data && region.data.length > 0)
-      );
-  
-    // Если нет данных после фильтрации
-    if (filteredByRegion.length === 0 || !filteredByRegion.some(model =>
-      model.filter_by_date &&
-      Array.isArray(model.filter_by_date) &&
-      model.filter_by_date.some(region => region.data && region.data.length > 0)
-    )) {
-      return (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-gray-400">Нет данных для отображения детализации по выбранным параметрам.</p>
-        </div>
-      );
-    }
-  
-    // Создаем карту данных для каждого дня
-    const dayDataMap = {};
-
-    // Собираем данные о контрактах по дням
-    filteredByRegion.forEach(model => {
-      if (model.filter_by_date && Array.isArray(model.filter_by_date)) {
-        model.filter_by_date.forEach(region => {
-          if (region.data && Array.isArray(region.data)) {
-            region.data.forEach(item => {
-              if (item.order_date && item.order_count) {
-                const dateStr = item.order_date;
-              
-                // Инициализируем запись для даты, если ее еще нет
-                if (!dayDataMap[dateStr]) {
-                  dayDataMap[dateStr] = {
-                    date: dateStr,
-                    day: new Date(dateStr).getDate(),
-                    contracts: 0,
-                    realization: 0,
-                    cancellation: 0
-                  };
-                }
-              
-                // Добавляем количество контрактов
-                dayDataMap[dateStr].contracts += parseInt(item.order_count || 0);
-              }
-            });
-          }
-        });
-      }
-      
-      // Аналогично для реализованных контрактов, если они есть в API
-      if (model.filter_real_by_date && Array.isArray(model.filter_real_by_date)) {
-        model.filter_real_by_date.forEach(region => {
-          if (region.data && Array.isArray(region.data)) {
-            region.data.forEach(item => {
-              if (item.order_date && item.order_count) {
-                const dateStr = item.order_date;
-                
-                // Инициализируем запись для даты, если ее еще нет
-                if (!dayDataMap[dateStr]) {
-                  dayDataMap[dateStr] = {
-                    date: dateStr,
-                    day: new Date(dateStr).getDate(),
-                    contracts: 0,
-                    realization: 0,
-                    cancellation: 0
-                  };
-                }
-                
-                // Добавляем количество реализованных контрактов
-                dayDataMap[dateStr].realization += parseInt(item.order_count || 0);
-              }
-            });
-          }
-        });
-      }
-      
-      // Аналогично для отмененных контрактов, если они есть в API
-      if (model.filter_cancel_by_date && Array.isArray(model.filter_cancel_by_date)) {
-        model.filter_cancel_by_date.forEach(region => {
-          if (region.data && Array.isArray(region.data)) {
-            region.data.forEach(item => {
-              if (item.order_date && item.order_count) {
-                const dateStr = item.order_date;
-                
-                // Инициализируем запись для даты, если ее еще нет
-                if (!dayDataMap[dateStr]) {
-                  dayDataMap[dateStr] = {
-                    date: dateStr,
-                    day: new Date(dateStr).getDate(),
-                    contracts: 0,
-                    realization: 0,
-                    cancellation: 0
-                  };
-                }
-                
-                // Добавляем количество отмененных контрактов
-                dayDataMap[dateStr].cancellation += parseInt(item.order_count || 0);
-              }
-            });
-          }
-        });
-      }
-    });
-  
-    // Преобразуем объект в массив и сортируем по дате
-    const chartData = Object.values(dayDataMap).sort((a, b) => a.day - b.day);
-  
-    // Если нет данных
-    if (chartData.length === 0) {
-      return (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-gray-400">Нет данных для отображения детализации.</p>
-        </div>
-      );
-    }
-  
+const renderDetailedChart = () => {
+  // Проверка наличия данных
+  if (!dailyContractData || !Array.isArray(dailyContractData)) {
     return (
-      <LineChart data={chartData}>
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-400">Нет данных для отображения детализации.</p>
+      </div>
+    );
+  }
+
+  // Фильтруем данные по выбранной модели
+  const filteredData = selectedModel === 'all'
+    ? dailyContractData
+    : dailyContractData.filter(model => model.model_id === selectedModel);
+
+  // Фильтруем также по выбранному региону, если он указан
+  const filteredByRegion = (selectedRegion === 'all')
+    ? filteredData
+    : filteredData.map(model => {
+      const newModel = { ...model };
+      if (newModel.filter_by_date && Array.isArray(newModel.filter_by_date)) {
+        newModel.filter_by_date = newModel.filter_by_date.filter(
+          region => region.region_id === selectedRegion
+        );
+      }
+      return newModel;
+    }).filter(model =>
+      model.filter_by_date &&
+      model.filter_by_date.length > 0 &&
+      model.filter_by_date.some(region => region.data && region.data.length > 0)
+    );
+
+  // Если нет данных после фильтрации
+  if (filteredByRegion.length === 0 || !filteredByRegion.some(model =>
+    model.filter_by_date &&
+    Array.isArray(model.filter_by_date) &&
+    model.filter_by_date.some(region => region.data && region.data.length > 0)
+  )) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-400">Нет данных для отображения детализации по выбранным параметрам.</p>
+      </div>
+    );
+  }
+
+  // Создаем карту данных для каждого дня
+  const dayDataMap = {};
+
+  // Собираем данные о контрактах по дням
+  filteredByRegion.forEach(model => {
+    if (model.filter_by_date && Array.isArray(model.filter_by_date)) {
+      model.filter_by_date.forEach(region => {
+        if (region.data && Array.isArray(region.data)) {
+          region.data.forEach(item => {
+            if (item.order_date && item.order_count) {
+              const dateStr = item.order_date;
+            
+              // Инициализируем запись для даты, если ее еще нет
+              if (!dayDataMap[dateStr]) {
+                dayDataMap[dateStr] = {
+                  date: dateStr,
+                  day: new Date(dateStr).getDate(),
+                  contracts: 0,
+                  realization: 0,
+                  cancellation: 0
+                };
+              }
+            
+              // Добавляем количество контрактов
+              dayDataMap[dateStr].contracts += parseInt(item.order_count || 0);
+            }
+          });
+        }
+      });
+    }
+    
+    // Аналогично для реализованных контрактов, если они есть в API
+    if (model.filter_real_by_date && Array.isArray(model.filter_real_by_date)) {
+      model.filter_real_by_date.forEach(region => {
+        if (region.data && Array.isArray(region.data)) {
+          region.data.forEach(item => {
+            if (item.order_date && item.order_count) {
+              const dateStr = item.order_date;
+              
+              // Инициализируем запись для даты, если ее еще нет
+              if (!dayDataMap[dateStr]) {
+                dayDataMap[dateStr] = {
+                  date: dateStr,
+                  day: new Date(dateStr).getDate(),
+                  contracts: 0,
+                  realization: 0,
+                  cancellation: 0
+                };
+              }
+              
+              // Добавляем количество реализованных контрактов
+              dayDataMap[dateStr].realization += parseInt(item.order_count || 0);
+            }
+          });
+        }
+      });
+    }
+    
+    // Аналогично для отмененных контрактов, если они есть в API
+    if (model.filter_cancel_by_date && Array.isArray(model.filter_cancel_by_date)) {
+      model.filter_cancel_by_date.forEach(region => {
+        if (region.data && Array.isArray(region.data)) {
+          region.data.forEach(item => {
+            if (item.order_date && item.order_count) {
+              const dateStr = item.order_date;
+              
+              // Инициализируем запись для даты, если ее еще нет
+              if (!dayDataMap[dateStr]) {
+                dayDataMap[dateStr] = {
+                  date: dateStr,
+                  day: new Date(dateStr).getDate(),
+                  contracts: 0,
+                  realization: 0,
+                  cancellation: 0
+                };
+              }
+              
+              // Добавляем количество отмененных контрактов
+              dayDataMap[dateStr].cancellation += parseInt(item.order_count || 0);
+            }
+          });
+        }
+      });
+    }
+  });
+
+  // Преобразуем объект в массив и сортируем по дате
+  const chartData = Object.values(dayDataMap).sort((a, b) => a.day - b.day);
+
+  // Если нет данных
+  if (chartData.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-400">Нет данных для отображения детализации.</p>
+      </div>
+    );
+  }
+
+  // Новый кастомный тултип для столбчатой диаграммы
+  const renderCustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const date = new Date(data.date);
+      const formattedDate = date.toLocaleDateString('ru-RU', { 
+        day: 'numeric', 
+        month: 'short',
+        year: 'numeric'
+      });
+      
+      return (
+        <div className="bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-700 text-sm">
+          <p className="font-semibold text-gray-300 mb-1">{formattedDate}</p>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+              <p className="text-white">Контракты: <span className="font-bold">{formatNumber(data.contracts)}</span></p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <p className="text-white">Реализация: <span className="font-bold">{formatNumber(data.realization)}</span></p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+              <p className="text-white">Отмены: <span className="font-bold">{formatNumber(data.cancellation)}</span></p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Функция кастомизации данных для БарЧарта
+  const CustomBarShape = ({ x, y, width, height, fill }) => {
+    return (
+      <g>
+        <rect 
+          x={x} 
+          y={y} 
+          width={width} 
+          height={height} 
+          fill={fill} 
+          rx={4} 
+          ry={4}
+          filter="url(#drop-shadow)"
+        />
+        <rect 
+          x={x} 
+          y={y} 
+          width={width} 
+          height={5}
+          fill="white" 
+          fillOpacity={0.2} 
+          rx={4} 
+          ry={4}
+        />
+      </g>
+    );
+  };
+
+  return (
+    <ResponsiveContainer width="100%" height={500}>
+      <BarChart
+        data={chartData}
+        margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+        barSize={20}
+      >
         <defs>
-          <linearGradient id="colorContractsMonth" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8} />
-            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.2} />
-          </linearGradient>
-          <linearGradient id="colorRealizationMonth" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-            <stop offset="95%" stopColor="#10b981" stopOpacity={0.2} />
-          </linearGradient>
-          <linearGradient id="colorCancellationMonth" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
-            <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2} />
-          </linearGradient>
+          <filter id="drop-shadow" height="130%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>
+            <feOffset in="blur" dx="0" dy="2" result="offsetBlur"/>
+            <feComponentTransfer>
+              <feFuncA type="linear" slope="0.3"/>
+            </feComponentTransfer>
+            <feMerge> 
+              <feMergeNode in="offsetBlur"/>
+              <feMergeNode in="SourceGraphic"/> 
+            </feMerge>
+          </filter>
         </defs>
-        <XAxis
-          dataKey="day"
+        <CartesianGrid stroke="#374151" strokeDasharray="3 3" vertical={false} />
+        <XAxis 
+          dataKey="day" 
           stroke="#9ca3af"
-          tick={{ fontSize: 12 }}
-          // Корректируем показ тиков в зависимости от количества дней
+          tickFormatter={(day) => `${day}`}
           ticks={chartData.length <= 7
             ? chartData.map(d => d.day)
             : [1, 5, 10, 15, 20, 25, 30].filter(d => d <= Math.max(...chartData.map(item => item.day)))}
         />
-        <YAxis stroke="#9ca3af" tickFormatter={formatNumber} />
-        <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-        <Tooltip content={renderCustomTooltip} />
-        <Line
-          type="monotone"
-          dataKey="contracts"
-          stroke="#4f46e5"
-          strokeWidth={2}
-          dot={{ stroke: '#4f46e5', fill: '#1f2937', strokeWidth: 2, r: 4 }}
-          activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
+        <YAxis 
+          stroke="#9ca3af" 
+          tickFormatter={formatNumber} 
         />
-        <Line
-          type="monotone"
-          dataKey="realization"
-          stroke="#10b981"
-          strokeWidth={2}
-          dot={{ stroke: '#10b981', fill: '#1f2937', strokeWidth: 2, r: 4 }}
-          activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
+        <Tooltip 
+          content={renderCustomTooltip} 
+          cursor={{ fill: 'rgba(107, 114, 128, 0.2)' }}
         />
-        <Line
-          type="monotone"
-          dataKey="cancellation"
-          stroke="#ef4444"
-          strokeWidth={2}
-          dot={{ stroke: '#ef4444', fill: '#1f2937', strokeWidth: 2, r: 4 }}
-          activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
+        <Legend
+          verticalAlign="top"
+          height={40}
+          formatter={(value) => {
+            const labels = {
+              'contracts': 'Контракты',
+              'realization': 'Реализация',
+              'cancellation': 'Отмены'
+            };
+            return <span className="text-sm text-gray-300">{labels[value]}</span>;
+          }}
         />
-      </LineChart>
-    );
-  };
+        <Bar 
+          dataKey="contracts" 
+          name="contracts"
+          fill="#4f46e5" 
+          shape={<CustomBarShape />}
+          animationDuration={1000}
+          animationBegin={0}
+        />
+        <Bar 
+          dataKey="realization" 
+          name="realization"
+          fill="#10b981" 
+          shape={<CustomBarShape />}
+          animationDuration={1000}
+          animationBegin={200}
+        />
+        <Bar 
+          dataKey="cancellation" 
+          name="cancellation"
+          fill="#ef4444" 
+          shape={<CustomBarShape />}
+          animationDuration={1000}
+          animationBegin={400}
+        />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
   
   const filteredModels = enhancedModels.filter(model => {
     // Получаем данные о производительности для модели
@@ -1185,26 +1269,6 @@ function ContractsAnalyticsDashboard() {
                     </span>
                   )}
                 </h3>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${chartType === 'line' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'}`}
-                    onClick={() => setChartType('line')}
-                  >
-                    Линия
-                  </button>
-                  <button
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${chartType === 'area' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'}`}
-                    onClick={() => setChartType('area')}
-                  >
-                    Область
-                  </button>
-                  <button
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${chartType === 'bar' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600/80'}`}
-                    onClick={() => setChartType('bar')}
-                  >
-                    Столбцы
-                  </button>
-                </div>
               </div>
             
               <div className="w-full h-80">
