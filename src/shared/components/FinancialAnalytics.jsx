@@ -2638,12 +2638,30 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('background', 'rgba(30, 41, 59, 0.4)')
     .style('border', '1px solid rgba(59, 130, 246, 0.1)');
   
-  // Рассчитываем общие показатели на основе реальных данных
-  const totalSales = sortedModels.reduce((sum, model) => sum + model.totalSales, 0);
-  const totalCount = sortedModels.reduce((sum, model) => {
-    return sum + model.monthlyData.reduce((mSum, m) => mSum + (m.count || 0), 0);
-  }, 0);
+  // МОДИФИКАЦИЯ: Используем тот же подход, что и в разделе информационных карточек
+  // Рассчитываем общие показатели на основе данных моделей
+  const totalSales = Object.values(yearData.modelData)
+    .reduce((total, model) => total + model.totalSales, 0);
+    
+  const totalCount = Object.values(yearData.modelData)
+    .reduce((total, model) => 
+      total + model.monthlyData.reduce((sum, month) => sum + (month.count || 0), 0), 0);
+    
   const avgPrice = totalCount > 0 ? Math.round(totalSales / totalCount) : 0;
+  
+  // Проверяем на расхождение с данными года
+  if (yearData.categories && Math.abs(totalSales - yearData.categories.retail) > 1) {
+    console.warn(`Обнаружено расхождение в данных о продажах:`, {
+      sumByModels: totalSales,
+      retailFromYearData: yearData.categories.retail,
+      difference: totalSales - yearData.categories.retail
+    });
+    
+    // Можно использовать showDiscrepancyWarning если она была добавлена
+    if (typeof showDiscrepancyWarning === 'function') {
+      showDiscrepancyWarning(`Расхождение в данных о розничных продажах: ${formatProfitCompact(Math.abs(totalSales - yearData.categories.retail))}`);
+    }
+  }
   
   // Добавляем информационные карточки с ключевыми показателями
   const createInfoCard = (title, value, subtitle, icon, color) => {
@@ -2696,13 +2714,15 @@ const showCarModelDetails = (year, month, monthName) => {
     }
   };
   
-  // Создаем информационные карточки с реальными данными
+  // Создаем информационные карточки с данными на основе моделей
   createInfoCard(
     'Общая сумма продаж',
-    formatProfitCompact(totalSales),
+    formatProfitCompact(getCurrentMonthTotal()),
+    'На основе данных моделей',
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
+    '59, 130, 246'
   );
 
-  
   // Рассчитываем долю премиум сегмента (модели со средней ценой выше среднего)
   const avgAllModelsPrice = avgPrice || 1;
   const premiumModels = sortedModels.filter(m => {
@@ -2765,8 +2785,6 @@ const showCarModelDetails = (year, month, monthName) => {
   
   // Добавляем переключатели представления
   const viewOptions = [
-    { id: 'sales', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6" y2="6"></line><line x1="6" y1="18" x2="6" y2="18"></line></svg>', label: 'Продажи' },
-    { id: 'count', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>', label: 'Количество' }
   ];
   
   // Создаем группу кнопок для переключения режима просмотра
@@ -3005,14 +3023,6 @@ const showCarModelDetails = (year, month, monthName) => {
           <div>
             <div style="font-size: 0.75rem; color: #9ca3af;">Продажи</div>
             <div style="font-weight: bold;">${formatProfitCompact(d.sales)}</div>
-          </div>
-          <div>
-            <div style="font-size: 0.75rem; color: #9ca3af;">Средняя цена</div>
-            <div style="font-weight: bold;">${formatProfitCompact(d.avgPrice)}</div>
-          </div>
-          <div>
-            <div style="font-size: 0.75rem; color: #9ca3af;">Доля</div>
-            <div style="font-weight: bold; color: #60a5fa;">${percentage}%</div>
           </div>
         </div>
       `;
@@ -3312,7 +3322,7 @@ const showCarModelDetails = (year, month, monthName) => {
       centerText.text('Общий объем')
         .style('font-size', '0.9rem');
         
-      centerNumber.text(formatProfitCompact(totalSales));
+      centerNumber.text(formatProfitCompact(getCurrentMonthTotal()));
       centerPercent.text('100%');
       
       // Восстанавливаем метки
@@ -3366,7 +3376,7 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('font-size', isMobile ? '1.1rem' : '1.3rem')
     .style('font-weight', 'bold')
     .style('fill', '#f9fafb')
-    .text(formatProfitCompact(totalSales));
+    .text(formatProfitCompact(getCurrentMonthTotal()));
   
   const centerPercent = centerGroup.append('text')
     .attr('text-anchor', 'middle')
@@ -3530,26 +3540,6 @@ const showCarModelDetails = (year, month, monthName) => {
       '236, 72, 153'
     );
   }
-  // Добавляем подсказку о возможности интерактивности с улучшенным стилем
-  container.append('div')
-    .style('text-align', 'center')
-    .style('margin-top', '12px')
-    .style('padding', '10px')
-    .style('background', 'rgba(17, 24, 39, 0.5)')
-    .style('border-radius', '8px')
-    .style('border', '1px dashed rgba(59, 130, 246, 0.3)')
-    .style('display', 'flex')
-    .style('align-items', 'center')
-    .style('justify-content', 'center')
-    .style('gap', '8px')
-    .html(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <path d="M12 16v-4"></path>
-        <path d="M12 8h.01"></path>
-      </svg>
-      <span style="color: #9ca3af; font-size: 0.9rem;">Нажмите на любую модель для анализа распределения по регионам</span>
-    `);
   
   
   // Загружаем Font Awesome для иконок
