@@ -638,130 +638,173 @@ const CarWarehouseAnalytics = () => {
       .text('Макс. емкость');
   };
    
-  // Рендер круговой диаграммы производителей
-  const renderManufacturerChart = () => {
-    if (!manufacturerChartRef.current) return;
+// Рендер круговой диаграммы складов
+const renderManufacturerChart = () => {
+  if (!manufacturerChartRef.current) return;
+  
+  const container = manufacturerChartRef.current;
+  container.innerHTML = '';
+  
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+  const radius = Math.min(width, height) / 2 * 0.8;
+  
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height)
+    .append('g')
+    .attr('transform', `translate(${width/2},${height/2})`);
     
-    const container = manufacturerChartRef.current;
-    container.innerHTML = '';
+  // Используем все склады, у которых есть автомобили
+  const warehouseData = enhancedWarehouses
+    .map(warehouse => ({
+      warehouse: warehouse.name,
+      value: warehouse.totalCount,
+      percentage: Math.round((warehouse.totalCount / totalVehicles) * 100)
+    }));
     
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-    const radius = Math.min(width, height) / 2 * 0.8;
+  // Создаем фиксированную цветовую схему для складов
+  const colorScale = d3.scaleOrdinal()
+    .domain(warehouseData.map(d => d.warehouse))
+    .range([
+      '#3b82f6', // синий
+      '#ef4444', // красный
+      '#f59e0b', // оранжевый
+      '#22c55e', // зеленый
+      '#8b5cf6', // фиолетовый
+      '#ec4899', // розовый
+      '#14b8a6', // бирюзовый
+      '#f97316', // оранжево-красный
+      '#6366f1', // индиго
+      '#84cc16'  // лайм
+    ]);
     
-    const svg = d3.select(container)
-      .append('svg')
-      .attr('width', width)
-      .attr('height', height)
-      .append('g')
-      .attr('transform', `translate(${width/2},${height/2})`);
-      
-    // Данные для диаграммы производителей - используем топ-5 моделей из enhancedCarModels
-    const manufacturerData = enhancedCarModels
-      .slice(0, 5)
-      .map(model => ({
-        manufacturer: model.name,
-        percentage: Math.round((model.totalCount / totalVehicles) * 100),
-        color: getColorHex(model.colors[0]?.name || 'Summit White')
-      }));
-      
-    // Создаем пирог
-    const pie = d3.pie()
-      .value(d => d.percentage)
-      .sort(null);
-      
-    const data_ready = pie(manufacturerData);
+  // Создаем пирог
+  const pie = d3.pie()
+    .value(d => d.value)
+    .sort(null);
     
-    // Создаем дуги
-    const arc = d3.arc()
-      .innerRadius(radius * 0.4)
-      .outerRadius(radius);
-      
-    const arcHover = d3.arc()
-      .innerRadius(radius * 0.4)
-      .outerRadius(radius * 1.07);
-      
-    // Создаем градиенты
-    const defs = svg.append('defs');
+  const data_ready = pie(warehouseData);
+  
+  // Создаем дуги
+  const arc = d3.arc()
+    .innerRadius(radius * 0.4)
+    .outerRadius(radius);
     
-    manufacturerData.forEach((d, i) => {
-      const gradientId = `pieGradient-${i}`;
+  const arcHover = d3.arc()
+    .innerRadius(radius * 0.4)
+    .outerRadius(radius * 1.07);
+    
+  // Создаем градиенты
+  const defs = svg.append('defs');
+  
+  warehouseData.forEach((d, i) => {
+    const gradientId = `pieGradient-${i}`;
+    const color = colorScale(d.warehouse);
+    
+    const gradient = defs.append('radialGradient')
+      .attr('id', gradientId)
+      .attr('cx', '50%')
+      .attr('cy', '50%')
+      .attr('r', '50%');
       
-      const gradient = defs.append('radialGradient')
-        .attr('id', gradientId)
-        .attr('cx', '50%')
-        .attr('cy', '50%')
-        .attr('r', '50%');
+    gradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', d3.rgb(color).brighter(0.5))
+      .attr('stop-opacity', 1);
+      
+    gradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', color)
+      .attr('stop-opacity', 1);
+  });
+  
+  // Добавляем дуги с градиентами
+  svg.selectAll('path')
+    .data(data_ready)
+    .join('path')
+    .attr('d', arc)
+    .attr('fill', (d, i) => `url(#pieGradient-${i})`)
+    .attr('stroke', '#1f2937')
+    .style('stroke-width', '2px')
+    .style('opacity', 0.9)
+    .style('cursor', 'pointer')
+    .on('mouseover', function(event, d) {
+      d3.select(this)
+        .transition()
+        .duration(200)
+        .attr('d', arcHover);
         
-      gradient.append('stop')
-        .attr('offset', '0%')
-        .attr('stop-color', d3.rgb(d.color).brighter(0.5))
-        .attr('stop-opacity', 1);
+      // Обновляем центральный текст
+      centerLabel.text(d.data.warehouse);
+      centerValue.text(`${d.data.percentage}% (${d.data.value} шт.)`);
+    })
+    .on('mouseout', function() {
+      d3.select(this)
+        .transition()
+        .duration(200)
+        .attr('d', arc);
         
-      gradient.append('stop')
-        .attr('offset', '100%')
-        .attr('stop-color', d.color)
-        .attr('stop-opacity', 1);
+      // Сбрасываем центральный текст
+      centerLabel.text('Распределение');
+      centerValue.text('По складам');
+    })
+    .transition()
+    .duration(800)
+    .attrTween('d', function(d) {
+      const interpolate = d3.interpolate({startAngle: d.startAngle, endAngle: d.startAngle}, d);
+      return function(t) {
+        return arc(interpolate(t));
+      };
     });
     
-    // Добавляем дуги с градиентами
-    svg.selectAll('path')
+  // Добавляем легенду
+  const legendG = svg.append('g')
+    .attr('transform', `translate(${radius + 20}, -${radius - 20})`);
+  
+  // Показываем легенду только если достаточно места
+  if (width > 350) {
+    const legend = legendG.selectAll('.legend')
       .data(data_ready)
-      .join('path')
-      .attr('d', arc)
-      .attr('fill', (d, i) => `url(#pieGradient-${i})`)
-      .attr('stroke', '#1f2937')
-      .style('stroke-width', '2px')
-      .style('opacity', 0.9)
-      .style('cursor', 'pointer')
-      .on('mouseover', function(event, d) {
-        d3.select(this)
-          .transition()
-          .duration(200)
-          .attr('d', arcHover);
-          
-        const total = d3.sum(manufacturerData, d => d.percentage);
-        const percent = Math.round((d.data.percentage / total) * 100);
-        
-        // Обновляем центральный текст
-        centerLabel.text(d.data.manufacturer);
-        centerValue.text(`${percent}%`);
-      })
-      .on('mouseout', function() {
-        d3.select(this)
-          .transition()
-          .duration(200)
-          .attr('d', arc);
-          
-        // Сбрасываем центральный текст
-        centerLabel.text('Производители');
-        centerValue.text('Текущая доля');
-      })
-      .transition()
-      .duration(800)
-      .attrTween('d', function(d) {
-        const interpolate = d3.interpolate({startAngle: d.startAngle, endAngle: d.startAngle}, d);
-        return function(t) {
-          return arc(interpolate(t));
-        };
-      });
+      .enter()
+      .append('g')
+      .attr('class', 'legend')
+      .attr('transform', (d, i) => `translate(0, ${i * 20})`);
       
-    // Центральный текст
-    const centerLabel = svg.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', '-0.5em')
-      .style('font-size', '16px')
-      .style('fill', '#d1d5db')
-      .text('Производители');
+    legend.append('rect')
+      .attr('width', 12)
+      .attr('height', 12)
+      .attr('fill', (d, i) => colorScale(d.data.warehouse));
       
-    const centerValue = svg.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', '1em')
-      .style('font-size', '24px')
-      .style('font-weight', 'bold')
-      .style('fill', '#ffffff')
-      .text('Текущая доля');
-  };
+    legend.append('text')
+      .attr('x', 20)
+      .attr('y', 10)
+      .text(d => {
+        const name = d.data.warehouse;
+        const truncated = name.length > 15 ? name.substring(0, 15) + '...' : name;
+        return truncated;
+      })
+      .style('font-size', '10px')
+      .style('fill', '#d1d5db');
+  }
+    
+  // Центральный текст
+  const centerLabel = svg.append('text')
+    .attr('text-anchor', 'middle')
+    .attr('dy', '-0.5em')
+    .style('font-size', '16px')
+    .style('fill', '#d1d5db')
+    .text('Распределение');
+    
+  const centerValue = svg.append('text')
+    .attr('text-anchor', 'middle')
+    .attr('dy', '1em')
+    .style('font-size', '24px')
+    .style('font-weight', 'bold')
+    .style('fill', '#ffffff')
+    .text('По складам');
+};
   
   // Рендер графика инвентаря моделей с обновленными статусами
   const renderModelInventoryChart = () => {
@@ -999,78 +1042,43 @@ const CarWarehouseAnalytics = () => {
       .delay(900)
       .attr('width', d => x(d.defective));
       
-    // Добавляем значения (только если процент достаточно большой для отображения)
-    svg.selectAll('.available-label')
-      .data(carModelInventory)
-      .join('text')
-      .attr('class', 'available-label')
-      .attr('x', d => x(d.available / 2))
-      .attr('y', d => y(d.model) + y.bandwidth() / 2)
-      .attr('dy', '0.35em')
-      .attr('text-anchor', 'middle')
-      .style('fill', '#ffffff')
-      .style('font-size', '12px')
-      .style('font-weight', 'bold')
-      .style('opacity', 0)
-      .text(d => d.available >= 10 ? `${d.available}%` : '')
-      .transition()
-      .duration(500)
-      .delay(1000)
-      .style('opacity', 1);
+    // Добавляем значения - Улучшенная логика отображения значений для предотвращения перекрытия
+    const addLabel = (className, key, offset, minPercent) => {
+      svg.selectAll(`.${className}`)
+        .data(carModelInventory)
+        .join('text')
+        .attr('class', className)
+        .each(function(d) {
+          const percent = d[key];
+          const barWidth = x(percent);
+          const position = x(offset(d)) + barWidth / 2;
+          
+          // Если процент меньше minPercent или ширина полосы меньше 40px, не показываем текст
+          if (percent < minPercent || barWidth < 40) {
+            d3.select(this).style('display', 'none');
+          } else {
+            d3.select(this)
+              .attr('x', position)
+              .attr('y', y(d.model) + y.bandwidth() / 2)
+              .attr('dy', '0.35em')
+              .attr('text-anchor', 'middle')
+              .style('fill', '#ffffff')
+              .style('font-size', '12px')
+              .style('font-weight', 'bold')
+              .style('opacity', 0)
+              .text(`${percent}%`)
+              .transition()
+              .duration(500)
+              .delay(1000)
+              .style('opacity', 1);
+          }
+        });
+    };
       
-    svg.selectAll('.reserved-label')
-      .data(carModelInventory)
-      .join('text')
-      .attr('class', 'reserved-label')
-      .attr('x', d => x(d.available + d.reserved / 2))
-      .attr('y', d => y(d.model) + y.bandwidth() / 2)
-      .attr('dy', '0.35em')
-      .attr('text-anchor', 'middle')
-      .style('fill', '#ffffff')
-      .style('font-size', '12px')
-      .style('font-weight', 'bold')
-      .style('opacity', 0)
-      .text(d => d.reserved >= 10 ? `${d.reserved}%` : '')
-      .transition()
-      .duration(500)
-      .delay(1100)
-      .style('opacity', 1);
-      
-    svg.selectAll('.defectiveOk-label')
-      .data(carModelInventory)
-      .join('text')
-      .attr('class', 'defectiveOk-label')
-      .attr('x', d => x(d.available + d.reserved + d.defectiveOk / 2))
-      .attr('y', d => y(d.model) + y.bandwidth() / 2)
-      .attr('dy', '0.35em')
-      .attr('text-anchor', 'middle')
-      .style('fill', '#ffffff')
-      .style('font-size', '12px')
-      .style('font-weight', 'bold')
-      .style('opacity', 0)
-      .text(d => d.defectiveOk >= 5 ? `${d.defectiveOk}%` : '')
-      .transition()
-      .duration(500)
-      .delay(1200)
-      .style('opacity', 1);
-      
-    svg.selectAll('.defective-label')
-      .data(carModelInventory)
-      .join('text')
-      .attr('class', 'defective-label')
-      .attr('x', d => x(d.available + d.reserved + d.defectiveOk + d.defective / 2))
-      .attr('y', d => y(d.model) + y.bandwidth() / 2)
-      .attr('dy', '0.35em')
-      .attr('text-anchor', 'middle')
-      .style('fill', '#ffffff')
-      .style('font-size', '12px')
-      .style('font-weight', 'bold')
-      .style('opacity', 0)
-      .text(d => d.defective >= 5 ? `${d.defective}%` : '')
-      .transition()
-      .duration(500)
-      .delay(1300)
-      .style('opacity', 1);
+    addLabel('available-label', 'available', d => 0, 5);
+    addLabel('reserved-label', 'reserved', d => d.available, 5);
+    addLabel('defectiveOk-label', 'defectiveOk', d => d.available + d.reserved, 5);
+    addLabel('defective-label', 'defective', d => d.available + d.reserved + d.defectiveOk, 5);
       
     // Добавляем легенду с отступом, чтобы не перекрывалась с графиком
     const legend = svg.append('g')
@@ -1191,22 +1199,38 @@ const CarWarehouseAnalytics = () => {
       .delay((d, i) => i * 100)
       .attr('width', d => x(d.count));
       
-    // Добавляем подписи
+    // Улучшенная логика отображения надписей, чтобы не отображать надписи для маленьких полос
     svg.selectAll('.color-label')
       .data(colorData)
       .join('text')
       .attr('class', 'color-label')
-      .attr('x', d => x(d.count) - 25)
-      .attr('y', d => y(d.name) + y.bandwidth() / 2)
-      .attr('dy', '0.35em')
-      .style('font-size', '12px')
-      .style('fill', d => (d.name === 'Summit White' || d.name === 'White Frost') ? '#1f2937' : '#ffffff')
-      .style('opacity', 0)
-      .transition()
-      .duration(800)
-      .delay((d, i) => i * 100 + 300)
-      .style('opacity', 1)
-      .text(d => d.count);
+      .each(function(d) {
+        const barWidth = x(d.count);
+        // Если ширина полосы меньше 40px, не показываем надпись
+        if (barWidth < 40) {
+          d3.select(this).style('display', 'none');
+        } else {
+          const textX = barWidth > 80 ? x(d.count) - 25 : x(d.count) + 5;
+          const textColor = barWidth > 80 ? 
+                          (d.name === 'Summit White' || d.name === 'White Frost') ? '#1f2937' : '#ffffff' 
+                          : '#d1d5db';
+          const textAnchor = barWidth > 80 ? 'end' : 'start';
+          
+          d3.select(this)
+            .attr('x', textX)
+            .attr('y', y(d.name) + y.bandwidth() / 2)
+            .attr('dy', '0.35em')
+            .attr('text-anchor', textAnchor)
+            .style('font-size', '12px')
+            .style('fill', textColor)
+            .style('opacity', 0)
+            .transition()
+            .duration(800)
+            .delay((d, i) => i * 100 + 300)
+            .style('opacity', 1)
+            .text(d.count);
+        }
+      });
       
     // Добавляем заголовок
     svg.append('text')
@@ -1342,6 +1366,14 @@ const CarWarehouseAnalytics = () => {
       .style('fill', '#ffffff')
       .text(`${warehouse.occupancyRate}%`);
       
+    // Добавляем пояснение о том, что показывает круг
+    svg.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', '2.5em')
+      .style('font-size', '12px')
+      .style('fill', '#d1d5db')
+      .text('Показывает текущую заполненность');
+      
     // Статус заполненности склада с цветовой индикацией
     const statusColors = {
       'критический': '#ef4444',
@@ -1352,7 +1384,7 @@ const CarWarehouseAnalytics = () => {
     
     svg.append('text')
       .attr('text-anchor', 'middle')
-      .attr('dy', '3em')
+      .attr('dy', '4em')
       .style('font-size', '12px')
       .style('fill', statusColors[warehouse.status] || '#d1d5db')
       .text(`Статус: ${warehouse.status}`);
@@ -1398,7 +1430,7 @@ const CarWarehouseAnalytics = () => {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-gray-800 p-4 rounded-lg shadow-md">
           <div className="flex items-center">
-            <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
+           <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
              </svg>
@@ -1484,8 +1516,8 @@ const CarWarehouseAnalytics = () => {
      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
        <div className="bg-gray-800 rounded-lg p-4 shadow-md">
          <div className="flex justify-between mb-2">
-           <h2 className="text-lg font-medium">Распределение моделей</h2>
-           <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Доли рынка</span>
+           <h2 className="text-lg font-medium">Распределение по складам</h2>
+           <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Доли запасов</span>
          </div>
          <div ref={manufacturerChartRef} className="h-[300px]"></div>
        </div>
@@ -1568,18 +1600,6 @@ const CarWarehouseAnalytics = () => {
      
      {/* Таблица складов с обновленными статусами */}
      <div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
-       <div className="flex justify-between mb-4">
-         <div>
-           <h2 className="text-lg font-medium">Список складов</h2>
-           <p className="text-sm text-gray-400">Нажмите на склад для детальной информации</p>
-         </div>
-         <div className="flex space-x-2">
-           <button className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
-             Экспорт данных
-           </button>
-         </div>
-       </div>
-       
        <div className="overflow-x-auto">
          <table className="w-full text-sm">
            <thead>
@@ -1716,52 +1736,75 @@ const CarWarehouseAnalytics = () => {
                </div>
              </div>
              
-             {/* Доступность модели */}
+             {/* Доступность модели - изменено на линейные индикаторы */}
              <div className="bg-gray-700/50 p-4 rounded-lg md:col-span-2">
                <h3 className="text-white font-medium">Распределение по статусам</h3>
-               <div className="flex items-center h-full p-2">
-                 <div className="flex-1 h-full flex flex-col justify-center">
-                   <div className="grid grid-cols-2 gap-2">
-                     <div className="bg-gray-800/70 rounded-lg p-2">
-                       <div className="text-gray-400 text-xs">Доступность</div>
-                       <div className="text-white text-lg font-medium">
-                         {Math.round((selectedCarModel.available / selectedCarModel.totalCount) * 100)}%
-                       </div>
-                     </div>
-                     <div className="bg-gray-800/70 rounded-lg p-2">
-                       <div className="text-gray-400 text-xs">Качество</div>
-                       <div className="text-white text-lg font-medium">
-                         {Math.round(((selectedCarModel.totalCount - selectedCarModel.defective) / selectedCarModel.totalCount) * 100)}%
-                       </div>
-                     </div>
+               <div className="space-y-4 mt-3">
+                 {/* Свободные автомобили */}
+                 <div>
+                   <div className="flex justify-between mb-1">
+                     <span className="text-gray-300">Свободные</span>
+                     <span className="text-white font-medium">
+                       {selectedCarModel.available} шт. 
+                       ({Math.round((selectedCarModel.available / selectedCarModel.totalCount) * 100)}%)
+                     </span>
+                   </div>
+                   <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
+                     <div 
+                       className="h-full bg-green-500 rounded-full"
+                       style={{ width: `${(selectedCarModel.available / selectedCarModel.totalCount) * 100}%` }}
+                     ></div>
                    </div>
                  </div>
                  
-                 <div className="flex-1 flex items-center justify-center">
-                   <div className="relative h-32 w-32">
-                     <svg viewBox="0 0 100 100" className="h-full w-full">
-                       <circle 
-                         cx="50" cy="50" r="45" 
-                         fill="none" 
-                         stroke="#374151" 
-                         strokeWidth="10"
-                       />
-                       <circle 
-                         cx="50" cy="50" r="45" 
-                         fill="none" 
-                         stroke="#3b82f6" 
-                         strokeWidth="10"
-                         strokeDasharray={`${(selectedCarModel.available / selectedCarModel.totalCount) * 283} 283`}
-                         strokeDashoffset="0"
-                         transform="rotate(-90 50 50)"
-                       />
-                     </svg>
-                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                       <div className="text-white text-xl font-bold">
-                         {Math.round((selectedCarModel.available / selectedCarModel.totalCount) * 100)}%
-                       </div>
-                       <div className="text-xs text-gray-400">Доступно</div>
-                     </div>
+                 {/* Закрепленные автомобили */}
+                 <div>
+                   <div className="flex justify-between mb-1">
+                     <span className="text-gray-300">Закрепленные</span>
+                     <span className="text-white font-medium">
+                       {selectedCarModel.reserved} шт. 
+                       ({Math.round((selectedCarModel.reserved / selectedCarModel.totalCount) * 100)}%)
+                     </span>
+                   </div>
+                   <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
+                     <div 
+                       className="h-full bg-blue-500 rounded-full"
+                       style={{ width: `${(selectedCarModel.reserved / selectedCarModel.totalCount) * 100}%` }}
+                     ></div>
+                   </div>
+                 </div>
+                 
+                 {/* Брак-ОК автомобили */}
+                 <div>
+                   <div className="flex justify-between mb-1">
+                     <span className="text-gray-300">Брак-ОК</span>
+                     <span className="text-white font-medium">
+                       {selectedCarModel.defectiveOk} шт. 
+                       ({Math.round((selectedCarModel.defectiveOk / selectedCarModel.totalCount) * 100)}%)
+                     </span>
+                   </div>
+                   <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
+                     <div 
+                       className="h-full bg-amber-500 rounded-full"
+                       style={{ width: `${(selectedCarModel.defectiveOk / selectedCarModel.totalCount) * 100}%` }}
+                     ></div>
+                   </div>
+                 </div>
+                 
+                 {/* Бракованные автомобили */}
+                 <div>
+                   <div className="flex justify-between mb-1">
+                     <span className="text-gray-300">Брак</span>
+                     <span className="text-white font-medium">
+                       {selectedCarModel.defective} шт. 
+                       ({Math.round((selectedCarModel.defective / selectedCarModel.totalCount) * 100)}%)
+                     </span>
+                   </div>
+                   <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
+                     <div 
+                       className="h-full bg-red-500 rounded-full"
+                       style={{ width: `${(selectedCarModel.defective / selectedCarModel.totalCount) * 100}%` }}
+                     ></div>
                    </div>
                  </div>
                </div>
@@ -1843,20 +1886,6 @@ const CarWarehouseAnalytics = () => {
                      <div className="bg-gray-800/70 p-3 rounded-lg col-span-2">
                        <div className="text-gray-400 text-xs">Бракованные</div>
                        <div className="text-white text-lg font-medium">{selectedModification.defective}</div>
-                     </div>
-                   </div>
-                   <div className="mt-3">
-                     <div className="flex justify-between text-sm mb-1">
-                       <span className="text-gray-400">Доступность:</span>
-                       <span className="text-white">
-                         {Math.round((selectedModification.available / selectedModification.count) * 100)}% свободных авто
-                       </span>
-                     </div>
-                     <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
-                       <div 
-                         className="h-full bg-green-500 rounded-full"
-                         style={{ width: `${(selectedModification.available / selectedModification.count) * 100}%` }}
-                       ></div>
                      </div>
                    </div>
                  </div>
@@ -1954,32 +1983,7 @@ const CarWarehouseAnalytics = () => {
              </div>
            </div>
            
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-             {/* Распределение по категориям */}
-             <div className="bg-gray-700/50 p-4 rounded-lg">
-               <h3 className="text-white font-medium mb-3">Категории автомобилей</h3>
-               <div className="space-y-3">
-                 {selectedWarehouse.categories.map(category => (
-                   <div key={category.name} className="group">
-                     <div className="flex justify-between mb-1">
-                       <span className="text-gray-300 capitalize">{category.name}</span>
-                       <span className="font-medium text-white">{category.count} шт.</span>
-                     </div>
-                     <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
-                       <div 
-                         className={`h-full rounded-full ${
-                           category.name === 'Внедорожники' ? 'bg-blue-500 group-hover:bg-blue-400' :
-                           category.name === 'Седаны' ? 'bg-red-500 group-hover:bg-red-400' :
-                           'bg-amber-500 group-hover:bg-amber-400'
-                         } transition-all`}
-                         style={{ width: `${(category.count / selectedWarehouse.totalCount) * 100}%` }}
-                       ></div>
-                     </div>
-                   </div>
-                 ))}
-               </div>
-             </div>
-             
+           <div className="grid grid-cols-1 md:grid-cols-1 gap-5 mb-5">
              {/* Распределение по моделям */}
              <div className="bg-gray-700/50 p-4 rounded-lg">
                <h3 className="text-white font-medium mb-3">Распределение по моделям</h3>
@@ -2008,23 +2012,6 @@ const CarWarehouseAnalytics = () => {
                  ))}
                </div>
              </div>
-           </div>
-           
-           {/* Кнопки действий */}
-           <div className="flex flex-wrap justify-end gap-3">
-             <button className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded text-sm">
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" viewBox="0 0 20 20" fill="currentColor">
-                 <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-               </svg>
-               Отчет
-             </button>
-             <button className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded text-sm">
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" viewBox="0 0 20 20" fill="currentColor">
-                 <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-                 <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" />
-               </svg>
-               Поставка
-             </button>
            </div>
          </motion.div>
        )}
