@@ -43,48 +43,6 @@ export const settingsTranslations: LocaleMessages = {
             version: 'Версия: {{version}}'
         }
     },
-    'en': {
-        title: 'Settings',
-        saveSettings: 'Save',
-        settingsSaved: 'Settings successfully saved',
-        language: {
-            title: 'Interface Language',
-            description: 'Choose your preferred language for the application interface.',
-            ruNative: 'Русский язык',
-            enNative: 'English language',
-            uzNative: 'O\'zbek tili'
-        },
-        theme: {
-            title: 'Display Theme',
-            description: 'Select the interface display mode.',
-            light: 'Light Theme',
-            dark: 'Dark Theme',
-            auto: 'System Default'
-        },
-        notifications: {
-            title: 'Notifications',
-            description: 'Manage notifications and alerts.',
-            enableAll: 'Enable Notifications',
-            enableAllDescription: 'Receive important alerts about vehicle status.',
-            sales: 'Sales Notifications',
-            delivery: 'Delivery Status',
-            system: 'System Notifications'
-        },
-        security: {
-            title: 'Security',
-            description: 'Security and privacy settings.',
-            low: 'Low',
-            lowDescription: 'Basic protection with extended session duration.',
-            medium: 'Medium',
-            mediumDescription: 'Optimal balance between security and convenience.',
-            high: 'High',
-            highDescription: 'Maximum protection with frequent authorization checks.'
-        },
-        footer: {
-            about: 'UzAvtoSalon - car sales monitoring and management',
-            version: 'Version: {{version}}'
-        }
-    },
     'uz': {
         title: 'Sozlamalar',
         saveSettings: 'Saqlash',

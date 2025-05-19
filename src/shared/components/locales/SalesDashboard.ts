@@ -46,51 +46,6 @@ export const dashboardTranslations: LocaleMessages = {
         },
         car: 'Авто'
     },
-    'en': {
-        title: 'Car Sales Monitoring',
-        titleWithModel: 'Sales Monitoring: {{modelName}}',
-        dealerCenter: 'Dealer Center',
-        region: 'Region',
-        carsStatus: 'Vehicles Status',
-        notShipped: {
-            title: 'Not shipped 48h',
-            shortTitle: 'Not shipped >48h'
-        },
-        inTransit: {
-            title: 'In transit 3 days',
-            shortTitle: 'In transit >3 days'
-        },
-        delivered: 'Delivered',
-        frozenContracts: 'Frozen Contracts',
-        total: 'Total quantity',
-        table: {
-            modelName: 'Model name',
-            image: 'Image',
-            quantity: 'Quantity',
-            status: 'Status',
-            total: 'Total',
-            noData: 'No data to display',
-            days: 'days',
-            day: 'day',
-            days2to4: 'days',
-            allDays: 'All > 5 days'
-        },
-        sidebar: {
-            totalRegions: 'Total regions',
-            selectRegion: 'Select a region for details',
-            dealers: 'Dealers',
-            model: 'model',
-            models2to4: 'models',
-            models: 'models',
-            dealersList: 'Dealers list in the region'
-        },
-        unknown: {
-            region: 'Unknown region',
-            dealer: 'Unknown dealer',
-            model: 'Unknown model'
-        },
-        car: 'Auto'
-    },
     'uz': {
         title: 'Avtomobil savdosi monitoringi',
         titleWithModel: 'Savdo monitoringi: {{modelName}}',
