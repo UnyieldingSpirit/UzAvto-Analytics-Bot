@@ -153,18 +153,18 @@ export default function ResponsiveNav() {
       category: 'finance',
       icon: <HandCoins size={22} strokeWidth={1.5} color={categoryColors.finance} />
     },
-    {
-      path: '/warehouse-dashboard',
-      label: 'Управление складом',
-      category: 'warehouse',
-      icon: <Building size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
-    },
-    {
-      path: '/warehouse-analytics',
-      label: 'Аналитика склада',
-      category: 'warehouse',
-      icon: <BarChart4 size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
-    },
+    // {
+    //   path: '/warehouse-dashboard',
+    //   label: 'Управление складом',
+    //   category: 'warehouse',
+    //   icon: <Building size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
+    // },
+    // {
+    //   path: '/warehouse-analytics',
+    //   label: 'Аналитика склада',
+    //   category: 'warehouse',
+    //   icon: <BarChart4 size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
+    // },
     {
       path: '/car-warehouse',
       label: 'Автомобильный склад',
