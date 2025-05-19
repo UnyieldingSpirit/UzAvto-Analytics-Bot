@@ -1031,11 +1031,24 @@ const formatProfitCompact = (number) => {
     return '0 UZS';
   }
   
-  // Округляем до целого числа и форматируем с разделителями тысяч
-  const formattedNumber = Math.round(number).toLocaleString('ru-RU');
+  // Преобразуем в число на всякий случай
+  const num = Number(number);
+  
+  // Всегда преобразуем в миллионы
+  const result = num / 1000000;
+  const suffix = ' млн';
+  
+  // Округляем до одного десятичного знака, если значение не целое
+  // Иначе отображаем без десятичной части
+  const formattedResult = Number.isInteger(result) 
+    ? result.toLocaleString('ru-RU') 
+    : result.toLocaleString('ru-RU', { 
+        minimumFractionDigits: 1, 
+        maximumFractionDigits: 1 
+      });
   
   // Добавляем обозначение валюты
-  return `${formattedNumber} UZS`;
+  return `${formattedResult}${suffix} UZS`;
 };
   
   // Функция для получения общей суммы за период

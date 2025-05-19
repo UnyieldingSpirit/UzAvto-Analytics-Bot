@@ -6,8 +6,73 @@ import { usePathname } from 'next/navigation';
 import { useTelegram } from '../../hooks/useTelegram';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
+// Импортируем хук языка
+import { useLanguageStore } from '../../store/language';
+import { useTranslation } from '../../hooks/useTranslation';
 // Импортируем библиотеку иконок Lucide
 import * as LucideIcons from 'lucide-react';
+
+// Переводы для навигации только для русского и узбекского
+const navTranslations = {
+  'ru': {
+    dashboard: 'Обзорная панель',
+    salesAnalytics: 'Аналитика продаж',
+    salesMonitoring: 'Мониторинг продаж',
+    modelTracking: 'Отслеживание моделей',
+    businessAnalytics: 'Бизнес-аналитика',
+    production: 'Производство',
+    financialAnalytics: 'Финансовая аналитика',
+    contracts: 'Контракты',
+    installments: 'Рассрочки',
+    carWarehouse: 'Автомобильный склад',
+    systemSettings: 'Настройки системы',
+    documentation: 'Документация и поддержка',
+    selectLanguage: 'Выбрать язык',
+    appTitle: 'UzAvtoAnalytics',
+    appSubtitle: 'Управляющая система',
+    categories: {
+      main: 'Главное',
+      analytics: 'Аналитика',
+      finance: 'Финансы',
+      warehouse: 'Склад',
+      utility: 'Настройки'
+    },
+    profile: {
+      admin: 'Администратор',
+      activeSession: 'Активный сеанс',
+      language: 'Язык системы'
+    }
+  },
+  'uz': {
+    dashboard: 'Boshqaruv paneli',
+    salesAnalytics: 'Sotuv tahlili',
+    salesMonitoring: 'Sotuv monitoringi',
+    modelTracking: 'Model kuzatuvi',
+    businessAnalytics: 'Biznes tahlili',
+    production: 'Ishlab chiqarish',
+    financialAnalytics: 'Moliyaviy tahlil',
+    contracts: 'Shartnomalar',
+    installments: 'Bo\'lib to\'lash',
+    carWarehouse: 'Avtomobil ombori',
+    systemSettings: 'Tizim sozlamalari',
+    documentation: 'Hujjatlar va yordam',
+    selectLanguage: 'Tilni tanlang',
+    appTitle: 'UzAvtoAnalytics',
+    appSubtitle: 'Boshqaruv tizimi',
+    categories: {
+      main: 'Asosiy',
+      analytics: 'Tahlil',
+      finance: 'Moliya',
+      warehouse: 'Ombor',
+      utility: 'Sozlamalar'
+    },
+    profile: {
+      admin: 'Administrator',
+      activeSession: 'Faol sessiya',
+      language: 'Tizim tili'
+    }
+  }
+};
 
 interface NavItem {
   path: string;
@@ -15,20 +80,36 @@ interface NavItem {
   icon: React.ReactNode;
   notification?: number;
   category: string;
+  translationKey: string;
 }
 
 export default function ResponsiveNav() {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const pathname = usePathname();
   const { hapticFeedback } = useTelegram();
   const { logout } = useAuth();
   const menuRef = useRef<HTMLDivElement>(null);
+  const langMenuRef = useRef<HTMLDivElement>(null);
+  
+  // Модифицируем языковой хук для поддержки только русского и узбекского
+  const customAvailableLocales = {
+    'ru': 'Русский',
+    'uz': 'O\'zbekcha'
+  };
+  
+  const { currentLocale, setLocale } = useLanguageStore();
+  const { t } = useTranslation(navTranslations);
   
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node) && isNavOpen) {
         setIsNavOpen(false);
+      }
+      
+      if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node) && isLanguageMenuOpen) {
+        setIsLanguageMenuOpen(false);
       }
     };
     
@@ -42,7 +123,7 @@ export default function ResponsiveNav() {
       document.removeEventListener("mousedown", handleClickOutside);
       window.removeEventListener('resize', checkMobile);
     };
-  }, [isNavOpen]);
+  }, [isNavOpen, isLanguageMenuOpen]);
 
   useEffect(() => {
     setIsNavOpen(false);
@@ -51,6 +132,21 @@ export default function ResponsiveNav() {
   const handleNavClick = (path: string) => {
     if (hapticFeedback && path !== pathname) {
       hapticFeedback('selection');
+    }
+  };
+  
+  const toggleLanguageMenu = () => {
+    setIsLanguageMenuOpen(!isLanguageMenuOpen);
+    if (hapticFeedback) {
+      hapticFeedback('selection');
+    }
+  };
+  
+  const changeLanguage = (locale: string) => {
+    setLocale(locale as 'ru' | 'uz');
+    setIsLanguageMenuOpen(false);
+    if (hapticFeedback) {
+      hapticFeedback('impact');
     }
   };
   
@@ -83,7 +179,9 @@ export default function ResponsiveNav() {
     LayoutGrid,
     Menu,
     X,
-    LogOut
+    LogOut,
+    Globe,
+    Check
   } = LucideIcons;
 
   // Цвета по категориям
@@ -98,91 +196,77 @@ export default function ResponsiveNav() {
   const navItems: NavItem[] = [
     {
       path: '/',
-      label: 'Обзорная панель',
+      label: t('dashboard'),
+      translationKey: 'dashboard',
       category: 'main',
       icon: <LayoutDashboard size={22} strokeWidth={1.5} color={categoryColors.main} />
     },
     {
       path: '/statistics',
-      label: 'Аналитика продаж',
+      label: t('salesAnalytics'),
+      translationKey: 'salesAnalytics',
       category: 'analytics',
       icon: <AreaChart size={22} strokeWidth={1.5} color={categoryColors.analytics} />,
       notification: 3
     },
     {
       path: '/sales-dashboard',
-      label: 'Мониторинг продаж',
+      label: t('salesMonitoring'),
+      translationKey: 'salesMonitoring',
       category: 'analytics',
       icon: <TrendingUp size={22} strokeWidth={1.5} color={categoryColors.analytics} />,
       notification: 8
     },
     {
       path: '/model-tracking',
-      label: 'Отслеживание моделей',
+      label: t('modelTracking'),
+      translationKey: 'modelTracking',
       category: 'analytics',
       icon: <Gauge size={22} strokeWidth={1.5} color={categoryColors.analytics} />
     },
     {
       path: '/analytics-dashboard',
-      label: 'Бизнес-аналитика',
+      label: t('businessAnalytics'),
+      translationKey: 'businessAnalytics',
       category: 'analytics',
       icon: <PieChart size={22} strokeWidth={1.5} color={categoryColors.analytics} />
     },
     {
       path: '/auto-market',
-      label: 'Производство',
+      label: t('production'),
+      translationKey: 'production',
       category: 'analytics',
       icon: <CarFront size={22} strokeWidth={1.5} color={categoryColors.analytics} />
     },
     {
       path: '/financial-analytics',
-      label: 'Финансовая аналитика',
+      label: t('financialAnalytics'),
+      translationKey: 'financialAnalytics',
       category: 'finance',
       icon: <FileSpreadsheet size={22} strokeWidth={1.5} color={categoryColors.finance} />,
       notification: 5
     },
     {
       path: '/car-contracts',
-      label: 'Контракты',
+      label: t('contracts'),
+      translationKey: 'contracts',
       category: 'finance',
       icon: <ScrollText size={22} strokeWidth={1.5} color={categoryColors.finance} />
     },
     {
       path: '/installment-dashboard',
-      label: 'Рассрочки',
+      label: t('installments'),
+      translationKey: 'installments',
       category: 'finance',
       icon: <HandCoins size={22} strokeWidth={1.5} color={categoryColors.finance} />
     },
-    // {
-    //   path: '/warehouse-dashboard',
-    //   label: 'Управление складом',
-    //   category: 'warehouse',
-    //   icon: <Building size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
-    // },
-    // {
-    //   path: '/warehouse-analytics',
-    //   label: 'Аналитика склада',
-    //   category: 'warehouse',
-    //   icon: <BarChart4 size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
-    // },
     {
       path: '/car-warehouse',
-      label: 'Автомобильный склад',
+      label: t('carWarehouse'),
+      translationKey: 'carWarehouse',
       category: 'warehouse',
       icon: <Car size={22} strokeWidth={1.5} color={categoryColors.warehouse} />,
       notification: 3
-    },
-    {
-      path: '/settings',
-      label: 'Настройки системы',
-      category: 'utility',
-      icon: <Settings size={22} strokeWidth={1.5} color={categoryColors.utility} />
-    },
-    {
-      path: '/help',
-      label: 'Документация и поддержка',
-      category: 'utility',
-      icon: <HelpCircle size={22} strokeWidth={1.5} color={categoryColors.utility} />
     }
   ];
 
@@ -227,24 +311,65 @@ export default function ResponsiveNav() {
     analytics: navItems.filter(item => item.category === 'analytics'),
     finance: navItems.filter(item => item.category === 'finance'),
     warehouse: navItems.filter(item => item.category === 'warehouse'),
-    utility: navItems.filter(item => item.category === 'utility')
-  };
-
-  const categoryTitles = {
-    main: 'Главное',
-    analytics: 'Аналитика',
-    finance: 'Финансы',
-    warehouse: 'Склад',
-    utility: 'Настройки'
   };
 
   // Компонент заголовка категории
-  const CategoryTitle = ({ title }: { title: string }) => (
+  const CategoryTitle = ({ title, category }: { title: string, category: string }) => (
     <div className="category-title">
       <span>{title}</span>
       <div className="title-line"></div>
     </div>
   );
+
+  // Компонент переключателя языка (только русский и узбекский)
+  const LanguageSwitcher = () => {
+    const langFlags = {
+      ru: '🇷🇺',
+      uz: '🇺🇿'
+    };
+    
+    const languageNames = {
+      ru: 'Русский',
+      uz: 'O\'zbekcha'
+    };
+    
+    return (
+      <div className="language-switcher-container" ref={langMenuRef}>
+        <button
+          className="language-button"
+          onClick={toggleLanguageMenu}
+        >
+          <div className="flag-icon">{langFlags[currentLocale as keyof typeof langFlags]}</div>
+          <span>{languageNames[currentLocale as keyof typeof languageNames]}</span>
+          <div className="icon-down">▼</div>
+        </button>
+        
+        {isLanguageMenuOpen && (
+          <motion.div 
+            className="language-dropdown"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            {Object.entries(customAvailableLocales).map(([locale, name]) => (
+              <button
+                key={locale}
+                className={`language-option ${locale === currentLocale ? 'active' : ''}`}
+                onClick={() => changeLanguage(locale)}
+              >
+                <span className="flag-icon">{langFlags[locale as keyof typeof langFlags]}</span>
+                <span>{name}</span>
+                {locale === currentLocale && (
+                  <Check size={14} className="check-icon" />
+                )}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -260,8 +385,8 @@ export default function ResponsiveNav() {
               <LayoutGrid size={26} />
             </motion.div>
             <div className="brand">
-              <h1>UzAvtoAnalytics</h1>
-              <p>Управляющая система</p>
+              <h1>{t('appTitle')}</h1>
+              <p>{t('appSubtitle')}</p>
             </div>
           </div>
           
@@ -278,9 +403,21 @@ export default function ResponsiveNav() {
         </div>
         
         <div className="nav-content">
+          {/* Языковой переключатель */}
+          <div className="language-section">
+            <div className="language-header">
+              <Globe size={18} className="language-icon" />
+              <span>{t('profile.language')}</span>
+            </div>
+            <LanguageSwitcher />
+          </div>
+          
           {Object.entries(groupedNavItems).map(([category, items]) => (
             <div key={category} className={`nav-group ${category}`}>
-              <CategoryTitle title={categoryTitles[category as keyof typeof categoryTitles]} />
+              <CategoryTitle 
+                title={t(`categories.${category}`)} 
+                category={category} 
+              />
               <div className="nav-items">
                 {items.map(item => (
                   <NavItem key={item.path} item={item} />
@@ -310,8 +447,8 @@ export default function ResponsiveNav() {
             />
           </motion.div>
           <div className="profile-info">
-            <h3>Администратор</h3>
-            <p>Активный сеанс</p>
+            <h3>{t('profile.admin')}</h3>
+            <p>{t('profile.activeSession')}</p>
           </div>
           
           <motion.button
@@ -336,7 +473,7 @@ export default function ResponsiveNav() {
           </motion.button>
           
           <h1 className="page-title">
-            {navItems.find(item => item.path === pathname)?.label || 'UzAvtoAnalytics'}
+            {navItems.find(item => item.path === pathname)?.label || t('appTitle')}
           </h1>
           
           <motion.div 
@@ -360,8 +497,107 @@ export default function ResponsiveNav() {
       )}
 
       <style jsx global>{`
-
-      .logout-btn {
+        /* Добавляем стили для языкового переключателя */
+        .language-section {
+          padding: var(--space-md);
+          margin-bottom: var(--space-md);
+          border-bottom: 1px solid var(--border-color);
+        }
+        
+        .language-header {
+          display: flex;
+          align-items: center;
+          margin-bottom: var(--space-sm);
+          gap: var(--space-sm);
+        }
+        
+        .language-icon {
+          color: var(--text-secondary);
+        }
+        
+        .language-header span {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--text-secondary);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        
+        .language-switcher-container {
+          position: relative;
+          width: 100%;
+        }
+        
+        .language-button {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          padding: var(--space-sm) var(--space-md);
+          border-radius: var(--radius-md);
+          background: rgba(30, 41, 59, 0.8);
+          border: 1px solid var(--border-color);
+          color: var(--text-light);
+          cursor: pointer;
+          justify-content: space-between;
+          transition: all 0.2s ease;
+        }
+        
+        .language-button:hover {
+          background: rgba(59, 130, 246, 0.1);
+        }
+        
+        .flag-icon {
+          margin-right: var(--space-sm);
+          font-size: 16px;
+        }
+        
+        .icon-down {
+          font-size: 10px;
+          color: var(--text-secondary);
+          margin-left: auto;
+        }
+        
+        .language-dropdown {
+          position: absolute;
+          top: calc(100% + 4px);
+          left: 0;
+          right: 0;
+          background: var(--bg-card);
+          border-radius: var(--radius-md);
+          border: 1px solid var(--border-color);
+          overflow: hidden;
+          z-index: 100;
+          box-shadow: var(--shadow-lg);
+        }
+        
+        .language-option {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          padding: var(--space-sm) var(--space-md);
+          color: var(--text-light);
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          text-align: left;
+        }
+        
+        .language-option:hover {
+          background: rgba(59, 130, 246, 0.1);
+        }
+        
+        .language-option.active {
+          background: rgba(59, 130, 246, 0.2);
+        }
+        
+        .check-icon {
+          margin-left: auto;
+          color: var(--primary);
+        }
+        
+        /* Остальные стили без изменений */
+        .logout-btn {
           width: 36px;
           height: 36px;
           border-radius: var(--radius-md);
@@ -500,7 +736,7 @@ export default function ResponsiveNav() {
         .nav-content {
           flex: 1;
           overflow-y: auto;
-          padding: var(--space-md) 0;
+          padding: 0 0 var(--space-md) 0;
         }
 
         .nav-group {

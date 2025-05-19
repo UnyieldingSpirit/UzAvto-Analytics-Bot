@@ -5,14 +5,17 @@ import { motion } from 'framer-motion';
 import { D3Visualizer } from '@/src/utils/dataVisualizer';
 import * as d3 from 'd3';
 import { carModels } from '@/src/shared/mocks/mock-data';
+import ContentReadyLoader from '@/src/shared/layout/ContentReadyLoader';
 
 export default function Statistics() {
   // State variables
+  const [isLoading, setIsLoading] = useState(true); // Добавляем состояние загрузки
   const [view, setView] = useState('models');
   const [selectedModel, setSelectedModel] = useState(null);
   const [selectedDealer, setSelectedDealer] = useState(null);
   const [chartType, setChartType] = useState('bar');
   const [animateCards, setAnimateCards] = useState(true);
+const [showAllSalespeople, setShowAllSalespeople] = useState(false);
   const [data, setData] = useState({
     modelData: [],
     dealerData: [],
@@ -56,6 +59,8 @@ export default function Statistics() {
 
   // Функция для получения данных за выбранный период
   const fetchMarketData = async (startDate, endDate) => {
+    setIsLoading(true); // Устанавливаем состояние загрузки при начале запроса
+    
     try {
       // Форматирование дат в требуемый формат DD.MM.YYYY
       const formatDateForApi = (date) => {
@@ -92,6 +97,7 @@ export default function Statistics() {
       
       // Обновляем состояние компонента
       setData(transformedData);
+      setIsLoading(false); // Отключаем состояние загрузки
       
       return apiData;
     } catch (error) {
@@ -99,126 +105,141 @@ export default function Statistics() {
       // В случае ошибки загружаем демо-данные
       const fallbackData = generateDemoData(dateRange.startDate, dateRange.endDate);
       setData(fallbackData);
+      setIsLoading(false); // Отключаем состояние загрузки даже в случае ошибки
       return null;
     }
   };
   
-  // Функция для преобразования данных API в формат компонента
-  const transformApiData = (apiData) => {
-    // Цвета для моделей
-    const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'];
+const transformApiData = (apiData) => {
+  // Цвета для моделей
+  const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'];
+  
+  // Фильтрация моделей, у которых есть модификации (есть продажи)
+  const modelsWithModifications = apiData.filter(model => {
+    // Проверяем, есть ли у модели данные о продажах
+    if (!model.filter_by_month || !model.filter_by_month.length) {
+      return false;
+    }
     
-    // Фильтрация моделей, у которых есть модификации (есть продажи)
-    const modelsWithModifications = apiData.filter(model => {
-      // Проверяем, есть ли у модели данные о продажах
-      if (!model.filter_by_month || !model.filter_by_month.length) {
-        return false;
+    // Проверяем наличие дилеров и продаж
+    for (const monthData of model.filter_by_month) {
+      if (!monthData.dealers || !monthData.dealers.length) {
+        continue;
       }
       
-      // Проверяем наличие дилеров и продаж
-      for (const monthData of model.filter_by_month) {
-        if (!monthData.dealers || !monthData.dealers.length) {
+      for (const dealer of monthData.dealers) {
+        if (!dealer.user_list || !dealer.user_list.length) {
           continue;
         }
         
-        for (const dealer of monthData.dealers) {
-          if (!dealer.user_list || !dealer.user_list.length) {
-            continue;
-          }
-          
-          // Проверяем, есть ли продажи
-          for (const user of dealer.user_list) {
-            if (parseInt(user.contract) > 0) {
-              return true; // Нашли продажи - модель имеет модификации
-            }
+        // Проверяем, есть ли продажи
+        for (const user of dealer.user_list) {
+          if (parseInt(user.contract) > 0) {
+            return true; // Нашли продажи - модель имеет модификации
           }
         }
       }
-      
-      return false; // Продаж не найдено
-    });
+    }
     
-    // Преобразуем модели
-    const modelData = modelsWithModifications.map((model, index) => {
-      return {
-        id: model.model_id,
-        name: model.model_name,
-        color: colors[index % colors.length],
-        img: model.photo_sha ? `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400` : null,
-        category: getCategoryFromName(model.model_name), // Определяем категорию по имени
-        totalSales: calculateTotalSales(model) // Вычисляем общие продажи модели
-      };
-    });
-    
-    // Преобразуем данные о дилерах
-    const dealerData = [];
-    modelsWithModifications.forEach(model => {
-      // Объединяем данные дилеров по всем месяцам
-      if (model.filter_by_month && model.filter_by_month.length) {
-        model.filter_by_month.forEach(monthData => {
-          if (monthData.dealers && monthData.dealers.length) {
-            monthData.dealers.forEach(dealer => {
-              // Подсчитываем общие продажи дилера для этой модели
-              const sales = calculateDealerSales(dealer);
-              
-              dealerData.push({
-                modelId: model.model_id,
-                dealerId: dealer.dealer_id,
-                dealerName: dealer.dealer_name,
-                modelName: model.model_name,
-                sales: sales,
-                color: modelData.find(m => m.id === model.model_id)?.color || '#3b82f6'
-              });
-            });
-          }
-        });
-      }
-    });
-    
-    // Агрегируем данные о дилерах (суммируем продажи за все месяцы)
-    const aggregatedDealerData = aggregateDealerData(dealerData);
-    
-    // Преобразуем данные о продавцах
-    const salespersonData = [];
-    modelsWithModifications.forEach(model => {
-      if (model.filter_by_month && model.filter_by_month.length) {
-        model.filter_by_month.forEach(monthData => {
-          if (monthData.dealers && monthData.dealers.length) {
-            monthData.dealers.forEach(dealer => {
-              if (dealer.user_list && dealer.user_list.length) {
-                dealer.user_list.forEach(user => {
-                  salespersonData.push({
-                    modelId: model.model_id,
-                    dealerId: dealer.dealer_id,
-                    salespersonId: user.user_id,
-                    salespersonName: user.user_name,
-                    modelName: model.model_name,
-                    dealerName: dealer.dealer_name,
-                    sales: parseInt(user.contract) || 0,
-                    color: modelData.find(m => m.id === model.model_id)?.color || '#3b82f6'
-                  });
-                });
-              }
-            });
-          }
-        });
-      }
-    });
-    
-    // Генерируем данные тренда на основе месяцев из API
-    const trendData = generateTrendDataFromApi(modelsWithModifications);
-    
-    // Генерируем данные о платежах (пока заглушка, т.к. в API нет этих данных)
-    const paymentData = generatePaymentDataFromDealers(aggregatedDealerData);
-    
+    return false; // Продаж не найдено
+  });
+  
+  // Преобразуем модели
+  const modelData = modelsWithModifications.map((model, index) => {
     return {
-      modelData,
-      dealerData: aggregatedDealerData,
-      salespersonData,
-      trendData,
-      paymentData
+      id: model.model_id,
+      name: model.model_name,
+      color: colors[index % colors.length],
+      img: model.photo_sha ? `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400` : null,
+      category: getCategoryFromName(model.model_name), // Определяем категорию по имени
+      totalSales: calculateTotalSales(model) // Вычисляем общие продажи модели
     };
+  });
+  
+  // Преобразуем данные о дилерах
+  const dealerData = [];
+  modelsWithModifications.forEach(model => {
+    // Объединяем данные дилеров по всем месяцам
+    if (model.filter_by_month && model.filter_by_month.length) {
+      model.filter_by_month.forEach(monthData => {
+        if (monthData.dealers && monthData.dealers.length) {
+          monthData.dealers.forEach(dealer => {
+            // Подсчитываем общие продажи дилера для этой модели
+            const sales = calculateDealerSales(dealer);
+            
+            dealerData.push({
+              modelId: model.model_id,
+              dealerId: dealer.dealer_id,
+              dealerName: dealer.dealer_name,
+              modelName: model.model_name,
+              sales: sales,
+              color: modelData.find(m => m.id === model.model_id)?.color || '#3b82f6'
+            });
+          });
+        }
+      });
+    }
+  });
+  
+  // Агрегируем данные о дилерах (суммируем продажи за все месяцы)
+  const aggregatedDealerData = aggregateDealerData(dealerData);
+  
+  // Преобразуем данные о продавцах с агрегацией по идентичным ID и именам
+  const salespersonMap = new Map(); // Используем карту для агрегации
+  modelsWithModifications.forEach(model => {
+    if (model.filter_by_month && model.filter_by_month.length) {
+      model.filter_by_month.forEach(monthData => {
+        if (monthData.dealers && monthData.dealers.length) {
+          monthData.dealers.forEach(dealer => {
+            if (dealer.user_list && dealer.user_list.length) {
+              dealer.user_list.forEach(user => {
+                // Создаем уникальный ключ для комбинации модели, дилера и продавца
+                const key = `${model.model_id}-${dealer.dealer_id}-${user.user_id}-${user.user_name}`;
+                
+                const salesPersonData = {
+                  modelId: model.model_id,
+                  dealerId: dealer.dealer_id,
+                  salespersonId: user.user_id,
+                  salespersonName: user.user_name,
+                  modelName: model.model_name,
+                  dealerName: dealer.dealer_name,
+                  sales: parseInt(user.contract) || 0,
+                  color: modelData.find(m => m.id === model.model_id)?.color || '#3b82f6'
+                };
+                
+                // Если такая комбинация уже есть, суммируем продажи
+                if (salespersonMap.has(key)) {
+                  const existingPerson = salespersonMap.get(key);
+                  existingPerson.sales += salesPersonData.sales;
+                } else {
+                  // Если новая комбинация, добавляем в карту
+                  salespersonMap.set(key, salesPersonData);
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+  });
+  
+  // Преобразуем карту обратно в массив
+  const salespersonData = Array.from(salespersonMap.values());
+  
+  // Генерируем данные тренда на основе месяцев из API
+  const trendData = generateTrendDataFromApi(modelsWithModifications);
+  
+  // Генерируем данные о платежах (пока заглушка, т.к. в API нет этих данных)
+  const paymentData = generatePaymentDataFromDealers(aggregatedDealerData);
+  
+  return {
+    modelData,
+    dealerData: aggregatedDealerData,
+    salespersonData,
+    trendData,
+    paymentData
   };
+};
   
   // Вспомогательные функции для трансформации данных
   const getCategoryFromName = (modelName) => {
@@ -566,6 +587,7 @@ export default function Statistics() {
         // Если API недоступен, используем демо-данные
         const fallbackData = generateDemoData(range.startDate, range.endDate);
         setData(fallbackData);
+        setIsLoading(false); // Отключаем состояние загрузки в случае ошибки
       });
   };
 
@@ -852,333 +874,636 @@ export default function Statistics() {
     return { modelData, dealerData, salespersonData, trendData, paymentData };
   };
 
-  // Render functions with our new D3 visualizer
-  const renderModelCharts = () => {
-    if (!modelChartRef.current || !modelSecondaryChartRef.current || !data.modelData.length) return;
-    
-    // Format data for D3 visualizer - продажи по моделям
-    const salesChartData = data.modelData.map(model => ({
-      id: model.id,
-      label: model.name,
-      value: model.totalSales,
-      color: model.color,
-      model: model
-    }));
-    
-    // Primary chart - Продажи по моделям
-    if (chartType === 'bar') {
-      D3Visualizer.createBarChart(salesChartData, {
-        container: modelChartRef.current,
-        title: `Продажи по моделям (${getDateRangeLabel()})`,
-        onClick: (item) => handleModelClick(item.model),
-        height: 400
-      });
-    } else if (chartType === 'pie') {
-      D3Visualizer.createPieChart(salesChartData, {
-        container: modelChartRef.current,
-        title: `Доля рынка по моделям (${getDateRangeLabel()})`,
-        onClick: (item) => handleModelClick(item.model),
-        height: 400
-      });
-    } else if (chartType === 'stacked') {
-      // Группировка данных для stacked chart
-      const dealersByModel = data.dealerData.reduce((acc, dealer) => {
-        const model = data.modelData.find(m => m.id === dealer.modelId);
-        if (!model) return acc;
-        
-        if (!acc[model.name]) {
-          acc[model.name] = {
-            category: model.name,
-            values: []
-          };
-        }
-        
-        acc[model.name].values.push({
-          label: dealer.dealerName,
-          value: dealer.sales
-        });
-        
-        return acc;
-      }, {});
-
-      D3Visualizer.createStackedBarChart(Object.values(dealersByModel), {
-        container: modelChartRef.current,
-        title: `Продажи по моделям и дилерам (${getDateRangeLabel()})`,
-        onClick: (item) => {
-          const model = data.modelData.find(m => m.name === item.category);
-          if (model) handleModelClick(model);
-        },
-        height: 400
-      });
-    }
-    
-    // Вместо графика возвратов отображаем динамику продаж по месяцам
-    renderModelTimelineChart();
-    
-    // Тренд график оставляем без изменений
-    if (trendChartRef.current && data.trendData.length) {
-      D3Visualizer.createAreaChart(data.trendData.map(d => ({
-        x: d.date,
-        y: d.sales
-      })), {
-        container: trendChartRef.current,
-        title: `Тренд продаж за период: ${getDateRangeLabel()}`,
-        height: 300,
-        colors: ['#10b981']
-      });
-    }
-  };
-
-  const renderModelTimelineChart = () => {
-    if (!modelSecondaryChartRef.current || !data.modelData.length) return;
-
-    // Очищаем контейнер
-    const container = modelSecondaryChartRef.current;
-    container.innerHTML = '';
-    
-    // Получаем даты за последние 6 месяцев
-    const months = [];
-    const monthNames = [];
-    const today = new Date();
-    
-    for (let i = 5; i >= 0; i--) {
-      const month = new Date(today);
-      month.setMonth(today.getMonth() - i);
-      months.push(month.toISOString().slice(0, 7)); // Формат 'YYYY-MM'
-      monthNames.push(month.toLocaleString('ru', { month: 'short' }));
-    }
-    
-    // Берем только топ-6 моделей по продажам
-    const topModels = [...data.modelData]
-      .sort((a, b) => b.totalSales - a.totalSales)
-      .slice(0, 6);
+const renderModelCharts = () => {
+  if (!modelChartRef.current || !modelSecondaryChartRef.current || !data.modelData.length) return;
+  
+  // Format data for D3 visualizer - продажи по моделям
+  const salesChartData = data.modelData.map(model => ({
+    id: model.id,
+    label: model.name,
+    value: model.totalSales,
+    color: model.color,
+    model: model
+  }));
+  
+  // Primary chart - Продажи по моделям
+  if (chartType === 'bar') {
+    D3Visualizer.createBarChart(salesChartData, {
+      container: modelChartRef.current,
+      title: `Продажи по моделям (${getDateRangeLabel()})`,
+      onClick: (item) => handleModelClick(item.model),
+      height: 400
+    });
+  } else if (chartType === 'pie') {
+    D3Visualizer.createPieChart(salesChartData, {
+      container: modelChartRef.current,
+      title: `Доля рынка по моделям (${getDateRangeLabel()})`,
+      onClick: (item) => handleModelClick(item.model),
+      height: 400
+    });
+  }
+  
+  // Вместо графика возвратов отображаем динамику продаж по месяцам
+  renderModelTimelineChart();
+  
+  // Полностью переработанный код для тренда продаж
+  if (trendChartRef.current && data.trendData.length) {
+    // Очищаем контейнер тренда
+    const trendContainer = trendChartRef.current;
+    trendContainer.innerHTML = '';
     
     // Настройка размеров графика
-    const width = container.clientWidth;
-    const height = 400;
-    const margin = { top: 40, right: 80, bottom: 60, left: 60 };
+    const trendWidth = trendContainer.clientWidth;
+    const trendHeight = 380; // Увеличиваем высоту еще больше
+    const trendMargin = { top: 70, right: 30, bottom: 60, left: 60 }; // Увеличиваем верхний отступ для меток значений
     
-    const chartWidth = width - margin.left - margin.right;
-    const chartHeight = height - margin.top - margin.bottom;
+    const trendChartWidth = trendWidth - trendMargin.left - trendMargin.right;
+    const trendChartHeight = trendHeight - trendMargin.top - trendMargin.bottom;
     
     // Создаем SVG элемент
-    const svg = d3.select(container)
+    const trendSvg = d3.select(trendContainer)
       .append('svg')
-      .attr('width', width)
-      .attr('height', height)
+      .attr('width', trendWidth)
+      .attr('height', trendHeight)
       .style('background', '#1f2937')
       .style('border-radius', '0.5rem');
     
     // Добавляем заголовок
-    svg.append('text')
-      .attr('x', width / 2)
-      .attr('y', margin.top / 2)
+    trendSvg.append('text')
+      .attr('x', trendWidth / 2)
+      .attr('y', 30) // Размещаем заголовок ближе к верху
       .attr('text-anchor', 'middle')
       .style('font-size', '1.2rem')
       .style('font-weight', 'bold')
       .style('fill', '#f9fafb')
-      .text(`Динамика продаж по месяцам (${getDateRangeLabel()})`);
+      .text(`Тренд продаж за период: ${getDateRangeLabel()}`);
     
-    // Создаем данные для линейного графика
-    const lineData = topModels.map(model => {
-      const monthlySales = months.map((month, i) => {
-        // Вычисляем примерные продажи в месяц
-        // Базовые продажи делим на 6 месяцев, добавляем тренд и небольшую случайность
-        const baseMonthlySales = model.totalSales / 6;
-        const trendFactor = 0.8 + (i * 0.05); // Небольшой рост со временем
-        const randomFactor = 0.9 + Math.random() * 0.2; // Небольшая вариация ±10%
+    // Сортируем данные тренда по дате
+    const sortedTrendData = [...data.trendData].sort((a, b) => {
+      return new Date(a.date) - new Date(b.date);
+    });
+    
+    // Обрабатываем и форматируем данные
+    const processedData = sortedTrendData.map(d => {
+      // Пытаемся форматировать дату
+      let monthLabel = d.date;
+      try {
+        const [year, month] = d.date.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1);
+        monthLabel = date.toLocaleString('ru', { month: 'short' });
         
-        return {
-          date: month,
-          month: monthNames[i],
-          value: Math.round(baseMonthlySales * trendFactor * randomFactor),
-          model: model
-        };
-      });
+        // Добавляем год, если это январь или первый месяц в наборе данных
+        if (date.getMonth() === 0 || date === new Date(sortedTrendData[0].date)) {
+          monthLabel = `${monthLabel} ${date.getFullYear()}`;
+        }
+      } catch (e) {
+        // Если не удалось распарсить, оставляем как есть
+      }
       
       return {
-        model: model,
-        values: monthlySales
+        ...d,
+        monthLabel
       };
     });
     
     // Настраиваем шкалы
-    const x = d3.scaleBand()
-      .domain(months)
-      .range([0, chartWidth])
-      .padding(0.1);
+    const trendX = d3.scaleBand()
+      .domain(processedData.map(d => d.date))
+      .range([0, trendChartWidth])
+      .padding(0.3);
     
-    // Находим максимальное значение продаж для определения шкалы Y
-    const maxSales = d3.max(lineData, d => d3.max(d.values, v => v.value));
-    
-    const y = d3.scaleLinear()
-      .domain([0, maxSales * 1.1]) // Добавляем 10% отступ сверху
-      .range([chartHeight, 0]);
+    const trendY = d3.scaleLinear()
+      .domain([0, d3.max(processedData, d => d.sales) * 1.2]) // Увеличиваем верхнюю границу, чтобы было место для меток
+      .nice()
+      .range([trendChartHeight, 0]);
     
     // Основная группа для графика
-    const g = svg.append('g')
-      .attr('transform', `translate(${margin.left}, ${margin.top})`);
-      
+    const trendG = trendSvg.append('g')
+      .attr('transform', `translate(${trendMargin.left}, ${trendMargin.top})`);
+    
+    // Добавляем горизонтальные направляющие линии
+    trendG.selectAll('.grid-line')
+      .data(trendY.ticks(5))
+      .join('line')
+      .attr('class', 'grid-line')
+      .attr('x1', 0)
+      .attr('x2', trendChartWidth)
+      .attr('y1', d => trendY(d))
+      .attr('y2', d => trendY(d))
+      .attr('stroke', '#374151')
+      .attr('stroke-dasharray', '2,2')
+      .attr('stroke-width', 1);
+    
     // Добавляем оси
-    g.append('g')
-      .attr('transform', `translate(0, ${chartHeight})`)
-      .call(d3.axisBottom(x).tickFormat((d, i) => monthNames[i]))
+    trendG.append('g')
+      .attr('transform', `translate(0, ${trendChartHeight})`)
+      .call(d3.axisBottom(trendX).tickFormat(i => {
+        const item = processedData.find(d => d.date === i);
+        return item ? item.monthLabel : '';
+      }))
       .call(g => g.select('.domain').remove())
       .call(g => g.selectAll('text')
         .style('fill', '#f9fafb')
-        .style('font-size', '0.8rem'));
+        .style('font-size', '0.8rem')
+        .attr('text-anchor', 'middle'));
     
-    g.append('g')
-      .call(d3.axisLeft(y).ticks(5))
+    trendG.append('g')
+      .call(d3.axisLeft(trendY).ticks(5))
       .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('text').style('fill', '#f9fafb'))
-      .call(g => g.selectAll('.tick line')
-        .attr('x2', chartWidth)
-        .attr('stroke-opacity', 0.1));
+      .call(g => g.selectAll('text').style('fill', '#f9fafb'));
     
-    // Создаем функцию для построения линии
-    const line = d3.line()
-      .x(d => x(d.date) + x.bandwidth() / 2)
-      .y(d => y(d.value))
-      .curve(d3.curveMonotoneX);
+    // Добавляем подписи осей
+    trendG.append('text')
+      .attr('y', trendChartHeight + 45)
+      .attr('x', trendChartWidth / 2)
+      .attr('text-anchor', 'middle')
+      .style('fill', '#9ca3af')
+      .style('font-size', '0.9rem')
+      .text('Месяц');
     
-    // Добавляем линии для каждой модели
-    lineData.forEach((d, i) => {
-      // Добавляем линию
-      g.append('path')
-        .datum(d.values)
+    trendG.append('text')
+      .attr('transform', 'rotate(-90)')
+      .attr('y', -45)
+      .attr('x', -trendChartHeight / 2)
+      .attr('text-anchor', 'middle')
+      .style('fill', '#9ca3af')
+      .style('font-size', '0.9rem')
+      .text('Количество продаж');
+    
+    // Группа для столбцов и их меток
+    const barsGroup = trendG.append('g')
+      .attr('class', 'bars-group');
+    
+    // Добавляем столбцы
+    const trendBars = barsGroup.selectAll('.trend-bar')
+      .data(processedData)
+      .join('rect')
+      .attr('class', 'trend-bar')
+      .attr('x', d => trendX(d.date))
+      .attr('y', d => trendY(d.sales))
+      .attr('width', trendX.bandwidth())
+      .attr('height', d => trendChartHeight - trendY(d.sales))
+      .attr('rx', 4) // Скругленные углы для столбцов
+      .attr('fill', (d, i) => {
+        // Создаем более выраженный градиент от светло-голубого к зеленому
+        const colorIndex = i / processedData.length; // от 0 до 1
+        return d3.interpolateTurbo(0.2 + colorIndex * 0.4); // Более яркий цветовой градиент
+      })
+      .attr('opacity', 0.9)
+      .attr('cursor', 'pointer')
+      .on('mouseover', function() {
+        // Просто подсвечиваем столбец при наведении
+        d3.select(this)
+          .transition()
+          .duration(150)
+          .attr('opacity', 1);
+      })
+      .on('mouseout', function() {
+        // Возвращаем столбец к исходному виду
+        d3.select(this)
+          .transition()
+          .duration(150)
+          .attr('opacity', 0.9);
+      })
+      .transition()
+      .duration(500)
+      .delay((_, i) => i * 50)
+      .attr('opacity', 0.9);
+    
+    // Добавляем значения продаж прямо над столбцами
+    barsGroup.selectAll('.value-label')
+      .data(processedData)
+      .join('text')
+      .attr('class', 'value-label')
+      .attr('x', d => trendX(d.date) + trendX.bandwidth() / 2)
+      .attr('y', d => trendY(d.sales) - 10) // Размещаем на 10px выше столбца
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '12px')
+      .attr('font-weight', 'bold')
+      .style('fill', '#ffffff')
+      .text(d => d.sales.toLocaleString())
+      .attr('opacity', 0)
+      .transition()
+      .duration(500)
+      .delay((_, i) => i * 50 + 500) // Появляются после столбцов
+      .attr('opacity', 1);
+    
+    // Добавляем линию тренда, если есть достаточное количество точек
+    if (processedData.length > 1) {
+      // Функция для линии тренда
+      const trendLine = d3.line()
+        .x(d => trendX(d.date) + trendX.bandwidth() / 2)
+        .y(d => trendY(d.sales))
+        .curve(d3.curveMonotoneX);
+      
+      // Добавляем линию тренда
+      trendG.append('path')
+        .datum(processedData)
         .attr('fill', 'none')
-        .attr('stroke', d.model.color)
-        .attr('stroke-width', 3)
-        .attr('d', line)
-        .style('cursor', 'pointer')
-        .on('click', () => handleModelClick(d.model))
+        .attr('stroke', '#ffffff')
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', '5,5')
+        .attr('stroke-opacity', 0.7)
+        .attr('d', trendLine)
         .attr('opacity', 0)
         .transition()
-        .duration(500)
-        .delay(i * 100)
-        .attr('opacity', 0.7);
+        .duration(1000)
+        .delay(processedData.length * 50)
+        .attr('opacity', 1);
       
-      // Добавляем точки на линию
-      g.selectAll(`.dot-${i}`)
-        .data(d.values)
+      // Добавляем точки на линию тренда
+      trendG.selectAll('.trend-dot')
+        .data(processedData)
         .join('circle')
-        .attr('class', `dot-${i}`)
-        .attr('cx', v => x(v.date) + x.bandwidth() / 2)
-        .attr('cy', v => y(v.value))
-        .attr('r', 5)
-        .attr('fill', d.model.color)
+        .attr('class', 'trend-dot')
+        .attr('cx', d => trendX(d.date) + trendX.bandwidth() / 2)
+        .attr('cy', d => trendY(d.sales))
+        .attr('r', 4)
+        .attr('fill', 'white')
         .attr('stroke', '#1f2937')
         .attr('stroke-width', 2)
-        .style('cursor', 'pointer')
-        .on('click', () => handleModelClick(d.model))
-        .on('mouseover', function(event, v) {
-          // Увеличиваем точку при наведении
-          d3.select(this)
-            .transition()
-            .duration(100)
-            .attr('r', 8);
-            
-          // Отображаем текст значения над точкой
-          const valueText = g.append('text')
-            .attr('class', 'temp-value')
-            .attr('x', x(v.date) + x.bandwidth() / 2)
-            .attr('y', y(v.value) - 15)
-            .attr('text-anchor', 'middle')
-            .attr('font-size', '12px')
-            .attr('font-weight', 'bold')
-            .attr('fill', d.model.color)
-            .text(v.value.toLocaleString());
-            
-          // Добавляем фон для улучшения читаемости
-          const bbox = valueText.node().getBBox();
-          
-          g.insert('rect', '.temp-value')
-            .attr('class', 'temp-value-bg')
-            .attr('x', bbox.x - 5)
-            .attr('y', bbox.y - 2)
-            .attr('width', bbox.width + 10)
-            .attr('height', bbox.height + 4)
-            .attr('rx', 3)
-            .attr('fill', 'rgba(0, 0, 0, 0.7)');
-        })
-        .on('mouseout', function() {
-          // Уменьшаем точку при отведении курсора
-          d3.select(this)
-            .transition()
-            .duration(100)
-            .attr('r', 5);
-            
-          // Удаляем временный текст и фон
-          g.selectAll('.temp-value').remove();
-          g.selectAll('.temp-value-bg').remove();
-        })
         .attr('opacity', 0)
         .transition()
         .duration(300)
-        .delay((_, j) => i * 100 + j * 100 + 500)
+        .delay((_, i) => processedData.length * 50 + 1000 + i * 100)
         .attr('opacity', 1);
-        
-      // Добавляем текст с названием модели и последним значением в конце линии
-      if (d.values.length > 0) {
-        const lastValue = d.values[d.values.length - 1];
-        g.append('text')
-          .attr('x', x(lastValue.date) + x.bandwidth() / 2 + 10)
-          .attr('y', y(lastValue.value))
-          .text(`${d.model.name}`)
-          .attr('text-anchor', 'start')
-          .attr('dominant-baseline', 'middle')
-          .attr('fill', d.model.color)
-          .attr('font-size', '12px')
-          .attr('font-weight', 'bold')
-          .attr('opacity', 0)
-          .transition()
-          .duration(300)
-          .delay(i * 100 + 1000)
-          .attr('opacity', 1);
+      
+      // Вычисляем изменение в продажах между первым и последним периодом
+      const firstSales = processedData[0].sales;
+      const lastSales = processedData[processedData.length - 1].sales;
+      const salesDiff = lastSales - firstSales;
+      const percentChange = firstSales > 0 ? (salesDiff / firstSales) * 100 : 0;
+    }
+  }
+};
+
+const renderModelTimelineChart = () => {
+  if (!modelSecondaryChartRef.current || !data.modelData.length || !data.trendData.length) return;
+
+  // Очищаем контейнер
+  const container = modelSecondaryChartRef.current;
+  container.innerHTML = '';
+  
+  // Получаем все уникальные месяцы из данных trendData
+  const allMonths = [...new Set(data.trendData.map(d => d.date))].sort();
+  
+  // Если данных не за полные 6 месяцев, возьмем последние 6 или сколько есть
+  const months = allMonths.slice(-6);
+  
+  // Вычисляем названия месяцев для отображения
+  const monthNames = months.map(monthStr => {
+    try {
+      const [year, month] = monthStr.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1);
+      return date.toLocaleString('ru', { month: 'short' });
+    } catch (e) {
+      // Если не удалось распарсить дату, вернем исходную строку
+      return monthStr;
+    }
+  });
+  
+  // Берем только топ-6 моделей по продажам
+  const topModels = [...data.modelData]
+    .sort((a, b) => b.totalSales - a.totalSales)
+    .slice(0, 6);
+  
+  // Настройка размеров графика
+  const width = container.clientWidth;
+  const height = 400;
+  const margin = { top: 40, right: 120, bottom: 60, left: 60 }; // Увеличиваем правый отступ для легенды
+  
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
+  
+  // Создаем SVG элемент
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height)
+    .style('background', '#1f2937')
+    .style('border-radius', '0.5rem');
+  
+  // Добавляем заголовок
+  svg.append('text')
+    .attr('x', width / 2)
+    .attr('y', margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '1.2rem')
+    .style('font-weight', 'bold')
+    .style('fill', '#f9fafb')
+    .text(`Динамика продаж по месяцам (${getDateRangeLabel()})`);
+  
+  // Вычисляем общую сумму продаж для всех моделей
+  const totalModelSales = topModels.reduce((sum, model) => sum + model.totalSales, 0);
+  
+  // Создаем данные для линейного графика с нормализацией на основе общего тренда
+  const lineData = topModels.map((model, modelIndex) => {
+    // Для каждой модели вычислим её долю в общих продажах
+    const modelShare = totalModelSales > 0 ? model.totalSales / totalModelSales : 1 / topModels.length;
+    
+    // Применяем небольшое отклонение для визуального разделения линий
+    // Для каждой модели используем разный "смещающий" коэффициент
+    const deviation = 0.8 + (modelIndex * 0.1); // От 0.8 до 1.3 для 6 моделей
+    
+    const monthlySales = months.map((month, i) => {
+      // Находим данные тренда для этого месяца
+      const trendEntry = data.trendData.find(t => t.date === month);
+      
+      // Вычисляем реальные продажи модели в этом месяце
+      let actualValue = 0;
+      if (trendEntry && trendEntry.sales) {
+        actualValue = Math.round(trendEntry.sales * modelShare);
+      } else {
+        // Если нет данных, пропорционально распределяем общие продажи модели
+        actualValue = Math.round(model.totalSales / months.length);
       }
+      
+      // Применяем коэффициент отклонения для визуального разделения линий
+      const visualValue = Math.round(actualValue * deviation);
+      
+      return {
+        date: month,
+        month: monthNames[i],
+        value: visualValue, // Значение для построения графика с визуальным отклонением
+        actualValue: actualValue, // Оригинальное значение для отображения в подсказке
+        model: model
+      };
     });
     
-    // Добавляем легенду
-    const legendGroup = svg.append('g')
-      .attr('transform', `translate(${width - margin.right}, ${margin.top})`);
-      
-    // Добавляем заголовок для легенды
-    legendGroup.append('text')
-      .attr('x', 0)
-      .attr('y', -10)
-      .attr('text-anchor', 'start')
-      .style('font-size', '0.8rem')
-      .style('font-weight', 'bold')
+    return {
+      model: model,
+      values: monthlySales
+    };
+  });
+  
+  // Настраиваем шкалы
+  const x = d3.scaleBand()
+    .domain(months)
+    .range([0, chartWidth])
+    .padding(0.1);
+  
+  // Находим максимальное значение продаж для определения шкалы Y
+  const maxVisualSales = d3.max(lineData, d => d3.max(d.values, v => v.value)) || 0;
+  
+  const y = d3.scaleLinear()
+    .domain([0, maxVisualSales * 1.1]) // Добавляем 10% отступ сверху
+    .range([chartHeight, 0]);
+  
+  // Основная группа для графика
+  const g = svg.append('g')
+    .attr('transform', `translate(${margin.left}, ${margin.top})`);
+    
+  // Добавляем оси
+  g.append('g')
+    .attr('transform', `translate(0, ${chartHeight})`)
+    .call(d3.axisBottom(x).tickFormat((d, i) => monthNames[i % monthNames.length]))
+    .call(g => g.select('.domain').remove())
+    .call(g => g.selectAll('text')
       .style('fill', '#f9fafb')
-      .text('Модели:');
-      
-    // Добавляем элементы легенды
-    topModels.forEach((model, i) => {
-      const legendItem = legendGroup.append('g')
-        .attr('transform', `translate(0, ${i * 25})`)
-        .style('cursor', 'pointer')
-        .on('click', () => handleModelClick(model));
-      
-      // Цветной индикатор
-      legendItem.append('line')
-        .attr('x1', 0)
-        .attr('y1', 10)
-        .attr('x2', 15)
-        .attr('y2', 10)
-        .attr('stroke', model.color)
-        .attr('stroke-width', 3);
-      
-      // Название модели
-      legendItem.append('text')
-        .attr('x', 20)
-        .attr('y', 10)
+      .style('font-size', '0.8rem')
+      .attr('transform', 'rotate(-15)') // Небольшой наклон подписей для лучшей читаемости
+      .attr('text-anchor', 'end')
+      .attr('dx', '-0.8em')
+      .attr('dy', '0.15em'));
+  
+  g.append('g')
+    .call(d3.axisLeft(y).ticks(5))
+    .call(g => g.select('.domain').remove())
+    .call(g => g.selectAll('text').style('fill', '#f9fafb'))
+    .call(g => g.selectAll('.tick line')
+      .attr('x2', chartWidth)
+      .attr('stroke-opacity', 0.1));
+  
+  // Создаем функцию для построения линии
+  const line = d3.line()
+    .x(d => x(d.date) + x.bandwidth() / 2)
+    .y(d => y(d.value)) // Используем визуальное значение для позиционирования
+    .curve(d3.curveMonotoneX);
+  
+  // Добавляем линии для каждой модели
+  lineData.forEach((d, i) => {
+    // Группируем все элементы, относящиеся к одной линии
+    const lineGroup = g.append('g')
+      .attr('class', `line-group-${i}`);
+    
+    // Добавляем фоновую линию с обводкой для лучшей видимости
+    lineGroup.append('path')
+      .datum(d.values)
+      .attr('fill', 'none')
+      .attr('stroke', '#000')
+      .attr('stroke-width', 6)
+      .attr('stroke-opacity', 0.3)
+      .attr('d', line)
+      .attr('opacity', 0)
+      .transition()
+      .duration(500)
+      .delay(i * 100)
+      .attr('opacity', 0.7);
+    
+    // Добавляем основную линию
+    lineGroup.append('path')
+      .datum(d.values)
+      .attr('fill', 'none')
+      .attr('stroke', d.model.color)
+      .attr('stroke-width', 3)
+      .attr('d', line)
+      .style('cursor', 'pointer')
+      .on('click', () => handleModelClick(d.model))
+      .attr('opacity', 0)
+      .transition()
+      .duration(500)
+      .delay(i * 100)
+      .attr('opacity', 1);
+    
+    // Добавляем точки на линию
+    lineGroup.selectAll(`.dot-${i}`)
+      .data(d.values)
+      .join('circle')
+      .attr('class', `dot-${i}`)
+      .attr('cx', v => x(v.date) + x.bandwidth() / 2)
+      .attr('cy', v => y(v.value)) // Используем визуальное значение для позиционирования
+      .attr('r', 5)
+      .attr('fill', d.model.color)
+      .attr('stroke', '#1f2937')
+      .attr('stroke-width', 2)
+      .style('cursor', 'pointer')
+      .on('click', () => handleModelClick(d.model))
+      .on('mouseover', function(event, v) {
+        // Увеличиваем точку при наведении
+        d3.select(this)
+          .transition()
+          .duration(100)
+          .attr('r', 8);
+        
+        // Выделяем линию при наведении
+        lineGroup.selectAll('path')
+          .transition()
+          .duration(100)
+          .attr('stroke-width', function() {
+            return parseFloat(this.getAttribute('stroke-width') || '3') * 1.5;
+          });
+        
+        // Отображаем текст с ОРИГИНАЛЬНЫМ значением продаж
+        const valueText = g.append('text')
+          .attr('class', 'temp-value')
+          .attr('x', x(v.date) + x.bandwidth() / 2)
+          .attr('y', y(v.value) - 20)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '12px')
+          .attr('font-weight', 'bold')
+          .attr('fill', d.model.color)
+          .text(`${v.actualValue.toLocaleString()} (${d.model.name})`);
+        
+        // Добавляем фон для улучшения читаемости
+        const bbox = valueText.node().getBBox();
+        
+        g.insert('rect', '.temp-value')
+          .attr('class', 'temp-value-bg')
+          .attr('x', bbox.x - 5)
+          .attr('y', bbox.y - 2)
+          .attr('width', bbox.width + 10)
+          .attr('height', bbox.height + 4)
+          .attr('rx', 3)
+          .attr('fill', 'rgba(0, 0, 0, 0.8)');
+      })
+      .on('mouseout', function() {
+        // Уменьшаем точку при отведении курсора
+        d3.select(this)
+          .transition()
+          .duration(100)
+          .attr('r', 5);
+        
+        // Возвращаем линию к обычной толщине
+        lineGroup.selectAll('path')
+          .transition()
+          .duration(100)
+          .attr('stroke-width', function() {
+            const currentWidth = parseFloat(this.getAttribute('stroke-width') || '3');
+            return currentWidth / 1.5;
+          });
+        
+        // Удаляем временный текст и фон
+        g.selectAll('.temp-value').remove();
+        g.selectAll('.temp-value-bg').remove();
+      })
+      .attr('opacity', 0)
+      .transition()
+      .duration(300)
+      .delay((_, j) => i * 100 + j * 100 + 500)
+      .attr('opacity', 1);
+    
+    // Добавляем текст с названием модели и последним значением в конце линии
+    if (d.values.length > 0) {
+      const lastValue = d.values[d.values.length - 1];
+      g.append('text')
+        .attr('x', x(lastValue.date) + x.bandwidth() / 2 + 10)
+        .attr('y', y(lastValue.value))
+        .text(`${d.model.name}`)
+        .attr('text-anchor', 'start')
         .attr('dominant-baseline', 'middle')
-        .text(`${model.name} (${model.totalSales.toLocaleString()})`)
-        .style('font-size', '0.7rem')
-        .style('fill', '#f9fafb');
-    });
-  };
+        .attr('fill', d.model.color)
+        .attr('font-size', '12px')
+        .attr('font-weight', 'bold')
+        .attr('opacity', 0)
+        .transition()
+        .duration(300)
+        .delay(i * 100 + 1000)
+        .attr('opacity', 1);
+    }
+  });
+  
+  // Добавляем улучшенную легенду
+  const legendGroup = svg.append('g')
+    .attr('transform', `translate(${width - margin.right + 20}, ${margin.top + 20})`);
+  
+  // Добавляем заголовок для легенды
+  legendGroup.append('text')
+    .attr('x', 0)
+    .attr('y', -10)
+    .attr('text-anchor', 'start')
+    .style('font-size', '0.8rem')
+    .style('font-weight', 'bold')
+    .style('fill', '#f9fafb')
+    .text('Модели:');
+  
+  // Добавляем элементы легенды с интерактивностью
+  topModels.forEach((model, i) => {
+    const legendItem = legendGroup.append('g')
+      .attr('transform', `translate(0, ${i * 28})`) // Увеличенное расстояние между элементами
+      .style('cursor', 'pointer')
+      .on('click', () => handleModelClick(model))
+      .on('mouseover', function() {
+        // Подсвечиваем линию модели
+        d3.select(container).select(`.line-group-${i}`)
+          .selectAll('path')
+          .transition()
+          .duration(100)
+          .attr('stroke-width', function() {
+            return parseFloat(this.getAttribute('stroke-width') || '3') * 1.5;
+          });
+        
+        // Подсвечиваем элемент легенды
+        d3.select(this)
+          .transition()
+          .duration(100)
+          .attr('opacity', 0.7);
+      })
+      .on('mouseout', function() {
+        // Возвращаем линию к обычной толщине
+        d3.select(container).select(`.line-group-${i}`)
+          .selectAll('path')
+          .transition()
+          .duration(100)
+          .attr('stroke-width', function() {
+            const currentWidth = parseFloat(this.getAttribute('stroke-width') || '3');
+            return currentWidth / 1.5;
+          });
+        
+        // Возвращаем элемент легенды к обычной прозрачности
+        d3.select(this)
+          .transition()
+          .duration(100)
+          .attr('opacity', 1);
+      });
+    
+    // Добавляем фон для элемента легенды для лучшей интерактивности
+    legendItem.append('rect')
+      .attr('x', -5)
+      .attr('y', -6)
+      .attr('width', 120)
+      .attr('height', 25)
+      .attr('rx', 4)
+      .attr('fill', '#2d3748')
+      .attr('opacity', 0.3);
+    
+    // Цветной индикатор
+    legendItem.append('line')
+      .attr('x1', 0)
+      .attr('y1', 7)
+      .attr('x2', 25)
+      .attr('y2', 7)
+      .attr('stroke', model.color)
+      .attr('stroke-width', 3);
+    
+    // Название модели
+    legendItem.append('text')
+      .attr('x', 30)
+      .attr('y', 7)
+      .attr('dominant-baseline', 'middle')
+      .text(`${model.name}`)
+      .style('font-size', '0.8rem')
+      .style('fill', '#f9fafb');
+    
+    // Продажи модели
+    legendItem.append('text')
+      .attr('x', 30)
+      .attr('y', 20)
+      .attr('dominant-baseline', 'middle')
+      .text(`${model.totalSales.toLocaleString()}`)
+      .style('font-size', '0.65rem')
+      .style('fill', '#9ca3af');
+  });
+};
   
   const renderDealerCharts = () => {
     if (!dealerChartRef.current || !dealerSecondaryChartRef.current || !filteredDealerData.length || !selectedModel) return;
@@ -1346,7 +1671,7 @@ export default function Statistics() {
           
         // Отображаем текст значения над столбцом
         g.append('text')
-          .attr('class', 'temp-value')
+      .attr('class', 'temp-value')
           .attr('x', x(d.label) + x.bandwidth() / 2)
           .attr('y', y(d.value) - 10)
           .attr('text-anchor', 'middle')
@@ -1356,7 +1681,7 @@ export default function Statistics() {
           .text(d.value.toFixed(1));
       })
       .on('mouseout', function() {
-d3.select(this)
+          d3.select(this)
           .transition()
           .duration(100)
           .attr('opacity', 1);
@@ -1840,6 +2165,9 @@ d3.select(this)
 
  return (
    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4">
+      {/* Добавляем компонент загрузки */}
+      <ContentReadyLoader isLoading={isLoading} setIsLoading={setIsLoading} timeout={8000} />
+      
      <header className="mb-8">
        <motion.h1 
          initial={{ opacity: 0, y: -20 }}
@@ -1900,14 +2228,6 @@ d3.select(this)
             className={`px-3 py-1.5 rounded-md text-sm ${chartType === 'pie' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
           >
             Круговая
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setChartType('stacked')}
-            className={`px-3 py-1.5 rounded-md text-sm ${chartType === 'stacked' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
-          >
-            Составная
           </motion.button>
         </div>
         
@@ -2530,7 +2850,7 @@ d3.select(this)
                  onClick={toggleViewMode}
                  className="w-full py-2 rounded-md bg-blue-600/70 text-white hover:bg-blue-600 transition-colors flex items-center justify-center"
                >
-                 {viewMode === 'general' ? (
+                {viewMode === 'general' ? (
                    <>
                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -2560,100 +2880,148 @@ d3.select(this)
                    </div>
                  </div>
                  
-                 <div className="bg-gray-800 rounded-lg p-4 mb-4">
-                   <div className="grid grid-cols-1 gap-3">
-                     {topSalespeople.map((salesperson, index) => (
-                       <motion.div
-                         key={salesperson.salespersonId}
-                         initial={animateCards ? { opacity: 0, y: 10 } : false}
-                         animate={animateCards ? { opacity: 1, y: 0 } : false}
-                         transition={{ delay: index * 0.1 }}
-                         className="bg-gray-900/70 rounded-lg p-3 flex items-center"
-                         onAnimationComplete={() => index === topSalespeople.length - 1 && setAnimateCards(false)}
-                       >
-                         <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center font-bold mr-3" 
-                              style={{ backgroundColor: `${selectedModel?.color}20` }}>
-                           {salesperson.salespersonName.split(' ').map(n => n[0]).join('')}
-                         </div>
-                         
-                         <div className="flex-grow">
-                           <div className="flex justify-between items-center">
-                             <h4 className="text-lg font-bold text-white">{salesperson.salespersonName}</h4>
-                             <span className="px-2 py-1 rounded text-xs" 
-                                   style={{ backgroundColor: `${selectedModel?.color}20`, color: selectedModel?.color }}>
-                               {index === 0 ? '🏆 Лучший продавец' : `#${index + 1}`}
-                             </span>
-                           </div>
-                           
-                           <div className="flex items-center mt-1">
-                             <div className="text-gray-400 text-sm">Продажи:</div>
-                             <div className="text-white font-bold ml-2">{salesperson.sales.toLocaleString()}</div>
-                             
-                             <div className="ml-auto flex items-center">
-                               <div className="h-2 w-24 bg-gray-700 rounded-full mr-2">
-                                 <motion.div 
-                                   initial={{ width: 0 }}
-                                   animate={{ width: `${(salesperson.sales / Math.max(...filteredSalespersonData.map(d => d.sales))) * 100}%` }}
-                                   transition={{ duration: 0.5, delay: index * 0.1 + 0.3 }}
-                                   className="h-full rounded-full"
-                                   style={{ backgroundColor: selectedModel?.color }}
-                                 />
-                               </div>
-                               <span className="text-xs text-gray-400">
-                                 {Math.round((salesperson.sales / filteredSalespersonData.reduce((sum, d) => sum + d.sales, 0)) * 100)}%
-                               </span>
-                             </div>
-                           </div>
-                         </div>
-                       </motion.div>
-                     ))}
-                   </div>
-                   
-                   {/* Кнопка для просмотра всех продавцов */}
-                   {filteredSalespersonData.length > 5 && (
-                     <motion.button
-                       whileHover={{ scale: 1.02 }}
-                       whileTap={{ scale: 0.98 }}
-                       className="w-full mt-3 py-2 bg-gray-700/50 text-gray-300 rounded hover:bg-gray-700 transition-colors text-sm"
-                     >
-                       Показать всех продавцов ({filteredSalespersonData.length - 5} ещё)
-                     </motion.button>
-                   )}
-                 </div>
+
+<div className="bg-gray-800 rounded-lg p-4 mb-4">
+  <div className="grid grid-cols-1 gap-3">
+    {/* Используем showAllSalespeople для определения, сколько продавцов показать */}
+    {(showAllSalespeople ? filteredSalespersonData : topSalespeople).map((salesperson, index) => (
+      <motion.div
+        key={salesperson.salespersonId}
+        initial={animateCards ? { opacity: 0, y: 10 } : false}
+        animate={animateCards ? { opacity: 1, y: 0 } : false}
+        transition={{ delay: index * 0.1 }}
+        className="bg-gray-900/70 rounded-lg p-3 flex items-center"
+        onAnimationComplete={() => index === 
+          (showAllSalespeople ? filteredSalespersonData.length - 1 : topSalespeople.length - 1) 
+          && setAnimateCards(false)}
+      >
+        <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center font-bold mr-3" 
+             style={{ backgroundColor: `${selectedModel?.color}20` }}>
+          {salesperson.salespersonName.split(' ').map(n => n[0]).join('')}
+        </div>
+        
+        <div className="flex-grow">
+          <div className="flex justify-between items-center">
+            <h4 className="text-lg font-bold text-white">{salesperson.salespersonName}</h4>
+            <span className="px-2 py-1 rounded text-xs" 
+                  style={{ backgroundColor: `${selectedModel?.color}20`, color: selectedModel?.color }}>
+              {index === 0 && !showAllSalespeople ? '🏆 Лучший продавец' : `#${index + 1}`}
+            </span>
+          </div>
+          
+          <div className="flex items-center mt-1">
+            <div className="text-gray-400 text-sm">Продажи:</div>
+            <div className="text-white font-bold ml-2">{salesperson.sales.toLocaleString()}</div>
+            
+            <div className="ml-auto flex items-center">
+              <div className="h-2 w-24 bg-gray-700 rounded-full mr-2">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(salesperson.sales / Math.max(...filteredSalespersonData.map(d => d.sales))) * 100}%` }}
+                  transition={{ duration: 0.5, delay: index * 0.1 + 0.3 }}
+                  className="h-full rounded-full"
+                  style={{ backgroundColor: selectedModel?.color }}
+                />
+              </div>
+              <span className="text-xs text-gray-400">
+                {Math.round((salesperson.sales / filteredSalespersonData.reduce((sum, d) => sum + d.sales, 0)) * 100)}%
+              </span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    ))}
+  </div>
+  
+  {/* Кнопка для просмотра всех продавцов с обработчиком нажатия */}
+  {filteredSalespersonData.length > 5 && (
+    <motion.button
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => setShowAllSalespeople(!showAllSalespeople)} // Переключаем состояние
+      className="w-full mt-3 py-2 bg-gray-700/50 text-gray-300 rounded hover:bg-gray-700 transition-colors text-sm"
+    >
+      {showAllSalespeople 
+        ? "Показать только топ-5 продавцов" 
+        : `Показать всех продавцов (${filteredSalespersonData.length - 5} ещё)`
+      }
+    </motion.button>
+  )}
+</div>
                  
                  {/* Распределение продаж по времени */}
-                 <div className="bg-gray-800 rounded-lg p-4">
-                   <h3 className="text-lg font-bold text-white mb-3">Динамика продаж</h3>
-                   
-                   <div className="grid grid-cols-12 gap-2 mb-2">
-                     {Array.from({ length: 12 }).map((_, index) => {
-                       const month = new Date();
-                       month.setMonth(month.getMonth() - 11 + index);
-                       const monthName = month.toLocaleString('ru', { month: 'short' });
-                       
-                       // Генерируем случайные продажи для месяца
-                       const sales = Math.floor(Math.random() * (selectedDealer?.sales / 6)) + 1;
-                       const height = `${(sales / (selectedDealer?.sales / 3)) * 100}%`;
-                       
-                       return (
-                         <div key={index} className="flex flex-col h-32 justify-end">
-                           <div 
-                             className="rounded-t w-full transition-all duration-700" 
-                             style={{ 
-                               height, 
-                               backgroundColor: index === 11 ? selectedModel?.color : `${selectedModel?.color}80` 
-                             }}
-                           />
-                           <div className="text-xs text-gray-500 text-center mt-1">{monthName}</div>
-                         </div>
-                       );
-                     })}
-                   </div>
-                   
-                   <div className="text-center text-xs text-gray-500 mt-1">
-                     Последние 12 месяцев
-                   </div>
-                 </div>
+              {/* Заменить этот блок динамики продаж по времени в режиме просмотра продавцов */}
+<div className=" rounded-lg p-4">
+  {/* <h3 className="text-lg font-bold text-white mb-3">Динамика продаж</h3> */}
+  
+  {/* {(() => {
+    // Создаем объект с данными за последние 12 месяцев
+    const monthlySales = {};
+    const today = new Date();
+    
+    // Инициализируем все 12 месяцев с нулями
+    for (let i = 11; i >= 0; i--) {
+      const month = new Date(today);
+      month.setMonth(today.getMonth() - i);
+      const monthKey = month.toISOString().slice(0, 7); // YYYY-MM формат
+      monthlySales[monthKey] = 0;
+    }
+    
+    // Если есть данные трендов, обогащаем данные месяцев
+    if (data.trendData && data.trendData.length > 0) {
+      // Фильтруем данные тренда только для текущего дилера и модели
+      const dealerSales = filteredSalespersonData.reduce((sum, sp) => sum + sp.sales, 0);
+      const totalSales = selectedModel?.totalSales || 1;
+      const dealerRatio = dealerSales / totalSales;
+      
+      // Распределяем продажи по месяцам пропорционально общим продажам
+      data.trendData.forEach(trend => {
+        if (monthlySales[trend.date]) {
+          monthlySales[trend.date] = Math.round(trend.sales * dealerRatio);
+        }
+      });
+    }
+    
+    // Преобразуем в массив для отображения
+    const monthlyDataArray = Object.entries(monthlySales).map(([date, sales]) => {
+      const month = new Date(date);
+      return {
+        date,
+        sales,
+        month: month.toLocaleString('ru', { month: 'short' })
+      };
+    });
+    
+    // Находим максимальное значение для масштабирования
+    const maxSales = Math.max(...monthlyDataArray.map(m => m.sales), 1);
+    
+    return (
+      <div className="grid grid-cols-12 gap-2 mb-2">
+        {monthlyDataArray.map((monthData, index) => {
+          const height = `${(monthData.sales / maxSales) * 100}%`;
+          
+          return (
+            <div key={index} className="flex flex-col h-32 justify-end">
+              <div 
+                className="rounded-t w-full transition-all duration-700" 
+                style={{ 
+                  height, 
+                  backgroundColor: index === 11 ? selectedModel?.color : `${selectedModel?.color}80` 
+                }}
+              />
+              <div className="text-xs text-gray-500 text-center mt-1">{monthData.month}</div>
+              <div className="text-xs text-white text-center">{monthData.sales > 0 ? monthData.sales : ''}</div>
+            </div>
+          );
+        })}
+      </div>
+    )
+  })()} */}
+  
+  {/* <div className="text-center text-xs text-gray-500 mt-1">
+    Последние 12 месяцев
+  </div> */}
+</div>
                </>
              ) : (
                <>
@@ -2774,4 +3142,4 @@ d3.select(this)
   `}</style>
 </div>
 );
-}   
+}

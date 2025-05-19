@@ -7,8 +7,13 @@ import { carModels, regions } from '@/src/shared/mocks/mock-data';
 import { useTelegram } from '@/src/hooks/useTelegram';
 import ContentReadyLoader from '@/src/shared/layout/ContentReadyLoader';
 import DashboardAnalytics from './DashboardAnalytics';
+import { useTranslation } from '@/src/hooks/useTranslation';
+import { dashboardTranslations } from '@/src/shared/components/locales/SalesDashboard';
 
 const SalesDashboard = () => {
+  // Инициализация переводов
+  const { t, currentLocale } = useTranslation(dashboardTranslations);
+  
   const [activeDetailLevel, setActiveDetailLevel] = useState(0);
   const [selectedStatus, setSelectedStatus] = useState(null);
   const [selectedRegion, setSelectedRegion] = useState(null);
@@ -54,12 +59,12 @@ const SalesDashboard = () => {
         setNotShippedData(notShippedData);
         setDeliveredData(deliveredData);
         
-        console.log('Основные данные успешно загружены');
+        console.log(t('logs.dataLoaded'));
         
         // Отмечаем, что данные загружены
         dataLoaded.current = true;
       } catch (error) {
-        console.error('Ошибка загрузки данных:', error);
+        console.error(t('logs.dataLoadError'), error);
       } finally {
         setLoading(false);
       }
@@ -67,7 +72,7 @@ const SalesDashboard = () => {
     
     // Запускаем загрузку данных
     fetchAllData();
-  }, []);
+  }, [t]);
 
   // Расчет данных о задолженностях по контрактам на основе API
   const contractDebtData = useMemo(() => {
@@ -140,13 +145,17 @@ const SalesDashboard = () => {
 
   // Функция для правильного склонения слова "день"
   const getDayWord = (days) => {
-    if (days % 10 === 1 && days % 100 !== 11) {
-      return 'день';
-    } else if ([2, 3, 4].includes(days % 10) && ![12, 13, 14].includes(days % 100)) {
-      return 'дня';
-    } else {
-      return 'дней';
+    if (currentLocale === 'ru') {
+      if (days % 10 === 1 && days % 100 !== 11) {
+        return t('table.day');
+      } else if ([2, 3, 4].includes(days % 10) && ![12, 13, 14].includes(days % 100)) {
+        return t('table.days2to4');
+      } else {
+        return t('table.days');
+      }
     }
+    // Для других языков просто возвращаем перевод "дней"
+    return t('table.days');
   };
   
   // Обработка данных замороженных контрактов с учетом разных форматов
@@ -165,11 +174,11 @@ const SalesDashboard = () => {
       
       return filteredData.map(item => ({
         modelId: item.model_id,
-        modelName: item.model_name || 'Неизвестная модель',
+        modelName: item.model_name || t('unknown.model'),
         modelImg: item.photo_sha ? `https://uzavtosalon.uz/b/core/m$load_image?sha=${item.photo_sha}&width=400&height=400` : '',
         total_count: parseInt(item.total_count || 0),
         days: parseInt(item.days || 5),
-        status: parseInt(item.days || 5) > 5 ? 'Критический' : 'Средний'
+        status: parseInt(item.days || 5) > 5 ? t('status.critical') : t('status.medium')
       }));
     }
     
@@ -179,17 +188,17 @@ const SalesDashboard = () => {
         .filter(model => !selectedModel || model.model_id === selectedModel)
         .map(model => ({
           modelId: model.model_id,
-          modelName: model.model_name || 'Неизвестная модель',
+          modelName: model.model_name || t('unknown.model'),
           modelImg: model.photo_sha ? `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400` : '',
           total_count: parseInt(model.total_count || 0),
           days: parseInt(model.days || 5),
-          status: parseInt(model.days || 5) > 5 ? 'Критический' : 'Средний'
+          status: parseInt(model.days || 5) > 5 ? t('status.critical') : t('status.medium')
         }));
     }
     
     // Если frozenData имеет неожиданный формат, возвращаем пустой массив
     return [];
-  }, [frozenData, selectedModel]);
+  }, [frozenData, selectedModel, t]);
 
   const totalFrozenCount = useMemo(() => {
     return debtData.reduce((sum, item) => sum + parseInt(item.total_count || 0), 0);
@@ -206,7 +215,7 @@ const SalesDashboard = () => {
         .filter(item => item && item.region_name) // Фильтруем пустые или некорректные данные
         .map(item => {
           return {
-            name: item.region_name || "Регион не указан",
+            name: item.region_name || t('unknown.region'),
             value: parseInt(item.total_count || 0),
             modelId: item.model_id,
             modelName: item.model_name,
@@ -221,10 +230,10 @@ const SalesDashboard = () => {
     if (notShippedData && notShippedData.regions && Array.isArray(notShippedData.regions)) {
       return notShippedData.regions
         .map(region => ({
-          name: region.region_name || "Регион не указан",
+          name: region.region_name || t('unknown.region'),
           value: parseInt(region.total_count || 0),
           modelId: selectedModel, // Используем выбранную модель, если она есть
-          modelName: carModels.find(m => m.id === selectedModel)?.name || "Неизвестная модель"
+          modelName: carModels.find(m => m.id === selectedModel)?.name || t('unknown.model')
         }))
         .filter(region => region.value > 0)
         .sort((a, b) => b.value - a.value);
@@ -255,7 +264,7 @@ const SalesDashboard = () => {
           }
           
           return {
-            name: region.name || region.region_name || "Неизвестный регион",
+            name: region.name || region.region_name || t('unknown.region'),
             value: totalCount
           };
         })
@@ -265,7 +274,7 @@ const SalesDashboard = () => {
         // Альтернативный формат данных
         return inMovementData.regions
           .map(region => ({
-            name: region.region_name || "Неизвестный регион",
+            name: region.region_name || t('unknown.region'),
             value: parseInt(region.total_count || 0)
           }))
           .filter(region => region.value > 0)
@@ -363,7 +372,7 @@ const SalesDashboard = () => {
             }));
             
             return {
-              name: dealer.name ? dealer.name.replace(/^"(.*)".*$/, '$1') : "Неизвестный дилер", 
+              name: dealer.name ? dealer.name.replace(/^"(.*)".*$/, '$1') : t('unknown.dealer'), 
               value,
               models: modelDetails
             };
@@ -395,7 +404,7 @@ const SalesDashboard = () => {
             }));
             
             return {
-              name: dealer.name ? dealer.name.replace(/^"(.*)".*$/, '$1') : "Неизвестный дилер",
+              name: dealer.name ? dealer.name.replace(/^"(.*)".*$/, '$1') : t('unknown.dealer'),
               value,
               models: modelDetails
             };
@@ -408,18 +417,18 @@ const SalesDashboard = () => {
     // Заглушка для других статусов и случаев, когда данные не получены
     const baseDealers = {
       'Ташкент': [
-        { name: 'Автосалон Центральный', value: 10, models: generateModelData(3, selectedModelId) },
-        { name: 'GM Premium', value: 8, models: generateModelData(3, selectedModelId) },
-        { name: 'Авто-Максимум', value: 6, models: generateModelData(3, selectedModelId) },
+        { name: t('dealers.central'), value: 10, models: generateModelData(3, selectedModelId) },
+        { name: t('dealers.premium'), value: 8, models: generateModelData(3, selectedModelId) },
+        { name: t('dealers.maximum'), value: 6, models: generateModelData(3, selectedModelId) },
       ],
       'Самарканд': [
-        { name: 'GM Самарканд', value: 9, models: generateModelData(3, selectedModelId) },
-        { name: 'Авто-Самарканд', value: 6, models: generateModelData(3, selectedModelId) },
-        { name: 'Самарканд-Моторс', value: 3, models: generateModelData(3, selectedModelId) },
+        { name: t('dealers.samarkand'), value: 9, models: generateModelData(3, selectedModelId) },
+        { name: t('dealers.autoSamarkand'), value: 6, models: generateModelData(3, selectedModelId) },
+        { name: t('dealers.samarkandMotors'), value: 3, models: generateModelData(3, selectedModelId) },
       ],
       'Бухара': [
-        { name: 'Бухара-Авто', value: 7, models: generateModelData(3, selectedModelId) },
-        { name: 'GM Бухара', value: 5, models: generateModelData(3, selectedModelId) },
+        { name: t('dealers.bukhara'), value: 7, models: generateModelData(3, selectedModelId) },
+        { name: t('dealers.bukharaGM'), value: 5, models: generateModelData(3, selectedModelId) },
       ]
     };
     
@@ -478,7 +487,7 @@ const SalesDashboard = () => {
         const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
         
         // Добавляем параметр модели к URL, если модель выбрана
-        const modelParam = selectedModel === null ? '' : `&model_id=${modelId}`;
+        const modelParam = modelId === null ? '' : `&model_id=${modelId}`;
         
         // Загружаем все нужные данные параллельно
         const [inMovementResponse, frozenResponse, notShippedResponse, deliveredResponse] = 
@@ -501,9 +510,9 @@ const SalesDashboard = () => {
         setNotShippedData(notShippedData);
         setDeliveredData(deliveredData);
         
-        console.log('Данные успешно загружены для модели:', modelId);
+        console.log(t('logs.modelDataLoaded'), modelId);
       } catch (error) {
-        console.error('Ошибка загрузки данных для модели:', error);
+        console.error(t('logs.modelDataLoadError'), error);
       } finally {
         setLoading(false);
       }
@@ -555,34 +564,48 @@ const SalesDashboard = () => {
     if (titleElement && selectedModel) {
       const model = carModels.find(m => m.id === selectedModel);
       if (model) {
-        titleElement.innerHTML = `Мониторинг продаж: ${model.name}`;
+        titleElement.innerHTML = t('titleWithModel', { modelName: model.name });
       }
     } else if (titleElement) {
-      titleElement.innerHTML = 'Мониторинг продаж автомобилей';
+      titleElement.innerHTML = t('title');
     }
-  }, [selectedModel]);
+  }, [selectedModel, t]);
 
   // Форматирование денежных значений
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('ru-RU').format(value) + ' сум';
+    return new Intl.NumberFormat(
+      currentLocale === 'ru' ? 'ru-RU' : 
+      currentLocale === 'en' ? 'en-US' : 
+      'uz-UZ'
+    ).format(value) + (currentLocale === 'en' ? ' sum' : ' сум');
   };
 
-  // Компонент аналитического дашборда
-  // const renderAnalyticsDashboard = () => {
-  //   return <DashboardAnalytics selectedModel={selectedModel} />;
-  // };
+  // Функция для правильного склонения слова "модель"
+  const getModelWord = (count) => {
+    if (currentLocale === 'ru') {
+      if (count === 1) {
+        return t('sidebar.model');
+      } else if ([2, 3, 4].includes(count)) {
+        return t('sidebar.models2to4');
+      } else {
+        return t('sidebar.models');
+      }
+    }
+    // Для других языков
+    return count === 1 ? t('sidebar.model') : t('sidebar.models');
+  };
 
   // Содержимое боковой панели
   const renderSidebarContent = () => {
     if (activeDetailLevel === 0 || !selectedStatus) return null;
 
-    const statusTitle = selectedStatus === 'notShipped' ? 'Не отгружено >48ч' : 'В пути >3 дней';
+    const statusTitle = selectedStatus === 'notShipped' ? t('notShipped.shortTitle') : t('inTransit.shortTitle');
     const statusColor = selectedStatus === 'notShipped' ? 'blue' : 'yellow';
     const statusIcon = selectedStatus === 'notShipped' ? <Archive size={20} /> : <Truck size={20} />;
     
     // Получаем актуальный источник данных в зависимости от выбранного статуса
     const sourceData = selectedStatus === 'notShipped' ? notShippedData : 
-                      selectedStatus === 'inTransit' ? inMovementData : null;
+                       selectedStatus === 'inTransit' ? inMovementData : null;
 
     // Уровень 1: Список регионов
     if (activeDetailLevel === 1) {
@@ -607,7 +630,7 @@ const SalesDashboard = () => {
           }
           
           return { 
-            name: region.name || region.region_name || "Неизвестный регион", 
+            name: region.name || region.region_name || t('unknown.region'), 
             value 
           };
         })
@@ -617,7 +640,7 @@ const SalesDashboard = () => {
         // Альтернативный формат данных
         regions = sourceData.regions
           .map(region => ({
-            name: region.region_name || "Неизвестный регион",
+            name: region.region_name || t('unknown.region'),
             value: parseInt(region.total_count || 0)
           }))
           .filter(region => region.value > 0)
@@ -645,7 +668,7 @@ const SalesDashboard = () => {
                 )}
               </h3>
               <div className="text-sm text-gray-400">
-                Всего регионов: {regions.length}
+                {t('sidebar.totalRegions')}: {regions.length}
               </div>
             </div>
           </div>
@@ -653,13 +676,13 @@ const SalesDashboard = () => {
           <div className="flex-1 overflow-y-auto p-3">
             <div className="text-sm text-gray-400 mb-3 px-2 flex items-center gap-2">
               <MapPin size={14} />
-              <span>Выберите регион для детализации:</span>
+              <span>{t('sidebar.selectRegion')}:</span>
             </div>
             
             {regions.length === 0 ? (
               <div className="p-6 text-center text-gray-400 bg-gray-800/40 rounded-lg border border-gray-700/50">
                 <AlertTriangle size={24} className="mx-auto mb-2 text-gray-500" />
-                <p>Нет данных для отображения</p>
+                <p>{t('table.noData')}</p>
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -723,7 +746,7 @@ const SalesDashboard = () => {
             }
             
             return {
-              name: dealer.name ? dealer.name.replace(/^"(.*)".*$/, '$1') : "Неизвестный дилер", 
+              name: dealer.name ? dealer.name.replace(/^"(.*)".*$/, '$1') : t('unknown.dealer'), 
               value,
               models: filteredModels
             };
@@ -754,7 +777,7 @@ const SalesDashboard = () => {
               dealer.models.forEach(model => {
                 modelList.push({
                   id: model.model_id,
-                  name: model.model_name || "Неизвестная модель",
+                  name: model.model_name || t('unknown.model'),
                   count: parseInt(model.count || 0),
                   img: model.photo_sha ? `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400` : ''
                 });
@@ -762,7 +785,7 @@ const SalesDashboard = () => {
             }
             
             return {
-              name: dealer.dealer_name || "Неизвестный дилер",
+              name: dealer.dealer_name || t('unknown.dealer'),
               value: parseInt(dealer.total_count || 0),
               models: modelList
             };
@@ -800,7 +823,7 @@ const SalesDashboard = () => {
               </div>
             </div>
             <div className="ml-auto bg-gray-800/80 px-2.5 py-1 rounded-md border border-gray-700 text-sm">
-              <span className="text-gray-400">Дилеров:</span>
+              <span className="text-gray-400">{t('sidebar.dealers')}:</span>
               <span className="text-white font-semibold ml-1">{dealers.length}</span>
             </div>
           </div>
@@ -808,13 +831,13 @@ const SalesDashboard = () => {
           <div className="flex-1 overflow-y-auto p-3">
             <div className="text-sm text-gray-400 mb-3 px-2 flex items-center gap-2">
               <Users size={14} />
-              <span>Список дилеров в регионе:</span>
+              <span>{t('sidebar.dealersList')}:</span>
             </div>
             
             {dealers.length === 0 ? (
               <div className="p-6 text-center text-gray-400 bg-gray-800/40 rounded-lg border border-gray-700/50">
                 <AlertTriangle size={24} className="mx-auto mb-2 text-gray-500" />
-                <p>Нет данных для отображения</p>
+                <p>{t('table.noData')}</p>
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -835,7 +858,7 @@ const SalesDashboard = () => {
                           <span className="text-white font-medium text-base truncate">{dealer.name}</span>
                         </div>
                         <div className="text-xs text-gray-400">
-                          {dealer.models.length} {dealer.models.length === 1 ? 'модель' : dealer.models.length < 5 ? 'модели' : 'моделей'}
+                          {dealer.models.length} {getModelWord(dealer.models.length)}
                         </div>
                       </div>
                       <div className={`px-2.5 py-1 rounded-full bg-${statusColor}-900/40 text-${statusColor}-300 flex items-center gap-1.5 border border-${statusColor}-800/30 whitespace-nowrap`}>
@@ -912,7 +935,7 @@ const SalesDashboard = () => {
             dealerData.models.forEach(model => {
               modelList.push({
                 id: model.model_id,
-                name: model.model_name || "Неизвестная модель",
+                name: model.model_name || t('unknown.model'),
                 count: parseInt(model.count || 0),
                 img: model.photo_sha ? `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400` : ''
               });
@@ -974,10 +997,10 @@ const SalesDashboard = () => {
             <div className="bg-gray-800/70 rounded-lg p-4 mb-4 border border-gray-700 shadow-md">
               <div className="flex items-center gap-3 mb-3">
                 <div className="flex-1">
-                  <div className="text-sm text-gray-400 mb-1">Всего автомобилей:</div>
+                  <div className="text-sm text-gray-400 mb-1">{t('dealer.totalCars')}:</div>
                   <div className="flex items-baseline gap-1.5">
                     <div className="text-2xl font-bold text-white">{dealer.value}</div>
-                    <div className="text-xs text-gray-400">единиц</div>
+                    <div className="text-xs text-gray-400">{t('dealer.units')}</div>
                   </div>
                 </div>
                 <div className="w-16 h-16 rounded-full bg-gray-750 border border-gray-700 flex items-center justify-center">
@@ -986,16 +1009,16 @@ const SalesDashboard = () => {
               </div>
               
               <div className="mb-3 flex items-center gap-2">
-                <div className="text-sm text-gray-400">Распределение по моделям:</div>
+                <div className="text-sm text-gray-400">{t('dealer.modelDistribution')}:</div>
                 <div className="text-xs px-2 py-0.5 bg-gray-700 rounded-full text-gray-300 border border-gray-600">
-                  {dealer.models.length} {dealer.models.length === 1 ? 'модель' : dealer.models.length < 5 ? 'модели' : 'моделей'}
+                  {dealer.models.length} {getModelWord(dealer.models.length)}
                 </div>
               </div>
               
               {dealer.models.length === 0 ? (
                 <div className="p-4 text-center text-gray-400 bg-gray-800/40 rounded-lg border border-gray-700/50">
                   <AlertTriangle size={24} className="mx-auto mb-2 text-gray-500" />
-                  <p>Нет данных для отображения</p>
+                  <p>{t('table.noData')}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1016,7 +1039,7 @@ const SalesDashboard = () => {
                         </div>
                         <div className="flex flex-col min-w-0">
                           <span className="text-white font-medium truncate">{model.name}</span>
-                          <span className="text-xs text-gray-400">{carModelMap[model.id]?.category || 'Авто'}</span>
+                          <span className="text-xs text-gray-400">{carModelMap[model.id]?.category || t('car')}</span>
                         </div>
                       </div>
                       <div className={`px-2.5 py-1 rounded-md bg-${statusColor}-900/40 text-${statusColor}-300 flex items-center gap-1.5 border border-${statusColor}-800/30 whitespace-nowrap`}>
@@ -1029,37 +1052,6 @@ const SalesDashboard = () => {
                 </div>
               )}
             </div>
-            
-            {/* Карточка с рекомендациями */}
-            {/* <div className="bg-gray-800/70 rounded-lg p-4 border border-gray-700 shadow-md">
-              <h4 className="font-medium text-white mb-3 flex items-center gap-2">
-                <Zap size={16} className="text-yellow-400" />
-                Рекомендуемые действия
-              </h4>
-              <ul className="space-y-3">
-                <li className="flex items-start gap-3 p-2.5 rounded-lg bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 transition-colors">
-                  <Clock size={18} className="text-blue-400 mt-0.5" />
-                  <div>
-                    <div className="text-sm text-gray-200 font-medium">Запросить обновление статуса</div>
-                    <div className="text-xs text-gray-400 mt-0.5">Получите актуальную информацию о состоянии поставки</div>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3 p-2.5 rounded-lg bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 transition-colors">
-                  <AlertTriangle size={18} className="text-yellow-400 mt-0.5" />
-                  <div>
-                    <div className="text-sm text-gray-200 font-medium">Проверить договоры на отложенные поставки</div>
-                    <div className="text-xs text-gray-400 mt-0.5">Проанализируйте условия договоров с повышенным риском</div>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3 p-2.5 rounded-lg bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 transition-colors">
-                  <Zap size={18} className="text-green-400 mt-0.5" />
-                  <div>
-                    <div className="text-sm text-gray-200 font-medium">Связаться с менеджером дилерского центра</div>
-                    <div className="text-xs text-gray-400 mt-0.5">Установите прямой контакт для ускорения процессов</div>
-                  </div>
-                </li>
-              </ul>
-            </div> */}
           </div>
         </div>
       );
@@ -1115,11 +1107,11 @@ const SalesDashboard = () => {
             <div>
               <h1 id="dashboard-title" className="text-xl font-bold text-white">
                 {selectedModel 
-                  ? `Мониторинг продаж: ${carModels.find(m => m.id === selectedModel)?.name}` 
-                  : "Мониторинг продаж автомобилей"}
+                  ? t('titleWithModel', { modelName: carModels.find(m => m.id === selectedModel)?.name }) 
+                  : t('title')}
               </h1>
               <div className="text-sm text-gray-400 flex items-center gap-1">
-                <span>Дилерский центр</span>
+                <span>{t('dealerCenter')}</span>
                 <span>•</span>
                 <span>Ташкент</span>
               </div>
@@ -1129,7 +1121,12 @@ const SalesDashboard = () => {
           <div className="flex items-center gap-2">
             <div className="px-3 py-1.5 bg-gray-700/70 rounded-lg text-sm text-white flex items-center gap-1.5">
               <Calendar size={14} />
-              <span>{new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+              <span>{new Date().toLocaleDateString(
+                currentLocale === 'ru' ? 'ru-RU' : 
+                currentLocale === 'en' ? 'en-US' : 
+                'uz-UZ', 
+                { day: 'numeric', month: 'long', year: 'numeric' }
+              )}</span>
             </div>
           </div>
         </div>
@@ -1139,7 +1136,7 @@ const SalesDashboard = () => {
           <div className="flex justify-between items-center p-3 border-b border-gray-700">
             <h2 className="text-base font-medium text-white flex items-center gap-2">
               <Activity size={18} className="text-blue-400" />
-             Статус автомобилей
+              {t('carsStatus')}
               {selectedModel && (
                 <span className="ml-2 text-sm text-gray-400">
                   • {carModels.find(m => m.id === selectedModel)?.name}
@@ -1164,7 +1161,7 @@ const SalesDashboard = () => {
                 <div className="flex-1">
                   <div className="text-2xl font-bold text-white mb-1">{contractDebtData.notShipped}</div>
                   <div className="text-sm text-blue-300 flex items-center justify-between">
-                    <span>Не отгружены 48ч</span>
+                    <span>{t('notShipped.title')}</span>
                     <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </div>
@@ -1186,7 +1183,7 @@ const SalesDashboard = () => {
                 <div className="flex-1">
                   <div className="text-2xl font-bold text-white mb-1">{contractDebtData.inTransit}</div>
                   <div className="text-sm text-yellow-300 flex items-center justify-between">
-                    <span>В пути 3 дней</span>
+                    <span>{t('inTransit.title')}</span>
                     <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </div>
@@ -1204,7 +1201,7 @@ const SalesDashboard = () => {
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-white mb-1">{contractDebtData.delivered}</div>
-                  <div className="text-sm text-green-300">Доставлено</div>
+                  <div className="text-sm text-green-300">{t('delivered')}</div>
                 </div>
               </div>
             </div>
@@ -1215,12 +1212,12 @@ const SalesDashboard = () => {
           {/* Компонент аналитики */}
           {/* {renderAnalyticsDashboard()} */}
           
- {/* ТАБЛИЦА ЗАДОЛЖЕННОСТИ ПО КОНТРАКТАМ */}
+          {/* ТАБЛИЦА ЗАДОЛЖЕННОСТИ ПО КОНТРАКТАМ */}
           <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden">
             <div className="flex justify-between items-center p-3 border-b border-gray-700">
               <h3 className="text-base font-medium text-white flex items-center gap-2">
                 <AlertTriangle size={18} className="text-yellow-400" />
-                Замороженые контракты 
+                {t('frozenContracts')} 
                 {selectedModel && (
                   <span className="ml-2 text-sm text-gray-400">
                     • {carModels.find(m => m.id === selectedModel)?.name}
@@ -1228,7 +1225,7 @@ const SalesDashboard = () => {
                 )}
               </h3>
               <div className="text-[16px] text-yellow-300">
-                Общее количество: <span className="font-bold">{totalFrozenCount}</span>
+                {t('total')}: <span className="font-bold">{totalFrozenCount}</span>
               </div>
             </div>
             
@@ -1237,10 +1234,10 @@ const SalesDashboard = () => {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-900/80">
                     <tr>
-                      <th className="px-3 py-2 text-left text-gray-400 font-medium">Название модели</th>
-                      <th className="px-3 py-2 text-center text-gray-400 font-medium">Изображение</th>
-                      <th className="px-3 py-2 text-right text-gray-400 font-medium">Количество</th>
-                      <th className="px-3 py-2 text-center text-gray-400 font-medium">Статус</th>
+                      <th className="px-3 py-2 text-left text-gray-400 font-medium">{t('table.modelName')}</th>
+                      <th className="px-3 py-2 text-center text-gray-400 font-medium">{t('table.image')}</th>
+                      <th className="px-3 py-2 text-right text-gray-400 font-medium">{t('table.quantity')}</th>
+                      <th className="px-3 py-2 text-center text-gray-400 font-medium">{t('table.status')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
@@ -1248,7 +1245,7 @@ const SalesDashboard = () => {
                       <tr>
                         <td colSpan="4" className="px-3 py-4 text-center text-gray-400">
                           <AlertTriangle size={20} className="mx-auto mb-2 text-yellow-500" />
-                          Нет данных для отображения
+                          {t('table.noData')}
                         </td>
                       </tr>
                     ) : (
@@ -1256,7 +1253,7 @@ const SalesDashboard = () => {
                         <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-800/60' : 'bg-gray-850/70'} hover:bg-gray-700/70`}>
                           <td className="px-3 py-2 font-medium text-white">{item.modelName}</td>
                           <td className="px-3 py-2 text-center">
-                            <div className="w-12 h-12 mx-auto rounded-md overflow-hidden bg-gray-700/70 flex items-center justify-center">
+                        <div className="w-12 h-12 mx-auto rounded-md overflow-hidden bg-gray-700/70 flex items-center justify-center">
                               <img 
                                 src={item.modelImg} 
                                 alt={item.modelName} 
@@ -1280,12 +1277,12 @@ const SalesDashboard = () => {
                   </tbody>
                   <tfoot className="bg-gray-900/80">
                     <tr>
-                      <td className="px-3 py-2 font-medium text-white" colSpan="2">Итого</td>
+                      <td className="px-3 py-2 font-medium text-white" colSpan="2">{t('table.total')}</td>
                       <td className="px-3 py-2 text-right font-medium text-white">
                         {totalFrozenCount}
                       </td>
                       <td className="px-3 py-2 text-center text-red-400 text-xs font-medium">
-                        Все &gt; 5 дней
+                        {t('table.allDays')}
                       </td>
                     </tr>
                   </tfoot>

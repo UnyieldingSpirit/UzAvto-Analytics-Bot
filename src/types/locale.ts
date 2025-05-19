@@ -1,3 +1,3 @@
 // src/types/locale.ts
-export type Locale = 'ru' | 'en' | 'uz'
+export type Locale = 'ru' | 'uz'
 export type LocaleMessages = Record<Locale, Record<string, any>>

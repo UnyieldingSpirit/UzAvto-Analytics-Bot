@@ -19,7 +19,7 @@ const detectBrowserLocale = (): Locale => {
     const browserLocale = navigator.language.split('-')[0].toLowerCase();
 
     // Проверяем, поддерживается ли язык
-    if (['ru', 'en', 'uz'].includes(browserLocale)) {
+    if (['ru', 'uz'].includes(browserLocale)) {
         return browserLocale as Locale;
     }
 
@@ -33,7 +33,6 @@ export const useLanguageStore = create<LanguageState>()(
             currentLocale: 'ru', // Значение по умолчанию, будет перезаписано при гидратации
             availableLocales: {
                 'ru': 'Русский',
-                'en': 'English',
                 'uz': 'O\'zbekcha'
             },
             setLocale: (locale: Locale) => set({
