@@ -1504,91 +1504,48 @@ const renderModelTimelineChart = () => {
       .style('fill', '#9ca3af');
   });
 };
-  
   const renderDealerCharts = () => {
-    if (!dealerChartRef.current || !dealerSecondaryChartRef.current || !filteredDealerData.length || !selectedModel) return;
-    
-    // Сортируем дилеров по продажам от большего к меньшему
-    const sortedDealerData = [...filteredDealerData].sort((a, b) => b.sales - a.sales);
-    
-    // Формат данных для D3 визуализатора
-    const chartData = sortedDealerData.map(dealer => ({
-      id: dealer.dealerId,
-      label: dealer.dealerName,
-      value: dealer.sales,
-      color: selectedModel.color,
-      dealer: dealer
-    }));
-    
-    // Берем только топ-20 дилеров для графика, чтобы избежать перегрузки
-    const topDealers = chartData.slice(0, 20);
-    
-    // Primary chart - продажи по дилерам
-    if (chartType === 'bar') {
-      D3Visualizer.createBarChart(topDealers, {
-        container: dealerChartRef.current,
-        title: `Топ-20 дилеров ${selectedModel.name} по продажам (${getDateRangeLabel()})`,
-        onClick: (item) => handleDealerClick(item.dealer),
-        height: 400,
-        colors: topDealers.map((_, i) => {
-          // Creating color variations
-          const baseColor = selectedModel.color;
-          const hslColor = d3.hsl(baseColor);
-          hslColor.l = 0.4 + (i * 0.1);
-          return hslColor.toString();
-        })
-      });
-    } else if (chartType === 'pie') {
-      D3Visualizer.createPieChart(topDealers, {
-        container: dealerChartRef.current,
-        title: `Доля продаж ${selectedModel.name} по топ-20 дилерам (${getDateRangeLabel()})`,
-        onClick: (item) => handleDealerClick(item.dealer),
-        height: 400,
-        colors: topDealers.map((_, i) => {
-          // Creating color variations
-          const baseColor = selectedModel.color;
-          const hslColor = d3.hsl(baseColor);
-          hslColor.l = 0.4 + (i * 0.1);
-          return hslColor.toString();
-        })
-      });
-    }
-    
-    // Вместо графика возвратов создаем график эффективности дилеров (среднее количество продаж на продавца)
-    // Очищаем контейнер
-    const container = dealerSecondaryChartRef.current;
-    container.innerHTML = '';
-    
-    // Подготавливаем данные для графика эффективности
-    const dealerEfficiency = sortedDealerData.slice(0, 10).map(dealer => {
-      // Находим всех продавцов для этого дилера
-      const dealerSalespeople = data.salespersonData.filter(
-        s => s.modelId === selectedModel.id && s.dealerId === dealer.dealerId
-      );
-      
-      // Вычисляем среднее количество продаж на одного продавца
-      const salesPerPerson = dealerSalespeople.length > 0 
-        ? dealer.sales / dealerSalespeople.length
-        : dealer.sales; // Если нет данных о продавцах, используем общие продажи
-      
-      return {
-        id: dealer.dealerId,
-        label: dealer.dealerName,
-        value: Math.round(salesPerPerson * 10) / 10, // Округляем до 1 десятичного знака
-        totalSales: dealer.sales,
-        salespeople: dealerSalespeople.length,
-        color: selectedModel.color,
-        dealer: dealer
-      };
+  if (!dealerChartRef.current || !dealerSecondaryChartRef.current || !filteredDealerData.length || !selectedModel) return;
+  
+  // Сортируем дилеров по продажам от большего к меньшему
+  const sortedDealerData = [...filteredDealerData].sort((a, b) => b.sales - a.sales);
+  
+  // Формат данных для D3 визуализатора
+  const chartData = sortedDealerData.map(dealer => ({
+    id: dealer.dealerId,
+    label: dealer.dealerName,
+    value: dealer.sales,
+    color: selectedModel.color,
+    dealer: dealer
+  }));
+  
+  // Берем только топ-20 дилеров для графика, чтобы избежать перегрузки
+  const topDealers = chartData.slice(0, 20);
+  
+  // Primary chart - продажи по дилерам
+  if (chartType === 'bar') {
+    D3Visualizer.createBarChart(topDealers, {
+      container: dealerChartRef.current,
+      title: `Топ-20 дилеров ${selectedModel.name} по продажам (${getDateRangeLabel()})`,
+      onClick: (item) => handleDealerClick(item.dealer),
+      height: 400,
+      colors: topDealers.map((_, i) => {
+        // Creating color variations
+        const baseColor = selectedModel.color;
+        const hslColor = d3.hsl(baseColor);
+        hslColor.l = 0.4 + (i * 0.1);
+        return hslColor.toString();
+      })
     });
+  } else if (chartType === 'pie') {
+    // Для круговой диаграммы будем использовать нативный D3.js для минималистичного отображения
+    const container = dealerChartRef.current;
+    container.innerHTML = '';
     
     // Настройка размеров графика
     const width = container.clientWidth;
     const height = 400;
-    const margin = { top: 40, right: 30, bottom: 100, left: 60 };
-    
-    const chartWidth = width - margin.left - margin.right;
-    const chartHeight = height - margin.top - margin.bottom;
+    const margin = { top: 40, right: 20, bottom: 20, left: 20 };
     
     // Создаем SVG элемент
     const svg = d3.select(container)
@@ -1598,7 +1555,7 @@ const renderModelTimelineChart = () => {
       .style('background', '#1f2937')
       .style('border-radius', '0.5rem');
     
-    // Добавляем заголовок
+    // Добавляем только заголовок
     svg.append('text')
       .attr('x', width / 2)
       .attr('y', margin.top / 2)
@@ -1606,129 +1563,317 @@ const renderModelTimelineChart = () => {
       .style('font-size', '1.2rem')
       .style('font-weight', 'bold')
       .style('fill', '#f9fafb')
-      .text(`Эффективность топ-10 дилеров ${selectedModel.name} (продажи на продавца)`);
+      .text(`Доля продаж ${selectedModel.name} по топ-20 дилерам (${getDateRangeLabel()})`);
     
-    // Основная группа для графика
-    const g = svg.append('g')
-      .attr('transform', `translate(${margin.left}, ${margin.top})`);
+    // Вычисляем радиус и центр для круговой диаграммы - делаем её максимально большой
+    const radius = Math.min(width, height) / 2 - Math.max(margin.top, margin.right, margin.bottom, margin.left);
+    const center = {
+      x: width / 2,
+      y: height / 2
+    };
     
-    // Настраиваем шкалы
-    const x = d3.scaleBand()
-      .domain(dealerEfficiency.map(d => d.label))
-      .range([0, chartWidth])
-      .padding(0.3);
+    // Создаем функцию для генерации секторов круговой диаграммы
+    const pie = d3.pie()
+      .value(d => d.value)
+      .sort(null); // Не сортировать, чтобы сохранить порядок по продажам
     
-    const y = d3.scaleLinear()
-      .domain([0, d3.max(dealerEfficiency, d => d.value) * 1.1])
-      .nice()
-      .range([chartHeight, 0]);
+    // Создаем арки для секторов
+    const arc = d3.arc()
+      .innerRadius(0) // 0 для обычной круговой диаграммы
+      .outerRadius(radius * 0.8); // Немного уменьшаем для отступов
     
-    // Добавляем оси
-    g.append('g')
-      .attr('transform', `translate(0, ${chartHeight})`)
-      .call(d3.axisBottom(x))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('text')
-        .attr('transform', 'rotate(-45)')
-        .attr('text-anchor', 'end')
-        .attr('x', -8)
-        .attr('y', 8)
-        .style('fill', '#f9fafb')
-        .style('font-size', '0.7rem'));
+    // Создаем дугу для подписей
+    const labelArc = d3.arc()
+      .innerRadius(radius * 0.5)
+      .outerRadius(radius * 0.7);
     
-    g.append('g')
-      .call(d3.axisLeft(y).ticks(5))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('text').style('fill', '#f9fafb'))
-      .call(g => g.selectAll('.tick line')
-        .attr('x2', chartWidth)
-        .attr('stroke-opacity', 0.1));
-    
-    // Добавляем столбцы
-    g.selectAll('.bar')
-      .data(dealerEfficiency)
-      .join('rect')
-      .attr('class', 'bar')
-      .attr('x', d => x(d.label))
-      .attr('y', d => y(d.value))
-      .attr('width', x.bandwidth())
-      .attr('height', d => chartHeight - y(d.value))
-      .attr('fill', (d, i) => {
+    // Создаем цветовую схему
+    const colorScale = d3.scaleOrdinal()
+      .domain(topDealers.map(d => d.id))
+      .range(topDealers.map((_, i) => {
         const baseColor = selectedModel.color;
         const hslColor = d3.hsl(baseColor);
-        hslColor.l = 0.4 + (i * 0.1);
+        hslColor.l = 0.4 + (i * 0.025); // Мягкий градиент
         return hslColor.toString();
-      })
-      .attr('rx', 4)
+      }));
+    
+    // Создаем группу для диаграммы и центрируем её
+    const pieGroup = svg.append('g')
+      .attr('transform', `translate(${center.x}, ${center.y})`);
+    
+    // Создаем секторы
+    const arcs = pieGroup.selectAll('.arc')
+      .data(pie(topDealers))
+      .enter()
+      .append('g')
+      .attr('class', 'arc')
       .style('cursor', 'pointer')
-      .on('click', (event, d) => handleDealerClick(d.dealer))
+      .on('click', (event, d) => handleDealerClick(d.data.dealer));
+    
+    // Добавляем секторы с анимацией
+    arcs.append('path')
+      .attr('d', arc)
+      .attr('fill', d => colorScale(d.data.id))
+      .attr('stroke', '#1f2937')
+      .attr('stroke-width', 1)
+      .attr('opacity', 0.9)
       .on('mouseover', function(event, d) {
-        // Увеличиваем столбец при наведении
+        // Подсвечиваем сектор при наведении
         d3.select(this)
           .transition()
-          .duration(100)
-          .attr('opacity', 0.8);
-          
-        // Отображаем текст значения над столбцом
-        g.append('text')
-      .attr('class', 'temp-value')
-          .attr('x', x(d.label) + x.bandwidth() / 2)
-          .attr('y', y(d.value) - 10)
+          .duration(200)
+          .attr('opacity', 1)
+          .attr('transform', 'scale(1.05)');
+        
+        // Показываем название дилера при наведении
+        const angle = (d.startAngle + d.endAngle) / 2;
+        const centroid = labelArc.centroid(d);
+        
+        // Вычисляем процент от общих продаж
+        const totalSales = topDealers.reduce((sum, dealer) => sum + dealer.value, 0);
+        const percent = (d.data.value / totalSales) * 100;
+        
+        // Добавляем временную всплывающую подсказку
+        const tooltip = pieGroup.append('g')
+          .attr('class', 'pie-tooltip')
+          .attr('transform', `translate(${centroid[0]}, ${centroid[1]})`);
+        
+        // Добавляем текст с названием дилера
+        tooltip.append('text')
+          .attr('dy', '-1.2em')
           .attr('text-anchor', 'middle')
-          .style('font-size', '12px')
+          .style('font-size', '11px')
           .style('font-weight', 'bold')
-          .style('fill', 'white')
-          .text(d.value.toFixed(1));
+          .style('fill', '#ffffff')
+          .text(d.data.label.length > 25 ? d.data.label.substring(0, 25) + '...' : d.data.label);
+        
+        // Добавляем текст с количеством продаж и процентом
+        tooltip.append('text')
+          .attr('dy', '0em')
+          .attr('text-anchor', 'middle')
+          .style('font-size', '10px')
+          .style('fill', '#ffffff')
+          .text(`${d.data.value.toLocaleString()} (${Math.round(percent)}%)`);
       })
       .on('mouseout', function() {
-          d3.select(this)
+        // Возвращаем сектор к обычному виду
+        d3.select(this)
           .transition()
-          .duration(100)
-          .attr('opacity', 1);
-          
-        // Удаляем временный текст
-        g.selectAll('.temp-value').remove();
+          .duration(200)
+          .attr('opacity', 0.9)
+          .attr('transform', 'scale(1)');
+        
+        // Удаляем временную подсказку
+        pieGroup.selectAll('.pie-tooltip').remove();
       })
+      .transition()
+      .duration(800)
+      .attrTween('d', function(d) {
+        const interpolate = d3.interpolate({ startAngle: 0, endAngle: 0 }, d);
+        return function(t) {
+          return arc(interpolate(t));
+        };
+      });
+    
+    // Добавляем процентные значения на все секторы
+    const totalSales = topDealers.reduce((sum, d) => sum + d.value, 0);
+    arcs.append('text')
+      .attr('transform', d => {
+        const centroid = labelArc.centroid(d);
+        return `translate(${centroid})`;
+      })
+      .attr('dy', '0.35em')
+      .attr('text-anchor', 'middle')
+      .text(d => {
+        const percent = (d.data.value / totalSales) * 100;
+        return percent >= 3 ? `${Math.round(percent)}%` : ''; // Показываем проценты для всех секторов >= 3%
+      })
+      .style('fill', '#ffffff')
+      .style('font-size', '11px')
+      .style('font-weight', 'bold')
+      .style('pointer-events', 'none') // Чтобы текст не мешал кликам
       .attr('opacity', 0)
       .transition()
+      .delay(800)
       .duration(500)
-      .delay((_, i) => i * 50)
       .attr('opacity', 1);
+  }
+  
+  // Вместо графика возвратов создаем график эффективности дилеров (среднее количество продаж на продавца)
+  // Очищаем контейнер
+  const container = dealerSecondaryChartRef.current;
+  container.innerHTML = '';
+  
+  // Подготавливаем данные для графика эффективности
+  const dealerEfficiency = sortedDealerData.slice(0, 10).map(dealer => {
+    // Находим всех продавцов для этого дилера
+    const dealerSalespeople = data.salespersonData.filter(
+      s => s.modelId === selectedModel.id && s.dealerId === dealer.dealerId
+    );
     
-    // Добавляем подписи к столбцам
-    g.selectAll('.value-label')
-      .data(dealerEfficiency)
-      .join('text')
-      .attr('class', 'value-label')
-      .attr('x', d => x(d.label) + x.bandwidth() / 2)
-      .attr('y', d => y(d.value) - 5)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '10px')
-      .style('fill', 'white')
-      .style('opacity', 0)
-      .text(d => d.value.toFixed(1))
-      .transition()
-      .duration(500)
-      .delay((_, i) => i * 50 + 500)
-      .style('opacity', 1);
+    // Вычисляем среднее количество продаж на одного продавца
+    const salesPerPerson = dealerSalespeople.length > 0 
+      ? dealer.sales / dealerSalespeople.length
+      : dealer.sales; // Если нет данных о продавцах, используем общие продажи
     
-    // Добавляем информацию о количестве продавцов
-    g.selectAll('.staff-label')
-      .data(dealerEfficiency)
-      .join('text')
-      .attr('class', 'staff-label')
-      .attr('x', d => x(d.label) + x.bandwidth() / 2)
-      .attr('y', chartHeight + 40)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '9px')
-      .style('fill', '#9ca3af')
-      .style('opacity', 0)
-      .text(d => `${d.salespeople} прод.`)
-      .transition()
-      .duration(500)
-      .delay((_, i) => i * 50 + 700)
-      .style('opacity', 1);
-  };
+    return {
+      id: dealer.dealerId,
+      label: dealer.dealerName,
+      value: Math.round(salesPerPerson * 10) / 10, // Округляем до 1 десятичного знака
+      totalSales: dealer.sales,
+      salespeople: dealerSalespeople.length,
+      color: selectedModel.color,
+      dealer: dealer
+    };
+  });
+  
+  // Настройка размеров графика
+  const width = container.clientWidth;
+  const height = 400;
+  const margin = { top: 40, right: 30, bottom: 100, left: 60 };
+  
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
+  
+  // Создаем SVG элемент
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height)
+    .style('background', '#1f2937')
+    .style('border-radius', '0.5rem');
+  
+  // Добавляем заголовок
+  svg.append('text')
+    .attr('x', width / 2)
+    .attr('y', margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '1.2rem')
+    .style('font-weight', 'bold')
+    .style('fill', '#f9fafb')
+    .text(`Эффективность топ-10 дилеров ${selectedModel.name} (продажи на продавца)`);
+  
+  // Основная группа для графика
+  const g = svg.append('g')
+    .attr('transform', `translate(${margin.left}, ${margin.top})`);
+  
+  // Настраиваем шкалы
+  const x = d3.scaleBand()
+    .domain(dealerEfficiency.map(d => d.label))
+    .range([0, chartWidth])
+    .padding(0.3);
+  
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(dealerEfficiency, d => d.value) * 1.1])
+    .nice()
+    .range([chartHeight, 0]);
+  
+  // Добавляем оси
+  g.append('g')
+    .attr('transform', `translate(0, ${chartHeight})`)
+    .call(d3.axisBottom(x))
+    .call(g => g.select('.domain').remove())
+    .call(g => g.selectAll('text')
+      .attr('transform', 'rotate(-45)')
+      .attr('text-anchor', 'end')
+      .attr('x', -8)
+      .attr('y', 8)
+      .style('fill', '#f9fafb')
+      .style('font-size', '0.7rem'));
+  
+  g.append('g')
+    .call(d3.axisLeft(y).ticks(5))
+    .call(g => g.select('.domain').remove())
+    .call(g => g.selectAll('text').style('fill', '#f9fafb'))
+    .call(g => g.selectAll('.tick line')
+      .attr('x2', chartWidth)
+      .attr('stroke-opacity', 0.1));
+  
+  // Добавляем столбцы
+  g.selectAll('.bar')
+    .data(dealerEfficiency)
+    .join('rect')
+    .attr('class', 'bar')
+    .attr('x', d => x(d.label))
+    .attr('y', d => y(d.value))
+    .attr('width', x.bandwidth())
+    .attr('height', d => chartHeight - y(d.value))
+    .attr('fill', (d, i) => {
+      const baseColor = selectedModel.color;
+      const hslColor = d3.hsl(baseColor);
+      hslColor.l = 0.4 + (i * 0.1);
+      return hslColor.toString();
+    })
+    .attr('rx', 4)
+    .style('cursor', 'pointer')
+    .on('click', (event, d) => handleDealerClick(d.dealer))
+    .on('mouseover', function(event, d) {
+      // Увеличиваем столбец при наведении
+      d3.select(this)
+        .transition()
+        .duration(100)
+        .attr('opacity', 0.8);
+        
+      // Отображаем текст значения над столбцом
+      g.append('text')
+        .attr('class', 'temp-value')
+        .attr('x', x(d.label) + x.bandwidth() / 2)
+        .attr('y', y(d.value) - 10)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .style('font-weight', 'bold')
+        .style('fill', 'white')
+        .text(d.value.toFixed(1));
+    })
+    .on('mouseout', function() {
+      d3.select(this)
+        .transition()
+        .duration(100)
+        .attr('opacity', 1);
+        
+      // Удаляем временный текст
+      g.selectAll('.temp-value').remove();
+    })
+    .attr('opacity', 0)
+    .transition()
+    .duration(500)
+    .delay((_, i) => i * 50)
+    .attr('opacity', 1);
+  
+  // Добавляем подписи к столбцам
+  g.selectAll('.value-label')
+    .data(dealerEfficiency)
+    .join('text')
+    .attr('class', 'value-label')
+    .attr('x', d => x(d.label) + x.bandwidth() / 2)
+    .attr('y', d => y(d.value) - 5)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '10px')
+    .style('fill', 'white')
+    .style('opacity', 0)
+    .text(d => d.value.toFixed(1))
+    .transition()
+    .duration(500)
+    .delay((_, i) => i * 50 + 500)
+    .style('opacity', 1);
+  
+  // Добавляем информацию о количестве продавцов
+  g.selectAll('.staff-label')
+    .data(dealerEfficiency)
+    .join('text')
+    .attr('class', 'staff-label')
+    .attr('x', d => x(d.label) + x.bandwidth() / 2)
+    .attr('y', chartHeight + 40)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '9px')
+    .style('fill', '#9ca3af')
+    .style('opacity', 0)
+    .text(d => `${d.salespeople} прод.`)
+    .transition()
+    .duration(500)
+    .delay((_, i) => i * 50 + 700)
+    .style('opacity', 1);
+};
 
   const renderGlobalTopSalespeople = () => {
   const topSalespeople = getGlobalTopSalespeople();
