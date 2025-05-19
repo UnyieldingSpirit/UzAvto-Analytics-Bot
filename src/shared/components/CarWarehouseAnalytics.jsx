@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -29,6 +29,52 @@ const CarWarehouseAnalytics = () => {
   const [totalReserved, setTotalReserved] = useState(0);
   const [totalAvailable, setTotalAvailable] = useState(0);
   
+  // Дополнительные состояния для улучшенного взаимодействия
+  const [selectedWarehouseModel, setSelectedWarehouseModel] = useState(null);
+  const [warehouseModelViewTab, setWarehouseModelViewTab] = useState('modifications');
+  const [modificationFilter, setModificationFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [colorFilter, setColorFilter] = useState('');
+  const [notifications, setNotifications] = useState([]);
+  
+  // Фильтрация модификаций
+  const filteredModifications = useMemo(() => {
+    if (!selectedCarModel) return [];
+    
+    return selectedCarModel.modifications.filter(mod => {
+      const matchesText = mod.name.toLowerCase().includes(modificationFilter.toLowerCase());
+      if (!matchesText) return false;
+      
+      if (statusFilter === 'all') return true;
+      if (statusFilter === 'available' && mod.available > 0) return true;
+      if (statusFilter === 'reserved' && mod.reserved > 0) return true;
+      if (statusFilter === 'defectiveOk' && mod.defectiveOk > 0) return true;
+      if (statusFilter === 'defective' && mod.defective > 0) return true;
+      
+      return false;
+    });
+  }, [selectedCarModel, modificationFilter, statusFilter]);
+  
+  // Фильтрация цветов
+  const filteredColors = useMemo(() => {
+    if (!selectedCarModel) return [];
+    
+    return selectedCarModel.colors.filter(color => 
+      color.name.toLowerCase().includes(colorFilter.toLowerCase())
+    );
+  }, [selectedCarModel, colorFilter]);
+  
+  // Функция для добавления уведомления
+  const addNotification = (message, type = 'info') => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, message, type }]);
+    
+    // Автоматическое скрытие через 5 секунд
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 5000);
+  };
+  
   // Загрузка данных с API
   useEffect(() => {
     const fetchData = async () => {
@@ -49,6 +95,7 @@ const CarWarehouseAnalytics = () => {
         console.error('Ошибка при загрузке данных:', err);
         setError('Не удалось загрузить данные. Пожалуйста, попробуйте позже.');
         setLoading(false);
+        addNotification('Ошибка загрузки данных', 'error');
       }
     };
     
@@ -319,6 +366,16 @@ const CarWarehouseAnalytics = () => {
     setTotalAvailable(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.available, 0));
   };
   
+  // Функция для переключения отображения модели в контексте склада
+  const toggleModelDetailInWarehouse = (modelId) => {
+    if (selectedWarehouseModel === modelId) {
+      setSelectedWarehouseModel(null);
+    } else {
+      setSelectedWarehouseModel(modelId);
+      setWarehouseModelViewTab('modifications');
+    }
+  };
+  
   // Обработчик клика по модели
   const handleCarModelClick = (model) => {
     if (selectedCarModel && selectedCarModel.id === model.id) {
@@ -329,6 +386,9 @@ const CarWarehouseAnalytics = () => {
       setSelectedCarModel(selectedModelData);
       setSelectedWarehouse(null); // Снимаем выбор склада при выборе модели
       setSelectedModification(null); // Сбрасываем выбор модификации
+      setModificationFilter('');
+      setStatusFilter('all');
+      setColorFilter('');
     }
   };
 
@@ -341,6 +401,7 @@ const CarWarehouseAnalytics = () => {
       setSelectedWarehouse(selectedWarehouseData);
       setSelectedCarModel(null); // Снимаем выбор модели при выборе склада
       setSelectedModification(null); // Сбрасываем выбор модификации
+      setSelectedWarehouseModel(null);
     }
   };
 
@@ -400,6 +461,76 @@ const CarWarehouseAnalytics = () => {
     
     return colorMap[colorName] || '#CCCCCC';
   }
+  
+  // Функция для экспорта данных о складах в CSV
+  const exportWarehouseData = () => {
+    // Создаем строки для CSV
+    const headers = ['Склад', 'Всего', 'Свободные', 'Закрепленные', 'Брак-ОК', 'Брак', 'Заполненность'];
+    const rows = enhancedWarehouses.map(warehouse => [
+      warehouse.name,
+      warehouse.totalCount,
+      warehouse.available,
+      warehouse.reserved,
+      warehouse.defectiveOk,
+      warehouse.defective,
+      `${warehouse.occupancyRate}%`
+    ]);
+    
+    // Объединяем в CSV
+    const csv = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+    
+    // Создаем и скачиваем файл
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `warehouse_data_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    addNotification('Данные успешно экспортированы в CSV', 'success');
+  };
+  
+  // Функция для экспорта данных о моделях в CSV
+  const exportModelData = () => {
+    // Создаем строки для CSV
+    const headers = ['Модель', 'Категория', 'Всего', 'Свободные', 'Закрепленные', 'Брак-ОК', 'Брак'];
+    const rows = enhancedCarModels.map(model => [
+      model.name,
+      model.category === 'sedan' ? 'Седан' : 
+      model.category === 'suv' ? 'Внедорожник' : 
+      model.category === 'minivan' ? 'Минивэн' : model.category,
+      model.totalCount,
+      model.available,
+      model.reserved,
+      model.defectiveOk,
+      model.defective
+    ]);
+    
+    // Объединяем в CSV
+    const csv = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+    
+    // Создаем и скачиваем файл
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `car_models_data_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    addNotification('Данные о моделях экспортированы в CSV', 'success');
+  };
 
   useEffect(() => {
     if (!loading && enhancedWarehouses.length > 0) {
@@ -638,173 +769,177 @@ const CarWarehouseAnalytics = () => {
       .text('Макс. емкость');
   };
    
-// Рендер круговой диаграммы складов
-const renderManufacturerChart = () => {
-  if (!manufacturerChartRef.current) return;
-  
-  const container = manufacturerChartRef.current;
-  container.innerHTML = '';
-  
-  const width = container.clientWidth;
-  const height = container.clientHeight;
-  const radius = Math.min(width, height) / 2 * 0.8;
-  
-  const svg = d3.select(container)
-    .append('svg')
-    .attr('width', width)
-    .attr('height', height)
-    .append('g')
-    .attr('transform', `translate(${width/2},${height/2})`);
+  // Рендер круговой диаграммы складов
+  const renderManufacturerChart = () => {
+    if (!manufacturerChartRef.current) return;
     
-  // Используем все склады, у которых есть автомобили
-  const warehouseData = enhancedWarehouses
-    .map(warehouse => ({
-      warehouse: warehouse.name,
-      value: warehouse.totalCount,
-      percentage: Math.round((warehouse.totalCount / totalVehicles) * 100)
-    }));
+    const container = manufacturerChartRef.current;
+    container.innerHTML = '';
     
-  // Создаем фиксированную цветовую схему для складов
-  const colorScale = d3.scaleOrdinal()
-    .domain(warehouseData.map(d => d.warehouse))
-    .range([
-      '#3b82f6', // синий
-      '#ef4444', // красный
-      '#f59e0b', // оранжевый
-      '#22c55e', // зеленый
-      '#8b5cf6', // фиолетовый
-      '#ec4899', // розовый
-      '#14b8a6', // бирюзовый
-      '#f97316', // оранжево-красный
-      '#6366f1', // индиго
-      '#84cc16'  // лайм
-    ]);
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    const radius = Math.min(width, height) / 2 * 0.8;
     
-  // Создаем пирог
-  const pie = d3.pie()
-    .value(d => d.value)
-    .sort(null);
-    
-  const data_ready = pie(warehouseData);
-  
-  // Создаем дуги
-  const arc = d3.arc()
-    .innerRadius(radius * 0.4)
-    .outerRadius(radius);
-    
-  const arcHover = d3.arc()
-    .innerRadius(radius * 0.4)
-    .outerRadius(radius * 1.07);
-    
-  // Создаем градиенты
-  const defs = svg.append('defs');
-  
-  warehouseData.forEach((d, i) => {
-    const gradientId = `pieGradient-${i}`;
-    const color = colorScale(d.warehouse);
-    
-    const gradient = defs.append('radialGradient')
-      .attr('id', gradientId)
-      .attr('cx', '50%')
-      .attr('cy', '50%')
-      .attr('r', '50%');
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .append('g')
+      .attr('transform', `translate(${width/2},${height/2})`);
       
-    gradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', d3.rgb(color).brighter(0.5))
-      .attr('stop-opacity', 1);
+    // Используем все склады, у которых есть автомобили
+    const warehouseData = enhancedWarehouses
+      .map(warehouse => ({
+        warehouse: warehouse.name,
+        value: warehouse.totalCount,
+        percentage: Math.round((warehouse.totalCount / totalVehicles) * 100)
+      }));
       
-    gradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', color)
-      .attr('stop-opacity', 1);
-  });
-  
-  // Добавляем дуги с градиентами
-  svg.selectAll('path')
-    .data(data_ready)
-    .join('path')
-    .attr('d', arc)
-    .attr('fill', (d, i) => `url(#pieGradient-${i})`)
-    .attr('stroke', '#1f2937')
-    .style('stroke-width', '2px')
-    .style('opacity', 0.9)
-    .style('cursor', 'pointer')
-    .on('mouseover', function(event, d) {
-      d3.select(this)
-        .transition()
-        .duration(200)
-        .attr('d', arcHover);
+    // Создаем фиксированную цветовую схему для складов
+    const colorScale = d3.scaleOrdinal()
+      .domain(warehouseData.map(d => d.warehouse))
+      .range([
+        '#3b82f6', // синий
+        '#ef4444', // красный
+        '#f59e0b', // оранжевый
+        '#22c55e', // зеленый
+        '#8b5cf6', // фиолетовый
+        '#ec4899', // розовый
+        '#14b8a6', // бирюзовый
+        '#f97316', // оранжево-красный
+        '#6366f1', // индиго
+        '#84cc16'  // лайм
+      ]);
+      
+    // Создаем пирог
+    const pie = d3.pie()
+      .value(d => d.value)
+      .sort(null);
+      
+    const data_ready = pie(warehouseData);
+    
+    // Создаем дуги
+    const arc = d3.arc()
+      .innerRadius(radius * 0.4)
+      .outerRadius(radius);
+      
+    const arcHover = d3.arc()
+      .innerRadius(radius * 0.4)
+      .outerRadius(radius * 1.07);
+      
+    // Создаем градиенты
+    const defs = svg.append('defs');
+    
+    warehouseData.forEach((d, i) => {
+      const gradientId = `pieGradient-${i}`;
+      const color = colorScale(d.warehouse);
+      
+      const gradient = defs.append('radialGradient')
+        .attr('id', gradientId)
+        .attr('cx', '50%')
+        .attr('cy', '50%')
+        .attr('r', '50%');
         
-      // Обновляем центральный текст
-      centerLabel.text(d.data.warehouse);
-      centerValue.text(`${d.data.percentage}% (${d.data.value} шт.)`);
-    })
-    .on('mouseout', function() {
-      d3.select(this)
-        .transition()
-        .duration(200)
-        .attr('d', arc);
+      gradient.append('stop')
+        .attr('offset', '0%')
+        .attr('stop-color', d3.rgb(color).brighter(0.5))
+        .attr('stop-opacity', 1);
         
-      // Сбрасываем центральный текст
-      centerLabel.text('Распределение');
-      centerValue.text('По складам');
-    })
-    .transition()
-    .duration(800)
-    .attrTween('d', function(d) {
-      const interpolate = d3.interpolate({startAngle: d.startAngle, endAngle: d.startAngle}, d);
-      return function(t) {
-        return arc(interpolate(t));
-      };
+      gradient.append('stop')
+        .attr('offset', '100%')
+        .attr('stop-color', color)
+        .attr('stop-opacity', 1);
     });
     
-  // Добавляем легенду
-  const legendG = svg.append('g')
-    .attr('transform', `translate(${radius + 20}, -${radius - 20})`);
-  
-  // Показываем легенду только если достаточно места
-  if (width > 350) {
-    const legend = legendG.selectAll('.legend')
+    // Добавляем дуги с градиентами
+    svg.selectAll('path')
       .data(data_ready)
-      .enter()
-      .append('g')
-      .attr('class', 'legend')
-      .attr('transform', (d, i) => `translate(0, ${i * 20})`);
-      
-    legend.append('rect')
-      .attr('width', 12)
-      .attr('height', 12)
-      .attr('fill', (d, i) => colorScale(d.data.warehouse));
-      
-    legend.append('text')
-      .attr('x', 20)
-      .attr('y', 10)
-      .text(d => {
-        const name = d.data.warehouse;
-        const truncated = name.length > 15 ? name.substring(0, 15) + '...' : name;
-        return truncated;
+      .join('path')
+      .attr('d', arc)
+      .attr('fill', (d, i) => `url(#pieGradient-${i})`)
+      .attr('stroke', '#1f2937')
+      .style('stroke-width', '2px')
+      .style('opacity', 0.9)
+      .style('cursor', 'pointer')
+      .on('mouseover', function(event, d) {
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .attr('d', arcHover);
+          
+        // Обновляем центральный текст
+        centerLabel.text(d.data.warehouse);
+        centerValue.text(`${d.data.percentage}% (${d.data.value} шт.)`);
       })
-      .style('font-size', '10px')
-      .style('fill', '#d1d5db');
-  }
+      .on('mouseout', function() {
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .attr('d', arc);
+          
+        // Сбрасываем центральный текст
+        centerLabel.text('Распределение');
+        centerValue.text('По складам');
+      })
+      .on('click', function(event, d) {
+        const warehouse = enhancedWarehouses.find(w => w.name === d.data.warehouse);
+        handleWarehouseClick(warehouse);
+      })
+      .transition()
+      .duration(800)
+      .attrTween('d', function(d) {
+        const interpolate = d3.interpolate({startAngle: d.startAngle, endAngle: d.startAngle}, d);
+        return function(t) {
+          return arc(interpolate(t));
+        };
+      });
+      
+    // Добавляем легенду
+    const legendG = svg.append('g')
+      .attr('transform', `translate(${radius + 20}, -${radius - 20})`);
     
-  // Центральный текст
-  const centerLabel = svg.append('text')
-    .attr('text-anchor', 'middle')
-    .attr('dy', '-0.5em')
-    .style('font-size', '16px')
-    .style('fill', '#d1d5db')
-    .text('Распределение');
-    
-  const centerValue = svg.append('text')
-    .attr('text-anchor', 'middle')
-    .attr('dy', '1em')
-    .style('font-size', '24px')
-    .style('font-weight', 'bold')
-    .style('fill', '#ffffff')
-    .text('По складам');
-};
+    // Показываем легенду только если достаточно места
+    if (width > 350) {
+      const legend = legendG.selectAll('.legend')
+        .data(data_ready)
+        .enter()
+        .append('g')
+        .attr('class', 'legend')
+        .attr('transform', (d, i) => `translate(0, ${i * 20})`);
+        
+      legend.append('rect')
+        .attr('width', 12)
+        .attr('height', 12)
+        .attr('fill', (d, i) => colorScale(d.data.warehouse));
+        
+      legend.append('text')
+        .attr('x', 20)
+        .attr('y', 10)
+        .text(d => {
+          const name = d.data.warehouse;
+          const truncated = name.length > 15 ? name.substring(0, 15) + '...' : name;
+          return truncated;
+        })
+        .style('font-size', '10px')
+        .style('fill', '#d1d5db');
+    }
+      
+    // Центральный текст
+    const centerLabel = svg.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', '-0.5em')
+      .style('font-size', '16px')
+      .style('fill', '#d1d5db')
+      .text('Распределение');
+      
+    const centerValue = svg.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', '1em')
+      .style('font-size', '24px')
+      .style('font-weight', 'bold')
+      .style('fill', '#ffffff')
+      .text('По складам');
+  };
   
   // Рендер графика инвентаря моделей с обновленными статусами
   const renderModelInventoryChart = () => {
@@ -1278,7 +1413,7 @@ const renderManufacturerChart = () => {
     
     // Создаем дуги
     const arc = d3.arc()
-      .innerRadius(radius * 0.7) // Делаем кольцевую диаграмму
+  .innerRadius(radius * 0.7) // Делаем кольцевую диаграмму
       .outerRadius(radius);
       
     const arcHover = d3.arc()
@@ -1390,6 +1525,56 @@ const renderManufacturerChart = () => {
       .text(`Статус: ${warehouse.status}`);
   };
 
+  // Компонент всплывающих подсказок
+  const Tooltip = ({ children, content }) => {
+    const [isVisible, setIsVisible] = useState(false);
+    
+    return (
+      <div 
+        className="relative inline-block"
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+      >
+        {children}
+        {isVisible && (
+          <div className="absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap">
+            {content}
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+          </div>
+        )}
+      </div>
+    );
+  };
+  
+  // Компонент уведомлений
+  const NotificationsContainer = () => (
+    <div className="fixed bottom-4 right-4 z-50 space-y-2">
+      <AnimatePresence>
+        {notifications.map(notification => (
+          <motion.div
+            key={notification.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`px-4 py-3 rounded-lg shadow-lg ${
+              notification.type === 'success' ? 'bg-green-600' :
+              notification.type === 'error' ? 'bg-red-600' :
+              notification.type === 'warning' ? 'bg-amber-600' : 'bg-blue-600'
+            } text-white max-w-sm`}
+          >
+            {notification.message}
+            <button 
+              className="ml-3 text-white opacity-70 hover:opacity-100"
+              onClick={() => setNotifications(prev => prev.filter(n => n.id !== notification.id))}
+            >
+              ×
+            </button>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+
   // Если данные загружаются, показываем индикатор загрузки
   if (loading) {
     return (
@@ -1430,594 +1615,901 @@ const renderManufacturerChart = () => {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-gray-800 p-4 rounded-lg shadow-md">
           <div className="flex items-center">
-           <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
+            <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-             </svg>
-           </div>
-           <div>
-             <div className="text-sm text-gray-400">Всего</div>
-             <div className="text-xl font-bold">{totalVehicles}</div>
-           </div>
-         </div>
-       </div>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm text-gray-400">Всего</div>
+              <div className="text-xl font-bold">{totalVehicles}</div>
+            </div>
+          </div>
+        </div>
        
-       <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-         <div className="flex items-center">
-           <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-             </svg>
-           </div>
-           <div>
-             <div className="text-sm text-gray-400">Свободные</div>
-             <div className="text-xl font-bold">{totalAvailable}</div>
-           </div>
-         </div>
-       </div>
+        <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+          <div className="flex items-center">
+            <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm text-gray-400">Свободные</div>
+              <div className="text-xl font-bold">{totalAvailable}</div>
+            </div>
+          </div>
+        </div>
        
-       <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-         <div className="flex items-center">
-           <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-             </svg>
-           </div>
-           <div>
-             <div className="text-sm text-gray-400">Закрепленные</div>
-             <div className="text-xl font-bold">{totalReserved}</div>
-           </div>
-         </div>
-       </div>
+        <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+          <div className="flex items-center">
+            <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm text-gray-400">Закрепленные</div>
+              <div className="text-xl font-bold">{totalReserved}</div>
+            </div>
+          </div>
+        </div>
        
-       <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-         <div className="flex items-center">
-           <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-             </svg>
-           </div>
-           <div>
-             <div className="text-sm text-gray-400">Брак-ОК</div>
-             <div className="text-xl font-bold">{totalDefectiveOk}</div>
-           </div>
-         </div>
-       </div>
+        <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+          <div className="flex items-center">
+            <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm text-gray-400">Брак-ОК</div>
+              <div className="text-xl font-bold">{totalDefectiveOk}</div>
+            </div>
+          </div>
+        </div>
        
-       <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-         <div className="flex items-center">
-           <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-             </svg>
-           </div>
-           <div>
-             <div className="text-sm text-gray-400">Бракованные</div>
-             <div className="text-xl font-bold">{totalDefective}</div>
-           </div>
-         </div>
-       </div>
-     </div>
+        <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+          <div className="flex items-center">
+            <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm text-gray-400">Бракованные</div>
+              <div className="text-xl font-bold">{totalDefective}</div>
+            </div>
+          </div>
+        </div>
+      </div>
      
-     {/* Обновленная метрика с временем обновления */}
-     <div className="bg-gray-800 p-4 rounded-lg shadow-md mb-6">
-       <div className="flex items-center justify-between">
-         <div>
-           <span className="text-sm text-gray-400">Всего моделей автомобилей: {enhancedCarModels.length}</span>
-         </div>
-         
-         <div className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm">
-           Обновлено: {new Date().toLocaleTimeString()}
-         </div>
-       </div>
-     </div>
+      {/* Обновленная метрика с временем обновления */}
+      <div className="bg-gray-800 p-4 rounded-lg shadow-md mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-sm text-gray-400">Всего моделей автомобилей: {enhancedCarModels.length}</span>
+          </div>
+          
+          <div className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm">
+            Обновлено: {new Date().toLocaleTimeString()}
+          </div>
+        </div>
+      </div>
      
-     {/* Основные графики */}
-     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-       <div className="bg-gray-800 rounded-lg p-4 shadow-md">
-         <div className="flex justify-between mb-2">
-           <h2 className="text-lg font-medium">Распределение по складам</h2>
-           <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Доли запасов</span>
-         </div>
-         <div ref={manufacturerChartRef} className="h-[300px]"></div>
-       </div>
+      {/* Основные графики */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="bg-gray-800 rounded-lg p-4 shadow-md">
+          <div className="flex justify-between mb-2">
+            <h2 className="text-lg font-medium">Распределение по складам</h2>
+            <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Доли запасов</span>
+          </div>
+          <div ref={manufacturerChartRef} className="h-[300px]"></div>
+        </div>
        
-       <div className="bg-gray-800 rounded-lg p-4 shadow-md">
-         <div className="flex justify-between mb-2">
-           <h2 className="text-lg font-medium">Распределение автомобилей по складам</h2>
-           <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Интерактивно</span>
-         </div>
-         <div ref={warehouseDistributionRef} className="h-[300px]"></div>
-       </div>
-     </div>
+        <div className="bg-gray-800 rounded-lg p-4 shadow-md">
+          <div className="flex justify-between mb-2">
+            <h2 className="text-lg font-medium">Распределение автомобилей по складам</h2>
+            <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Интерактивно</span>
+          </div>
+          <div ref={warehouseDistributionRef} className="h-[300px]"></div>
+        </div>
+      </div>
      
-     {/* График статусов моделей */}
-     <div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
-       <div className="flex justify-between mb-2">
-         <h2 className="text-lg font-medium">Статус автомобилей на складах</h2>
-         <span className="text-sm bg-green-500/20 text-green-400 px-2 py-1 rounded-full">Процентное соотношение</span>
-       </div>
-       <div ref={modelInventoryChartRef} className="h-[300px]"></div>
-     </div>
+      {/* График статусов моделей */}
+      <div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
+        <div className="flex justify-between mb-2">
+          <h2 className="text-lg font-medium">Статус автомобилей на складах</h2>
+          <span className="text-sm bg-green-500/20 text-green-400 px-2 py-1 rounded-full">Процентное соотношение</span>
+        </div>
+        <div ref={modelInventoryChartRef} className="h-[300px]"></div>
+      </div>
      
-     {/* Выбор модели авто с использованием фото */}
-     <div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
-       <div className="flex justify-between mb-4">
-         <div>
-           <h2 className="text-lg font-medium">Модели автомобилей</h2>
-           <p className="text-sm text-gray-400">Выберите модель для просмотра деталей</p>
-         </div>
-       </div>
+      {/* Выбор модели авто с использованием фото */}
+      <div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
+        <div className="flex justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-medium">Модели автомобилей</h2>
+            <p className="text-sm text-gray-400">Выберите модель для просмотра деталей</p>
+          </div>
+        </div>
        
-       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-         {enhancedCarModels.slice(0, 8).map(model => (
-           <div 
-             key={model.id}
-             className={`bg-gray-700 rounded-lg overflow-hidden cursor-pointer transition-all ${
-               selectedCarModel?.id === model.id ? 'ring-2 ring-blue-500' : 'hover:bg-gray-600'
-             }`}
-             onClick={() => handleCarModelClick(model)}
-           >
-             <div className="bg-gray-800 relative overflow-hidden rounded-t-lg">
-               <div className="pt-[75%] relative">
-                 <img 
-                   src={model.img} 
-                   alt={model.name}
-                   className="absolute inset-0 w-full h-full object-contain p-2" 
-                 />
-               </div>
-               <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-gray-900/70 text-xs text-white text-center">
-                 {model.category === 'sedan' ? 'Седан' :
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {enhancedCarModels.slice(0, 8).map(model => (
+            <div 
+              key={model.id}
+              className={`bg-gray-700 rounded-lg overflow-hidden cursor-pointer transition-all ${
+                selectedCarModel?.id === model.id ? 'ring-2 ring-blue-500' : 'hover:bg-gray-600'
+              }`}
+              onClick={() => handleCarModelClick(model)}
+            >
+              <div className="bg-gray-800 relative overflow-hidden rounded-t-lg">
+                <div className="pt-[75%] relative">
+                  <img 
+                    src={model.img} 
+                    alt={model.name}
+                    className="absolute inset-0 w-full h-full object-contain p-2" 
+                  />
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-gray-900/70 text-xs text-white text-center">
+                  {model.category === 'sedan' ? 'Седан' :
                   model.category === 'suv' ? 'Внедорожник' :
                   model.category === 'minivan' ? 'Минивэн' : model.category}
-               </div>
-             </div>
-             <div className="p-3">
-               <div className="font-medium text-white mb-1">{model.name}</div>
-               <div className="flex justify-between text-sm">
-                 <span className="text-gray-400">Всего:</span>
-                 <span className="text-white">{model.totalCount}</span>
-               </div>
-               <div className="mt-2 flex gap-1 flex-wrap">
-                 <span className="text-xs px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded">
-                   {model.available} своб.
-                 </span>
-                 <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">
-                   {model.reserved} закр.
-                 </span>
-                 <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded">
-                   {model.defectiveOk} брак-ок
-                 </span>
-                 <span className="text-xs px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded">
-                   {model.defective} брак
-                 </span>
-               </div>
-             </div>
-           </div>
-         ))}
-       </div>
-     </div>
+                </div>
+              </div>
+              <div className="p-3">
+                <div className="font-medium text-white mb-1">{model.name}</div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Всего:</span>
+                  <span className="text-white">{model.totalCount}</span>
+                </div>
+                <div className="mt-2 flex gap-1 flex-wrap">
+                  <span className="text-xs px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded">
+                    {model.available} своб.
+                  </span>
+                  <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">
+                    {model.reserved} закр.
+                  </span>
+                  <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded">
+                    {model.defectiveOk} брак-ок
+                  </span>
+                  <span className="text-xs px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded">
+                    {model.defective} брак
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
      
-     {/* Таблица складов с обновленными статусами */}
-     <div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
-       <div className="overflow-x-auto">
-         <table className="w-full text-sm">
-           <thead>
-             <tr className="bg-gray-900/60 text-gray-400 text-left">
-               <th className="p-3 rounded-l-lg">Название склада</th>
-               <th className="p-3">Емкость</th>
-               <th className="p-3">Заполнено</th>
-               <th className="p-3">Свободные</th>
-               <th className="p-3">Закрепленные</th>
-               <th className="p-3">Брак-ОК</th>
-               <th className="p-3">Брак</th>
-               <th className="p-3 rounded-r-lg">Действия</th>
-             </tr>
-           </thead>
-           <tbody className="divide-y divide-gray-700">
-             {enhancedWarehouses.map(warehouse => (
-               <motion.tr 
-                 key={warehouse.id} 
-                 className={`hover:bg-gray-700/30 transition-colors cursor-pointer ${
-                   selectedWarehouse?.id === warehouse.id ? 'bg-blue-900/20' : ''
-                 }`}
-                 onClick={() => handleWarehouseClick(warehouse)}
-                 whileHover={{ backgroundColor: 'rgba(55, 65, 81, 0.3)' }}
-               >
-                 <td className="p-3 font-medium">{warehouse.name}</td>
-                 <td className="p-3">{warehouse.capacity}</td>
-                 <td className="p-3">
-                   <div className="flex items-center">
-                     <div className="w-24 bg-gray-700 rounded-full h-2.5 mr-2">
-                       <div 
-                         className={`h-2.5 rounded-full ${
-                           warehouse.occupancyRate > 90 ? 'bg-red-500' : 
-                           warehouse.occupancyRate > 75 ? 'bg-orange-500' : 
-                           warehouse.occupancyRate > 50 ? 'bg-yellow-500' : 'bg-green-500'
-                         }`}
-                         style={{ width: `${warehouse.occupancyRate}%` }}
-                       ></div>
-                     </div>
-                     <span>{warehouse.occupancyRate}%</span>
-                   </div>
-                 </td>
-                 <td className="p-3">{warehouse.available}</td>
-                 <td className="p-3">{warehouse.reserved}</td>
-                 <td className="p-3">
-                   <span className={`bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full text-xs`}>
-                     {warehouse.defectiveOk}
-                   </span>
-                 </td>
-                 <td className="p-3">
-                   <span className={`bg-red-500/20 text-red-400 px-2 py-1 rounded-full text-xs`}>
-                     {warehouse.defective}
-                   </span>
-                 </td>
-                 <td className="p-3">
-                   <button className="text-blue-400 hover:text-blue-300 transition-colors p-1 rounded-full">
-                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                       <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                       <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                     </svg>
-                   </button>
-                 </td>
-               </motion.tr>
-             ))}
-           </tbody>
-         </table>
-       </div>
-     </div>
+      {/* Таблица складов с обновленными статусами */}
+      <div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-900/60 text-gray-400 text-left">
+                <th className="p-3 rounded-l-lg">Название склада</th>
+                <th className="p-3">Емкость</th>
+                <th className="p-3">Заполнено</th>
+                <th className="p-3">Свободные</th>
+                <th className="p-3">Закрепленные</th>
+                <th className="p-3">Брак-ОК</th>
+                <th className="p-3">Брак</th>
+                <th className="p-3 rounded-r-lg">Действия</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-700">
+              {enhancedWarehouses.map(warehouse => (
+                <motion.tr 
+                  key={warehouse.id} 
+                  className={`hover:bg-gray-700/30 transition-colors cursor-pointer ${
+                    selectedWarehouse?.id === warehouse.id ? 'bg-blue-900/20' : ''
+                  }`}
+                  onClick={() => handleWarehouseClick(warehouse)}
+                  whileHover={{ backgroundColor: 'rgba(55, 65, 81, 0.3)' }}
+                >
+                  <td className="p-3 font-medium">{warehouse.name}</td>
+                  <td className="p-3">{warehouse.capacity}</td>
+                  <td className="p-3">
+                    <div className="flex items-center">
+                      <div className="w-24 bg-gray-700 rounded-full h-2.5 mr-2">
+                        <div 
+                          className={`h-2.5 rounded-full ${
+                            warehouse.occupancyRate > 90 ? 'bg-red-500' : 
+                            warehouse.occupancyRate > 75 ? 'bg-orange-500' : 
+                            warehouse.occupancyRate > 50 ? 'bg-yellow-500' : 'bg-green-500'
+                          }`}
+                          style={{ width: `${warehouse.occupancyRate}%` }}
+                        ></div>
+                      </div>
+                      <span>{warehouse.occupancyRate}%</span>
+                    </div>
+                  </td>
+                  <td className="p-3">{warehouse.available}</td>
+                  <td className="p-3">{warehouse.reserved}</td>
+                  <td className="p-3">
+                    <span className={`bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full text-xs`}>
+                      {warehouse.defectiveOk}
+                    </span>
+                  </td>
+                  <td className="p-3">
+                    <span className={`bg-red-500/20 text-red-400 px-2 py-1 rounded-full text-xs`}>
+                      {warehouse.defective}
+                    </span>
+                  </td>
+                  <td className="p-3">
+                    <button className="text-blue-400 hover:text-blue-300 transition-colors p-1 rounded-full">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
      
-     {/* Детальная информация о выбранной модели */}
-     <AnimatePresence>
-       {selectedCarModel && (
-         <motion.div
-           initial={{ opacity: 0, y: 20 }}
-           animate={{ opacity: 1, y: 0 }}
-           exit={{ opacity: 0, y: 20 }}
-           transition={{ duration: 0.3 }}
-           className="bg-gray-800 rounded-lg p-5 shadow-md mb-6 border border-blue-900/30"
-         >
-           <div className="flex justify-between items-start mb-5">
-             <div className="flex items-center">
-               <img 
-                 src={selectedCarModel.img} 
-                 alt={selectedCarModel.name} 
-                 className="h-16 w-24 object-contain bg-gray-700 rounded mr-4" 
-               />
-               <div>
-                 <h2 className="text-xl font-bold text-white">{selectedCarModel.name}</h2>
-                 <p className="text-blue-400 text-sm">Детальная информация о модели</p>
-                 <div className="flex items-center mt-1">
-                   <span className="text-lg font-semibold text-white mr-2">{selectedCarModel.totalCount} шт.</span>
-                   <span className="text-sm capitalize bg-gray-700 px-2 py-0.5 rounded">{
-                     selectedCarModel.category === 'sedan' ? 'Седан' :
-                     selectedCarModel.category === 'suv' ? 'Внедорожник' :
-                     selectedCarModel.category === 'minivan' ? 'Минивэн' : selectedCarModel.category
-                   }</span>
-                 </div>
-               </div>
-             </div>
-             <button 
-               onClick={() => setSelectedCarModel(null)}
-               className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700/50"
-             >
-               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-               </svg>
-             </button>
-           </div>
+      {/* Детальная информация о выбранной модели */}
+      <AnimatePresence>
+        {selectedCarModel && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.3 }}
+            className="bg-gray-800 rounded-lg p-5 shadow-md mb-6 border border-blue-900/30"
+          >
+            <div className="flex justify-between items-start mb-5">
+              <div className="flex items-center">
+                <img 
+                  src={selectedCarModel.img} 
+                  alt={selectedCarModel.name} 
+                  className="h-16 w-24 object-contain bg-gray-700 rounded mr-4" 
+                />
+                <div>
+                  <h2 className="text-xl font-bold text-white">{selectedCarModel.name}</h2>
+                  <p className="text-blue-400 text-sm">Детальная информация о модели</p>
+                  <div className="flex items-center mt-1">
+                    <span className="text-lg font-semibold text-white mr-2">{selectedCarModel.totalCount} шт.</span>
+                    <span className="text-sm capitalize bg-gray-700 px-2 py-0.5 rounded">{
+                      selectedCarModel.category === 'sedan' ? 'Седан' :
+                      selectedCarModel.category === 'suv' ? 'Внедорожник' :
+                      selectedCarModel.category === 'minivan' ? 'Минивэн' : selectedCarModel.category
+                    }</span>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedCarModel(null)}
+                className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700/50"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
            
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
-             {/* Краткая информация о статусах */}
-             <div className="bg-gray-700/50 p-4 rounded-lg">
-               <h3 className="text-white font-medium mb-3">Статистика по модели</h3>
-               <div className="grid grid-cols-2 gap-3">
-                 <div className="bg-gray-800/70 p-3 rounded-lg">
-                   <div className="text-gray-400 text-xs">Всего на складах</div>
-                   <div className="text-white text-lg font-medium">{selectedCarModel.totalCount}</div>
-                 </div>
-                 <div className="bg-gray-800/70 p-3 rounded-lg">
-                   <div className="text-gray-400 text-xs">Свободные</div>
-                   <div className="text-white text-lg font-medium">{selectedCarModel.available}</div>
-                 </div>
-                 <div className="bg-gray-800/70 p-3 rounded-lg">
-                   <div className="text-gray-400 text-xs">Закрепленные</div>
-                   <div className="text-white text-lg font-medium">{selectedCarModel.reserved}</div>
-                 </div>
-                 <div className="bg-gray-800/70 p-3 rounded-lg">
-                   <div className="text-gray-400 text-xs">Брак-ОК</div>
-                   <div className="text-white text-lg font-medium">{selectedCarModel.defectiveOk}</div>
-                 </div>
-                 <div className="bg-gray-800/70 p-3 rounded-lg col-span-2">
-                   <div className="text-gray-400 text-xs">Бракованные</div>
-                   <div className="text-white text-lg font-medium">{selectedCarModel.defective}</div>
-                 </div>
-               </div>
-             </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+              {/* Краткая информация о статусах */}
+              <div className="bg-gray-700/50 p-4 rounded-lg">
+                <h3 className="text-white font-medium mb-3">Статистика по модели</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-800/70 p-3 rounded-lg">
+                    <div className="text-gray-400 text-xs">Всего на складах</div>
+                    <div className="text-white text-lg font-medium">{selectedCarModel.totalCount}</div>
+                  </div>
+                  <div className="bg-gray-800/70 p-3 rounded-lg">
+                    <div className="text-gray-400 text-xs">Свободные</div>
+                    <div className="text-white text-lg font-medium">{selectedCarModel.available}</div>
+                  </div>
+                  <div className="bg-gray-800/70 p-3 rounded-lg">
+                    <div className="text-gray-400 text-xs">Закрепленные</div>
+                    <div className="text-white text-lg font-medium">{selectedCarModel.reserved}</div>
+                  </div>
+                  <div className="bg-gray-800/70 p-3 rounded-lg">
+                    <div className="text-gray-400 text-xs">Брак-ОК</div>
+                    <div className="text-white text-lg font-medium">{selectedCarModel.defectiveOk}</div>
+                  </div>
+                  <div className="bg-gray-800/70 p-3 rounded-lg col-span-2">
+                    <div className="text-gray-400 text-xs">Бракованные</div>
+                    <div className="text-white text-lg font-medium">{selectedCarModel.defective}</div>
+                  </div>
+                </div>
+              </div>
              
-             {/* Доступность модели - изменено на линейные индикаторы */}
-             <div className="bg-gray-700/50 p-4 rounded-lg md:col-span-2">
-               <h3 className="text-white font-medium">Распределение по статусам</h3>
-               <div className="space-y-4 mt-3">
-                 {/* Свободные автомобили */}
-                 <div>
-                   <div className="flex justify-between mb-1">
-                     <span className="text-gray-300">Свободные</span>
-                     <span className="text-white font-medium">
-                       {selectedCarModel.available} шт. 
-                       ({Math.round((selectedCarModel.available / selectedCarModel.totalCount) * 100)}%)
-                     </span>
-                   </div>
-                   <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
-                     <div 
-                       className="h-full bg-green-500 rounded-full"
-                       style={{ width: `${(selectedCarModel.available / selectedCarModel.totalCount) * 100}%` }}
-                     ></div>
-                   </div>
-                 </div>
+              {/* Доступность модели - изменено на линейные индикаторы */}
+              <div className="bg-gray-700/50 p-4 rounded-lg md:col-span-2">
+                <h3 className="text-white font-medium">Распределение по статусам</h3>
+                <div className="space-y-4 mt-3">
+                  {/* Свободные автомобили */}
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-gray-300">Свободные</span>
+                      <span className="text-white font-medium">
+                        {selectedCarModel.available} шт. 
+                        ({Math.round((selectedCarModel.available / selectedCarModel.totalCount) * 100)}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-green-500 rounded-full"
+                        style={{ width: `${(selectedCarModel.available / selectedCarModel.totalCount) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
                  
-                 {/* Закрепленные автомобили */}
-                 <div>
-                   <div className="flex justify-between mb-1">
-                     <span className="text-gray-300">Закрепленные</span>
-                     <span className="text-white font-medium">
-                       {selectedCarModel.reserved} шт. 
-                       ({Math.round((selectedCarModel.reserved / selectedCarModel.totalCount) * 100)}%)
-                     </span>
-                   </div>
-                   <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
-                     <div 
-                       className="h-full bg-blue-500 rounded-full"
-                       style={{ width: `${(selectedCarModel.reserved / selectedCarModel.totalCount) * 100}%` }}
-                     ></div>
-                   </div>
-                 </div>
+                  {/* Закрепленные автомобили */}
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-gray-300">Закрепленные</span>
+                      <span className="text-white font-medium">
+                        {selectedCarModel.reserved} шт. 
+                        ({Math.round((selectedCarModel.reserved / selectedCarModel.totalCount) * 100)}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500 rounded-full"
+                        style={{ width: `${(selectedCarModel.reserved / selectedCarModel.totalCount) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
                  
-                 {/* Брак-ОК автомобили */}
-                 <div>
-                   <div className="flex justify-between mb-1">
-                     <span className="text-gray-300">Брак-ОК</span>
-                     <span className="text-white font-medium">
-                       {selectedCarModel.defectiveOk} шт. 
-                       ({Math.round((selectedCarModel.defectiveOk / selectedCarModel.totalCount) * 100)}%)
-                     </span>
-                   </div>
-                   <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
-                     <div 
-                       className="h-full bg-amber-500 rounded-full"
-                       style={{ width: `${(selectedCarModel.defectiveOk / selectedCarModel.totalCount) * 100}%` }}
-                     ></div>
-                   </div>
-                 </div>
+                  {/* Брак-ОК автомобили */}
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-gray-300">Брак-ОК</span>
+                      <span className="text-white font-medium">
+                        {selectedCarModel.defectiveOk} шт. 
+                        ({Math.round((selectedCarModel.defectiveOk / selectedCarModel.totalCount) * 100)}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-amber-500 rounded-full"
+                        style={{ width: `${(selectedCarModel.defectiveOk / selectedCarModel.totalCount) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
                  
-                 {/* Бракованные автомобили */}
-                 <div>
-                   <div className="flex justify-between mb-1">
-                     <span className="text-gray-300">Брак</span>
-                     <span className="text-white font-medium">
-                       {selectedCarModel.defective} шт. 
-                       ({Math.round((selectedCarModel.defective / selectedCarModel.totalCount) * 100)}%)
-                     </span>
-                   </div>
-                   <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
-                     <div 
-                       className="h-full bg-red-500 rounded-full"
-                       style={{ width: `${(selectedCarModel.defective / selectedCarModel.totalCount) * 100}%` }}
-                     ></div>
-                   </div>
-                 </div>
-               </div>
-             </div>
-           </div>
+                  {/* Бракованные автомобили */}
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-gray-300">Брак</span>
+                      <span className="text-white font-medium">
+                        {selectedCarModel.defective} шт. 
+                        ({Math.round((selectedCarModel.defective / selectedCarModel.totalCount) * 100)}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-red-500 rounded-full"
+                        style={{ width: `${(selectedCarModel.defective / selectedCarModel.totalCount) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
            
-           {/* График распределения по цветам */}
-           <div className="bg-gray-700/50 p-4 rounded-lg mb-5">
-             <h3 className="text-white font-medium mb-3">Распределение по цветам</h3>
-             <div ref={colorDistributionRef} className="h-[200px]"></div>
-           </div>
+            {/* График распределения по цветам - заменяем на улучшенную сетку цветов */}
+            <div className="bg-gray-700/50 p-4 rounded-lg mb-5">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-white font-medium">Распределение по цветам</h3>
+                <div className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
+                  {selectedCarModel.colors.length} доступных цветов
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {filteredColors.map(color => (
+                  <div key={color.name} className="bg-gray-800/70 p-3 rounded-lg overflow-hidden">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center">
+                        <div 
+                          className="w-6 h-6 rounded-full mr-2 border border-gray-600" 
+                          style={{ backgroundColor: color.hex }}
+                        />
+                        <span className="text-white text-sm font-medium">{color.name}</span>
+                      </div>
+                      <span className="text-gray-300 text-xs">{color.count} шт.</span>
+                    </div>
+                    
+                    {/* Индикаторы статусов */}
+                    <div className="space-y-2 mt-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-400">Свободные:</span>
+                        <div className="flex items-center">
+                          <span className="text-xs text-white mr-1">{color.available}</span>
+                          <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-green-500 rounded-full"
+                              style={{ width: `${(color.available / color.count) * 100}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-400">Закрепленные:</span>
+                        <div className="flex items-center">
+                          <span className="text-xs text-white mr-1">{color.reserved}</span>
+                          <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-blue-500 rounded-full"
+                              style={{ width: `${(color.reserved / color.count) * 100}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-400">Брак-ОК:</span>
+                        <div className="flex items-center">
+                          <span className="text-xs text-white mr-1">{color.defectiveOk}</span>
+                          <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-amber-500 rounded-full"
+                              style={{ width: `${(color.defectiveOk / color.count) * 100}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-400">Брак:</span>
+                        <div className="flex items-center">
+                          <span className="text-xs text-white mr-1">{color.defective}</span>
+                          <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-red-500 rounded-full"
+                              style={{ width: `${(color.defective / color.count) * 100}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
            
-           {/* Выбор модификации */}
-           <div className="bg-gray-700/50 p-4 rounded-lg mb-5">
-             <h3 className="text-white font-medium mb-3">Выберите модификацию</h3>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-               {selectedCarModel.modifications?.map(modification => (
-                 <div 
-                   key={modification.id} 
-                   className={`bg-gray-800/70 p-3 rounded-lg cursor-pointer transition-all ${
-                     selectedModification?.id === modification.id ? 'ring-2 ring-blue-500' : 'hover:bg-gray-800'
-                   }`}
-                   onClick={() => handleModificationClick(modification)}
-                 >
-                   <div className="flex justify-between mb-2">
-                     <span className="text-white font-medium">{modification.name}</span>
-                     <span className="text-sm text-gray-400">{modification.count} шт.</span>
-                   </div>
-                   <div className="flex gap-1.5 mb-2 flex-wrap">
-                     <span className="text-xs px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded">
-                       {modification.available} своб.
-                     </span>
-                     <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">
-                       {modification.reserved} закр.
-                     </span>
-                     <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded">
-                       {modification.defectiveOk} брак-ок
-                     </span>
-                     <span className="text-xs px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded">
-                       {modification.defective} брак
-                     </span>
-                   </div>
-                 </div>
-               ))}
-             </div>
-           </div>
+            {/* Выбор модификации - улучшенное отображение */}
+            <div className="bg-gray-700/50 p-4 rounded-lg mb-5">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-white font-medium">Модификации {selectedCarModel.name}</h3>
+                <div className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
+                  {selectedCarModel.modifications.length} модификаций
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {filteredModifications.map(modification => (
+                  <div 
+                    key={modification.id} 
+                    className={`bg-gray-800/70 p-3 rounded-lg cursor-pointer transition-all ${
+                      selectedModification?.id === modification.id ? 'ring-2 ring-blue-500' : 'hover:bg-gray-800'
+                    }`}
+                    onClick={() => handleModificationClick(modification)}
+                  >
+                    <div className="flex justify-between mb-2">
+                      <span className="text-white font-medium">{modification.name}</span>
+                      <span className="text-sm text-gray-400">{modification.count} шт.</span>
+                    </div>
+                    
+                    {/* Полоса прогресса для отображения статусов */}
+                    <div className="h-2 w-full bg-gray-700 rounded-full overflow-hidden flex mb-3">
+                      <div 
+                        className="h-full bg-green-500" 
+                        style={{ width: `${(modification.available / modification.count) * 100}%` }}
+                      ></div>
+                      <div 
+                        className="h-full bg-blue-500" 
+                        style={{ width: `${(modification.reserved / modification.count) * 100}%` }}
+                      ></div>
+                      <div 
+                        className="h-full bg-amber-500" 
+                        style={{ width: `${(modification.defectiveOk / modification.count) * 100}%` }}
+                      ></div>
+                      <div 
+                        className="h-full bg-red-500" 
+                        style={{ width: `${(modification.defective / modification.count) * 100}%` }}
+                      ></div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex justify-between items-center bg-green-500/10 px-2 py-1 rounded">
+                        <span className="text-xs text-green-400">Свободные</span>
+                        <span className="text-xs text-white">{modification.available}</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-blue-500/10 px-2 py-1 rounded">
+                        <span className="text-xs text-blue-400">Закреплено</span>
+                        <span className="text-xs text-white">{modification.reserved}</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-amber-500/10 px-2 py-1 rounded">
+                        <span className="text-xs text-amber-400">Брак-ОК</span>
+                        <span className="text-xs text-white">{modification.defectiveOk}</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-red-500/10 px-2 py-1 rounded">
+                        <span className="text-xs text-red-400">Брак</span>
+                        <span className="text-xs text-white">{modification.defective}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
            
-           {/* Отображение выбранной модификации */}
-           {selectedModification && (
-             <div className="bg-gray-700/50 p-4 rounded-lg mb-5">
-               <div className="flex flex-col md:flex-row gap-5">
-                 <div className="md:w-1/2">
-                   <h3 className="text-white font-medium mb-3">{selectedCarModel.name} - {selectedModification.name}</h3>
-                   <img 
-                     src={selectedModification.image} 
-                     alt={`${selectedCarModel.name} ${selectedModification.name}`} 
-                     className="w-full h-64 object-cover rounded-lg"
-                   />
-                 </div>
-                 <div className="md:w-1/2 flex flex-col">
-                   <h3 className="text-white font-medium mb-3">Детали модификации</h3>
-                   <div className="grid grid-cols-2 gap-3 mb-auto">
-                     <div className="bg-gray-800/70 p-3 rounded-lg">
-                       <div className="text-gray-400 text-xs">Всего</div>
-                       <div className="text-white text-lg font-medium">{selectedModification.count}</div>
-                     </div>
-                     <div className="bg-gray-800/70 p-3 rounded-lg">
-                       <div className="text-gray-400 text-xs">Свободные</div>
-                       <div className="text-white text-lg font-medium">{selectedModification.available}</div>
-                     </div>
-                     <div className="bg-gray-800/70 p-3 rounded-lg">
-                       <div className="text-gray-400 text-xs">Закрепленные</div>
-                       <div className="text-white text-lg font-medium">{selectedModification.reserved}</div>
-                     </div>
-                     <div className="bg-gray-800/70 p-3 rounded-lg">
-                       <div className="text-gray-400 text-xs">Брак-ОК</div>
-                       <div className="text-white text-lg font-medium">{selectedModification.defectiveOk}</div>
-                     </div>
-                     <div className="bg-gray-800/70 p-3 rounded-lg col-span-2">
-                       <div className="text-gray-400 text-xs">Бракованные</div>
-                       <div className="text-white text-lg font-medium">{selectedModification.defective}</div>
-                     </div>
-                   </div>
-                 </div>
-               </div>
-             </div>
-           )}
-           
-           {/* Кнопки действий */}
-           <div className="flex flex-wrap justify-end gap-3">
-             <button className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-sm">
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" viewBox="0 0 20 20" fill="currentColor">
-                 <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-               </svg>
-               Отчет
-             </button>
-             <button className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded text-sm">
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" viewBox="0 0 20 20" fill="currentColor">
-                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-               </svg>
-               Заказать
-             </button>
-           </div>
-         </motion.div>
-       )}
-     </AnimatePresence>
+            {/* Отображение выбранной модификации */}
+            {selectedModification && (
+              <div className="bg-gray-700/50 p-4 rounded-lg mb-5">
+                <div className="flex flex-col md:flex-row gap-5">
+                  <div className="md:w-1/2">
+                    <h3 className="text-white font-medium mb-3">{selectedCarModel.name} - {selectedModification.name}</h3>
+                    <img 
+                      src={selectedModification.image} 
+                      alt={`${selectedCarModel.name} ${selectedModification.name}`} 
+                      className="w-full h-64 object-cover rounded-lg"
+                    />
+                  </div>
+                  <div className="md:w-1/2 flex flex-col">
+                    <h3 className="text-white font-medium mb-3">Детали модификации</h3>
+                    <div className="grid grid-cols-2 gap-3 mb-auto">
+                      <div className="bg-gray-800/70 p-3 rounded-lg">
+                        <div className="text-gray-400 text-xs">Всего</div>
+                        <div className="text-white text-lg font-medium">{selectedModification.count}</div>
+                      </div>
+                      <div className="bg-gray-800/70 p-3 rounded-lg">
+                        <div className="text-gray-400 text-xs">Свободные</div>
+                        <div className="text-white text-lg font-medium">{selectedModification.available}</div>
+                      </div>
+                      <div className="bg-gray-800/70 p-3 rounded-lg">
+                        <div className="text-gray-400 text-xs">Закрепленные</div>
+                        <div className="text-white text-lg font-medium">{selectedModification.reserved}</div>
+                      </div>
+                      <div className="bg-gray-800/70 p-3 rounded-lg">
+                        <div className="text-gray-400 text-xs">Брак-ОК</div>
+                        <div className="text-white text-lg font-medium">{selectedModification.defectiveOk}</div>
+                      </div>
+                      <div className="bg-gray-800/70 p-3 rounded-lg col-span-2">
+                        <div className="text-gray-400 text-xs">Бракованные</div>
+                        <div className="text-white text-lg font-medium">{selectedModification.defective}</div>
+                      </div>
+                    </div>
+                    
+                    {/* Добавляем блок распределения по складам */}
+                    <div className="mt-5">
+                      <h4 className="text-white font-medium mb-2">Распределение по складам</h4>
+                      <div className="bg-gray-800/70 p-3 rounded-lg">
+                        <div className="space-y-2">
+                          {[...Array(Math.min(5, enhancedWarehouses.length))].map((_, index) => {
+                            // Имитационные данные для примера
+                            const warehouse = enhancedWarehouses[index];
+                            const availableCount = Math.floor(selectedModification.available * (Math.random() * 0.5 + 0.5));
+                            const warehousePercent = Math.floor((availableCount / selectedModification.available) * 100);
+                            
+                            return (
+                              <div key={index} className="flex justify-between items-center">
+                                <span className="text-xs text-gray-400">{warehouse.name}</span>
+                                <div className="flex items-center">
+                                  <span className="text-xs text-white mr-1">≈{availableCount} шт</span>
+                                  <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                    <div 
+                                      className="h-full bg-blue-500 rounded-full"
+                                      style={{ width: `${warehousePercent}%` }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
      
-     {/* Детальная информация о выбранном складе */}
-     <AnimatePresence>
-       {selectedWarehouse && (
-         <motion.div
-           initial={{ opacity: 0, y: 20 }}
-           animate={{ opacity: 1, y: 0 }}
-           exit={{ opacity: 0, y: 20 }}
-           transition={{ duration: 0.3 }}
-           className="bg-gray-800 rounded-lg p-5 shadow-md mb-6 border border-purple-900/30"
-         >
-           <div className="flex justify-between items-start mb-5">
-             <div>
-               <h2 className="text-xl font-bold text-white">{selectedWarehouse.name}</h2>
-               <p className="text-purple-400 text-sm">Детальная информация о складе</p>
-               <div className="flex items-center mt-1">
-                 <span className="text-lg font-semibold text-white mr-2">{selectedWarehouse.totalCount} авто</span>
-                 <span className={`text-sm px-2 py-0.5 rounded ${
-                   selectedWarehouse.status === 'критический' ? 'bg-red-500/20 text-red-400' :
-                   selectedWarehouse.status === 'высокий' ? 'bg-orange-500/20 text-orange-400' :
-                   selectedWarehouse.status === 'средний' ? 'bg-yellow-500/20 text-yellow-400' :
-                   'bg-green-500/20 text-green-400'
-                 }`}>
-                   Заполнение: {selectedWarehouse.occupancyRate}%
-                 </span>
-               </div>
-             </div>
-             <button 
-               onClick={() => setSelectedWarehouse(null)}
-               className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700/50"
-             >
-               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-               </svg>
-             </button>
-           </div>
+      {/* Детальная информация о выбранном складе */}
+      <AnimatePresence>
+        {selectedWarehouse && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.3 }}
+            className="bg-gray-800 rounded-lg p-5 shadow-md mb-6 border border-purple-900/30"
+          >
+            <div className="flex justify-between items-start mb-5">
+              <div>
+                <h2 className="text-xl font-bold text-white">{selectedWarehouse.name}</h2>
+                <p className="text-purple-400 text-sm">Детальная информация о складе</p>
+                <div className="flex items-center mt-1">
+                  <span className="text-lg font-semibold text-white mr-2">{selectedWarehouse.totalCount} авто</span>
+                  <span className={`text-sm px-2 py-0.5 rounded ${
+                    selectedWarehouse.status === 'критический' ? 'bg-red-500/20 text-red-400' :
+                    selectedWarehouse.status === 'высокий' ? 'bg-orange-500/20 text-orange-400' :
+                    selectedWarehouse.status === 'средний' ? 'bg-yellow-500/20 text-yellow-400' :
+                    'bg-green-500/20 text-green-400'
+                  }`}>
+                    Заполнение: {selectedWarehouse.occupancyRate}%
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedWarehouse(null)}
+                className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700/50"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
            
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
-             {/* Краткая информация с обновленными статусами */}
-             <div className="bg-gray-700/50 p-4 rounded-lg">
-               <h3 className="text-white font-medium mb-3">Информация о складе</h3>
-               <div className="grid grid-cols-2 gap-3">
-                 <div className="bg-gray-800/70 p-3 rounded-lg">
-                   <div className="text-gray-400 text-xs">Всего авто</div>
-                   <div className="text-white text-lg font-medium">{selectedWarehouse.totalCount}</div>
-                 </div>
-                 <div className="bg-gray-800/70 p-3 rounded-lg">
-                   <div className="text-gray-400 text-xs">Свободные</div>
-                   <div className="text-white text-lg font-medium">{selectedWarehouse.available}</div>
-                 </div>
-                 <div className="bg-gray-800/70 p-3 rounded-lg">
-                   <div className="text-gray-400 text-xs">Закрепленные</div>
-                   <div className="text-white text-lg font-medium">{selectedWarehouse.reserved}</div>
-                 </div>
-                 <div className="bg-gray-800/70 p-3 rounded-lg">
-                   <div className="text-gray-400 text-xs">Брак-ОК</div>
-                   <div className="text-white text-lg font-medium">{selectedWarehouse.defectiveOk}</div>
-                 </div>
-                 <div className="bg-gray-800/70 p-3 rounded-lg col-span-2">
-                   <div className="text-gray-400 text-xs">Бракованные</div>
-                   <div className="text-white text-lg font-medium">{selectedWarehouse.defective}</div>
-                 </div>
-               </div>
-             </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+              {/* Краткая информация с обновленными статусами */}
+              <div className="bg-gray-700/50 p-4 rounded-lg">
+                <h3 className="text-white font-medium mb-3">Информация о складе</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-800/70 p-3 rounded-lg">
+                    <div className="text-gray-400 text-xs">Всего авто</div>
+                    <div className="text-white text-lg font-medium">{selectedWarehouse.totalCount}</div>
+                  </div>
+                  <div className="bg-gray-800/70 p-3 rounded-lg">
+                    <div className="text-gray-400 text-xs">Свободные</div>
+                    <div className="text-white text-lg font-medium">{selectedWarehouse.available}</div>
+                  </div>
+                  <div className="bg-gray-800/70 p-3 rounded-lg">
+                    <div className="text-gray-400 text-xs">Закрепленные</div>
+                    <div className="text-white text-lg font-medium">{selectedWarehouse.reserved}</div>
+                  </div>
+                  <div className="bg-gray-800/70 p-3 rounded-lg">
+                    <div className="text-gray-400 text-xs">Брак-ОК</div>
+                    <div className="text-white text-lg font-medium">{selectedWarehouse.defectiveOk}</div>
+                  </div>
+                  <div className="bg-gray-800/70 p-3 rounded-lg col-span-2">
+                    <div className="text-gray-400 text-xs">Бракованные</div>
+                    <div className="text-white text-lg font-medium">{selectedWarehouse.defective}</div>
+                  </div>
+                </div>
+              </div>
              
-             {/* График заполненности склада */}
-             <div className="bg-gray-700/50 p-4 rounded-lg md:col-span-2">
-               <h3 className="text-white font-medium mb-3">Заполненность склада</h3>
-               <div ref={warehouseOccupancyRef} className="h-[200px]"></div>
-             </div>
-           </div>
+              {/* График заполненности склада */}
+              <div className="bg-gray-700/50 p-4 rounded-lg md:col-span-2">
+                <h3 className="text-white font-medium mb-3">Заполненность склада</h3>
+                <div ref={warehouseOccupancyRef} className="h-[200px]"></div>
+              </div>
+            </div>
            
-           <div className="grid grid-cols-1 md:grid-cols-1 gap-5 mb-5">
-             {/* Распределение по моделям */}
-             <div className="bg-gray-700/50 p-4 rounded-lg">
-               <h3 className="text-white font-medium mb-3">Распределение по моделям</h3>
-               <div className="space-y-3">
-                 {selectedWarehouse.models.filter(model => model.count > 0).slice(0, 5).map(model => (
-                   <div key={model.id} className="group cursor-pointer" onClick={() => handleCarModelClick(model.id)}>
-                     <div className="flex justify-between mb-1">
-                       <span className="text-gray-300">{model.name}</span>
-                       <div>
-                         <span className="font-medium text-white">{model.count} шт.</span>
-                         <span className="ml-2 text-xs text-red-400">
-                           {model.defective > 0 ? `(${model.defective} брак)` : ''}
-                         </span>
-                         <span className="ml-2 text-xs text-amber-400">
-                           {model.defectiveOk > 0 ? `(${model.defectiveOk} брак-ок)` : ''}
-                         </span>
-                       </div>
-                     </div>
-                     <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
-                       <div 
-                         className="h-full bg-purple-500 group-hover:bg-purple-400 transition-all rounded-full"
-                         style={{ width: `${(model.count / selectedWarehouse.totalCount) * 100}%` }}
-                       ></div>
-                     </div>
-                   </div>
-                 ))}
-               </div>
-             </div>
-           </div>
-         </motion.div>
-       )}
-     </AnimatePresence>
-   </div>
- );
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-5 mb-5">
+              {/* Распределение по моделям */}
+              <div className="bg-gray-700/50 p-4 rounded-lg">
+                <h3 className="text-white font-medium mb-3">Распределение по моделям</h3>
+                <div className="space-y-3">
+                  {selectedWarehouse.models.filter(model => model.count > 0).slice(0, 5).map(model => (
+                    <div key={model.id} className="group cursor-pointer" onClick={() => toggleModelDetailInWarehouse(model.id)}>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-gray-300">{model.name}</span>
+                        <div>
+                          <span className="font-medium text-white">{model.count} шт.</span>
+                          <span className="ml-2 text-xs text-red-400">
+                            {model.defective > 0 ? `(${model.defective} брак)` : ''}
+                          </span>
+                          <span className="ml-2 text-xs text-amber-400">
+                            {model.defectiveOk > 0 ? `(${model.defectiveOk} брак-ок)` : ''}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-purple-500 group-hover:bg-purple-400 transition-all rounded-full"
+                          style={{ width: `${(model.count / selectedWarehouse.totalCount) * 100}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Расширенное представление для выбранной модели в контексте склада */}
+                <AnimatePresence>
+                  {selectedWarehouseModel && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="bg-gray-800/60 mt-5 p-4 rounded-lg overflow-hidden"
+                    >
+                      {(() => {
+                        // Находим данные выбранной модели
+                        const modelData = selectedWarehouse.models.find(m => m.id === selectedWarehouseModel);
+                        // Находим полные данные модели
+                        const fullModelData = enhancedCarModels.find(m => m.id === selectedWarehouseModel);
+                        
+                        if (!modelData || !fullModelData) return <div>Данные не найдены</div>;
+                        
+                        return (
+                          <>
+                            <div className="flex justify-between items-center mb-4">
+                              <h4 className="text-lg font-medium text-white">{modelData.name} на складе {selectedWarehouse.name}</h4>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedWarehouseModel(null);
+                                }}
+                                className="text-gray-400 hover:text-white"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                            
+                            {/* Статистика по модели на этом складе */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                              <div className="bg-gray-700 p-3 rounded-lg">
+                                <div className="text-gray-400 text-xs">Всего</div>
+                                <div className="text-white text-lg font-medium">{modelData.count}</div>
+                              </div>
+                              <div className="bg-green-900/30 p-3 rounded-lg">
+                                <div className="text-green-400 text-xs">Свободные</div>
+                                <div className="text-white text-lg font-medium">{modelData.available}</div>
+                              </div>
+                              <div className="bg-blue-900/30 p-3 rounded-lg">
+                                <div className="text-blue-400 text-xs">Закрепленные</div>
+                                <div className="text-white text-lg font-medium">{modelData.reserved}</div>
+                              </div>
+                              <div className="bg-amber-900/30 p-3 rounded-lg">
+                                <div className="text-amber-400 text-xs">Брак</div>
+                                <div className="text-white text-lg font-medium">{modelData.defective + modelData.defectiveOk}</div>
+                              </div>
+                            </div>
+                            
+                            {/* Табы для выбора между цветами и модификациями */}
+                            <div className="border-b border-gray-700 mb-4">
+                              <nav className="-mb-px flex space-x-6">
+                                <button 
+                                  className={`pb-2 font-medium text-sm ${
+                                    warehouseModelViewTab === 'modifications' 
+                                      ? 'border-b-2 border-blue-500 text-blue-400' 
+                                      : 'text-gray-400 hover:text-gray-300'
+                                  }`}
+                                  onClick={() => setWarehouseModelViewTab('modifications')}
+                                >
+                                  Модификации
+                                </button>
+                                <button 
+                                  className={`pb-2 font-medium text-sm ${
+                                    warehouseModelViewTab === 'colors' 
+                                      ? 'border-b-2 border-blue-500 text-blue-400' 
+                                      : 'text-gray-400 hover:text-gray-300'
+                                  }`}
+                                  onClick={() => setWarehouseModelViewTab('colors')}
+                                >
+                                  Цвета
+                                </button>
+                              </nav>
+                            </div>
+                            
+                            {/* Содержимое таба модификаций */}
+                            {warehouseModelViewTab === 'modifications' && (
+                              <div className="space-y-3">
+                                <h5 className="text-sm font-medium text-gray-300 mb-2">Все модификации {modelData.name}</h5>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {fullModelData.modifications.map(mod => {
+                                    // Получаем данные только для этого склада с помощью API (упрощенный пример)
+                                    // В реальном приложении здесь будет запрос к API или фильтрация данных
+                                    const warehouseMod = {
+                                      ...mod,
+                                      // В примере генерируем примерные данные
+                                      warehouseCount: Math.floor(mod.count * (modelData.count / fullModelData.totalCount))
+                                    };
+                                    
+                                    // Пропускаем модификации без автомобилей на этом складе
+                                    if (warehouseMod.warehouseCount <= 0) return null;
+                                    
+                                    return (
+                                      <div key={mod.id} className="bg-gray-700/50 p-3 rounded-lg">
+                                        <div className="flex justify-between mb-1">
+                                          <span className="text-white text-sm">{mod.name}</span>
+                                          <span className="text-gray-400 text-xs">{warehouseMod.warehouseCount} шт.</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-1 mt-2">
+                                          <div className="bg-green-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-green-400 text-xs">Своб:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.available / modelData.count))}</span>
+                                          </div>
+                                          <div className="bg-blue-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-blue-400 text-xs">Закр:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.reserved / modelData.count))}</span>
+                                          </div>
+                                          <div className="bg-amber-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-amber-400 text-xs">Б-ОК:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.defectiveOk / modelData.count))}</span>
+                                          </div>
+                                          <div className="bg-red-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-red-400 text-xs">Брак:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.defective / modelData.count))}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  }).filter(Boolean)}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Содержимое таба цветов */}
+                            {warehouseModelViewTab === 'colors' && (
+                              <div className="space-y-3">
+                                <h5 className="text-sm font-medium text-gray-300 mb-2">Распределение по цветам</h5>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {fullModelData.colors.map(color => {
+                                    // Получаем данные только для этого склада
+                                    const warehouseColor = {
+                                      ...color,
+                                      // В примере генерируем примерные данные
+                                      warehouseCount: Math.floor(color.count * (modelData.count / fullModelData.totalCount))
+                                    };
+                                    
+                                    // Пропускаем цвета без автомобилей на этом складе
+                                    if (warehouseColor.warehouseCount <= 0) return null;
+                                    
+                                    return (
+                                      <div key={color.name} className="bg-gray-700/50 p-3 rounded-lg">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <div className="flex items-center">
+                                            <div 
+                                              className="w-4 h-4 rounded-full mr-2 border border-gray-600" 
+                                              style={{ backgroundColor: color.hex }}
+                                            />
+                                            <span className="text-white text-sm">{color.name}</span>
+                                          </div>
+                                          <span className="text-gray-400 text-xs">{warehouseColor.warehouseCount} шт.</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-1 mt-2">
+                                          <div className="bg-green-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-green-400 text-xs">Своб:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.available / modelData.count))}</span>
+                                          </div>
+                                          <div className="bg-blue-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-blue-400 text-xs">Закр:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.reserved / modelData.count))}</span>
+                                          </div>
+                                          <div className="bg-amber-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-amber-400 text-xs">Б-ОК:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.defectiveOk / modelData.count))}</span>
+                                          </div>
+                                          <div className="bg-red-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-red-400 text-xs">Брак:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.defective / modelData.count))}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  }).filter(Boolean)}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 };
 
 export default CarWarehouseAnalytics;

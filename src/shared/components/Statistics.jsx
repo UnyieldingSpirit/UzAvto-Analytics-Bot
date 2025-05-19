@@ -25,12 +25,11 @@ export default function Statistics() {
   const [viewMode, setViewMode] = useState('general'); // 'general' или 'payments'
   
   // Период времени - новое состояние
-const [dateRange, setDateRange] = useState({
-  // Устанавливаем 1 января текущего года
-  startDate: new Date(new Date().getFullYear(), 0, 1),
-  endDate: new Date(), // Текущая дата
-  preset: 'thisYear' // Обновляем пресет в соответствии с выбранным периодом
-});
+  const [dateRange, setDateRange] = useState({
+    startDate: new Date(new Date().setMonth(new Date().getMonth() - 6)),
+    endDate: new Date(),
+    preset: 'last6Months'
+  });
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Для пагинации списка дилеров
@@ -53,51 +52,6 @@ const [dateRange, setDateRange] = useState({
     ? data.dealerData.filter(d => d.modelId === selectedModel.id)
     : [];
 
-// Функция для получения данных за выбранный период
-const fetchMarketData = async (startDate, endDate) => {
-  try {
-    // Форматирование дат в требуемый формат DD.MM.YYYY
-    const formatDateForApi = (date) => {
-      const day = date.getDate().toString().padStart(2, '0');
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const year = date.getFullYear();
-      return `${day}.${month}.${year}`;
-    };
-
-    const requestBody = {
-      begin_date: formatDateForApi(startDate),
-      end_date: formatDateForApi(endDate)
-    };
-
-    console.log('Отправляем запрос с данными:', requestBody);
-
-    const response = await fetch('https://uzavtosalon.uz/b/dashboard/infos&auto_statistics', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      throw new Error(`Ошибка запроса: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('Получены данные с сервера:', data);
-    
-    return data;
-  } catch (error) {
-    console.error('Ошибка при получении данных рынка:', error);
-    return null;
-  }
-};
-  
-useEffect(() => {
-  // Используем значения из состояния dateRange при инициализации
-  fetchMarketData(dateRange.startDate, dateRange.endDate);
-}, []);
-  
   // Функция для пагинации дилеров
   const getPaginatedDealers = () => {
     const start = (currentPage - 1) * dealersPerPage;
@@ -1387,8 +1341,7 @@ const getGlobalTopSalespeople = () => {
  };
 
  // Initialize on mount and update charts when view changes
-  useEffect(() => {
-   fetchMarketData()
+ useEffect(() => {
    const initialData = generateDemoData();
    setData(initialData);
  }, []);

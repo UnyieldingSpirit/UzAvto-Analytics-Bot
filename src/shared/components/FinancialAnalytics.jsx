@@ -9681,9 +9681,10 @@ const renderDailySalesTableRows = () => {
     if (item.day) allDates.add(item.day);
   });
   
-  // Преобразуем Set в массив и сортируем даты
+  // Преобразуем Set в массив и сортируем даты в обратном порядке (от последних к первым)
   const sortedDates = Array.from(allDates).sort((a, b) => {
-    return new Date(a) - new Date(b);
+    // Меняем a и b местами для обратной сортировки
+    return new Date(b) - new Date(a);
   });
   
   // Создаем индексы данных по датам для быстрого доступа
