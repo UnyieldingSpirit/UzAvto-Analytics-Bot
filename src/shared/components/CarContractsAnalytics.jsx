@@ -5,7 +5,7 @@ import * as d3 from 'd3';
 import { carModels as mockCarModels, regions } from '../mocks/mock-data';
 import ContentReadyLoader from "../layout/ContentReadyLoader";
 import axios from 'axios'
-
+import ContractsYearlyComparison from './ContractsYearlyComparison';
 const CarContractsAnalytics = () => {
   const [activeTab, setActiveTab] = useState('contracts');
   const [selectedRegion, setSelectedRegion] = useState('all');
@@ -4757,7 +4757,14 @@ const stats = getStats();
       </div>
     </div>
   </div>
-)}
+      )}
+           <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
+  <ContractsYearlyComparison
+    selectedRegion={selectedRegion}
+    selectedModel={selectedModel}
+    activeTab={activeTab}
+  />
+</div>
     
     {activeTab === 'contracts' && (
       <>
@@ -5115,7 +5122,8 @@ const stats = getStats();
               </div>
             </div>
           </div>
-        </div>
+          </div>
+          
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
@@ -5218,6 +5226,8 @@ const stats = getStats();
         </div>
       </>
     )}
+
+ 
     
     {/* График возврата денежных средств */}
     <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
