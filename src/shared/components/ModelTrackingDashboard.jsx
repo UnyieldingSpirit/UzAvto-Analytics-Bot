@@ -1930,7 +1930,7 @@ const renderStatusChart = () => {
                           : models.reduce((sum, model) => sum + (model.no_paid_count || 0), 0)}
                       </span>
                     </div>
-                    <span className="text-sm font-medium text-slate-300">НЕ/ЧАСТ. ОПЛАЧЕНО</span>
+                    <span className="text-sm font-medium text-slate-300">НЕ ОПЛАЧЕНО</span>
                   </div>
                 </div>
                 
