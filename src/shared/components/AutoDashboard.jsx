@@ -113,6 +113,13 @@ const ProductionDashboard = () => {
     setSelectedMonth(null);
   };
   
+  // Обработчик изменения типа рынка
+  const handleMarketTypeChange = (type) => {
+    setMarketType(type);
+    // При смене типа рынка сбрасываем выбранный месяц
+    setSelectedMonth(null);
+  };
+  
   // Эффект для перерисовки графика при изменении размера окна
   useEffect(() => {
     const handleResize = () => {
@@ -514,18 +521,20 @@ const ProductionDashboard = () => {
           
           const total = domestic + export_;
           
-          // Добавляем модель даже с нулевыми значениями
-          monthModels.push({
-            id: model.model_id,
-            name: model.model_name,
-            // URL изображения или заглушка, если photo_sha не определен
-            img: model.photo_sha ? 
-              `https://uzavtosalon.uz/b/assets/images/${model.photo_sha}.webp` : 
-              "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E",
-            domestic,
-            export: export_,
-            total
-          });
+          // Добавляем модель только если есть хотя бы одно ненулевое значение
+          if (total > 0) {
+            monthModels.push({
+              id: model.model_id,
+              name: model.model_name,
+              // Обновленный URL с корректным форматом
+              img: model.photo_sha ? 
+                `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400` : 
+                "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E",
+              domestic,
+              export: export_,
+              total
+            });
+          }
         }
       }
     });
@@ -625,7 +634,7 @@ const ProductionDashboard = () => {
                         ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white font-medium shadow-md' 
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     }`}
-                    onClick={() => setMarketType('all')}
+                    onClick={() => handleMarketTypeChange('all')}
                   >
                     <BarChart3 className="w-4 h-4 mr-2 flex-shrink-0" />
                     <span className="truncate">{t('marketType.all')}</span>
@@ -636,7 +645,7 @@ const ProductionDashboard = () => {
                         ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium shadow-md' 
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     }`}
-                    onClick={() => setMarketType('domestic')}
+                    onClick={() => handleMarketTypeChange('domestic')}
                   >
                     <Home className="w-4 h-4 mr-2 flex-shrink-0" />
                     <span className="truncate">{t('marketType.domestic')}</span>
@@ -647,7 +656,7 @@ const ProductionDashboard = () => {
                         ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium shadow-md' 
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     }`}
-                    onClick={() => setMarketType('export')}
+                    onClick={() => handleMarketTypeChange('export')}
                   >
                     <ExternalLink className="w-4 h-4 mr-2 flex-shrink-0" />
                     <span className="truncate">{t('marketType.export')}</span>
@@ -683,7 +692,10 @@ const ProductionDashboard = () => {
           {/* Общее производство */}
           <motion.div 
             whileHover={{ y: -5, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)' }}
-            className="bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-lg border border-gray-700 shadow-md transition-all duration-300"
+            className={`bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-lg border border-gray-700 shadow-md transition-all duration-300 cursor-pointer ${
+              marketType === 'all' ? 'ring-2 ring-orange-500/50' : ''
+            }`}
+            onClick={() => handleMarketTypeChange('all')}
           >
             <div className="flex justify-between items-center">
               <div>
@@ -710,7 +722,10 @@ const ProductionDashboard = () => {
           {/* Внутренний рынок */}
           <motion.div 
             whileHover={{ y: -5, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)' }}
-            className="bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-lg border border-gray-700 shadow-md transition-all duration-300"
+            className={`bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-lg border border-gray-700 shadow-md transition-all duration-300 cursor-pointer ${
+              marketType === 'domestic' ? 'ring-2 ring-blue-500/50' : ''
+            }`}
+            onClick={() => handleMarketTypeChange('domestic')}
           >
             <div className="flex justify-between items-center">
               <div>
@@ -737,7 +752,10 @@ const ProductionDashboard = () => {
           {/* Экспортный рынок */}
           <motion.div 
             whileHover={{ y: -5, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)' }}
-            className="bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-lg border border-gray-700 shadow-md transition-all duration-300"
+            className={`bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-lg border border-gray-700 shadow-md transition-all duration-300 cursor-pointer ${
+              marketType === 'export' ? 'ring-2 ring-green-500/50' : ''
+            }`}
+            onClick={() => handleMarketTypeChange('export')}
           >
             <div className="flex justify-between items-center">
               <div>
