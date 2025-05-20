@@ -6119,7 +6119,7 @@ const showRegionModelDistribution = (regionName, year, month, monthName) => {
     
   // Генерируем данные о моделях
   const modelNames = [
-    'DAMAS-2', 'TRACKER-2', 'Captiva 5T', 
+    'DAMAS-2', 'TRACKER-2', 'COBALT', 
     'ONIX',
   ];
   
@@ -9853,7 +9853,7 @@ const renderDailySalesTableRows = () => {
 // Функция для рендеринга итоговой строки с правильным расчетом сумм
 const renderDailySalesTotalRow = () => {
   // Модели, которые нужно отображать отдельно
-  const specificModels = ["DAMAS-2", "ONIX", "TRACKER-2", "Captiva 5T"];
+  const specificModels = ["DAMAS-2", "ONIX", "TRACKER-2", "COBALT"];
   
   // Функция для расчета общей суммы и количества
   const calculateTotal = (dataArray) => {
@@ -9969,7 +9969,7 @@ const showModelsModal = (date, displayDate, models) => {
     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">DAMAS-2</th>
     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">ONIX</th>
     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">TRACKER-2</th>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Captiva 5T</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">COBALT</th>
     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Остальные</th>
   </tr>
 </thead>
@@ -10289,7 +10289,7 @@ return (
     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">DAMAS-2</th>
     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">ONIX</th>
     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">TRACKER-2</th>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Captiva 5T</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">COBALT</th>
     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Остальные</th>
   </tr>
 </thead>

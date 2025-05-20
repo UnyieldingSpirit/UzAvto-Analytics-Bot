@@ -13,7 +13,6 @@ import { fetchContractData, fetchContractDataByDate, processContractData } from 
 import { regions } from './models/regions';
 import ContentReadyLoader from '../../layout/ContentReadyLoader';
 
-
 function ContractsAnalyticsDashboard() {
   // Основные состояния
   const [selectedPeriod, setSelectedPeriod] = useState('year');
@@ -871,9 +870,16 @@ const renderDetailedChart = () => {
           dataKey="day" 
           stroke="#9ca3af"
           tickFormatter={(day) => `${day}`}
-          ticks={chartData.length <= 7
-            ? chartData.map(d => d.day)
-            : [1, 5, 10, 15, 20, 25, 30].filter(d => d <= Math.max(...chartData.map(item => item.day)))}
+          // Отображаем все дни последовательно
+          ticks={chartData.map(d => d.day)}
+          // Если график получится слишком плотным, можно использовать это условное отображение
+          // ticks={chartData.length <= 15
+          //   ? chartData.map(d => d.day)
+          //   : Array.from(
+          //       { length: Math.ceil((Math.max(...chartData.map(item => item.day)) - Math.min(...chartData.map(item => item.day)) + 1) / 2) },
+          //       (_, i) => Math.min(...chartData.map(item => item.day)) + i * 2
+          //     )
+          // }
         />
         <YAxis 
           stroke="#9ca3af" 
@@ -923,6 +929,7 @@ const renderDetailedChart = () => {
     </ResponsiveContainer>
   );
 };
+  
   
   const filteredModels = enhancedModels.filter(model => {
     // Получаем данные о производительности для модели

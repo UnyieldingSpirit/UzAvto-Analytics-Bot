@@ -103,41 +103,57 @@ const CarWarehouseAnalytics = () => {
   }, []);
   
   // Функция для обработки загруженных данных
-  const processData = (warehouses) => {
-    const carModels = [];
+const processData = (warehouses) => {
+  const carModels = [];
+  
+  // Создаем итоговые объекты для подсчета общего количества по всем складам
+  let totalModelsCount = {};
+  
+  // Обработка данных для создания структуры автомобилей
+  warehouses.forEach(warehouse => {
+    if (!warehouse.models || warehouse.models.length === 0) return;
     
-    // Создаем итоговые объекты для подсчета общего количества по всем складам
-    let totalModelsCount = {};
-    
-    // Обработка данных для создания структуры автомобилей
-    warehouses.forEach(warehouse => {
-      if (!warehouse.models || warehouse.models.length === 0) return;
+    warehouse.models.forEach(model => {
+      // Если нет моди или они пустые, пропускаем
+      if (!model.modifications || model.modifications.length === 0) return;
       
-      warehouse.models.forEach(model => {
-        // Если нет моди или они пустые, пропускаем
-        if (!model.modifications || model.modifications.length === 0) return;
+      // Инициализируем счетчик для текущей модели, если еще не сделано
+      if (!totalModelsCount[model.model]) {
+        totalModelsCount[model.model] = {
+          totalCount: 0,
+          available: 0,
+          reserved: 0,
+          defective: 0,
+          defectiveOk: 0,
+          colors: {},
+          modifications: {}
+        };
+      }
+      
+      // Проходим по модификациям этой модели
+      model.modifications.forEach(mod => {
+        // Если нет цветов или они пустые, пропускаем
+        if (!mod.colors || mod.colors.length === 0) return;
         
-        // Инициализируем счетчик для текущей модели, если еще не сделано
-        if (!totalModelsCount[model.model]) {
-          totalModelsCount[model.model] = {
+        // Инициализируем счетчик для текущей модификации, если еще не сделано
+        if (!totalModelsCount[model.model].modifications[mod.modification]) {
+          totalModelsCount[model.model].modifications[mod.modification] = {
             totalCount: 0,
             available: 0,
             reserved: 0,
             defective: 0,
-            defectiveOk: 0,
-            colors: {},
-            modifications: {}
+            defectiveOk: 0
           };
         }
         
-        // Проходим по модификациям этой модели
-        model.modifications.forEach(mod => {
-          // Если нет цветов или они пустые, пропускаем
-          if (!mod.colors || mod.colors.length === 0) return;
+        // Проходим по цветам этой модификации
+        mod.colors.forEach(color => {
+          // Если нет статусов или они пустые, пропускаем
+          if (!color.statuses || color.statuses.length === 0) return;
           
-          // Инициализируем счетчик для текущей модификации, если еще не сделано
-          if (!totalModelsCount[model.model].modifications[mod.modification]) {
-            totalModelsCount[model.model].modifications[mod.modification] = {
+          // Инициализируем счетчик для текущего цвета, если еще не сделано
+          if (!totalModelsCount[model.model].colors[color.color]) {
+            totalModelsCount[model.model].colors[color.color] = {
               totalCount: 0,
               available: 0,
               reserved: 0,
@@ -146,225 +162,217 @@ const CarWarehouseAnalytics = () => {
             };
           }
           
-          // Проходим по цветам этой модификации
-          mod.colors.forEach(color => {
-            // Если нет статусов или они пустые, пропускаем
-            if (!color.statuses || color.statuses.length === 0) return;
+          // Проходим по статусам этого цвета
+          color.statuses.forEach(status => {
+            const count = parseInt(status.count);
             
-            // Инициализируем счетчик для текущего цвета, если еще не сделано
-            if (!totalModelsCount[model.model].colors[color.color]) {
-              totalModelsCount[model.model].colors[color.color] = {
-                totalCount: 0,
-                available: 0,
-                reserved: 0,
-                defective: 0,
-                defectiveOk: 0
-              };
+            // Увеличиваем общий счетчик для этой модели
+            totalModelsCount[model.model].totalCount += count;
+            
+            // Увеличиваем общий счетчик для этого цвета
+            totalModelsCount[model.model].colors[color.color].totalCount += count;
+            
+            // Увеличиваем общий счетчик для этой модификации
+            totalModelsCount[model.model].modifications[mod.modification].totalCount += count;
+            
+            // Распределяем по статусам
+            if (status.status_name === "Свободно") {
+              totalModelsCount[model.model].available += count;
+              totalModelsCount[model.model].colors[color.color].available += count;
+              totalModelsCount[model.model].modifications[mod.modification].available += count;
+            } else if (status.status_name === "Именной" || status.status_name === "Закрепленные") {
+              totalModelsCount[model.model].reserved += count;
+              totalModelsCount[model.model].colors[color.color].reserved += count;
+              totalModelsCount[model.model].modifications[mod.modification].reserved += count;
+            } else if (status.status_name === "Брак") {
+              totalModelsCount[model.model].defective += count;
+              totalModelsCount[model.model].colors[color.color].defective += count;
+              totalModelsCount[model.model].modifications[mod.modification].defective += count;
+            } else if (status.status_name === "Брак-ОК") {
+              totalModelsCount[model.model].defectiveOk += count;
+              totalModelsCount[model.model].colors[color.color].defectiveOk += count;
+              totalModelsCount[model.model].modifications[mod.modification].defectiveOk += count;
             }
-            
-            // Проходим по статусам этого цвета
-            color.statuses.forEach(status => {
-              const count = parseInt(status.count);
-              
-              // Увеличиваем общий счетчик для этой модели
-              totalModelsCount[model.model].totalCount += count;
-              
-              // Увеличиваем общий счетчик для этого цвета
-              totalModelsCount[model.model].colors[color.color].totalCount += count;
-              
-              // Увеличиваем общий счетчик для этой модификации
-              totalModelsCount[model.model].modifications[mod.modification].totalCount += count;
-              
-              // Распределяем по статусам
-              if (status.status_name === "Свободно") {
-                totalModelsCount[model.model].available += count;
-                totalModelsCount[model.model].colors[color.color].available += count;
-                totalModelsCount[model.model].modifications[mod.modification].available += count;
-              } else if (status.status_name === "Именной" || status.status_name === "Закрепленные") {
-                totalModelsCount[model.model].reserved += count;
-                totalModelsCount[model.model].colors[color.color].reserved += count;
-                totalModelsCount[model.model].modifications[mod.modification].reserved += count;
-              } else if (status.status_name === "Брак") {
-                totalModelsCount[model.model].defective += count;
-                totalModelsCount[model.model].colors[color.color].defective += count;
-                totalModelsCount[model.model].modifications[mod.modification].defective += count;
-              } else if (status.status_name === "Брак-ОК") {
-                totalModelsCount[model.model].defectiveOk += count;
-                totalModelsCount[model.model].colors[color.color].defectiveOk += count;
-                totalModelsCount[model.model].modifications[mod.modification].defectiveOk += count;
-              }
-            });
           });
         });
       });
     });
+  });
+  
+  // Преобразуем объект с итогами в массив для использования в компоненте
+  Object.entries(totalModelsCount).forEach(([modelName, modelData]) => {
+    // Преобразуем объекты цветов и модификаций в массивы
+    let colorsArray = Object.entries(modelData.colors).map(([colorName, colorData]) => ({
+      name: colorName,
+      count: colorData.totalCount,
+      available: colorData.available,
+      reserved: colorData.reserved,
+      defective: colorData.defective,
+      defectiveOk: colorData.defectiveOk,
+      hex: getColorHex(colorName)
+    }));
     
-    // Преобразуем объект с итогами в массив для использования в компоненте
-    Object.entries(totalModelsCount).forEach(([modelName, modelData]) => {
-      // Преобразуем объекты цветов и модификаций в массивы
-      let colorsArray = Object.entries(modelData.colors).map(([colorName, colorData]) => ({
-        name: colorName,
-        count: colorData.totalCount,
-        available: colorData.available,
-        reserved: colorData.reserved,
-        defective: colorData.defective,
-        defectiveOk: colorData.defectiveOk,
-        hex: getColorHex(colorName)
-      }));
-      
-      let modificationsArray = Object.entries(modelData.modifications).map(([modName, modData]) => ({
-        id: `${modelName}-${modName}`,
-        name: modName,
-        count: modData.totalCount,
-        available: modData.available,
-        reserved: modData.reserved,
-        defective: modData.defective,
-        defectiveOk: modData.defectiveOk,
-        image: `https://source.unsplash.com/random/400x300/?car,${modelName.toLowerCase()}`
-      }));
-      
-      // Добавляем модель в итоговый массив
-      carModels.push({
-        id: modelName,
-        name: modelName,
-        category: getCategoryForModel(modelName),
-        totalCount: modelData.totalCount,
-        available: modelData.available,
-        reserved: modelData.reserved,
-        defective: modelData.defective,
-        defectiveOk: modelData.defectiveOk,
-        colors: colorsArray,
-        modifications: modificationsArray,
-        img: `https://source.unsplash.com/random/400x300/?car,${modelName.toLowerCase()}`
-      });
+    let modificationsArray = Object.entries(modelData.modifications).map(([modName, modData]) => ({
+      id: `${modelName}-${modName}`,
+      name: modName,
+      count: modData.totalCount,
+      available: modData.available,
+      reserved: modData.reserved,
+      defective: modData.defective,
+      defectiveOk: modData.defectiveOk,
+      image: `https://source.unsplash.com/random/400x300/?car,${modelName.toLowerCase()}`
+    }));
+    
+    // Добавляем модель в итоговый массив
+    carModels.push({
+      id: modelName,
+      name: modelName,
+      category: getCategoryForModel(modelName),
+      totalCount: modelData.totalCount,
+      available: modelData.available,
+      reserved: modelData.reserved,
+      defective: modelData.defective,
+      defectiveOk: modelData.defectiveOk,
+      colors: colorsArray,
+      modifications: modificationsArray,
+      img: `https://source.unsplash.com/random/400x300/?car,${modelName.toLowerCase()}`
     });
+  });
+  
+  // Сортируем модели по количеству
+  carModels.sort((a, b) => b.totalCount - a.totalCount);
+  
+  // Обработка данных о складах
+  const processedWarehouses = warehouses.map(warehouse => {
+    // Если нет моделей, возвращаем пустой объект
+    if (!warehouse.models || warehouse.models.length === 0) {
+      return null;
+    }
     
-    // Сортируем модели по количеству
-    carModels.sort((a, b) => b.totalCount - a.totalCount);
+    // Подсчитываем остатки по всем моделям на этом складе
+    const modelCounts = [];
+    let totalCount = 0;
+    let defective = 0;
+    let defectiveOk = 0;
+    let reserved = 0;
+    let available = 0;
     
-    // Обработка данных о складах
-    const processedWarehouses = warehouses.map(warehouse => {
-      // Если нет моделей, возвращаем пустой объект
-      if (!warehouse.models || warehouse.models.length === 0) {
-        return null;
-      }
+    // Маппинг категорий для этого склада
+    const categoryCountsMap = {};
+    
+    warehouse.models.forEach(model => {
+      let modelTotal = 0;
+      let modelAvailable = 0;
+      let modelReserved = 0;
+      let modelDefective = 0;
+      let modelDefectiveOk = 0;
       
-      // Подсчитываем остатки по всем моделям на этом складе
-      const modelCounts = [];
-      let totalCount = 0;
-      let defective = 0;
-      let defectiveOk = 0;
-      let reserved = 0;
-      let available = 0;
+      if (!model.modifications) return;
       
-      // Маппинг категорий для этого склада
-      const categoryCountsMap = {};
-      
-      warehouse.models.forEach(model => {
-        let modelTotal = 0;
-        let modelAvailable = 0;
-        let modelReserved = 0;
-        let modelDefective = 0;
-        let modelDefectiveOk = 0;
+      model.modifications.forEach(mod => {
+        if (!mod.colors) return;
         
-        if (!model.modifications) return;
-        
-        model.modifications.forEach(mod => {
-          if (!mod.colors) return;
+        mod.colors.forEach(color => {
+          if (!color.statuses) return;
           
-          mod.colors.forEach(color => {
-            if (!color.statuses) return;
+          color.statuses.forEach(status => {
+            const count = parseInt(status.count);
+            totalCount += count;
+            modelTotal += count;
             
-            color.statuses.forEach(status => {
-              const count = parseInt(status.count);
-              totalCount += count;
-              modelTotal += count;
-              
-              if (status.status_name === "Свободно") {
-                available += count;
-                modelAvailable += count;
-              } else if (status.status_name === "Именной" || status.status_name === "Закрепленные") {
-                reserved += count;
-                modelReserved += count;
-              } else if (status.status_name === "Брак") {
-                defective += count;
-                modelDefective += count;
-              } else if (status.status_name === "Брак-ОК") {
-                defectiveOk += count;
-                modelDefectiveOk += count;
-              }
-            });
+            if (status.status_name === "Свободно") {
+              available += count;
+              modelAvailable += count;
+            } else if (status.status_name === "Именной" || status.status_name === "Закрепленные") {
+              reserved += count;
+              modelReserved += count;
+            } else if (status.status_name === "Брак") {
+              defective += count;
+              modelDefective += count;
+            } else if (status.status_name === "Брак-ОК") {
+              defectiveOk += count;
+              modelDefectiveOk += count;
+            }
           });
         });
+      });
+      
+      if (modelTotal > 0) {
+        const category = getCategoryForModel(model.model);
         
-        if (modelTotal > 0) {
-          const category = getCategoryForModel(model.model);
-          
-          // Добавляем в счетчик категорий
-          if (!categoryCountsMap[category]) {
-            categoryCountsMap[category] = 0;
-          }
-          categoryCountsMap[category] += modelTotal;
-          
-          modelCounts.push({
-            id: model.model,
-            name: model.model,
-            count: modelTotal,
-            available: modelAvailable,
-            reserved: modelReserved,
-            defective: modelDefective,
-            defectiveOk: modelDefectiveOk,
-            category: category
-          });
+        // Добавляем в счетчик категорий
+        if (!categoryCountsMap[category]) {
+          categoryCountsMap[category] = 0;
         }
-      });
-      
-      // Если на складе нет автомобилей, пропускаем его
-      if (totalCount === 0) {
-        return null;
+        categoryCountsMap[category] += modelTotal;
+        
+        modelCounts.push({
+          id: model.model,
+          name: model.model,
+          count: modelTotal,
+          available: modelAvailable,
+          reserved: modelReserved,
+          defective: modelDefective,
+          defectiveOk: modelDefectiveOk,
+          category: category
+        });
       }
-      
-      // Расчет вместимости склада - для демонстрации используем примерное значение
-      const capacity = Math.round(totalCount * 1.2);
-      const occupancyRate = Math.round((totalCount / capacity) * 100);
-      
-      // Преобразуем мапу категорий в массив для графиков
-      const categories = Object.keys(categoryCountsMap).map(key => ({
-        name: key === 'suv' ? 'Внедорожники' : 
-              key === 'sedan' ? 'Седаны' : 
-              key === 'minivan' ? 'Минивэны' : key,
-        count: categoryCountsMap[key]
-      }));
-      
-      return {
-        id: warehouse.warehouse,
-        name: warehouse.warehouse,
-        totalCount,
-        defective,
-        defectiveOk,
-        reserved,
-        available,
-        models: modelCounts,
-        categories,
-        capacity,
-        occupancyRate,
-        status: occupancyRate > 90 ? 'критический' : 
-                occupancyRate > 75 ? 'высокий' : 
-                occupancyRate > 50 ? 'средний' : 'низкий'
-      };
-    }).filter(Boolean); // Удаляем null элементы
+    });
     
-    // Обновляем состояния с обработанными данными
-    setEnhancedCarModels(carModels);
-    setEnhancedWarehouses(processedWarehouses);
+    // Если на складе нет автомобилей, пропускаем его
+    if (totalCount === 0) {
+      return null;
+    }
     
-    // Общие статистические данные
-    setTotalVehicles(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.totalCount, 0));
-    setTotalDefective(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.defective, 0));
-    setTotalDefectiveOk(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.defectiveOk, 0));
-    setTotalReserved(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.reserved, 0));
-    setTotalAvailable(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.available, 0));
-  };
+    // Используем точное значение volume из API
+    const volume = parseInt(warehouse.volume);
+    
+    // Рассчитываем вместимость и заполненность
+    // Если volume = 0, считаем capacity равным текущему totalCount
+    const capacity = volume > 0 ? volume : totalCount;
+    
+    // Рассчитываем процент заполненности
+    // Если volume = 0, считаем заполненность 100%
+    const occupancyRate = volume > 0 ? Math.round((totalCount / volume) * 100) : 100;
+    
+    // Преобразуем мапу категорий в массив для графиков
+    const categories = Object.keys(categoryCountsMap).map(key => ({
+      name: key === 'suv' ? 'Внедорожники' : 
+            key === 'sedan' ? 'Седаны' : 
+            key === 'minivan' ? 'Минивэны' : key,
+      count: categoryCountsMap[key]
+    }));
+    
+    return {
+      id: warehouse.warehouse,
+      name: warehouse.warehouse,
+      totalCount,
+      defective,
+      defectiveOk,
+      reserved,
+      available,
+      models: modelCounts,
+      categories,
+      capacity,
+      volume: warehouse.volume, // Сохраняем исходное значение volume
+      occupancyRate,
+      status: occupancyRate > 90 ? 'критический' : 
+              occupancyRate > 75 ? 'высокий' : 
+              occupancyRate > 50 ? 'средний' : 'низкий'
+    };
+  }).filter(Boolean); // Удаляем null элементы
+  
+  // Обновляем состояния с обработанными данными
+  setEnhancedCarModels(carModels);
+  setEnhancedWarehouses(processedWarehouses);
+  
+  // Общие статистические данные
+  setTotalVehicles(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.totalCount, 0));
+  setTotalDefective(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.defective, 0));
+  setTotalDefectiveOk(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.defectiveOk, 0));
+  setTotalReserved(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.reserved, 0));
+  setTotalAvailable(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.available, 0));
+};
   
   // Функция для переключения отображения модели в контексте склада
   const toggleModelDetailInWarehouse = (modelId) => {

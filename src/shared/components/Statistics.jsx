@@ -2512,10 +2512,10 @@ const renderDealerCharts = () => {
     addDealerInfo(dealer, index, false);
   });
 };
+  const [hoveredSalesperson, setHoveredSalesperson] = useState(null);
 
 const renderGlobalTopSalespeople = () => {
   const topSalespeople = getGlobalTopSalespeople();
-  const [hoveredSalesperson, setHoveredSalesperson] = useState(null);
   
   return (
     <div className="bg-gray-800 rounded-lg p-4 mb-6">
@@ -3606,29 +3606,6 @@ const renderSalespersonCharts = () => {
             Круговая
           </motion.button>
         </div>
-        
-        {/* Режим просмотра платежей (только для уровня продавцов) */}
-        {view === 'salespeople' && selectedDealer && (
-          <div className="flex items-center space-x-2">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={toggleViewMode}
-              className={`px-3 py-1.5 rounded-md text-sm ${viewMode === 'general' ? 'bg-gray-700 text-gray-300' : 'bg-blue-600 text-white'}`}
-            >
-              {viewMode === 'general' ? 'Показать платежи' : 'Показать продавцов'}
-            </motion.button>
-            
-            {viewMode === 'payments' && (
-              <div className="text-sm text-yellow-300 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Режим просмотра платежей
-              </div>
-            )}
-          </div>
-        )}
         
         {/* Компонент выбора периода */}
         <div className="relative ml-auto">
