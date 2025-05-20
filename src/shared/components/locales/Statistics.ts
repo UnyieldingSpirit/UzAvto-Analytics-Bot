@@ -29,6 +29,7 @@ export const statisticsTranslations: LocaleMessages = {
         models: {
             title: 'Каталог моделей автомобилей',
             sales: 'Продажи',
+            totalSales: 'Общие продажи по моделям',
             category: 'Категория',
             categories: {
                 suv: 'Внедорожник',
@@ -58,14 +59,27 @@ export const statisticsTranslations: LocaleMessages = {
             showTop: 'Показать только топ-{{count}} продавцов',
             backToDealer: 'Вернуться к дилерам',
             backToModels: 'К списку моделей',
-            globalTop: 'Топ-10 продавцов по всем дилерам'
+            globalTop: 'Топ-10 продавцов по всем дилерам',
+            moreDealers: 'ещё {{count}}',
+            rank: {
+                first: '🥇 Абсолютный лидер',
+                second: '🥈 #2',
+                third: '🥉 #3',
+                other: '#{{position}}'
+            },
+            salesByRegion: 'Продажи по дилерам и регионам'
         },
         payments: {
             title: 'Платежи и возвраты',
             status: {
+                title: 'Статус платежей',
+                in: 'в',
                 paid: 'Оплачено полностью',
                 returned: 'Возвращено',
                 pending: 'Частичная оплата'
+            },
+            amounts: {
+                title: 'Суммы платежей'
             },
             transactions: {
                 title: 'Детализация транзакций ({{count}})',
@@ -92,7 +106,12 @@ export const statisticsTranslations: LocaleMessages = {
             salesTrend: 'Тренд продаж за период: {{period}}',
             month: 'Месяц',
             sales: 'Количество продаж',
-            clickDot: 'Нажмите на точку для подробной информации'
+            clickDot: 'Нажмите на точку для подробной информации',
+            noMonthlyData: 'Недостаточно данных для отображения динамики продаж',
+            changeDateRange: 'Используйте другой диапазон дат или обновите данные'
+        },
+        status: {
+            online: 'Онлайн'
         },
         loading: 'Загрузка данных...'
     },
@@ -124,6 +143,7 @@ export const statisticsTranslations: LocaleMessages = {
         models: {
             title: 'Avtomobil modellari katalogi',
             sales: 'Savdo',
+            totalSales: 'Modellar bo\'yicha umumiy savdolar',
             category: 'Kategoriya',
             categories: {
                 suv: 'Yo\'l tanlamas',
@@ -153,14 +173,27 @@ export const statisticsTranslations: LocaleMessages = {
             showTop: 'Faqat top-{{count}} sotuvchilarni ko\'rsatish',
             backToDealer: 'Dilerlarga qaytish',
             backToModels: 'Modellar ro\'yxatiga',
-            globalTop: 'Barcha dilerlar bo\'yicha top-10 sotuvchilar'
+            globalTop: 'Barcha dilerlar bo\'yicha top-10 sotuvchilar',
+            moreDealers: 'yana {{count}}',
+            rank: {
+                first: '🥇 Mutlaq lider',
+                second: '🥈 #2',
+                third: '🥉 #3',
+                other: '#{{position}}'
+            },
+            salesByRegion: 'Dilerlar va hududlar bo\'yicha savdo'
         },
         payments: {
             title: 'To\'lovlar va qaytarishlar',
             status: {
+                title: 'To\'lovlar holati',
+                in: 'da',
                 paid: 'To\'liq to\'langan',
                 returned: 'Qaytarilgan',
                 pending: 'Qisman to\'lov'
+            },
+            amounts: {
+                title: 'To\'lov miqdorlari'
             },
             transactions: {
                 title: 'Tranzaksiyalar tafsiloti ({{count}})',
@@ -187,7 +220,12 @@ export const statisticsTranslations: LocaleMessages = {
             salesTrend: 'Davr uchun savdo trendi: {{period}}',
             month: 'Oy',
             sales: 'Savdo miqdori',
-            clickDot: 'Batafsil ma\'lumot uchun nuqtani bosing'
+            clickDot: 'Batafsil ma\'lumot uchun nuqtani bosing',
+            noMonthlyData: 'Savdo dinamikasini ko\'rsatish uchun ma\'lumotlar yetarli emas',
+            changeDateRange: 'Boshqa davr oralig\'ini tanlang yoki ma\'lumotlarni yangilang'
+        },
+        status: {
+            online: 'Onlayn'
         },
         loading: 'Ma\'lumotlar yuklanmoqda...'
     }

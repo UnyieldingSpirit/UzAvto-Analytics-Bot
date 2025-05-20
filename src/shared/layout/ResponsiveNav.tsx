@@ -11,6 +11,7 @@ import { useLanguageStore } from '../../store/language';
 import { useTranslation } from '../../hooks/useTranslation';
 // Импортируем библиотеку иконок Lucide
 import * as LucideIcons from 'lucide-react';
+import { button } from 'framer-motion/client';
 
 // Переводы для навигации только для русского и узбекского
 const navTranslations = {
@@ -322,54 +323,64 @@ export default function ResponsiveNav() {
   );
 
   // Компонент переключателя языка (только русский и узбекский)
-  const LanguageSwitcher = () => {
-    const langFlags = {
-      ru: '🇷🇺',
-      uz: '🇺🇿'
-    };
-    
-    const languageNames = {
-      ru: 'Русский',
-      uz: 'O\'zbekcha'
-    };
-    
-    return (
-      <div className="language-switcher-container" ref={langMenuRef}>
-        <button
-          className="language-button"
-          onClick={toggleLanguageMenu}
-        >
-          <div className="flag-icon">{langFlags[currentLocale as keyof typeof langFlags]}</div>
-          <span>{languageNames[currentLocale as keyof typeof languageNames]}</span>
-          <div className="icon-down">▼</div>
-        </button>
-        
-        {isLanguageMenuOpen && (
-          <motion.div 
-            className="language-dropdown"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            {Object.entries(customAvailableLocales).map(([locale, name]) => (
-              <button
-                key={locale}
-                className={`language-option ${locale === currentLocale ? 'active' : ''}`}
-                onClick={() => changeLanguage(locale)}
-              >
-                <span className="flag-icon">{langFlags[locale as keyof typeof langFlags]}</span>
-                <span>{name}</span>
-                {locale === currentLocale && (
-                  <Check size={14} className="check-icon" />
-                )}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </div>
-    );
+const LanguageSwitcher = () => {
+  const langFlags = {
+    ru: '🇷🇺',
+    uz: '🇺🇿'
   };
+  
+  const languageNames = {
+    ru: 'Русский',
+    uz: 'O\'zbekcha'
+  };
+  
+  return (
+    <div className="language-switcher-container" ref={langMenuRef}>
+      <button
+        className="language-button touch-manipulation"
+        onClick={toggleLanguageMenu}
+        aria-expanded={isLanguageMenuOpen}
+        style={{ WebkitTapHighlightColor: 'transparent' }}
+      >
+        <div className="flag-icon">{langFlags[currentLocale as keyof typeof langFlags]}</div>
+        <span className="language-name">{languageNames[currentLocale as keyof typeof languageNames]}</span>
+        <div className={`icon-down ${isLanguageMenuOpen ? 'open' : ''}`}>▼</div>
+      </button>
+      
+      {isLanguageMenuOpen && (
+        <motion.div 
+          className="language-dropdown"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+        >
+          {Object.entries(customAvailableLocales).map(([locale, name]) => (
+            <button
+              key={locale}
+              className={`language-option touch-manipulation ${locale === currentLocale ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation(); // Предотвращаем всплытие события
+                changeLanguage(locale);
+                // Явно закрываем меню после выбора
+                setTimeout(() => {
+                  setIsLanguageMenuOpen(false);
+                }, 100);
+              }}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              <span className="flag-icon">{langFlags[locale as keyof typeof langFlags]}</span>
+              <span className="option-name">{name}</span>
+              {locale === currentLocale && (
+                <Check size={14} className="check-icon" />
+              )}
+            </button>
+          ))}
+        </motion.div>
+      )}
+    </div>
+  );
+};
 
   return (
     <>
