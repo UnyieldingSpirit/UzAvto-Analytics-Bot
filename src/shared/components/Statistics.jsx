@@ -2519,7 +2519,7 @@ const renderGlobalTopSalespeople = () => {
   
   return (
     <div className="bg-gray-800 rounded-lg p-4 mb-6">
-      <h3 className="text-xl font-bold text-white mb-4">Топ-10 продавцов по всем дилерам</h3>
+      <h3 className="text-xl font-bold text-white mb-4">{t('salespeople.globalTop', { defaultValue: 'Топ-10 продавцов по всем дилерам' })}</h3>
       
       <div className="grid grid-cols-1 gap-3">
         {topSalespeople.map((salesperson, index) => (
@@ -2552,7 +2552,7 @@ const renderGlobalTopSalespeople = () => {
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
                       </svg>
-                      Online
+                      {t('status.online', { defaultValue: 'Онлайн' })}
                     </span>
                   )}
                 </h4>
@@ -2563,9 +2563,10 @@ const renderGlobalTopSalespeople = () => {
                                color: index === 0 ? '#FFD700' : 
                                       index === 1 ? '#C0C0C0' : 
                                       index === 2 ? '#CD7F32' : '#3b82f6' }}>
-                  {index === 0 ? '🥇 Абсолютный лидер' : 
-                   index === 1 ? '🥈 #2' : 
-                   index === 2 ? '🥉 #3' : `#${index + 1}`}
+                  {index === 0 ? t('salespeople.rank.first', { defaultValue: '🥇 Абсолютный лидер' }) : 
+                   index === 1 ? t('salespeople.rank.second', { defaultValue: '🥈 #2' }) : 
+                   index === 2 ? t('salespeople.rank.third', { defaultValue: '🥉 #3' }) : 
+                   t('salespeople.rank.other', { position: index + 1, defaultValue: `#${index + 1}` })}
                 </span>
               </div>
               
@@ -2579,7 +2580,7 @@ const renderGlobalTopSalespeople = () => {
                     {salesperson.mainDealer.dealerName}
                     {salesperson.hasMultipleDealers && (
                       <span className="text-xs ml-1 px-1 py-0.5 bg-blue-900/30 rounded cursor-pointer">
-                        + ещё {salesperson.dealers.length - 1}
+                        + {t('salespeople.moreDealers', { count: salesperson.dealers.length - 1, defaultValue: 'ещё {count}' })}
                       </span>
                     )}
                   </span>
@@ -2597,7 +2598,7 @@ const renderGlobalTopSalespeople = () => {
               
               {/* Продажи */}
               <div className="flex items-center mt-1">
-                <div className="text-gray-400 text-sm">Общие продажи:</div>
+                <div className="text-gray-400 text-sm">{t('models.totalSales', { defaultValue: 'Общие продажи' })}:</div>
                 <div className="text-white font-bold ml-2">{salesperson.totalSales.toLocaleString()}</div>
                 
                 <div className="ml-auto flex items-center">
@@ -2625,8 +2626,8 @@ const renderGlobalTopSalespeople = () => {
             {/* Всплывающая подсказка с информацией о дилерах и регионах */}
             {hoveredSalesperson && hoveredSalesperson.id === salesperson.id && 
              hoveredSalesperson.hasMultipleDealers && !hoveredSalesperson.isOnline && (
-              <div className="absolute right-0 top-0 transform -translate-y-full mt-2 bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-xl z-10 w-72">
-                <h5 className="text-white font-bold mb-3">Продажи по дилерам и регионам</h5>
+              <div className="absolute right-0 top-0 transform -translate-y-full mt-2 bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-xl z-10 w-72 max-w-[calc(100vw-2rem)] md:max-w-xs">
+                <h5 className="text-white font-bold mb-3">{t('salespeople.salesByRegion', { defaultValue: 'Продажи по дилерам и регионам' })}</h5>
                 
                 {/* Группировка дилеров по регионам */}
                 <div className="space-y-4 max-h-64 overflow-auto pr-2">
@@ -2639,7 +2640,7 @@ const renderGlobalTopSalespeople = () => {
                         </svg>
                         <span className="text-sm font-medium text-blue-400">{region}</span>
                         <span className="text-xs text-gray-400 ml-auto">
-                          {dealers.reduce((sum, d) => sum + d.sales, 0)} продаж
+                          {dealers.reduce((sum, d) => sum + d.sales, 0)} {t('models.sales', { defaultValue: 'продаж' })}
                         </span>
                       </div>
                       
@@ -2658,7 +2659,7 @@ const renderGlobalTopSalespeople = () => {
                                   style={{ 
                                     width: `${(dealer.sales / hoveredSalesperson.totalSales) * 100}%`,
                                     backgroundColor: dealer.dealerId === hoveredSalesperson.mainDealer.dealerId ? 
-                                                    '#10b981' : '#3b82f6'
+                                                   '#10b981' : '#3b82f6'
                                   }}
                                 />
                               </div>
