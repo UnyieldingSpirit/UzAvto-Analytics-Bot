@@ -1032,25 +1032,64 @@ const formatProfitCompact = (number) => {
   }
   
   // Преобразуем в число на всякий случай
-  const num = Number(number);
+  const num = Math.abs(Number(number));
   
-  // Всегда преобразуем в миллионы
-  const result = num / 1000000;
-  const suffix = ' млн';
+  // Определяем суффиксы для разных порядков чисел
+  const suffixes = [
+    { value: 1, text: '' },
+    { value: 1e3, text: ' тыс' },
+    { value: 1e6, text: ' млн' },
+    { value: 1e9, text: ' млрд' },
+    { value: 1e12, text: ' трлн' },
+    { value: 1e15, text: ' квдрлн' },
+    { value: 1e18, text: ' квнтлн' },
+    { value: 1e21, text: ' скстлн' },
+    { value: 1e24, text: ' сптлн' },
+    { value: 1e27, text: ' октлн' },
+    { value: 1e30, text: ' ннлн' },
+    { value: 1e33, text: ' дцлн' }
+  ];
   
-  // Округляем до одного десятичного знака, если значение не целое
-  // Иначе отображаем без десятичной части
-  const formattedResult = Number.isInteger(result) 
-    ? result.toLocaleString('ru-RU') 
-    : result.toLocaleString('ru-RU', { 
-        minimumFractionDigits: 1, 
-        maximumFractionDigits: 1 
-      });
+  // Находим подходящий суффикс
+  let i = suffixes.length - 1;
+  while (i > 0 && num < suffixes[i].value) {
+    i--;
+  }
+  
+  // Вычисляем результат с делением на соответствующий порядок
+  const divider = suffixes[i].value;
+  const result = num / divider;
+  const suffix = suffixes[i].text;
+  
+  // Определяем, сколько десятичных знаков отображать
+  // Для сумм менее тысячи - 0 знаков
+  // Для тысяч и больше - 1-2 знака, если не целое число
+  let decimals = 0;
+  if (divider > 1) {
+    const decimalPart = result - Math.floor(result);
+    if (decimalPart > 0) {
+      // Если после запятой значащие цифры, показываем 1-2 знака
+      if (result < 10) {
+        decimals = 2; // Для чисел вида 1.23 млн
+      } else if (result < 100) {
+        decimals = 1; // Для чисел вида 12.3 млн
+      }
+      // Для больших чисел (≥ 100) оставляем 0 знаков
+    }
+  }
+  
+  // Форматируем число
+  const formattedResult = result.toLocaleString('ru-RU', { 
+    minimumFractionDigits: decimals, 
+    maximumFractionDigits: decimals 
+  });
+  
+  // Для отрицательных чисел добавляем знак минус
+  const sign = number < 0 ? '-' : '';
   
   // Добавляем обозначение валюты
-  return `${formattedResult}${suffix} UZS`;
+  return `${sign}${formattedResult}${suffix} UZS`;
 };
-  
   // Функция для получения общей суммы за период
   const getTotalForPeriod = () => {
     if (!filteredData.length) return 0;
@@ -2036,7 +2075,7 @@ const renderPeriodComparisonTable = () => {
       .attr('text-anchor', 'middle')
       .style('fill', '#9ca3af')
       .style('font-size', '0.85rem')
-      .text('Объем продаж (UZS)');
+      // .text('Объем продаж (UZS)');
     
     // Создаем группы для каждого месяца/дня
     const itemGroups = svg.append('g')
@@ -9676,7 +9715,7 @@ const getDayOfWeek = (dateStr) => {
 
 const renderDailySalesTableRows = () => {
   // Модели, которые нужно отображать отдельно
-  const specificModels = ["DAMAS-2", "ONIX", "TRACKER-2", "Captiva 5T"];
+  const specificModels = ["DAMAS-2", "ONIX", "TRACKER-2", "COBALT"];
   
   // Создаем объединенный набор дат из всех трех источников
   const allDates = new Set();

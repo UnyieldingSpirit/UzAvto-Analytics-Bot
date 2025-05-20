@@ -191,7 +191,7 @@ const toggleWholesale = (wholesale) => {
   
   const revenueData = calculateRevenueData();
   
-  // Данные статусов заказов на основе реальных данных (С ОБНОВЛЕННЫМ ПОРЯДКОМ)
+  // Данные статусов заказов на основе реальных данных (С ОБНОВЛЕННЫМ ПОРЯДКОМ И НАЗВАНИЕМ)
   const calculateStatusData = () => {
     let totalNew = 0;
     let totalWaiting = 0;
@@ -228,9 +228,9 @@ const toggleWholesale = (wholesale) => {
       });
     }
     
-    // ИЗМЕНЕННЫЙ ПОРЯДОК СТАТУСОВ СОГЛАСНО ТРЕБОВАНИЮ
+    // ИЗМЕНЕННЫЙ ПОРЯДОК СТАТУСОВ И НАЗВАНИЕ "Не оплачено/частично оплачено" ВМЕСТО "Частично оплачено"
     return [
-      { id: 'new', name: 'Частично оплачено', value: totalNew, color: '#ef4444' },
+      { id: 'new', name: 'Не оплачено/частично оплачено', value: totalNew, color: '#ef4444' },
       { id: 'waiting', name: 'Оплачено', value: totalWaiting, color: '#f59e0b' },
       { id: 'binding', name: 'На распределении', value: totalBinding, color: '#60a5fa' },
       { id: 'reserved', name: 'Распределён', value: totalReserved, color: '#3b82f6' },
@@ -242,7 +242,7 @@ const toggleWholesale = (wholesale) => {
   
   const statusData = calculateStatusData();
   
-  // Статусы оплаты
+  // Статусы оплаты с обновленным названием
   const calculatePaymentCategories = () => {
     // Используем напрямую paid_count и no_paid_count для расчетов
     let totalPaid = 0;
@@ -263,7 +263,7 @@ const toggleWholesale = (wholesale) => {
     
     return {
       'oplachen': { name: 'ОПЛАЧЕНО', value: totalPaid, color: '#10b981' },
-      'neoplachen': { name: 'Частично оплачено', value: totalUnpaid, color: '#ef4444' }
+      'neoplachen': { name: 'НЕ ОПЛАЧЕНО/ЧАСТИЧНО ОПЛАЧЕНО', value: totalUnpaid, color: '#ef4444' }
     };
   };
   
@@ -758,7 +758,7 @@ const toggleWholesale = (wholesale) => {
           .style('font-size', '16px')
           .text(model.paid_count || 0);
         
-        // Неоплаченные
+        // Неоплаченные - ИЗМЕНЕНО НАЗВАНИЕ с объединением через слеш
         const unpaidBlock = paymentInfo.append('div')
           .style('display', 'flex')
           .style('flex-direction', 'column')
@@ -768,7 +768,7 @@ const toggleWholesale = (wholesale) => {
           .style('color', '#94a3b8')
           .style('font-size', '11px')
           .style('margin-bottom', '2px')
-          .text('Частично оплачено');
+          .text('НЕ/ЧАСТ. ОПЛАЧЕНО');
         
         unpaidBlock.append('div')
           .style('color', '#ef4444')
@@ -776,13 +776,13 @@ const toggleWholesale = (wholesale) => {
           .style('font-size', '16px')
           .text(model.no_paid_count || 0);
         
-        // Информация о статусах - ОБНОВЛЕННЫЙ ПОРЯДОК СОГЛАСНО ТРЕБОВАНИЮ
+        // Информация о статусах - ОБНОВЛЕННЫЙ ПОРЯДОК И НАЗВАНИЯ
         const statusInfo = card.append('div')
           .style('display', 'flex')
           .style('flex-direction', 'column')
           .style('gap', '8px');
           
-        // 1. Не оплачено
+        // 1. Не оплачено/частично оплачено (раньше было "Частично оплачено")
         const newStatus = statusInfo.append('div')
           .style('display', 'flex')
           .style('justify-content', 'space-between')
@@ -791,7 +791,7 @@ const toggleWholesale = (wholesale) => {
         newStatus.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Частично оплачено:');
+          .text('Не/част. оплачено:');
           
         newStatus.append('div')
           .style('color', '#ef4444')
@@ -1043,7 +1043,7 @@ const toggleWholesale = (wholesale) => {
           .style('align-items', 'center')
           .style('gap', '20px');
         
-        // Оплачено / Не оплачено
+        // Оплачено / Не оплачено - ИЗМЕНЕНЫ НАЗВАНИЯ
         const paidBlock = rightPart.append('div')
           .style('display', 'flex')
           .style('flex-direction', 'column')
@@ -1068,7 +1068,7 @@ const toggleWholesale = (wholesale) => {
         unpaidBlock.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Частично оплачено');
+          .text('Не/част. оплачено');
         
         unpaidBlock.append('div')
           .style('color', '#ef4444')
@@ -1085,7 +1085,7 @@ const toggleWholesale = (wholesale) => {
         newBlock.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Частично оплачено');
+          .text('Не/част. оплачено');
 
         newBlock.append('div')
           .style('color', '#ef4444')
@@ -1221,7 +1221,7 @@ if (currentView === 'model' && selectedModel) {
     .style('color', '#10b981')
     .text(selectedModel.paid_count || 0);
   
-  // НЕ ОПЛАЧЕНО
+  // НЕ ОПЛАЧЕНО/ЧАСТИЧНО ОПЛАЧЕНО - ИЗМЕНЕНО НАЗВАНИЕ с учетом формата через слеш
   const unpaidStats = statsHeader.append('div')
     .style('padding', '10px')
     .style('background', 'rgba(15, 23, 42, 0.3)')
@@ -1230,9 +1230,9 @@ if (currentView === 'model' && selectedModel) {
   
   unpaidStats.append('div')
     .style('color', '#94a3b8')
-    .style('font-size', '12px')
+    .style('font-size', '11px') // Уменьшил размер, чтобы вместить текст
     .style('margin-bottom', '5px')
-    .text('ЧАСТИЧНО ОПЛАЧЕНО');
+    .text('НЕ/ЧАСТ. ОПЛАЧЕНО');
   
   unpaidStats.append('div')
     .style('font-size', '22px')
@@ -1254,7 +1254,8 @@ if (currentView === 'model' && selectedModel) {
   
   // Создаем прогресс-бар с подписями
   const progressData = [
-    { name: 'Частчично оплачено', value: selectedModel.state_new || 0, color: '#ef4444' },
+    // ИЗМЕНЕНО "Не оплачено/частично оплачено" ВМЕСТО "Частично оплачено"
+    { name: 'Не оплачено/частично оплачено', value: selectedModel.state_new || 0, color: '#ef4444' },
     { name: 'Оплачено', value: selectedModel.state_waiting || 0, color: '#f59e0b' },
     { name: 'На распределении', value: selectedModel.state_binding || 0, color: '#60a5fa' },
     { name: 'Распределён', value: selectedModel.state_reserved || 0, color: '#3b82f6' },
@@ -1310,10 +1311,13 @@ if (currentView === 'model' && selectedModel) {
         .style('margin-right', '5px')
         .style('box-shadow', `0 0 5px ${item.color}80`);
       
+      // В легенде для экономии места используем сокращение
+      const displayName = item.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : item.name;
+      
       legendItem.append('div')
         .style('color', '#94a3b8')
         .style('font-size', '11px')
-        .text(`${item.name}: ${item.value}`);
+        .text(`${displayName}: ${item.value}`);
     }
   });
   
@@ -1359,10 +1363,13 @@ if (currentView === 'model' && selectedModel) {
       .style('background', status.color)
       .style('margin-right', '8px');
     
+    // В таблице для экономии места используем сокращение
+    const displayName = status.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : status.name;
+    
     statusLabel.append('div')
       .style('color', '#f1f5f9')
       .style('font-size', '13px')
-      .text(status.name);
+      .text(displayName);
     
     row.append('div')
       .style('color', status.color)
@@ -1370,7 +1377,6 @@ if (currentView === 'model' && selectedModel) {
       .style('font-weight', 'medium')
       .text(status.value);
   });
-  
   // КОЛОНКА 2: Только изображение
   const imageColumn = detailContainer.append('div')
     .style('background', 'linear-gradient(145deg, #1e293b, #1a2234)')
@@ -1380,7 +1386,7 @@ if (currentView === 'model' && selectedModel) {
     .style('box-shadow', '0 10px 15px -3px rgba(0, 0, 0, 0.3)')
     .style('display', 'flex')
     .style('flex-direction', 'column');
-  
+
   // Заголовок с названием "Изображение"
   imageColumn.append('div')
     .style('padding', '15px 20px')
@@ -1520,7 +1526,10 @@ const renderStatusChart = () => {
 
   // Создаем шкалы
   const x = d3.scaleBand()
-    .domain(statusData.map(d => d.name))
+    .domain(statusData.map(d => {
+      // Для экономии места в графике используем сокращенное название
+      return d.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : d.name;
+    }))
     .range([margin.left, width - margin.right])
     .padding(0.5);
 
@@ -1572,7 +1581,7 @@ const renderStatusChart = () => {
     .enter()
     .append('rect')
     .attr('class', 'bar')
-    .attr('x', d => x(d.name))
+    .attr('x', d => x(d.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : d.name))
     .attr('width', x.bandwidth())
     .attr('y', height - margin.bottom)
     .attr('height', 0)
@@ -1619,7 +1628,7 @@ const renderStatusChart = () => {
     .enter()
     .append('text')
     .attr('class', 'bar-label')
-    .attr('x', d => x(d.name) + x.bandwidth() / 2)
+    .attr('x', d => x(d.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : d.name) + x.bandwidth() / 2)
     .attr('y', d => y(d.value) - 10)
     .attr('text-anchor', 'middle')
     .style('font-size', '14px') // Увеличенный размер шрифта
@@ -1635,7 +1644,7 @@ const renderStatusChart = () => {
 
   // Добавляем линию тренда
   const line = d3.line()
-    .x(d => x(d.name) + x.bandwidth() / 2)
+    .x(d => x(d.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : d.name) + x.bandwidth() / 2)
     .y(d => y(d.value))
     .curve(d3.curveMonotoneX);
 
@@ -1658,7 +1667,7 @@ const renderStatusChart = () => {
     .enter()
     .append('circle')
     .attr('class', 'dot')
-    .attr('cx', d => x(d.name) + x.bandwidth() / 2)
+    .attr('cx', d => x(d.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : d.name) + x.bandwidth() / 2)
     .attr('cy', d => y(d.value))
     .attr('r', 5)
     .attr('fill', '#f8fafc')
@@ -1694,7 +1703,10 @@ const renderStatusChart = () => {
                   boxShadow: `0 0 10px ${status.color}70`
                 }}
               ></div>
-              <div className="text-sm text-slate-300">{status.name}</div>
+              <div className="text-sm text-slate-300">
+                {/* Для экономии места в таблице используем сокращенное название */}
+                {status.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : status.name}
+              </div>
             </div>
             <div className="text-sm text-slate-400 w-1/2">{status.value}</div>
           </div>
@@ -1837,7 +1849,7 @@ const renderStatusChart = () => {
         
         <p className="text-slate-400 mb-6 font-medium">
           {currentView === 'general' 
-            ? `СТАТУСЫ ЗАКАЗОВ ${isWholesale ? '(ОПТОВЫЕ)' : '(РОЗНИЧНЫЕ)'}: ЧАСТИЧНО ОПЛАЧЕНО, ОПЛАЧЕНО, НА РАСПРЕДЕЛЕНИИ, РАСПРЕДЕЛЁН, В ПУТИ, У ДИЛЕРА, БРОНЬ`
+            ? `СТАТУСЫ ЗАКАЗОВ ${isWholesale ? '(ОПТОВЫЕ)' : '(РОЗНИЧНЫЕ)'}: НЕ ОПЛАЧЕНО/ЧАСТИЧНО ОПЛАЧЕНО, ОПЛАЧЕНО, НА РАСПРЕДЕЛЕНИИ, РАСПРЕДЕЛЁН, В ПУТИ, У ДИЛЕРА, БРОНЬ`
             : currentView === 'region'
               ? `СТАТИСТИКА ПО РЕГИОНУ: ${selectedRegion?.name}`
               : `ДЕТАЛЬНАЯ ИНФОРМАЦИЯ ПО МОДЕЛИ: ${selectedModel?.name}`}
@@ -1918,7 +1930,7 @@ const renderStatusChart = () => {
                           : models.reduce((sum, model) => sum + (model.no_paid_count || 0), 0)}
                       </span>
                     </div>
-                    <span className="text-sm font-medium text-slate-300">ЧАСТИЧНО ОПЛАЧЕНО</span>
+                    <span className="text-sm font-medium text-slate-300">НЕ/ЧАСТ. ОПЛАЧЕНО</span>
                   </div>
                 </div>
                 

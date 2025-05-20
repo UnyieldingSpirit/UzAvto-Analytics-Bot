@@ -3675,6 +3675,43 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
           .attr("stroke-dashoffset", 0);
       }
       
+      // Добавляем фоновые прямоугольники для текстовых меток
+// svg.selectAll(`.value-label-bg-${year}`)
+//   .data(yearMonthsData.filter(d => d[valKey] > 0)) // Только для ненулевых значений
+//   .enter().append("rect")
+//   .attr("class", `value-label-bg-${year}`)
+//   .attr("x", d => x(d.month) + x.bandwidth() / 2 - 15) // Ширина фона примерно 30px
+//   .attr("y", d => y(d[valKey]) - 25) // Располагаем над точкой
+//   .attr("width", 30)
+//   .attr("height", 16)
+//   .attr("rx", 3) // Скругленные углы
+//   .attr("fill", "#1e1e1e")
+//   .attr("stroke", yearColors[year].color)
+//   .attr("stroke-width", 1)
+//   .attr("opacity", 0)
+//   .transition()
+//   .delay((d, i) => 1500 + i * 50)
+//   .duration(300)
+//   .attr("opacity", 0.7);
+      
+      // Добавляем текстовые метки значений над точками
+      svg.selectAll(`.value-label-${year}`)
+        .data(yearMonthsData)
+        .enter().append("text")
+        .attr("class", `value-label-${year}`)
+        .attr("x", d => x(d.month) + x.bandwidth() / 2)
+        .attr("y", d => y(d[valKey]) - 15) // Размещаем на 15px выше точки
+        .attr("text-anchor", "middle")
+        .attr("font-size", "11px")
+        .attr("font-weight", "bold")
+        .style("fill", yearColors[year].color)
+        .style("opacity", 0)
+        .text(d => d[valKey] > 0 ? d[valKey] : "")
+        .transition()
+        .delay((d, i) => 1500 + i * 50 + 200) // Добавляем небольшую задержку после появления точек
+        .duration(300)
+        .style("opacity", 1);
+      
       // Добавляем точки
       svg.selectAll(`.dot-${year}`)
         .data(yearMonthsData)
@@ -3805,7 +3842,7 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
             .duration(200)
             .style("opacity", 1);
           
-          // Подсвечиваем точки для этого месяца
+          // Подсвечиваем точки и метки для этого месяца
           yearsData.forEach(yearData => {
             const year = yearData.year;
             svg.selectAll(`.dot-${year}`)
@@ -3813,6 +3850,20 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
               .transition()
               .duration(200)
               .attr("r", 7);
+              
+            svg.selectAll(`.value-label-${year}`)
+              .filter(d => d.month === month && d[valKey] > 0)
+              .transition()
+              .duration(200)
+              .attr("font-size", "13px")
+              .style("font-weight", "bolder");
+              
+            // svg.selectAll(`.value-label-bg-${year}`)
+            //   .filter(d => d.month === month && d[valKey] > 0)
+            //   .transition()
+            //   .duration(200)
+            //   .attr("opacity", 0.9)
+            //   .attr("y", d => y(d[valKey]) - 27); // Слегка приподнимаем фон
           });
         })
         .on("mouseout", function() {
@@ -3820,13 +3871,25 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
             .duration(500)
             .style("opacity", 0);
           
-          // Возвращаем точки к исходному размеру
+          // Возвращаем точки и метки к исходному размеру
           yearsData.forEach(yearData => {
             const year = yearData.year;
             svg.selectAll(`.dot-${year}`)
               .transition()
               .duration(200)
               .attr("r", 5);
+              
+            svg.selectAll(`.value-label-${year}`)
+              .transition()
+              .duration(200)
+              .attr("font-size", "11px")
+              .style("font-weight", "bold");
+              
+            // svg.selectAll(`.value-label-bg-${year}`)
+            //   .transition()
+            //   .duration(200)
+            //   .attr("opacity", 0.7)
+            //   .attr("y", d => y(d[valKey]) - 25); // Возвращаем фон на место
           });
         })
         .on("mousemove", function(event) {
@@ -4059,7 +4122,7 @@ const StatisticsCards = () => {
     switch(activeTab) {
       case 'contracts': return 'Общее количество контрактов';
       case 'sales': return 'Общий объем продаж';
-      case 'stock': return 'Общий остаток';
+      // case 'stock': return 'Общий остаток';
       case 'retail': return 'Всего розничных продаж';
       case 'wholesale': return 'Всего оптовых продаж';
       case 'promotions': return 'Всего акционных продаж';
@@ -4395,7 +4458,7 @@ const stats = getStats();
         Реализация
       </button>
       
-      <button
+      {/* <button
         className={`py-3 px-6 font-medium flex items-center ${
           activeTab === 'stock' 
             ? 'text-blue-400 border-b-2 border-blue-400' 
@@ -4407,7 +4470,7 @@ const stats = getStats();
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
         </svg>
         Остаток
-      </button>
+      </button> */}
       
       {/* Новые табы */}
       <button

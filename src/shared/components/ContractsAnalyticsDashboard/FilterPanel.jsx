@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, MapPin, Car, ImageOff } from 'lucide-react';
+import { Calendar, MapPin, Car } from 'lucide-react';
 
 const FilterPanel = ({ 
   // Основные состояния
@@ -13,15 +13,12 @@ const FilterPanel = ({
   setEndDate,
   // Данные для выбора
   regionsList = [], 
-  carModels = [], // Уже отфильтрованные модели
+  carModels = [],
   // Функции для применения фильтров
   applyDateFilter,
   handleModelChange,
   handleRegionChange
 }) => {
-  // Состояния для отслеживания ошибок загрузки изображений
-  const [failedImages, setFailedImages] = useState({});
-  
   // Внутренние состояния для хранения дат до применения фильтра
   const [tempStartDate, setTempStartDate] = useState(startDate);
   const [tempEndDate, setTempEndDate] = useState(endDate);
@@ -47,14 +44,6 @@ const FilterPanel = ({
     
     // Явно применяем фильтр после изменения дат
     setTimeout(() => applyDateFilter(), 100);
-  };
-  
-  // Обработчик ошибки загрузки изображения
-  const handleImageError = (modelId) => {
-    setFailedImages(prev => ({
-      ...prev,
-      [modelId]: true
-    }));
   };
   
   // Обработчик для временного изменения даты начала
@@ -100,22 +89,22 @@ const FilterPanel = ({
       </div>
       
       <div className="p-5">
-        {/* Верхняя часть: Период и Регион в одну строку */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+        {/* Все фильтры в одну строку */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Выбор периода */}
-          <div className="bg-gray-750/60 rounded-lg p-4 border border-gray-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-md">
-            <h4 className="text-sm font-medium text-gray-300 mb-3 flex items-center">
+          <div className="bg-gray-750/60 rounded-lg p-3 border border-gray-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-md">
+            <h4 className="text-sm font-medium text-gray-300 mb-2 flex items-center">
               <Calendar className="w-4 h-4 mr-2 text-blue-400" />
-              Выбор периода
+              Период
             </h4>
             
-            <div className="flex gap-3">
+            <div className="flex gap-2 items-center">
               <div className="flex-1">
                 <input 
                   type="date" 
                   value={tempStartDate}
                   onChange={handleTempStartDateChange}
-                  className="w-full py-2.5 px-3 bg-gray-700 border border-gray-600/60 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
+                  className="w-full py-2 px-2 bg-gray-700 border border-gray-600/60 rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-transparent transition-all"
                 />
               </div>
               <div className="flex items-center">
@@ -126,22 +115,22 @@ const FilterPanel = ({
                   type="date" 
                   value={tempEndDate}
                   onChange={handleTempEndDateChange}
-                  className="w-full py-2.5 px-3 bg-gray-700 border border-gray-600/60 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
+                  className="w-full py-2 px-2 bg-gray-700 border border-gray-600/60 rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-transparent transition-all"
                 />
               </div>
               
               <button 
                 onClick={handleApplyDates}
-                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 shadow hover:shadow-md flex items-center justify-center"
+                className="px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 shadow hover:shadow-md flex items-center justify-center"
               >
-                <span>Применить</span>
+                <span>ОК</span>
               </button>
             </div>
           </div>
           
           {/* Выбор региона */}
-          <div className="bg-gray-750/60 rounded-lg p-4 border border-gray-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-md">
-            <h4 className="text-sm font-medium text-gray-300 mb-3 flex items-center justify-between">
+          <div className="bg-gray-750/60 rounded-lg p-3 border border-gray-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-md">
+            <h4 className="text-sm font-medium text-gray-300 mb-2 flex items-center justify-between">
               <div className="flex items-center">
                 <MapPin className="w-4 h-4 mr-2 text-blue-400" />
                 Регион
@@ -160,7 +149,7 @@ const FilterPanel = ({
               <select 
                 value={selectedRegion}
                 onChange={(e) => handleRegionChange(e.target.value)}
-                className="w-full py-2.5 pl-3 pr-10 bg-gray-700 border border-gray-600/60 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all appearance-none"
+                className="w-full py-2 px-3 bg-gray-700 border border-gray-600/60 rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-transparent transition-all appearance-none"
               >
                 <option value="all">Все регионы</option>
                 {regionsList.map(region => (
@@ -176,15 +165,13 @@ const FilterPanel = ({
               </div>
             </div>
           </div>
-        </div>
-        
-        {/* Выбор модели автомобиля в виде списка */}
-        {carModels.length > 0 && (
-          <div className="bg-gray-750/60 rounded-lg p-4 border border-gray-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-md">
-            <h4 className="text-sm font-medium text-gray-300 mb-3 flex items-center justify-between">
+          
+          {/* Выбор модели автомобиля обычным select */}
+          <div className="bg-gray-750/60 rounded-lg p-3 border border-gray-700/50 hover:border-blue-500/30 transition-all duration-300 hover:shadow-md">
+            <h4 className="text-sm font-medium text-gray-300 mb-2 flex items-center justify-between">
               <div className="flex items-center">
                 <Car className="w-4 h-4 mr-2 text-blue-400" />
-                Модель автомобиля
+                Модель
               </div>
               {selectedModel !== 'all' && (
                 <button 
@@ -196,42 +183,27 @@ const FilterPanel = ({
               )}
             </h4>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {/* Кнопка "Все модели" */}
-              <button 
-                className={`rounded-lg p-2 transition-all flex items-center ${
-                  selectedModel === 'all' 
-                    ? 'bg-blue-600 text-white shadow-md' 
-                    : 'bg-gray-700/70 text-gray-300 hover:bg-gray-700 hover:shadow-md'
-                }`}
-                onClick={() => handleModelChange('all')}
+            <div className="relative">
+              <select 
+                value={selectedModel}
+                onChange={(e) => handleModelChange(e.target.value)}
+                className="w-full py-2 px-3 bg-gray-700 border border-gray-600/60 rounded-lg text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-transparent transition-all appearance-none"
               >
-                <div className="w-8 h-8 flex items-center justify-center bg-gray-800/70 rounded-lg mr-2">
-                  <Car className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-medium">Все модели</span>
-              </button>
-              
-              {/* Список моделей */}
-              {carModels.map((model, index) => (
-                <button 
-                  key={model.id}
-                  className={`rounded-lg p-2 transition-all flex items-center ${
-                    selectedModel === model.id 
-                      ? 'bg-blue-600 text-white shadow-md' 
-                      : 'bg-gray-700/70 text-gray-300 hover:bg-gray-700 hover:shadow-md'
-                  }`}
-                  onClick={() => handleModelChange(model.id)}
-                >
-                  <div className="text-gray-400 font-medium text-sm w-5 mr-1 text-center">
-                    {index + 1}.
-                  </div>
-                  <span className="text-sm font-medium truncate">{model.name}</span>
-                </button>
-              ))}
+                <option value="all">Все модели</option>
+                {carModels.map(model => (
+                  <option key={model.id} value={model.id}>
+                    {model.name}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                </svg>
+              </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
