@@ -444,18 +444,105 @@ const getGlobalTopSalespeople = () => {
   
   // Проходим по всем записям о продавцах
   data.salespersonData.forEach(person => {
+    // Проверяем, не является ли это онлайн-продавцом
+    const isOnlineSalesperson = person.salespersonName.toLowerCase().includes('online') || 
+                               person.dealerName.toLowerCase().includes('online');
+    
+    // Создаем ключ для идентификации продавца
     const key = `${person.salespersonId}-${person.salespersonName}`;
-    const currentSales = salesByPerson.get(key) || 0;
-    salesByPerson.set(key, currentSales + person.sales);
+    
+    // Если этот продавец уже есть в карте, обновляем существующую запись
+    if (salesByPerson.has(key)) {
+      const existingRecord = salesByPerson.get(key);
+      existingRecord.totalSales += person.sales;
+      existingRecord.isOnline = existingRecord.isOnline || isOnlineSalesperson;
+      
+      // Добавляем запись об этом дилере, если её ещё нет и это не онлайн-продавец
+      // либо если у этого продавца ещё нет ни одного дилера
+      if ((!isOnlineSalesperson || existingRecord.dealers.length === 0) && 
+          !existingRecord.dealers.some(d => d.dealerId === person.dealerId)) {
+        
+        // Извлекаем регион из названия дилера или устанавливаем значение по умолчанию
+        const region = extractRegionFromDealerName(person.dealerName);
+        
+        existingRecord.dealers.push({
+          dealerId: person.dealerId,
+          dealerName: person.dealerName,
+          region: region,
+          sales: person.sales
+        });
+      } else if (existingRecord.dealers.some(d => d.dealerId === person.dealerId)) {
+        // Обновляем продажи у существующего дилера
+        const dealerRecord = existingRecord.dealers.find(d => d.dealerId === person.dealerId);
+        dealerRecord.sales += person.sales;
+      }
+    } else {
+      // Извлекаем регион из названия дилера
+      const region = extractRegionFromDealerName(person.dealerName);
+      
+      // Создаём новую запись для этого продавца
+      salesByPerson.set(key, {
+        id: parseInt(person.salespersonId),
+        name: person.salespersonName,
+        totalSales: person.sales,
+        isOnline: isOnlineSalesperson,
+        dealers: isOnlineSalesperson ? [] : [{
+          dealerId: person.dealerId,
+          dealerName: person.dealerName,
+          region: region,
+          sales: person.sales
+        }]
+      });
+    }
   });
   
-  // Преобразуем карту в массив и сортируем по убыванию продаж
-  const allSalespeople = Array.from(salesByPerson.entries()).map(([key, sales]) => {
-    const [id, name] = key.split('-', 2);
+  // Функция для извлечения региона из названия дилера
+  function extractRegionFromDealerName(dealerName) {
+    // Примеры логики определения региона из названия дилера
+    // Это можно настроить в зависимости от формата названий дилеров
+    
+    // Проверим наличие города в скобках, например "АвтоСалон (Ташкент)"
+    const cityInBrackets = dealerName.match(/\(([^)]+)\)/);
+    if (cityInBrackets && cityInBrackets[1]) return cityInBrackets[1].trim();
+    
+    // Проверим, есть ли в названии какой-то известный город
+    const knownCities = ['Ташкент', 'Самарканд', 'Бухара', 'Андижан', 'Наманган', 'Фергана'];
+    for (const city of knownCities) {
+      if (dealerName.includes(city)) return city;
+    }
+    
+    // Если в названии есть 'г.' или 'город', пытаемся извлечь название города
+    const cityPattern = /(?:г\.|город)\s+([А-Яа-я-]+)/i;
+    const cityMatch = dealerName.match(cityPattern);
+    if (cityMatch && cityMatch[1]) return cityMatch[1].trim();
+    
+    // Если не смогли определить, возвращаем значение по умолчанию
+    return 'Неизвестный регион';
+  }
+  
+  // Преобразуем карту в массив и определяем основного дилера для каждого продавца
+  const allSalespeople = Array.from(salesByPerson.values()).map(person => {
+    // Сортируем дилеров по количеству продаж (от большего к меньшему)
+    person.dealers.sort((a, b) => b.sales - a.sales);
+    
+    // Определяем основного дилера (с наибольшим количеством продаж)
+    const mainDealer = person.dealers.length > 0 ? person.dealers[0] : null;
+    
+    // Группируем дилеров по регионам
+    const dealersByRegion = {};
+    person.dealers.forEach(dealer => {
+      if (!dealersByRegion[dealer.region]) {
+        dealersByRegion[dealer.region] = [];
+      }
+      dealersByRegion[dealer.region].push(dealer);
+    });
+    
     return {
-      id: parseInt(id),
-      name: name,
-      totalSales: sales
+      ...person,
+      mainDealer: mainDealer,
+      dealersByRegion: dealersByRegion,
+      // Если есть продажи у нескольких дилеров, добавляем флаг
+      hasMultipleDealers: person.dealers.length > 1
     };
   });
   
@@ -2428,6 +2515,7 @@ const renderDealerCharts = () => {
 
 const renderGlobalTopSalespeople = () => {
   const topSalespeople = getGlobalTopSalespeople();
+  const [hoveredSalesperson, setHoveredSalesperson] = useState(null);
   
   return (
     <div className="bg-gray-800 rounded-lg p-4 mb-6">
@@ -2440,18 +2528,34 @@ const renderGlobalTopSalespeople = () => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            className="bg-gray-900/70 rounded-lg p-3 flex items-center"
+            className="bg-gray-900/70 rounded-lg p-3 flex items-center relative"
+            onMouseEnter={() => setHoveredSalesperson(salesperson)}
+            onMouseLeave={() => setHoveredSalesperson(null)}
           >
-            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center font-bold mr-3"
-                 style={{ backgroundColor: index === 0 ? '#FFD700' : 
-                                         index === 1 ? '#C0C0C0' : 
-                                         index === 2 ? '#CD7F32' : '#3b82f680' }}>
+            {/* Аватар продавца */}
+            <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold mr-3"
+                 style={{ 
+                   backgroundColor: salesperson.isOnline ? '#10b981' : 
+                                     index === 0 ? '#FFD700' : 
+                                     index === 1 ? '#C0C0C0' : 
+                                     index === 2 ? '#CD7F32' : '#3b82f680' 
+                 }}>
               {salesperson.name.split(' ').map(n => n[0]).join('')}
             </div>
             
             <div className="flex-grow">
               <div className="flex justify-between items-center">
-                <h4 className="text-lg font-bold text-white">{salesperson.name}</h4>
+                <h4 className="text-lg font-bold text-white flex items-center">
+                  {salesperson.name}
+                  {salesperson.isOnline && (
+                    <span className="ml-2 text-xs font-normal px-1.5 py-0.5 rounded-full bg-green-900/70 text-green-300 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
+                      </svg>
+                      Online
+                    </span>
+                  )}
+                </h4>
                 <span className="px-2 py-1 rounded text-xs" 
                       style={{ backgroundColor: `${index === 0 ? '#FFD700' : 
                                                 index === 1 ? '#C0C0C0' : 
@@ -2465,6 +2569,33 @@ const renderGlobalTopSalespeople = () => {
                 </span>
               </div>
               
+              {/* Информация о дилере, только если это не онлайн-продавец */}
+              {!salesperson.isOnline && salesperson.mainDealer && (
+                <div className="flex items-center text-sm text-gray-400 mt-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <span className="truncate max-w-[180px]" title={salesperson.mainDealer.dealerName}>
+                    {salesperson.mainDealer.dealerName}
+                    {salesperson.hasMultipleDealers && (
+                      <span className="text-xs ml-1 px-1 py-0.5 bg-blue-900/30 rounded cursor-pointer">
+                        + ещё {salesperson.dealers.length - 1}
+                      </span>
+                    )}
+                  </span>
+                  
+                  {/* Регион основного дилера */}
+                  <span className="ml-2 px-1.5 py-0.5 rounded-full bg-gray-800 text-xs flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {salesperson.mainDealer.region}
+                  </span>
+                </div>
+              )}
+              
+              {/* Продажи */}
               <div className="flex items-center mt-1">
                 <div className="text-gray-400 text-sm">Общие продажи:</div>
                 <div className="text-white font-bold ml-2">{salesperson.totalSales.toLocaleString()}</div>
@@ -2476,9 +2607,12 @@ const renderGlobalTopSalespeople = () => {
                       animate={{ width: `${(salesperson.totalSales / topSalespeople[0].totalSales) * 100}%` }}
                       transition={{ duration: 0.5, delay: index * 0.1 + 0.3 }}
                       className="h-full rounded-full"
-                      style={{ backgroundColor: index === 0 ? '#FFD700' : 
-                                               index === 1 ? '#C0C0C0' : 
-                                               index === 2 ? '#CD7F32' : '#3b82f6' }}
+                      style={{ 
+                        backgroundColor: salesperson.isOnline ? '#10b981' :
+                                        index === 0 ? '#FFD700' : 
+                                        index === 1 ? '#C0C0C0' : 
+                                        index === 2 ? '#CD7F32' : '#3b82f6' 
+                      }}
                     />
                   </div>
                   <span className="text-xs text-gray-400">
@@ -2487,6 +2621,56 @@ const renderGlobalTopSalespeople = () => {
                 </div>
               </div>
             </div>
+            
+            {/* Всплывающая подсказка с информацией о дилерах и регионах */}
+            {hoveredSalesperson && hoveredSalesperson.id === salesperson.id && 
+             hoveredSalesperson.hasMultipleDealers && !hoveredSalesperson.isOnline && (
+              <div className="absolute right-0 top-0 transform -translate-y-full mt-2 bg-gray-800 border border-gray-700 rounded-lg p-3 shadow-xl z-10 w-72">
+                <h5 className="text-white font-bold mb-3">Продажи по дилерам и регионам</h5>
+                
+                {/* Группировка дилеров по регионам */}
+                <div className="space-y-4 max-h-64 overflow-auto pr-2">
+                  {Object.entries(hoveredSalesperson.dealersByRegion).map(([region, dealers]) => (
+                    <div key={region} className="border-b border-gray-700 pb-3 last:border-b-0">
+                      <div className="flex items-center mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="text-sm font-medium text-blue-400">{region}</span>
+                        <span className="text-xs text-gray-400 ml-auto">
+                          {dealers.reduce((sum, d) => sum + d.sales, 0)} продаж
+                        </span>
+                      </div>
+                      
+                      {/* Список дилеров в регионе */}
+                      <div className="space-y-2">
+                        {dealers.map((dealer, idx) => (
+                          <div key={idx} className="flex justify-between items-center bg-gray-900/50 rounded p-2">
+                            <span className="text-xs text-gray-300 truncate max-w-[180px]" title={dealer.dealerName}>
+                              {dealer.dealerName}
+                            </span>
+                            <div className="flex items-center">
+                              <span className="text-xs font-medium text-white">{dealer.sales}</span>
+                              <div className="h-1.5 w-12 bg-gray-700 rounded-full ml-2">
+                                <div 
+                                  className="h-full rounded-full" 
+                                  style={{ 
+                                    width: `${(dealer.sales / hoveredSalesperson.totalSales) * 100}%`,
+                                    backgroundColor: dealer.dealerId === hoveredSalesperson.mainDealer.dealerId ? 
+                                                    '#10b981' : '#3b82f6'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </motion.div>
         ))}
       </div>
