@@ -1,3 +1,4 @@
+// src/shared/components/ContractsAnalyticsDashboard/ContractsAnalyticsDashboard.jsx
 'use client'
 import React, { useState, useEffect, useRef } from 'react';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
@@ -12,8 +13,14 @@ import { formatNumber, getPeriodLabel, getPeriodDescription } from './utils/form
 import { fetchContractData, fetchContractDataByDate, processContractData } from './services/contractService';
 import { regions } from './models/regions';
 import ContentReadyLoader from '../../layout/ContentReadyLoader';
+// Импорт хука для переводов
+import { useTranslation } from '@/src/hooks/useTranslation';
+import { contractsAnalyticsTranslations } from '../locales/ContractsAnalyticsDashboard';
 
 function ContractsAnalyticsDashboard() {
+  // Инициализация переводов
+  const { t, currentLocale } = useTranslation(contractsAnalyticsTranslations);
+  
   // Основные состояния
   const [selectedPeriod, setSelectedPeriod] = useState('year');
   const [periodData, setPeriodData] = useState([]);
@@ -255,16 +262,16 @@ function ContractsAnalyticsDashboard() {
   const renderCustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-gray-800/95 p-4 rounded-lg shadow-xl border border-gray-700/60 backdrop-blur-sm">
-          <p className="text-gray-200 font-medium text-base mb-2">{payload[0]?.payload.name || payload[0]?.payload.day}</p>
-          <p className="text-indigo-400 font-medium flex items-center gap-2 mb-1.5">
-            <span className="text-lg">📝</span> Контракты: {formatNumber(payload[0]?.payload.contracts)}
+        <div className="bg-gray-800/95 p-3 md:p-4 rounded-lg shadow-xl border border-gray-700/60 backdrop-blur-sm">
+          <p className="text-gray-200 font-medium text-sm md:text-base mb-2">{payload[0]?.payload.name || payload[0]?.payload.day}</p>
+          <p className="text-indigo-400 font-medium flex items-center gap-2 mb-1.5 text-xs md:text-sm">
+            <span className="text-base md:text-lg">📝</span> {t('stats.contracts')}: {formatNumber(payload[0]?.payload.contracts)}
           </p>
-          <p className="text-emerald-400 font-medium flex items-center gap-2 mb-1.5">
-            <span className="text-lg">✅</span> Реализация: {formatNumber(payload[0]?.payload.realization)}
+          <p className="text-emerald-400 font-medium flex items-center gap-2 mb-1.5 text-xs md:text-sm">
+            <span className="text-base md:text-lg">✅</span> {t('stats.realization')}: {formatNumber(payload[0]?.payload.realization)}
           </p>
-          <p className="text-red-400 font-medium flex items-center gap-2">
-            <span className="text-lg">❌</span> Отмена: {formatNumber(payload[0]?.payload.cancellation)}
+          <p className="text-red-400 font-medium flex items-center gap-2 text-xs md:text-sm">
+            <span className="text-base md:text-lg">❌</span> {t('stats.cancellation')}: {formatNumber(payload[0]?.payload.cancellation)}
           </p>
         </div>
       );
@@ -285,7 +292,7 @@ function ContractsAnalyticsDashboard() {
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
     
-    console.log("Фильтрация данных по периоду:", start.toLocaleDateString('ru-RU'), "-", end.toLocaleDateString('ru-RU'));
+    console.log("Фильтрация данных по периоду:", start.toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU'), "-", end.toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU'));
     
     // Фильтруем данные, чтобы оставить только те, что попадают в диапазон дат
     const filteredData = data.filter(item => {
@@ -360,7 +367,9 @@ function ContractsAnalyticsDashboard() {
     if (!isDataReady) {
       return (
         <div className="flex items-center justify-center h-full">
-          <p className="text-gray-400">Нажмите "Применить", чтобы обновить данные для выбранного периода.</p>
+          <p className="text-gray-400 text-sm md:text-base text-center px-4">
+            {t('charts.applyToUpdate')}
+          </p>
         </div>
       );
     }
@@ -369,7 +378,9 @@ function ContractsAnalyticsDashboard() {
     if (!periodData || periodData.length === 0) {
       return (
         <div className="flex items-center justify-center h-full">
-          <p className="text-gray-400">Нет данных для отображения. Пожалуйста, выберите другой период или фильтры.</p>
+          <p className="text-gray-400 text-sm md:text-base text-center px-4">
+            {t('charts.noData')}
+          </p>
         </div>
       );
     }
@@ -381,7 +392,12 @@ function ContractsAnalyticsDashboard() {
     if (chartData.length === 0) {
       return (
         <div className="flex items-center justify-center h-full">
-          <p className="text-gray-400">Нет данных для выбранного периода: {new Date(startDate).toLocaleDateString('ru-RU')} - {new Date(endDate).toLocaleDateString('ru-RU')}</p>
+          <p className="text-gray-400 text-sm md:text-base text-center px-4">
+            {t('charts.noDataPeriod', { 
+              startDate: new Date(startDate).toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU'), 
+              endDate: new Date(endDate).toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU') 
+            })}
+          </p>
         </div>
       );
     }
@@ -415,9 +431,16 @@ function ContractsAnalyticsDashboard() {
       angle: chartData.length > 12 ? -45 : 0,
       textAnchor: chartData.length > 12 ? 'end' : 'middle',
       height: chartData.length > 12 ? 60 : 30,
-      tick: { fontSize: 12 },
-      // Показываем все точки данных
-      interval: 0
+      tick: { fontSize: 10, fill: '#d1d5db' },
+      // Показываем все точки данных, если их немного, иначе выборочно
+      interval: chartData.length > 12 ? 'preserveStartEnd' : 0
+    };
+
+    // Метки для легенды
+    const legendLabels = {
+      contracts: t('stats.contracts'),
+      realization: t('stats.realization'),
+      cancellation: t('stats.cancellation')
     };
 
     let renderedChart;
@@ -444,7 +467,8 @@ function ContractsAnalyticsDashboard() {
             <YAxis
               stroke="#9ca3af"
               tickFormatter={formatNumber}
-              width={70}
+              width={50}
+              tick={{ fontSize: 10, fill: '#d1d5db' }}
             />
             <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
             <Tooltip content={renderCustomTooltip} />
@@ -452,37 +476,33 @@ function ContractsAnalyticsDashboard() {
               verticalAlign="top"
               height={36}
               formatter={(value) => {
-                const labels = {
-                  contracts: "Контракты",
-                  realization: "Реализация",
-                  cancellation: "Отмена"
-                };
-                return <span style={{ color: '#d1d5db', fontSize: '0.9rem' }}>{labels[value]}</span>
+                return <span style={{ color: '#d1d5db', fontSize: '0.85rem' }}>{legendLabels[value]}</span>
               }}
+              wrapperStyle={{ paddingBottom: '10px' }}
             />
             <Line
               type="monotone"
               dataKey="contracts"
               stroke="#4f46e5"
-              strokeWidth={3}
-              dot={{ stroke: '#4f46e5', fill: '#1f2937', strokeWidth: 2, r: 5 }}
-              activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
+              strokeWidth={2}
+              dot={{ stroke: '#4f46e5', fill: '#1f2937', strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
             />
             <Line
               type="monotone"
               dataKey="realization"
               stroke="#10b981"
-              strokeWidth={3}
-              dot={{ stroke: '#10b981', fill: '#1f2937', strokeWidth: 2, r: 5 }}
-              activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
+              strokeWidth={2}
+              dot={{ stroke: '#10b981', fill: '#1f2937', strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
             />
             <Line
               type="monotone"
               dataKey="cancellation"
               stroke="#ef4444"
-              strokeWidth={3}
-              dot={{ stroke: '#ef4444', fill: '#1f2937', strokeWidth: 2, r: 5 }}
-              activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
+              strokeWidth={2}
+              dot={{ stroke: '#ef4444', fill: '#1f2937', strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
             />
           </LineChart>
         );
@@ -509,7 +529,8 @@ function ContractsAnalyticsDashboard() {
             <YAxis
               stroke="#9ca3af"
               tickFormatter={formatNumber}
-              width={70}
+              width={50}
+              tick={{ fontSize: 10, fill: '#d1d5db' }}
             />
             <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
             <Tooltip content={renderCustomTooltip} />
@@ -517,13 +538,9 @@ function ContractsAnalyticsDashboard() {
               verticalAlign="top"
               height={36}
               formatter={(value) => {
-                const labels = {
-                  contracts: "Контракты",
-                  realization: "Реализация",
-                  cancellation: "Отмена"
-                };
-                return <span style={{ color: '#d1d5db', fontSize: '0.9rem' }}>{labels[value]}</span>
+                return <span style={{ color: '#d1d5db', fontSize: '0.85rem' }}>{legendLabels[value]}</span>
               }}
+              wrapperStyle={{ paddingBottom: '10px' }}
             />
             <Area
               type="monotone"
@@ -531,7 +548,7 @@ function ContractsAnalyticsDashboard() {
               fill="url(#colorContractsGradient)"
               stroke="#4f46e5"
               strokeWidth={2}
-              activeDot={{ r: 8 }}
+              activeDot={{ r: 6 }}
             />
             <Area
               type="monotone"
@@ -539,7 +556,7 @@ function ContractsAnalyticsDashboard() {
               fill="url(#colorRealizationGradient)"
               stroke="#10b981"
               strokeWidth={2}
-              activeDot={{ r: 8 }}
+              activeDot={{ r: 6 }}
             />
             <Area
               type="monotone"
@@ -547,7 +564,7 @@ function ContractsAnalyticsDashboard() {
               fill="url(#colorCancellationGradient)"
               stroke="#ef4444"
               strokeWidth={2}
-              activeDot={{ r: 8 }}
+              activeDot={{ r: 6 }}
             />
           </AreaChart>
         );
@@ -560,7 +577,8 @@ function ContractsAnalyticsDashboard() {
             <YAxis
               stroke="#9ca3af"
               tickFormatter={formatNumber}
-              width={70}
+              width={50}
+              tick={{ fontSize: 10, fill: '#d1d5db' }}
             />
             <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
             <Tooltip content={renderCustomTooltip} />
@@ -568,13 +586,9 @@ function ContractsAnalyticsDashboard() {
               verticalAlign="top"
               height={36}
               formatter={(value) => {
-                const labels = {
-                  contracts: "Контракты",
-                  realization: "Реализация",
-                  cancellation: "Отмена"
-                };
-                return <span style={{ color: '#d1d5db', fontSize: '0.9rem' }}>{labels[value]}</span>
+                return <span style={{ color: '#d1d5db', fontSize: '0.85rem' }}>{legendLabels[value]}</span>
               }}
+              wrapperStyle={{ paddingBottom: '10px' }}
             />
             <defs>
               <linearGradient id="contractsBar" x1="0" y1="0" x2="0" y2="1">
@@ -594,16 +608,19 @@ function ContractsAnalyticsDashboard() {
               dataKey="contracts"
               fill="url(#contractsBar)"
               radius={[4, 4, 0, 0]}
+              maxBarSize={50}
             />
             <Bar
               dataKey="realization"
               fill="url(#realizationBar)"
               radius={[4, 4, 0, 0]}
+              maxBarSize={50}
             />
             <Bar
               dataKey="cancellation"
               fill="url(#cancellationBar)"
               radius={[4, 4, 0, 0]}
+              maxBarSize={50}
             />
           </BarChart>
         );
@@ -612,8 +629,8 @@ function ContractsAnalyticsDashboard() {
       default:
         renderedChart = (
           <LineChart data={chartData}>
-            <XAxis dataKey="name" />
-            <YAxis />
+            <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#d1d5db' }} />
+            <YAxis tick={{ fontSize: 10, fill: '#d1d5db' }} />
             <Tooltip />
             <Line
               type="monotone"
@@ -640,15 +657,350 @@ function ContractsAnalyticsDashboard() {
     return renderedChart;
   };
   
-const renderDetailedChart = () => {
+  const renderDetailedChart = () => {
+    // Проверка наличия данных
+    if (!dailyContractData || !Array.isArray(dailyContractData)) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-400 text-sm md:text-base text-center">
+            {t('charts.noData')}
+          </p>
+        </div>
+      );
+    }
+
+    // Фильтруем данные по выбранной модели
+    const filteredData = selectedModel === 'all'
+      ? dailyContractData
+      : dailyContractData.filter(model => model.model_id === selectedModel);
+
+    // Фильтруем также по выбранному региону, если он указан
+    const filteredByRegion = (selectedRegion === 'all')
+      ? filteredData
+      : filteredData.map(model => {
+        const newModel = { ...model };
+        if (newModel.filter_by_date && Array.isArray(newModel.filter_by_date)) {
+          newModel.filter_by_date = newModel.filter_by_date.filter(
+            region => region.region_id === selectedRegion
+          );
+        }
+        return newModel;
+      }).filter(model =>
+        model.filter_by_date &&
+        model.filter_by_date.length > 0 &&
+        model.filter_by_date.some(region => region.data && region.data.length > 0)
+      );
+
+    // Если нет данных после фильтрации
+    if (filteredByRegion.length === 0 || !filteredByRegion.some(model =>
+      model.filter_by_date &&
+      Array.isArray(model.filter_by_date) &&
+      model.filter_by_date.some(region => region.data && region.data.length > 0)
+    )) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-400 text-sm md:text-base text-center">
+            {t('charts.noData')}
+          </p>
+        </div>
+      );
+    }
+
+    // Создаем карту данных для каждого дня
+    const dayDataMap = {};
+
+    // Собираем данные о контрактах по дням
+    filteredByRegion.forEach(model => {
+      if (model.filter_by_date && Array.isArray(model.filter_by_date)) {
+        model.filter_by_date.forEach(region => {
+          if (region.data && Array.isArray(region.data)) {
+            region.data.forEach(item => {
+              if (item.order_date && item.order_count) {
+                const dateStr = item.order_date;
+              
+                // Инициализируем запись для даты, если ее еще нет
+                if (!dayDataMap[dateStr]) {
+                  dayDataMap[dateStr] = {
+                    date: dateStr,
+                    day: new Date(dateStr).getDate(),
+                    contracts: 0,
+                    realization: 0,
+                    cancellation: 0
+                  };
+                }
+              
+                // Добавляем количество контрактов
+                dayDataMap[dateStr].contracts += parseInt(item.order_count || 0);
+              }
+            });
+          }
+        });
+      }
+      
+      // Аналогично для реализованных контрактов, если они есть в API
+      if (model.filter_real_by_date && Array.isArray(model.filter_real_by_date)) {
+        model.filter_real_by_date.forEach(region => {
+          if (region.data && Array.isArray(region.data)) {
+            region.data.forEach(item => {
+              if (item.order_date && item.order_count) {
+                const dateStr = item.order_date;
+                
+                // Инициализируем запись для даты, если ее еще нет
+                if (!dayDataMap[dateStr]) {
+                  dayDataMap[dateStr] = {
+                    date: dateStr,
+                    day: new Date(dateStr).getDate(),
+                    contracts: 0,
+                    realization: 0,
+                    cancellation: 0
+                  };
+                }
+                
+                // Добавляем количество реализованных контрактов
+                dayDataMap[dateStr].realization += parseInt(item.order_count || 0);
+              }
+            });
+          }
+        });
+      }
+      
+      // Аналогично для отмененных контрактов, если они есть в API
+      if (model.filter_cancel_by_date && Array.isArray(model.filter_cancel_by_date)) {
+        model.filter_cancel_by_date.forEach(region => {
+          if (region.data && Array.isArray(region.data)) {
+            region.data.forEach(item => {
+              if (item.order_date && item.order_count) {
+                const dateStr = item.order_date;
+                
+                // Инициализируем запись для даты, если ее еще нет
+                if (!dayDataMap[dateStr]) {
+                  dayDataMap[dateStr] = {
+                    date: dateStr,
+                    day: new Date(dateStr).getDate(),
+                    contracts: 0,
+                    realization: 0,
+                    cancellation: 0
+                  };
+                }
+                
+                // Добавляем количество отмененных контрактов
+                dayDataMap[dateStr].cancellation += parseInt(item.order_count || 0);
+              }
+            });
+          }
+        });
+      }
+    });
+
+    // Преобразуем объект в массив и сортируем по дате
+    const chartData = Object.values(dayDataMap).sort((a, b) => a.day - b.day);
+
+    // Если нет данных
+    if (chartData.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-400 text-sm md:text-base text-center">
+            {t('charts.noData')}
+          </p>
+        </div>
+      );
+    }
+
+    // Метки для легенды
+    const legendLabels = {
+      contracts: t('stats.contracts'),
+      realization: t('stats.realization'),
+      cancellation: t('stats.cancellation')
+    };
+
+    // Новый кастомный тултип для столбчатой диаграммы
+    const renderCustomTooltip = ({ active, payload, label }) => {
+      if (active && payload && payload.length) {
+        const data = payload[0].payload;
+        const date = new Date(data.date);
+        const formattedDate = date.toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU', { 
+          day: 'numeric', 
+          month: 'short',
+          year: 'numeric'
+        });
+        
+        return (
+          <div className="bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-700 text-xs md:text-sm">
+            <p className="font-semibold text-gray-300 mb-1">{formattedDate}</p>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+                <p className="text-white">{t('stats.contracts')}: <span className="font-bold">{formatNumber(data.contracts)}</span></p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                <p className="text-white">{t('stats.realization')}: <span className="font-bold">{formatNumber(data.realization)}</span></p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                <p className="text-white">{t('stats.cancellation')}: <span className="font-bold">{formatNumber(data.cancellation)}</span></p>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      return null;
+    };
+
+    // Функция кастомизации данных для БарЧарта
+    const CustomBarShape = ({ x, y, width, height, fill }) => {
+      return (
+        <g>
+          <rect 
+            x={x} 
+            y={y} 
+            width={width} 
+            height={height} 
+            fill={fill} 
+            rx={4} 
+            ry={4}
+            filter="url(#drop-shadow)"
+          />
+          <rect 
+            x={x} 
+            y={y} 
+            width={width} 
+            height={5}
+            fill="white" 
+            fillOpacity={0.2} 
+            rx={4} 
+            ry={4}
+          />
+        </g>
+      );
+    };
+
+    return (
+      <ResponsiveContainer width="100%" height={500}>
+        <BarChart
+          data={chartData}
+          margin={{ top: 20, right: 20, left: 5, bottom: 20 }}
+          barSize={chartData.length > 15 ? 12 : 20}
+          barGap={chartData.length > 15 ? 2 : 5}
+        >
+          <defs>
+            <filter id="drop-shadow" height="130%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>
+              <feOffset in="blur" dx="0" dy="2" result="offsetBlur"/>
+              <feComponentTransfer>
+                <feFuncA type="linear" slope="0.3"/>
+              </feComponentTransfer>
+              <feMerge> 
+                <feMergeNode in="offsetBlur"/>
+                <feMergeNode in="SourceGraphic"/> 
+              </feMerge>
+            </filter>
+          </defs>
+          <CartesianGrid stroke="#374151" strokeDasharray="3 3" vertical={false} />
+          <XAxis 
+            dataKey="day" 
+            stroke="#9ca3af"
+            tickFormatter={(day) => `${day}`}
+            // Выборочно показываем дни для экономии места на мобильных
+            ticks={chartData.length <= 10 
+              ? chartData.map(d => d.day) 
+              : chartData.filter((_, i) => i % Math.ceil(chartData.length / 10) === 0).map(d => d.day)}
+            tick={{ fontSize: 10, fill: '#d1d5db' }}
+          />
+          <YAxis 
+            stroke="#9ca3af" 
+            tickFormatter={formatNumber}
+            width={45}
+            tick={{ fontSize: 10, fill: '#d1d5db' }}
+          />
+          <Tooltip 
+            content={renderCustomTooltip} 
+            cursor={{ fill: 'rgba(107, 114, 128, 0.2)' }}
+          />
+          <Legend
+            verticalAlign="top"
+            height={36}
+            formatter={(value) => {
+              return <span style={{ color: '#d1d5db', fontSize: '0.85rem' }}>{legendLabels[value]}</span>
+            }}
+            wrapperStyle={{ paddingBottom: '10px' }}
+          />
+          <Bar 
+            dataKey="contracts" 
+            name="contracts"
+            fill="#4f46e5" 
+            shape={<CustomBarShape />}
+            animationDuration={1000}
+            animationBegin={0}
+          />
+          <Bar 
+            dataKey="realization" 
+            name="realization"
+            fill="#10b981" 
+            shape={<CustomBarShape />}
+            animationDuration={1000}
+            animationBegin={200}
+          />
+          <Bar 
+            dataKey="cancellation" 
+            name="cancellation"
+            fill="#ef4444" 
+            shape={<CustomBarShape />}
+            animationDuration={1000}
+            animationBegin={400}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  };
+  
+  
+  const filteredModels = enhancedModels.filter(model => {
+    // Получаем данные о производительности для модели
+    const modelStats = modelPerformance[model.id];
+  
+    // Проверяем наличие ненулевых данных
+    return modelStats && (
+      (modelStats.contracts && modelStats.contracts > 0) ||
+      (modelStats.realization && modelStats.realization > 0) ||
+      (modelStats.cancellation && modelStats.cancellation > 0)
+    );
+  });
+  
+const renderHeatmap = () => {
   // Проверка наличия данных
   if (!dailyContractData || !Array.isArray(dailyContractData)) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-400">Нет данных для отображения детализации.</p>
+      <div className="flex items-center justify-center h-36">
+        <p className="text-gray-400 text-sm md:text-base text-center">
+          {t('charts.noData')}
+        </p>
       </div>
     );
   }
+
+  // Функция для определения цвета ячейки с фиксированными пороговыми значениями
+  const colorScale = (value) => {
+    // Если нет значения, возвращаем серый цвет
+    if (value === null || value === undefined || value === 0) {
+      return "rgba(75, 85, 99, 0.2)"; // серый цвет для дней без данных
+    }
+  
+    // Фиксированные пороговые значения
+    if (value < 1000) {
+      // Мало (синий)
+      return "rgba(59, 130, 246, 0.7)";
+    } else if (value < 1200) {
+      // Средне (фиолетовый)
+      return "rgba(139, 92, 246, 0.7)";
+    } else if (value < 1500) {
+      // Много (оранжевый)
+      return "rgba(249, 115, 22, 0.7)";
+    } else {
+      // Очень много (красный)
+      return "rgba(239, 68, 68, 0.7)";
+    }
+  };
 
   // Фильтруем данные по выбранной модели
   const filteredData = selectedModel === 'all'
@@ -679,91 +1031,80 @@ const renderDetailedChart = () => {
     model.filter_by_date.some(region => region.data && region.data.length > 0)
   )) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-400">Нет данных для отображения детализации по выбранным параметрам.</p>
+      <div className="flex items-center justify-center h-36">
+        <p className="text-gray-400 text-sm md:text-base text-center">
+          {t('charts.noData')}
+        </p>
       </div>
     );
   }
 
-  // Создаем карту данных для каждого дня
+  // Собираем все даты
+  const allDates = [];
+  filteredByRegion.forEach(model => {
+    if (model.filter_by_date && Array.isArray(model.filter_by_date)) {
+      model.filter_by_date.forEach(region => {
+        if (region.data && Array.isArray(region.data)) {
+          region.data.forEach(item => {
+            if (item.order_date) {
+              allDates.push(item.order_date);
+            }
+          });
+        }
+      });
+    }
+  });
+
+  // Если нет дат
+  if (allDates.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-36">
+        <p className="text-gray-400 text-sm md:text-base text-center">
+          {t('charts.noData')}
+        </p>
+      </div>
+    );
+  }
+
+  // Определяем месяц и год
+  const firstDate = new Date(allDates[0]);
+  const currentYear = firstDate.getFullYear();
+  const currentMonth = firstDate.getMonth();
+
+  // Определяем дни недели в зависимости от локали
+  const weekdays = [
+    t('charts.heatmap.monday'), 
+    t('charts.heatmap.tuesday'), 
+    t('charts.heatmap.wednesday'), 
+    t('charts.heatmap.thursday'), 
+    t('charts.heatmap.friday'), 
+    t('charts.heatmap.saturday'), 
+    t('charts.heatmap.sunday')
+  ];
+
+  // Создаем объект для хранения данных по дням
   const dayDataMap = {};
 
-  // Собираем данные о контрактах по дням
+  // Заполняем данные по дням
   filteredByRegion.forEach(model => {
     if (model.filter_by_date && Array.isArray(model.filter_by_date)) {
       model.filter_by_date.forEach(region => {
         if (region.data && Array.isArray(region.data)) {
           region.data.forEach(item => {
             if (item.order_date && item.order_count) {
-              const dateStr = item.order_date;
-            
-              // Инициализируем запись для даты, если ее еще нет
-              if (!dayDataMap[dateStr]) {
-                dayDataMap[dateStr] = {
-                  date: dateStr,
-                  day: new Date(dateStr).getDate(),
-                  contracts: 0,
-                  realization: 0,
-                  cancellation: 0
-                };
+              const date = new Date(item.order_date);
+              // Проверяем, что дата относится к текущему месяцу
+              if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
+                const day = date.getDate();
+              
+                // Инициализируем данные для дня, если их еще нет
+                if (!dayDataMap[day]) {
+                  dayDataMap[day] = 0;
+                }
+              
+                // Добавляем количество заказов
+                dayDataMap[day] += parseInt(item.order_count);
               }
-            
-              // Добавляем количество контрактов
-              dayDataMap[dateStr].contracts += parseInt(item.order_count || 0);
-            }
-          });
-        }
-      });
-    }
-    
-    // Аналогично для реализованных контрактов, если они есть в API
-    if (model.filter_real_by_date && Array.isArray(model.filter_real_by_date)) {
-      model.filter_real_by_date.forEach(region => {
-        if (region.data && Array.isArray(region.data)) {
-          region.data.forEach(item => {
-            if (item.order_date && item.order_count) {
-              const dateStr = item.order_date;
-              
-              // Инициализируем запись для даты, если ее еще нет
-              if (!dayDataMap[dateStr]) {
-                dayDataMap[dateStr] = {
-                  date: dateStr,
-                  day: new Date(dateStr).getDate(),
-                  contracts: 0,
-                  realization: 0,
-                  cancellation: 0
-                };
-              }
-              
-              // Добавляем количество реализованных контрактов
-              dayDataMap[dateStr].realization += parseInt(item.order_count || 0);
-            }
-          });
-        }
-      });
-    }
-    
-    // Аналогично для отмененных контрактов, если они есть в API
-    if (model.filter_cancel_by_date && Array.isArray(model.filter_cancel_by_date)) {
-      model.filter_cancel_by_date.forEach(region => {
-        if (region.data && Array.isArray(region.data)) {
-          region.data.forEach(item => {
-            if (item.order_date && item.order_count) {
-              const dateStr = item.order_date;
-              
-              // Инициализируем запись для даты, если ее еще нет
-              if (!dayDataMap[dateStr]) {
-                dayDataMap[dateStr] = {
-                  date: dateStr,
-                  day: new Date(dateStr).getDate(),
-                  contracts: 0,
-                  realization: 0,
-                  cancellation: 0
-                };
-              }
-              
-              // Добавляем количество отмененных контрактов
-              dayDataMap[dateStr].cancellation += parseInt(item.order_count || 0);
             }
           });
         }
@@ -771,392 +1112,79 @@ const renderDetailedChart = () => {
     }
   });
 
-  // Преобразуем объект в массив и сортируем по дате
-  const chartData = Object.values(dayDataMap).sort((a, b) => a.day - b.day);
+  // Получаем первый день месяца
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+  // День недели для первого дня месяца (0 - воскресенье, 1 - понедельник, ...)
+  let firstDayOfWeek = firstDayOfMonth.getDay();
+  // Преобразуем в формат 1-7, где 1 - понедельник, 7 - воскресенье
+  if (firstDayOfWeek === 0) firstDayOfWeek = 7;
 
-  // Если нет данных
-  if (chartData.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-400">Нет данных для отображения детализации.</p>
-      </div>
-    );
+  // Получаем последний день месяца
+  const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
+  const daysInMonth = lastDayOfMonth.getDate();
+
+  // Сегодняшний день (для определения будущих дней)
+  const today = new Date();
+  const currentDay = today.getDate();
+  const isCurrentMonth = today.getMonth() === currentMonth && today.getFullYear() === currentYear;
+
+  // Создаем недели
+  const weeks = [];
+  let currentWeek = { week: t('charts.heatmap.week', { number: 1 }) };
+  let weekNumber = 1;
+
+  // Заполняем пустые ячейки до первого дня месяца
+  for (let i = 1; i < firstDayOfWeek; i++) {
+    currentWeek[`day${i}`] = { day: null, value: null };
   }
 
-  // Новый кастомный тултип для столбчатой диаграммы
-  const renderCustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      const date = new Date(data.date);
-      const formattedDate = date.toLocaleDateString('ru-RU', { 
-        day: 'numeric', 
-        month: 'short',
-        year: 'numeric'
-      });
-      
-      return (
-        <div className="bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-700 text-sm">
-          <p className="font-semibold text-gray-300 mb-1">{formattedDate}</p>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-              <p className="text-white">Контракты: <span className="font-bold">{formatNumber(data.contracts)}</span></p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              <p className="text-white">Реализация: <span className="font-bold">{formatNumber(data.realization)}</span></p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <p className="text-white">Отмены: <span className="font-bold">{formatNumber(data.cancellation)}</span></p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // Функция кастомизации данных для БарЧарта
-  const CustomBarShape = ({ x, y, width, height, fill }) => {
-    return (
-      <g>
-        <rect 
-          x={x} 
-          y={y} 
-          width={width} 
-          height={height} 
-          fill={fill} 
-          rx={4} 
-          ry={4}
-          filter="url(#drop-shadow)"
-        />
-        <rect 
-          x={x} 
-          y={y} 
-          width={width} 
-          height={5}
-          fill="white" 
-          fillOpacity={0.2} 
-          rx={4} 
-          ry={4}
-        />
-      </g>
-    );
-  };
-
-  return (
-    <ResponsiveContainer width="100%" height={500}>
-      <BarChart
-        data={chartData}
-        margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-        barSize={20}
-      >
-        <defs>
-          <filter id="drop-shadow" height="130%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>
-            <feOffset in="blur" dx="0" dy="2" result="offsetBlur"/>
-            <feComponentTransfer>
-              <feFuncA type="linear" slope="0.3"/>
-            </feComponentTransfer>
-            <feMerge> 
-              <feMergeNode in="offsetBlur"/>
-              <feMergeNode in="SourceGraphic"/> 
-            </feMerge>
-          </filter>
-        </defs>
-        <CartesianGrid stroke="#374151" strokeDasharray="3 3" vertical={false} />
-        <XAxis 
-          dataKey="day" 
-          stroke="#9ca3af"
-          tickFormatter={(day) => `${day}`}
-          // Отображаем все дни последовательно
-          ticks={chartData.map(d => d.day)}
-          // Если график получится слишком плотным, можно использовать это условное отображение
-          // ticks={chartData.length <= 15
-          //   ? chartData.map(d => d.day)
-          //   : Array.from(
-          //       { length: Math.ceil((Math.max(...chartData.map(item => item.day)) - Math.min(...chartData.map(item => item.day)) + 1) / 2) },
-          //       (_, i) => Math.min(...chartData.map(item => item.day)) + i * 2
-          //     )
-          // }
-        />
-        <YAxis 
-          stroke="#9ca3af" 
-          tickFormatter={formatNumber} 
-        />
-        <Tooltip 
-          content={renderCustomTooltip} 
-          cursor={{ fill: 'rgba(107, 114, 128, 0.2)' }}
-        />
-        <Legend
-          verticalAlign="top"
-          height={40}
-          formatter={(value) => {
-            const labels = {
-              'contracts': 'Контракты',
-              'realization': 'Реализация',
-              'cancellation': 'Отмены'
-            };
-            return <span className="text-sm text-gray-300">{labels[value]}</span>;
-          }}
-        />
-        <Bar 
-          dataKey="contracts" 
-          name="contracts"
-          fill="#4f46e5" 
-          shape={<CustomBarShape />}
-          animationDuration={1000}
-          animationBegin={0}
-        />
-        <Bar 
-          dataKey="realization" 
-          name="realization"
-          fill="#10b981" 
-          shape={<CustomBarShape />}
-          animationDuration={1000}
-          animationBegin={200}
-        />
-        <Bar 
-          dataKey="cancellation" 
-          name="cancellation"
-          fill="#ef4444" 
-          shape={<CustomBarShape />}
-          animationDuration={1000}
-          animationBegin={400}
-        />
-      </BarChart>
-    </ResponsiveContainer>
-  );
-};
+  // Заполняем дни месяца
+  for (let day = 1; day <= daysInMonth; day++) {
+    // Вычисляем день недели для текущего дня
+    const dayOfWeek = (firstDayOfWeek + day - 1) % 7 || 7;
   
-  
-  const filteredModels = enhancedModels.filter(model => {
-    // Получаем данные о производительности для модели
-    const modelStats = modelPerformance[model.id];
-  
-    // Проверяем наличие ненулевых данных
-    return modelStats && (
-      (modelStats.contracts && modelStats.contracts > 0) ||
-      (modelStats.realization && modelStats.realization > 0) ||
-      (modelStats.cancellation && modelStats.cancellation > 0)
-    );
-  });
-  
-  const renderHeatmap = () => {
-    // Проверка наличия данных
-    if (!dailyContractData || !Array.isArray(dailyContractData)) {
-      return (
-        <div className="flex items-center justify-center h-48">
-          <p className="text-gray-400">Нет данных для отображения тепловой карты.</p>
-        </div>
-      );
+    // Если начинается новая неделя, добавляем текущую неделю в список и создаем новую
+    if (dayOfWeek === 1 && day > 1) {
+      weeks.push(currentWeek);
+      weekNumber++;
+      currentWeek = { week: t('charts.heatmap.week', { number: weekNumber }) };
     }
   
-    // Функция для определения цвета ячейки с фиксированными пороговыми значениями
-    const colorScale = (value) => {
-      // Если нет значения, возвращаем серый цвет
-      if (value === null || value === undefined || value === 0) {
-        return "rgba(75, 85, 99, 0.2)"; // серый цвет для дней без данных
-      }
-    
-      // Фиксированные пороговые значения
-      if (value < 1000) {
-        // Мало (синий)
-        return "rgba(59, 130, 246, 0.7)";
-      } else if (value < 1200) {
-        // Средне (фиолетовый)
-        return "rgba(139, 92, 246, 0.7)";
-      } else if (value < 1500) {
-        // Много (оранжевый)
-        return "rgba(249, 115, 22, 0.7)";
-      } else {
-        // Очень много (красный)
-        return "rgba(239, 68, 68, 0.7)";
-      }
+    // Определяем, является ли день будущим (после сегодняшнего дня для текущего месяца)
+    const isFuture = isCurrentMonth && day > currentDay;
+  
+    // Заполняем данные для дня
+    currentWeek[`day${dayOfWeek}`] = {
+      day: day,
+      value: dayDataMap[day] || 0,
+      isFuture
     };
-  
-    // Фильтруем данные по выбранной модели
-    const filteredData = selectedModel === 'all'
-      ? dailyContractData
-      : dailyContractData.filter(model => model.model_id === selectedModel);
-  
-    // Фильтруем также по выбранному региону, если он указан
-    const filteredByRegion = (selectedRegion === 'all')
-      ? filteredData
-      : filteredData.map(model => {
-        const newModel = { ...model };
-        if (newModel.filter_by_date && Array.isArray(newModel.filter_by_date)) {
-          newModel.filter_by_date = newModel.filter_by_date.filter(
-            region => region.region_id === selectedRegion
-          );
-        }
-        return newModel;
-      }).filter(model =>
-        model.filter_by_date &&
-        model.filter_by_date.length > 0 &&
-        model.filter_by_date.some(region => region.data && region.data.length > 0)
-      );
-  
-    // Если нет данных после фильтрации
-    if (filteredByRegion.length === 0 || !filteredByRegion.some(model =>
-      model.filter_by_date &&
-      Array.isArray(model.filter_by_date) &&
-      model.filter_by_date.some(region => region.data && region.data.length > 0)
-    )) {
-      return (
-        <div className="flex items-center justify-center h-48">
-          <p className="text-gray-400">Нет данных для отображения тепловой карты по выбранным параметрам.</p>
-        </div>
-      );
-    }
-  
-    // Собираем все даты
-    const allDates = [];
-    filteredByRegion.forEach(model => {
-      if (model.filter_by_date && Array.isArray(model.filter_by_date)) {
-        model.filter_by_date.forEach(region => {
-          if (region.data && Array.isArray(region.data)) {
-            region.data.forEach(item => {
-              if (item.order_date) {
-                allDates.push(item.order_date);
-              }
-            });
-          }
-        });
-      }
-    });
-  
-    // Если нет дат
-    if (allDates.length === 0) {
-      return (
-        <div className="flex items-center justify-center h-48">
-          <p className="text-gray-400">Нет данных о датах для отображения тепловой карты.</p>
-        </div>
-      );
-    }
-  
-    // Определяем месяц и год
-    const firstDate = new Date(allDates[0]);
-    const currentYear = firstDate.getFullYear();
-    const currentMonth = firstDate.getMonth();
-  
-    // Получаем название месяца
-    const monthNames = [
-      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-    ];
-    const currentMonthName = `${monthNames[currentMonth]} ${currentYear}`;
-  
-    // Создаем объект для хранения данных по дням
-    const dayDataMap = {};
-  
-    // Заполняем данные по дням
-    filteredByRegion.forEach(model => {
-      if (model.filter_by_date && Array.isArray(model.filter_by_date)) {
-        model.filter_by_date.forEach(region => {
-          if (region.data && Array.isArray(region.data)) {
-            region.data.forEach(item => {
-              if (item.order_date && item.order_count) {
-                const date = new Date(item.order_date);
-                // Проверяем, что дата относится к текущему месяцу
-                if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
-                  const day = date.getDate();
-                
-                  // Инициализируем данные для дня, если их еще нет
-                  if (!dayDataMap[day]) {
-                    dayDataMap[day] = 0;
-                  }
-                
-                  // Добавляем количество заказов
-                  dayDataMap[day] += parseInt(item.order_count);
-                }
-              }
-            });
-          }
-        });
-      }
-    });
-  
-    // Получаем первый день месяца
-    const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
-    // День недели для первого дня месяца (0 - воскресенье, 1 - понедельник, ...)
-    let firstDayOfWeek = firstDayOfMonth.getDay();
-    // Преобразуем в формат 1-7, где 1 - понедельник, 7 - воскресенье
-    if (firstDayOfWeek === 0) firstDayOfWeek = 7;
-  
-    // Получаем последний день месяца
-    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
-    const daysInMonth = lastDayOfMonth.getDate();
-  
-    // Сегодняшний день (для определения будущих дней)
-    const today = new Date();
-    const currentDay = today.getDate();
-    const isCurrentMonth = today.getMonth() === currentMonth && today.getFullYear() === currentYear;
-  
-    // Создаем недели
-    const weeks = [];
-    let currentWeek = { week: "Неделя 1" };
-    let weekNumber = 1;
-  
-    // Заполняем пустые ячейки до первого дня месяца
-    for (let i = 1; i < firstDayOfWeek; i++) {
-      currentWeek[`day${i}`] = { day: null, value: null };
-    }
-  
-    // Заполняем дни месяца
-    for (let day = 1; day <= daysInMonth; day++) {
-      // Вычисляем день недели для текущего дня
-      const dayOfWeek = (firstDayOfWeek + day - 1) % 7 || 7;
-    
-      // Если начинается новая неделя, добавляем текущую неделю в список и создаем новую
-      if (dayOfWeek === 1 && day > 1) {
-        weeks.push(currentWeek);
-        weekNumber++;
-        currentWeek = { week: `Неделя ${weekNumber}` };
-      }
-    
-      // Определяем, является ли день будущим (после сегодняшнего дня для текущего месяца)
-      const isFuture = isCurrentMonth && day > currentDay;
-    
-      // Заполняем данные для дня
-      currentWeek[`day${dayOfWeek}`] = {
-        day: day,
-        value: dayDataMap[day] || 0,
-        isFuture
-      };
-    }
-  
-    // Заполняем пустые ячейки после последнего дня месяца
-    const lastDayOfWeek = (firstDayOfWeek + daysInMonth - 1) % 7 || 7;
-    for (let i = lastDayOfWeek + 1; i <= 7; i++) {
-      currentWeek[`day${i}`] = { day: null, value: null };
-    }
-  
-    // Добавляем последнюю неделю
-    weeks.push(currentWeek);
-  
-    // Отрисовка тепловой карты
-    return (
-      <>
-        {/* Добавляем заголовок с текущим месяцем */}
-        <div className="mb-4">
-          <h4 className="text-lg font-medium text-white">Тепловая карта за {currentMonthName}</h4>
-        </div>
-      
+  }
+
+  // Заполняем пустые ячейки после последнего дня месяца
+  const lastDayOfWeek = (firstDayOfWeek + daysInMonth - 1) % 7 || 7;
+  for (let i = lastDayOfWeek + 1; i <= 7; i++) {
+    currentWeek[`day${i}`] = { day: null, value: null };
+  }
+
+  // Добавляем последнюю неделю
+  weeks.push(currentWeek);
+
+  // Отрисовка тепловой карты с оптимальным средним размером
+  return (
+    <div className="overflow-x-auto -mx-2 px-2">
+      <div className="min-w-[550px]">
         <div className="grid grid-cols-8 gap-1 w-full">
           <div className="col-span-1"></div>
-          <div className="font-medium text-gray-400 text-center text-sm">Пн</div>
-          <div className="font-medium text-gray-400 text-center text-sm">Вт</div>
-          <div className="font-medium text-gray-400 text-center text-sm">Ср</div>
-          <div className="font-medium text-gray-400 text-center text-sm">Чт</div>
-          <div className="font-medium text-gray-400 text-center text-sm">Пт</div>
-          <div className="font-medium text-gray-400 text-center text-sm">Сб</div>
-          <div className="font-medium text-gray-400 text-center text-sm">Вс</div>
+          {weekdays.map((day, index) => (
+            <div key={`weekday-${index}`} className="font-medium text-gray-400 text-center text-xs">
+              {day}
+            </div>
+          ))}
         
           {weeks.map((week, weekIndex) => (
             <React.Fragment key={`week-row-${weekIndex}`}>
-              <div className="font-medium text-gray-400 text-sm flex items-center">
+              <div className="font-medium text-gray-400 text-xs flex items-center">
                 {week.week}
               </div>
               {[1, 2, 3, 4, 5, 6, 7].map(day => {
@@ -1167,7 +1195,7 @@ const renderDetailedChart = () => {
                   return (
                     <div
                       key={`cell-${weekIndex}-${day}`}
-                      className="aspect-square rounded-md bg-gray-800/30"
+                      className="aspect-square w-9 h-9 md:w-12 md:h-12 rounded-md bg-gray-800/30"
                     ></div>
                   );
                 }
@@ -1179,14 +1207,14 @@ const renderDetailedChart = () => {
                 return (
                   <div
                     key={`cell-${weekIndex}-${day}`}
-                    className={`aspect-square rounded-md flex flex-col items-center justify-center text-xs font-medium relative overflow-hidden transition-all duration-300 ${!isFuture ? 'hover:scale-105 hover:shadow-lg cursor-pointer' : ''} group`}
+                    className={`aspect-square w-9 h-9 md:w-12 md:h-12 rounded-md flex flex-col items-center justify-center text-xs font-medium relative overflow-hidden transition-all duration-300 ${!isFuture ? 'hover:scale-105 hover:shadow-lg cursor-pointer' : ''} group`}
                     style={{ backgroundColor: cellColor }}
                   >
-                    <span className={`text-[10px] mb-1 ${isFuture ? 'text-gray-500' : 'text-gray-300'}`}>
+                    <span className={`text-[9px] md:text-xs mb-0.5 ${isFuture ? 'text-gray-500' : 'text-gray-300'}`}>
                       {dayData.day}
                     </span>
-                    <span className={`relative z-10 ${isFuture ? 'text-gray-500' : 'text-white'}`}>
-                      {!isFuture && dayData.value > 0 ? dayData.value : ''}
+                    <span className={`relative z-10 text-[10px] md:text-sm ${isFuture ? 'text-gray-500' : 'text-white'}`}>
+                      {!isFuture && dayData.value > 0 ? (dayData.value > 999 ? (dayData.value/1000).toFixed(1) + 'k' : dayData.value) : ''}
                     </span>
                     {!isFuture && <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300"></div>}
                   </div>
@@ -1195,12 +1223,27 @@ const renderDetailedChart = () => {
             </React.Fragment>
           ))}
         </div>
-      </>
-    );
-  };
+      </div>
+    </div>
+  );
+};
+  
+
+  // Вычисляем отфильтрованные модели
+  // const filteredModels = enhancedModels.filter(model => {
+  //   // Получаем данные о производительности для модели
+  //   const modelStats = modelPerformance[model.id];
+  
+  //   // Проверяем наличие ненулевых данных
+  //   return modelStats && (
+  //     (modelStats.contracts && modelStats.contracts > 0) ||
+  //     (modelStats.realization && modelStats.realization > 0) ||
+  //     (modelStats.cancellation && modelStats.cancellation > 0)
+  //   );
+  // });
 
   return (
-    <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 rounded-xl shadow-2xl border border-gray-700/40 w-full mx-auto overflow-hidden">
+    <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6 rounded-xl shadow-2xl border border-gray-700/40 w-full mx-auto overflow-hidden">
       {isLoading ? (
         <ContentReadyLoader
           isLoading={isLoading}
@@ -1208,24 +1251,31 @@ const renderDetailedChart = () => {
         />
       ) : (
         <>
-          <div className="mb-6">
-            <h2 className="text-3xl font-bold text-white mb-2 bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-              Анализ контрактов {getPeriodLabel(selectedPeriod).toLowerCase()}
+          <div className="mb-4 md:mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2 bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+              {t('title')} {t(`period.${selectedPeriod}`)}
               {selectedModel !== 'all' && (
-                <span className="ml-2 font-medium text-indigo-400 text-2xl">
+                <span className="ml-2 font-medium text-indigo-400 text-xl md:text-2xl">
                   — {enhancedModels.find(m => m.id === selectedModel)?.name}
                 </span>
               )}
             </h2>
-            <p className="text-gray-400">
+            <p className="text-gray-400 text-sm md:text-base">
               {selectedModel === 'all'
-                ? `${getPeriodDescription(selectedPeriod, customStartDate, customEndDate)} по контрактам, реализации и отменам для всех моделей`
-                : `Детальная статистика ${selectedPeriod === 'year' ? 'за год' : selectedPeriod === 'quarter' ? 'за полгода' : selectedPeriod === 'month' ? 'за месяц' : 'за неделю'} по модели ${enhancedModels.find(m => m.id === selectedModel)?.name}`
+                ? t('subtitle', { period: t(`periodDescription.${selectedPeriod}`, {
+                    startDate: customStartDate?.toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU'),
+                    endDate: customEndDate?.toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU')
+                  })})
+                : t('subtitleSpecific', { 
+                    period: t(`period.${selectedPeriod}`), 
+                    model: enhancedModels.find(m => m.id === selectedModel)?.name 
+                  })
               }
             </p>
           </div>
         
           <FilterPanel
+            t={t}
             selectedModel={selectedModel}
             setSelectedModel={setSelectedModel}
             selectedRegion={selectedRegion}
@@ -1239,9 +1289,11 @@ const renderDetailedChart = () => {
             applyDateFilter={applyDateFilter}
             handleModelChange={handleModelChange}
             handleRegionChange={handleRegionChange}
+            currentLocale={currentLocale}
           />
         
           <StatsCards
+            t={t}
             selectedPeriod={selectedPeriod}
             selectedDetailLabel={selectedDetailLabel}
             selectedModel={selectedModel}
@@ -1252,104 +1304,137 @@ const renderDetailedChart = () => {
             modelPerformance={modelPerformance}
             startDate={startDate}
             endDate={endDate}
+            currentLocale={currentLocale}
           />
         
           {/* Детали выбранной модели */}
           <SelectedModelDetails
+            t={t}
             selectedModel={selectedModel}
             selectedPeriod={selectedPeriod}
             carModels={enhancedModels}
             modelPerformance={modelPerformance}
             regions={regions}
             getPeriodLabel={getPeriodLabel}
+            currentLocale={currentLocale}
           />
         
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <div className="lg:col-span-2 bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <h3 className="text-xl font-bold text-white flex items-center">
-                  <span className="text-2xl mr-2">📈</span>
-                  Динамика показателей {getPeriodLabel(selectedPeriod).toLowerCase()}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
+            <div className="lg:col-span-2 bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-2 md:gap-4">
+                <h3 className="text-lg md:text-xl font-bold text-white flex items-center">
+                  <span className="text-xl md:text-2xl mr-2">📈</span>
+                  {t('charts.dynamics', { period: t(`period.${selectedPeriod}`) })}
                   {selectedModel !== 'all' && (
-                    <span className="ml-2 text-indigo-400 text-base">
+                    <span className="ml-2 text-indigo-400 text-sm md:text-base">
                       ({enhancedModels.find(m => m.id === selectedModel)?.name})
                     </span>
                   )}
                 </h3>
+                
+                {/* Добавим переключатель типа графика здесь */}
+                <div className="flex space-x-2 bg-gray-700/50 p-1 rounded-lg text-xs md:text-sm">
+                  <button 
+                    className={`px-3 py-1 rounded-md transition-all ${chartType === 'line' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-600/50'}`}
+                    onClick={() => setChartType('line')}
+                  >
+                    Line
+                  </button>
+                  <button 
+                    className={`px-3 py-1 rounded-md transition-all ${chartType === 'area' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-600/50'}`}
+                    onClick={() => setChartType('area')}
+                  >
+                    Area
+                  </button>
+                  <button 
+                    className={`px-3 py-1 rounded-md transition-all ${chartType === 'bar' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-600/50'}`}
+                    onClick={() => setChartType('bar')}
+                  >
+                    Bar
+                  </button>
+                </div>
               </div>
             
-              <div className="w-full h-80">
+              <div className="w-full h-64 md:h-80">
                 {periodData && periodData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     {renderChart()}
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-400">Нет данных для отображения графика.</p>
+                    <p className="text-gray-400 text-sm md:text-base text-center px-4">
+                      {t('charts.noData')}
+                    </p>
                   </div>
                 )}
               </div>
             </div>
           
-            {/* Тепловая карта - проверяем наличие данных в order_count */}
+            {/* Тепловая карта - проверяем наличие данных */}
             {(() => {
-              // Проверка наличия данных с ненулевым order_count для тепловой карты
+              // Проверка наличия данных для тепловой карты (код проверки без изменений)
               const hasHeatmapData = dailyContractData &&
                 Array.isArray(dailyContractData) &&
                 dailyContractData.length > 0 &&
                 dailyContractData.some(model => {
-                  // Проверяем только выбранную модель или все модели
                   if (selectedModel !== 'all' && model.model_id !== selectedModel) {
                     return false;
                   }
-                                  
-                  // Проверяем наличие данных в filter_by_date
                   if (!model.filter_by_date || !Array.isArray(model.filter_by_date)) {
                     return false;
                   }
-                                  
-                  // Проверяем наличие данных по выбранному региону или по всем регионам
                   const filteredRegions = selectedRegion === 'all'
                     ? model.filter_by_date
                     : model.filter_by_date.filter(region => region.region_id === selectedRegion);
-                                  
-                  // Проверяем наличие ненулевых order_count в данных
                   return filteredRegions.some(region =>
                     region.data &&
                     Array.isArray(region.data) &&
                     region.data.some(item => parseInt(item.order_count || 0) > 0)
                   );
                 });
-                                
-              // Если данных нет, не показываем блок вообще
+                
               if (!hasHeatmapData) {
                 return null;
               }
+              
+              // Получаем название месяца для отображения в заголовке тепловой карты
+              const firstDate = new Date(Array.from(new Set(
+                dailyContractData.flatMap(model => 
+                  model.filter_by_date?.flatMap(region => 
+                    region.data?.map(item => item.order_date) || []
+                  ) || []
+                )
+              ))[0] || new Date());
+              
+              const monthNames = currentLocale === 'uz' 
+                ? ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr']
+                : ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+              
+              const currentMonthName = `${monthNames[firstDate.getMonth()]} ${firstDate.getFullYear()}`;
             
-              // Иначе показываем блок с тепловой картой
               return (
-                <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <h3 className="text-xl font-bold text-white mb-6 flex items-center">
-                    <span className="text-2xl mr-2">🗓️</span>
-                    Тепловая карта контрактов
+                <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
+                  <h3 className="text-lg md:text-xl font-bold text-white mb-4 md:mb-6 flex items-center">
+                    <span className="text-xl md:text-2xl mr-2">🗓️</span>
+                    {t('charts.heatmap.title', { month: currentMonthName })}
                   </h3>
                   {renderHeatmap()}
-                  <div className="mt-4 flex justify-between items-center">
-                    <div className="flex items-center">
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
+                    <div className="flex items-center justify-center">
                       <div className="w-3 h-3 rounded-full bg-blue-500/70 mr-1"></div>
-                      <span className="text-xs text-gray-400">Мало</span>
+                      <span className="text-xs text-gray-400">{t('charts.heatmap.low')}</span>
                     </div>
-                    <div className="flex items-center">
+                    <div className="flex items-center justify-center">
                       <div className="w-3 h-3 rounded-full bg-purple-500/70 mr-1"></div>
-                      <span className="text-xs text-gray-400">Средне</span>
+                      <span className="text-xs text-gray-400">{t('charts.heatmap.medium')}</span>
                     </div>
-                    <div className="flex items-center">
+                    <div className="flex items-center justify-center">
                       <div className="w-3 h-3 rounded-full bg-orange-500/70 mr-1"></div>
-                      <span className="text-xs text-gray-400">Много</span>
+                      <span className="text-xs text-gray-400">{t('charts.heatmap.high')}</span>
                     </div>
-                    <div className="flex items-center">
+                    <div className="flex items-center justify-center">
                       <div className="w-3 h-3 rounded-full bg-red-500/70 mr-1"></div>
-                      <span className="text-xs text-gray-400">Очень много</span>
+                      <span className="text-xs text-gray-400">{t('charts.heatmap.veryHigh')}</span>
                     </div>
                 </div>
                </div>
@@ -1357,49 +1442,40 @@ const renderDetailedChart = () => {
            })()}
          </div>
 
-         {/* График по дням детализации - проверяем наличие данных в order_count */}
+         {/* График по дням детализации - проверяем наличие данных */}
          {(() => {
-           // Проверка наличия данных с ненулевым order_count для графика детализации
+           // Проверка наличия данных (код проверки без изменений)
            const hasDetailedData = dailyContractData &&
              Array.isArray(dailyContractData) &&
              dailyContractData.length > 0 &&
              dailyContractData.some(model => {
-               // Проверяем только выбранную модель или все модели
                if (selectedModel !== 'all' && model.model_id !== selectedModel) {
                  return false;
                }
-                               
-               // Проверяем наличие данных в filter_by_date
                if (!model.filter_by_date || !Array.isArray(model.filter_by_date)) {
                  return false;
                }
-                               
-               // Проверяем наличие данных по выбранному региону или по всем регионам
                const filteredRegions = selectedRegion === 'all'
                  ? model.filter_by_date
                  : model.filter_by_date.filter(region => region.region_id === selectedRegion);
-                               
-               // Проверяем наличие ненулевых order_count в данных
                return filteredRegions.some(region =>
                  region.data &&
                  Array.isArray(region.data) &&
                  region.data.some(item => parseInt(item.order_count || 0) > 0)
                );
              });
-             // Если данных нет, не показываем блок вообще
            if (!hasDetailedData) {
              return null;
            }
          
-           // Иначе показываем блок с графиком детализации
            return (
-             <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-6">
-               <h3 className="text-xl font-bold text-white mb-4 flex items-center">
-                 <span className="text-2xl mr-2">📅</span>
-                 Детализация по дням месяца
+             <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-4 md:mb-6">
+               <h3 className="text-lg md:text-xl font-bold text-white mb-4 flex items-center">
+                 <span className="text-xl md:text-2xl mr-2">📅</span>
+                 {t('charts.monthlyDetail')}
                </h3>
              
-               <div className="w-full h-64">
+               <div className="w-full h-64 md:h-80">
                  <ResponsiveContainer width="100%" height="100%">
                    {renderDetailedChart()}
                  </ResponsiveContainer>
@@ -1411,12 +1487,14 @@ const renderDetailedChart = () => {
          {/* Сравнительный анализ моделей - отображаем только если есть данные и выбраны все модели */}
          {selectedModel === 'all' && Object.keys(modelPerformance).filter(key => key !== 'totalContracts').length > 0 && (
            <ModelComparisonChart
+             t={t}
              modelPerformance={modelPerformance}
              carModels={enhancedModels}
              selectedPeriod={selectedPeriod}
              getPeriodLabel={getPeriodLabel}
              startDate={startDate}
              endDate={endDate}
+             currentLocale={currentLocale}
            />
          )}
        </>
@@ -1434,6 +1512,5 @@ const renderDetailedChart = () => {
    </div>
  );
 }
-
 
 export default ContractsAnalyticsDashboard;

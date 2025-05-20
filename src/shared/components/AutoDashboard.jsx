@@ -7,7 +7,15 @@ import axios from 'axios';
 // Импортируем иконки
 import { BarChart3, Calendar, CarFront, TrendingUp, ExternalLink, Home, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 
+// Импортируем локализацию и хук для переводов
+import { productionDashboardTranslations } from '@/src/shared/components/locales/ProductionDashboard';
+import { useTranslation } from '@/src/hooks/useTranslation';
+import ContentReadyLoader from '@/src/shared/layout/ContentReadyLoader';
+
 const ProductionDashboard = () => {
+  // Инициализация переводов
+  const { t, currentLocale } = useTranslation(productionDashboardTranslations);
+  
   // Состояния для управления фильтрами
   const [period, setPeriod] = useState('year');
   const [year, setYear] = useState('2025'); // Установлен 2025 год по умолчанию
@@ -28,9 +36,31 @@ const ProductionDashboard = () => {
   
   // Рефы для элементов UI
   const chartRef = useRef(null);
+  const containerRef = useRef(null);
+  
+  // Состояние для отслеживания размера экрана
+  const [isMobileView, setIsMobileView] = useState(false);
   
   // Доступные годы
   const availableYears = ['2025', '2024', '2023', '2022'];
+  
+  // Отслеживание изменения размера экрана
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+    
+    // Инициализация при монтировании
+    handleResize();
+    
+    // Добавление слушателя события
+    window.addEventListener('resize', handleResize);
+    
+    // Очистка слушателя при размонтировании
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
   
   // Функция для получения данных с API
   const fetchMarketData = async () => {
@@ -53,12 +83,12 @@ const ProductionDashboard = () => {
       if (response.data && Array.isArray(response.data)) {
         setApiData(response.data);
       } else {
-        setError('Получен некорректный ответ от API');
+        setError(t('error.title'));
         setApiData([]);
       }
     } catch (err) {
       console.error('Ошибка при получении данных:', err);
-      setError(`Ошибка загрузки данных: ${err.message}`);
+      setError(`${t('error.title')}: ${err.message}`);
       setApiData([]);
     } finally {
       setIsLoading(false);
@@ -68,7 +98,7 @@ const ProductionDashboard = () => {
   // Загружаем данные при изменении года
   useEffect(() => {
     fetchMarketData();
-  }, [year]);
+  }, [year, currentLocale]);
   
   // Обработчик выбора месяца
   const handleMonthClick = (month) => {
@@ -83,13 +113,27 @@ const ProductionDashboard = () => {
     setSelectedMonth(null);
   };
   
+  // Эффект для перерисовки графика при изменении размера окна
+  useEffect(() => {
+    const handleResize = () => {
+      if (!isLoading && apiData.length > 0) {
+        renderChart();
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isLoading, apiData, marketType, selectedMonth, currentLocale]);
+  
   // Отрисовка графика при изменении данных
   useEffect(() => {
     if (chartRef.current && apiData.length > 0) {
       console.log('Отрисовка графика с данными:', apiData);
       renderChart();
     }
-  }, [marketType, selectedMonth, apiData]);
+  }, [marketType, selectedMonth, apiData, currentLocale]);
   
   // Функция для отрисовки графика
   const renderChart = () => {
@@ -124,7 +168,7 @@ const ProductionDashboard = () => {
       d3.select(container)
         .append("div")
         .attr("class", "flex items-center justify-center h-[400px] text-gray-400")
-        .text(`Нет данных для отображения за ${year} год`);
+        .text(t('chart.noData', { year }));
       return;
     }
     
@@ -173,9 +217,11 @@ const ProductionDashboard = () => {
     console.log('Подготовленные данные для графика:', chartData);
     
     // Настройка размеров графика
-    const margin = { top: 30, right: 30, bottom: 70, left: 60 };
+    const margin = { top: 40, right: 20, bottom: 70, left: 50 };
+    
+    // Адаптивная ширина и высота
     const width = container.clientWidth - margin.left - margin.right;
-    const height = 400 - margin.top - margin.bottom;
+    const height = Math.min(400, Math.max(250, window.innerHeight * 0.4)) - margin.top - margin.bottom;
     
     // Создаем SVG
     const svg = d3.select(container)
@@ -252,20 +298,34 @@ const ProductionDashboard = () => {
     glowMerge.append("feMergeNode")
       .attr("in", "SourceGraphic");
     
-    // Добавляем оси
+    // Формат месяца для оси X
+    const formatMonth = (monthStr) => {
+      if (!monthStr) return '';
+      
+      // Разбиваем строку формата "2025-01" на год и месяц
+      const parts = monthStr.split('-');
+      if (parts.length !== 2) return monthStr;
+      
+      const monthNum = parts[1];
+      return t(`months.${monthNum}`);
+    };
+    
+    // Добавляем оси с адаптивным форматированием
     svg.append("g")
       .attr("transform", `translate(0,${height})`)
-      .call(d3.axisBottom(x))
+      .call(d3.axisBottom(x).tickFormat(formatMonth))
       .selectAll("text")
       .style("text-anchor", "end")
       .attr("dx", "-.8em")
       .attr("dy", ".15em")
-      .attr("transform", "rotate(-45)")
+      .attr("transform", `rotate(${window.innerWidth < 600 ? -60 : -45})`) // Более крутой угол для мобильных
+      .style("font-size", window.innerWidth < 600 ? "10px" : "12px") // Меньший размер шрифта для мобильных
       .style("fill", "#e5e7eb");
     
     svg.append("g")
       .call(d3.axisLeft(y))
       .selectAll("text")
+      .style("font-size", window.innerWidth < 600 ? "10px" : "12px")
       .style("fill", "#e5e7eb");
     
     // Добавляем сетку
@@ -283,16 +343,18 @@ const ProductionDashboard = () => {
       .attr("stroke-width", 0.5)
       .attr("stroke-dasharray", "3,3");
     
-    // Добавляем столбцы
+    // Добавляем столбцы с учетом адаптивной ширины
+    const barWidth = Math.min(x.bandwidth(), 60); // Ограничиваем максимальную ширину столбца
+    
     const bars = svg.selectAll(".bar")
       .data(data)
       .enter()
       .append("rect")
       .attr("class", "bar")
-      .attr("x", d => x(d.month))
-      .attr("width", x.bandwidth())
-      .attr("y", d => y(d.value))  // Сразу устанавливаем конечную высоту
-      .attr("height", d => height - y(d.value))  // Сразу устанавливаем конечную высоту
+      .attr("x", d => x(d.month) + (x.bandwidth() - barWidth) / 2) // Центрируем столбец в доступном пространстве
+      .attr("width", barWidth)
+      .attr("y", d => y(d.value))
+      .attr("height", d => height - y(d.value))
       .attr("fill", "url(#bar-gradient)")
       .attr("rx", 4)
       .attr("opacity", 0.9)
@@ -324,33 +386,37 @@ const ProductionDashboard = () => {
         .attr("filter", "url(#glow)");
     }
     
-    // Добавляем значения над столбцами
-    svg.selectAll(".bar-value")
-      .data(data)
-      .enter()
-      .append("text")
-      .attr("class", "bar-value")
-      .attr("x", d => x(d.month) + x.bandwidth() / 2)
-      .attr("y", d => y(d.value) - 10)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#e5e7eb")
-      .style("font-size", "12px")
-      .style("font-weight", "500")
-      .style("opacity", 0)
-      .text(d => d.value)
-      .transition()
-      .duration(1000)
-      .style("opacity", 1);
+    // Адаптивное отображение значений над столбцами
+    const showValues = window.innerWidth >= 480; // Показываем значения только на более широких экранах
+    
+    if (showValues) {
+      svg.selectAll(".bar-value")
+        .data(data)
+        .enter()
+        .append("text")
+        .attr("class", "bar-value")
+        .attr("x", d => x(d.month) + x.bandwidth() / 2)
+        .attr("y", d => y(d.value) - 10)
+        .attr("text-anchor", "middle")
+        .attr("fill", "#e5e7eb")
+        .style("font-size", window.innerWidth < 600 ? "10px" : "12px")
+        .style("font-weight", "500")
+        .style("opacity", 0)
+        .text(d => d.value)
+        .transition()
+        .duration(1000)
+        .style("opacity", 1);
+    }
     
     // Добавляем название графика
     svg.append("text")
       .attr("x", width / 2)
       .attr("y", -10)
       .attr("text-anchor", "middle")
-      .style("font-size", "14px")
+      .style("font-size", window.innerWidth < 600 ? "12px" : "14px")
       .style("font-weight", "bold")
       .style("fill", "#f1f5f9")
-      .text(`Производство автомобилей - ${year} год`);
+      .text(t('chart.productionForYear', { year }));
   };
   
   // Вычисляем итоговые показатели для отображения вверху
@@ -481,37 +547,24 @@ const ProductionDashboard = () => {
   const formatMonth = (monthStr) => {
     if (!monthStr) return '';
     
-    const months = {
-      '01': 'Январь',
-      '02': 'Февраль',
-      '03': 'Март',
-      '04': 'Апрель',
-      '05': 'Май',
-      '06': 'Июнь',
-      '07': 'Июль',
-      '08': 'Август',
-      '09': 'Сентябрь',
-      '10': 'Октябрь',
-      '11': 'Ноябрь',
-      '12': 'Декабрь'
-    };
-    
     // Разбиваем строку формата "2025-01" на год и месяц
     const parts = monthStr.split('-');
     if (parts.length !== 2) return monthStr;
     
     const monthNum = parts[1];
-    return months[monthNum] || monthNum;
+    return t(`months.${monthNum}`);
   };
   
   return (
-    <div className="bg-gray-900 text-white p-4 md:p-6">
+    <div className="bg-gray-900 text-white p-4 md:p-6" ref={containerRef}>
+      <ContentReadyLoader isLoading={isLoading} timeout={2000} />
+      
       {/* Заголовок */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white flex items-center">
           <CarFront className="mr-2 text-orange-500" size={28} />
           <span className="bg-gradient-to-r from-orange-400 to-amber-600 text-transparent bg-clip-text">
-            Производство
+            {t('title')}
           </span>
         </h1>
       </div>
@@ -521,13 +574,13 @@ const ProductionDashboard = () => {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-medium text-gray-200 flex items-center">
             <Filter className="w-5 h-5 mr-2 text-orange-500" />
-            Параметры анализа
+            {t('filters.title')}
           </h2>
           <button 
             className="text-gray-400 hover:text-gray-200 flex items-center focus:outline-none"
             onClick={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
           >
-            {isFiltersCollapsed ? 'Развернуть' : 'Свернуть'}
+            {isFiltersCollapsed ? t('filters.expand') : t('filters.collapse')}
             <ChevronDown 
               className={`ml-1 transition-transform duration-300 ${isFiltersCollapsed ? 'rotate-180' : ''}`}
               size={18} 
@@ -546,7 +599,7 @@ const ProductionDashboard = () => {
             >
               {/* Выбор периода */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Период анализа</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{t('periodAnalysis.title')}</label>
                 <div className="mt-3">
                   <select
                     value={year}
@@ -555,7 +608,7 @@ const ProductionDashboard = () => {
                   >
                     {availableYears.map((yearOption) => (
                       <option key={yearOption} value={yearOption}>
-                        {yearOption} год
+                        {yearOption} {t('periodAnalysis.year')}
                       </option>
                     ))}
                   </select>
@@ -564,40 +617,40 @@ const ProductionDashboard = () => {
               
               {/* Выбор типа рынка */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Тип рынка</label>
-                <div className="flex flex-wrap md:flex-nowrap gap-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">{t('marketType.title')}</label>
+                <div className="flex flex-wrap gap-2">
                   <button 
-                    className={`px-4 py-2 rounded-md flex items-center transition-all duration-200 ${
+                    className={`px-4 py-2 rounded-md flex items-center transition-all duration-200 flex-1 justify-center ${
                       marketType === 'all' 
                         ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white font-medium shadow-md' 
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     }`}
                     onClick={() => setMarketType('all')}
                   >
-                    <BarChart3 className="w-4 h-4 mr-2" />
-                    Все рынки
+                    <BarChart3 className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span className="truncate">{t('marketType.all')}</span>
                   </button>
                   <button 
-                    className={`px-4 py-2 rounded-md flex items-center transition-all duration-200 ${
+                    className={`px-4 py-2 rounded-md flex items-center transition-all duration-200 flex-1 justify-center ${
                       marketType === 'domestic' 
                         ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium shadow-md' 
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     }`}
                     onClick={() => setMarketType('domestic')}
                   >
-                    <Home className="w-4 h-4 mr-2" />
-                    Внутренний
+                    <Home className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span className="truncate">{t('marketType.domestic')}</span>
                   </button>
                   <button 
-                    className={`px-4 py-2 rounded-md flex items-center transition-all duration-200 ${
+                    className={`px-4 py-2 rounded-md flex items-center transition-all duration-200 flex-1 justify-center ${
                       marketType === 'export' 
                         ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium shadow-md' 
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     }`}
                     onClick={() => setMarketType('export')}
                   >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Экспортный
+                    <ExternalLink className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span className="truncate">{t('marketType.export')}</span>
                   </button>
                 </div>
               </div>
@@ -611,7 +664,7 @@ const ProductionDashboard = () => {
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-lg border border-gray-700 shadow-lg mb-6 flex items-center justify-center">
           <div className="flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500 mb-4"></div>
-            <p className="text-gray-300">Загрузка данных...</p>
+            <p className="text-gray-300">{t('loading')}</p>
           </div>
         </div>
       )}
@@ -619,14 +672,14 @@ const ProductionDashboard = () => {
       {/* Сообщение об ошибке */}
       {error && (
         <div className="bg-gradient-to-br from-gray-800 to-red-900/20 p-6 rounded-lg border border-red-700 shadow-lg mb-6">
-          <h3 className="text-lg font-medium text-red-400 mb-2">Ошибка загрузки данных</h3>
+          <h3 className="text-lg font-medium text-red-400 mb-2">{t('error.title')}</h3>
           <p className="text-gray-300">{error}</p>
         </div>
       )}
       
       {/* Ключевые показатели */}
       {!isLoading && apiData.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {/* Общее производство */}
           <motion.div 
             whileHover={{ y: -5, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)' }}
@@ -634,10 +687,10 @@ const ProductionDashboard = () => {
           >
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-sm text-gray-400 mb-1">Общее производство</p>
+                <p className="text-sm text-gray-400 mb-1">{t('metrics.totalProduction')}</p>
                 <h3 className="text-2xl font-bold text-white">{totals.totalProduction}</h3>
                 <p className="text-xs text-gray-300 mt-1">
-                  за {year} год
+                  {t('metrics.forYear', { year })}
                 </p>
               </div>
               <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500/20 to-amber-500/10 flex items-center justify-center text-orange-500 shadow-lg">
@@ -661,10 +714,10 @@ const ProductionDashboard = () => {
           >
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-sm text-gray-400 mb-1">Внутренний рынок</p>
+                <p className="text-sm text-gray-400 mb-1">{t('metrics.domesticMarket')}</p>
                 <h3 className="text-2xl font-bold text-white">{totals.totalDomestic}</h3>
                 <p className="text-xs text-gray-300 mt-1">
-                  {totals.totalProduction > 0 ? Math.round((totals.totalDomestic / totals.totalProduction) * 100) : 0}% от общего объема
+                  {totals.totalProduction > 0 ? Math.round((totals.totalDomestic / totals.totalProduction) * 100) : 0}{t('metrics.ofTotal')}
                 </p>
               </div>
               <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 flex items-center justify-center text-blue-500 shadow-lg">
@@ -688,10 +741,10 @@ const ProductionDashboard = () => {
           >
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-sm text-gray-400 mb-1">Экспортный рынок</p>
+                <p className="text-sm text-gray-400 mb-1">{t('metrics.exportMarket')}</p>
                 <h3 className="text-2xl font-bold text-white">{totals.totalExport}</h3>
                 <p className="text-xs text-gray-300 mt-1">
-                  {totals.totalProduction > 0 ? Math.round((totals.totalExport / totals.totalProduction) * 100) : 0}% от общего объема
+                  {totals.totalProduction > 0 ? Math.round((totals.totalExport / totals.totalProduction) * 100) : 0}{t('metrics.ofTotal')}
                 </p>
               </div>
               <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/10 flex items-center justify-center text-green-500 shadow-lg">
@@ -716,21 +769,21 @@ const ProductionDashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-lg border border-gray-700 shadow-lg mb-6"
+          className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-5 rounded-lg border border-gray-700 shadow-lg mb-6"
         >
-          <h2 className="text-lg font-medium text-gray-200 flex items-center mb-5">
+          <h2 className="text-lg font-medium text-gray-200 flex items-center mb-5 flex-wrap">
             <TrendingUp className="w-5 h-5 mr-2 text-orange-500" />
-            Динамика производства
+            {t('chart.title')}
             <span className="ml-2 text-sm font-normal text-gray-400">
-              {marketType === 'all' ? 'Все рынки' : 
-               marketType === 'domestic' ? 'Внутренний рынок' : 'Экспортный рынок'}
+              {marketType === 'all' ? t('marketType.all') : 
+               marketType === 'domestic' ? t('marketType.domestic') : t('marketType.export')}
             </span>
           </h2>
           
-          <div ref={chartRef} className="w-full h-[400px]"></div>
+          <div ref={chartRef} className="w-full h-[400px] overflow-x-auto"></div>
           
-          <p className="text-xs text-gray-400 mt-3 text-center">
-            Нажмите на столбец месяца для просмотра детальной информации по моделям
+          <p className="text-xs text-gray-400 mt-3 text-center px-2">
+            {t('chart.hint')}
           </p>
         </motion.div>
       )}
@@ -738,7 +791,7 @@ const ProductionDashboard = () => {
       {/* Информация если нет данных */}
       {!isLoading && apiData.length === 0 && !error && (
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-lg border border-gray-700 shadow-lg mb-6 text-center">
-          <p className="text-gray-300">Нет данных для отображения за выбранный период</p>
+          <p className="text-gray-300">{t('error.noDataToDisplay')}</p>
         </div>
       )}
       
@@ -750,25 +803,25 @@ const ProductionDashboard = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.5 }}
-            className="bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-lg border border-gray-700 shadow-lg"
+            className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-5 rounded-lg border border-gray-700 shadow-lg"
           >
-            <h2 className="text-lg font-medium text-gray-200 flex items-center mb-5">
+            <h2 className="text-lg font-medium text-gray-200 flex items-center mb-5 flex-wrap">
               <Calendar className="w-5 h-5 mr-2 text-green-500" />
-              Производство за {formatMonth(selectedMonth.month)} {selectedMonth.month.split('-')[0]}
-              <span className="ml-auto text-sm bg-gray-700 px-3 py-1 rounded-full text-gray-300">
-                {selectedMonthDetails.total} авто
+              {t('monthDetails.title', { month: formatMonth(selectedMonth.month), year: selectedMonth.month.split('-')[0] })}
+              <span className="ml-auto text-sm bg-gray-700 px-3 py-1 rounded-full text-gray-300 mt-1 sm:mt-0">
+                {selectedMonthDetails.total} {t('monthDetails.totalCars')}
               </span>
             </h2>
             
             {selectedMonthDetails.models.length > 0 ? (
-              <div className="overflow-hidden rounded-lg border border-gray-700 shadow">
+              <div className="overflow-x-auto rounded-lg border border-gray-700 shadow">
                 <table className="min-w-full divide-y divide-gray-700">
                   <thead className="bg-gray-800/80 sticky top-0">
                     <tr>
-                      <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Модель</th>
-                      <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Внутренний рынок</th>
-                      <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Экспортный рынок</th>
-                      <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Всего</th>
+                      <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{t('monthDetails.model')}</th>
+                      <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{t('monthDetails.domesticMarket')}</th>
+                      <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{t('monthDetails.exportMarket')}</th>
+                      <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{t('monthDetails.total')}</th>
                     </tr>
                   </thead>
                   <tbody className="bg-gray-800/50 divide-y divide-gray-700">
@@ -783,7 +836,7 @@ const ProductionDashboard = () => {
                       >
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="flex-shrink-0 w-18 h-12 bg-gray-700/70 rounded-md overflow-hidden border border-gray-600 transition-transform hover:scale-105 shadow-md">
+                            <div className="flex-shrink-0 w-12 h-12 bg-gray-700/70 rounded-md overflow-hidden border border-gray-600 transition-transform hover:scale-105 shadow-md">
                               <img 
                                 src={model.img} 
                                 alt={model.name} 
@@ -795,10 +848,10 @@ const ProductionDashboard = () => {
                                 }}
                               />
                             </div>
-                            <div className="ml-4">
+                            <div className="ml-3 sm:ml-4">
                               <div className="text-sm font-medium text-white">{model.name}</div>
                               <div className="text-xs text-gray-400 mt-1">
-                                {selectedMonthDetails.total > 0 ? ((model.total / selectedMonthDetails.total) * 100).toFixed(1) : 0}% от общего
+                                {selectedMonthDetails.total > 0 ? ((model.total / selectedMonthDetails.total) * 100).toFixed(1) : 0}% {t('monthDetails.ofTotal')}
                               </div>
                             </div>
                           </div>
@@ -837,7 +890,7 @@ const ProductionDashboard = () => {
                   </tbody>
                   <tfoot className="bg-gray-800/90">
                     <tr>
-                      <td className="px-4 py-3.5 text-sm font-medium text-gray-200">Итого:</td>
+                      <td className="px-4 py-3.5 text-sm font-medium text-gray-200">{t('monthDetails.totalRow')}</td>
                       <td className="px-4 py-3.5 text-sm font-medium text-gray-200">
                         {selectedMonthDetails.domestic}
                       </td>
@@ -853,7 +906,7 @@ const ProductionDashboard = () => {
               </div>
             ) : (
               <div className="bg-gray-800/60 p-6 rounded-lg text-center">
-                <p className="text-gray-300">Нет данных о моделях за выбранный месяц</p>
+                <p className="text-gray-300">{t('monthDetails.noModelsData')}</p>
               </div>
             )}
           </motion.div>

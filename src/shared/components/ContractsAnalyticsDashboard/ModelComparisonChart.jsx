@@ -1,7 +1,8 @@
+// src/shared/components/ContractsAnalyticsDashboard/ModelComparisonChart.jsx
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatNumber } from './utils/formatters';
 
-const ModelComparisonChart = ({ modelPerformance, carModels, selectedPeriod, getPeriodLabel, startDate, endDate }) => {
+const ModelComparisonChart = ({ t, currentLocale, modelPerformance, carModels, selectedPeriod, getPeriodLabel, startDate, endDate }) => {
   if (Object.keys(modelPerformance).length === 0) return null;
   
   // Подготовка данных для сравнительного графика с учетом выбранного периода
@@ -49,16 +50,21 @@ const ModelComparisonChart = ({ modelPerformance, carModels, selectedPeriod, get
   // Если нет данных после фильтрации, показываем сообщение
   if (comparisonData.length === 0) {
     return (
-      <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-6">
-        <h3 className="text-xl font-bold text-white mb-4 flex items-center">
-          <span className="text-2xl mr-2">📊</span> 
-          Сравнительный анализ моделей {getPeriodLabel(selectedPeriod).toLowerCase()}
+      <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-4 md:mb-6">
+        <h3 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 flex items-center">
+          <span className="text-xl md:text-2xl mr-2">📊</span> 
+          {t('charts.comparison.title', {
+            period: t(`period.${selectedPeriod}`),
+            date: ''
+          })}
         </h3>
         
-        <div className="w-full h-72 flex items-center justify-center">
-          <p className="text-gray-400">
-            Нет данных для сравнения моделей за выбранный период: 
-            {new Date(startDate).toLocaleDateString('ru-RU')} - {new Date(endDate).toLocaleDateString('ru-RU')}
+        <div className="w-full h-60 md:h-72 flex items-center justify-center">
+          <p className="text-gray-400 text-sm md:text-base text-center">
+            {t('charts.noDataPeriod', { 
+              startDate: new Date(startDate).toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU'), 
+              endDate: new Date(endDate).toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU') 
+            })}
           </p>
         </div>
       </div>
@@ -67,23 +73,33 @@ const ModelComparisonChart = ({ modelPerformance, carModels, selectedPeriod, get
   
   // Форматирование периода для отображения
   const getFormattedPeriod = () => {
-    const formattedStart = new Date(startDate).toLocaleDateString('ru-RU');
-    const formattedEnd = new Date(endDate).toLocaleDateString('ru-RU');
+    const formattedStart = new Date(startDate).toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU');
+    const formattedEnd = new Date(endDate).toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU');
     return `(${formattedStart} - ${formattedEnd})`;
+  };
+
+  // Метки для легенды
+  const legendLabels = {
+    contracts: t('stats.contracts'),
+    realization: t('stats.realization'),
+    cancellation: t('stats.cancellation')
   };
   
   return (
-    <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-6">
-      <h3 className="text-xl font-bold text-white mb-4 flex items-center">
-        <span className="text-2xl mr-2">📊</span> 
-        Сравнительный анализ моделей {getPeriodLabel(selectedPeriod).toLowerCase()} {getFormattedPeriod()}
+    <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-4 md:mb-6">
+      <h3 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 flex items-center">
+        <span className="text-xl md:text-2xl mr-2">📊</span> 
+        {t('charts.comparison.title', {
+          period: t(`period.${selectedPeriod}`),
+          date: getFormattedPeriod()
+        })}
       </h3>
       
-      <div className="w-full h-[500px]">
+      <div className="w-full h-[400px] md:h-[500px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart 
             data={comparisonData}
-            margin={{ top: 5, right: 30, left: 20, bottom: 80 }}
+            margin={{ top: 5, right: 20, left: 5, bottom: 80 }}
             barGap={4}
             barCategoryGap={16}
           >
@@ -91,7 +107,7 @@ const ModelComparisonChart = ({ modelPerformance, carModels, selectedPeriod, get
             <XAxis 
               dataKey="shortName" 
               stroke="#9ca3af"
-              tick={{ fill: '#e5e7eb', fontSize: 12 }}
+              tick={{ fill: '#e5e7eb', fontSize: 10 }}
               angle={-45}
               textAnchor="end"
               height={80}
@@ -100,15 +116,12 @@ const ModelComparisonChart = ({ modelPerformance, carModels, selectedPeriod, get
             <YAxis 
               stroke="#9ca3af" 
               tickFormatter={formatNumber}
+              width={45}
+              tick={{ fontSize: 10, fill: '#d1d5db' }}
             />
             <Tooltip 
               formatter={(value, name) => {
-                const labels = {
-                  contracts: "Контракты",
-                  realization: "Реализация",
-                  cancellation: "Отмена"
-                };
-                return [formatNumber(value), labels[name] || name];
+                return [formatNumber(value), legendLabels[name] || name];
               }}
               labelFormatter={(value, entry) => {
                 // Найти полное название в данных
@@ -122,12 +135,7 @@ const ModelComparisonChart = ({ modelPerformance, carModels, selectedPeriod, get
             />
             <Legend 
               formatter={(value) => {
-                const labels = {
-                  contracts: "Контракты",
-                  realization: "Реализация",
-                  cancellation: "Отмена"
-                };
-                return <span style={{color: '#d1d5db', fontSize: '0.9rem'}}>{labels[value]}</span>
+                return <span style={{color: '#d1d5db', fontSize: '0.85rem'}}>{legendLabels[value]}</span>
               }}
               wrapperStyle={{ bottom: 0 }}
             />
@@ -136,6 +144,7 @@ const ModelComparisonChart = ({ modelPerformance, carModels, selectedPeriod, get
               fill="#4f46e5" 
               radius={[4, 4, 0, 0]}
               animationDuration={800}
+              maxBarSize={50}
             />
             <Bar 
               dataKey="realization" 
@@ -143,6 +152,7 @@ const ModelComparisonChart = ({ modelPerformance, carModels, selectedPeriod, get
               radius={[4, 4, 0, 0]}
               animationDuration={800}
               animationBegin={100}
+              maxBarSize={50}
             />
             <Bar 
               dataKey="cancellation" 
@@ -150,6 +160,7 @@ const ModelComparisonChart = ({ modelPerformance, carModels, selectedPeriod, get
               radius={[4, 4, 0, 0]}
               animationDuration={800}
               animationBegin={200}
+              maxBarSize={50}
             />
           </BarChart>
         </ResponsiveContainer>

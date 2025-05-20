@@ -2,15 +2,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import ContentReadyLoader from '@/src/shared/layout/ContentReadyLoader';
+import { useTranslation } from '@/src/hooks/useTranslation';
+import { modelTrackingTranslations } from '@/src/shared/components/locales/ModelTracking';
 
 const ModelTrackingDashboard = () => {
+  const { t, currentLocale } = useTranslation(modelTrackingTranslations);
+  
   const donutChartRef = useRef(null);
   const modelsChartRef = useRef(null);
   const statusChartRef = useRef(null);
   
   const [viewMode, setViewMode] = useState('grid');
   const [isLoading, setIsLoading] = useState(true);
-  const [isWholesale, setIsWholesale] = useState(false); // Флаг для отображения опт/розница
+  const [isWholesale, setIsWholesale] = useState(false);
   const [data, setData] = useState([]);
   
   // Состояния для фильтрации и навигации
@@ -37,30 +41,28 @@ const ModelTrackingDashboard = () => {
       const jsonData = await response.json();
       setData(jsonData);
     } catch (error) {
-      console.error('Ошибка при загрузке данных:', error);
+      console.error(`${currentLocale === 'ru' ? 'Ошибка при загрузке данных:' : 'Ma\'lumotlarni yuklashda xatolik:'} ${error}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-// Переключение между оптом и розницей
-const toggleWholesale = (wholesale) => {
-  setIsWholesale(wholesale);
-  
-  // Сбрасываем детальный режим просмотра при переключении
-  if (currentView === 'model') {
-    setSelectedModel(null);
-    setCurrentView('general');
-    setFilterModel('all');
-    setFilterRegion('all');
-    setSelectedRegion(null);
-  }
-  
-  // Загружаем новые данные
-  fetchData(wholesale);
-};
-  
-  
+  // Переключение между оптом и розницей
+  const toggleWholesale = (wholesale) => {
+    setIsWholesale(wholesale);
+    
+    // Сбрасываем детальный режим просмотра при переключении
+    if (currentView === 'model') {
+      setSelectedModel(null);
+      setCurrentView('general');
+      setFilterModel('all');
+      setFilterRegion('all');
+      setSelectedRegion(null);
+    }
+    
+    // Загружаем новые данные
+    fetchData(wholesale);
+  };
   
   // Загрузка начальных данных при монтировании компонента
   useEffect(() => {
@@ -102,8 +104,8 @@ const toggleWholesale = (wholesale) => {
             state_reserved: 0,
             state_binding: 0,
             state_booked: 0,
-            paid_count: 0,       // Добавлено: количество оплаченных
-            no_paid_count: 0     // Добавлено: количество неоплаченных
+            paid_count: 0,
+            no_paid_count: 0
           });
           uniqueModels.push(modelMap.get(model.model));
         }
@@ -157,8 +159,8 @@ const toggleWholesale = (wholesale) => {
             state_reserved: parseInt(model.state_reserved || 0),
             state_binding: parseInt(model.state_binding || 0),
             state_booked: parseInt(model.state_booked || 0),
-            paid_count: parseInt(model.paid_count || 0),       // Добавлено: оплаченные в регионе
-            no_paid_count: parseInt(model.no_paid_count || 0)  // Добавлено: неоплаченные в регионе
+            paid_count: parseInt(model.paid_count || 0),
+            no_paid_count: parseInt(model.no_paid_count || 0)
           });
         }
       });
@@ -191,7 +193,7 @@ const toggleWholesale = (wholesale) => {
   
   const revenueData = calculateRevenueData();
   
-  // Данные статусов заказов на основе реальных данных (С ОБНОВЛЕННЫМ ПОРЯДКОМ И НАЗВАНИЕМ)
+  // Данные статусов заказов (с обновленным порядком и названием)
   const calculateStatusData = () => {
     let totalNew = 0;
     let totalWaiting = 0;
@@ -201,8 +203,6 @@ const toggleWholesale = (wholesale) => {
     let totalBinding = 0;
     let totalBooked = 0;
     
-    // Суммируем значения по всем моделям и регионам
-    // Если выбран регион, суммируем только по этому региону
     if (selectedRegion) {
       const regionModels = modelsByRegion[selectedRegion.id] || [];
       regionModels.forEach(model => {
@@ -228,23 +228,21 @@ const toggleWholesale = (wholesale) => {
       });
     }
     
-    // ИЗМЕНЕННЫЙ ПОРЯДОК СТАТУСОВ И НАЗВАНИЕ "Не оплачено/частично оплачено" ВМЕСТО "Частично оплачено"
     return [
-      { id: 'new', name: 'Не оплачено/частично оплачено', value: totalNew, color: '#ef4444' },
-      { id: 'waiting', name: 'Оплачено', value: totalWaiting, color: '#f59e0b' },
-      { id: 'binding', name: 'На распределении', value: totalBinding, color: '#60a5fa' },
-      { id: 'reserved', name: 'Распределён', value: totalReserved, color: '#3b82f6' },
-      { id: 'moving', name: 'В пути', value: totalMoving, color: '#8b5cf6' },
-      { id: 'complete', name: 'У дилера', value: totalComplete, color: '#10b981' },
-      { id: 'booked', name: 'Бронь', value: totalBooked, color: '#6366f1' }
+      { id: 'new', name: t('statuses.partiallyPaid'), value: totalNew, color: '#ef4444' },
+      { id: 'waiting', name: t('statuses.paid'), value: totalWaiting, color: '#f59e0b' },
+      { id: 'binding', name: t('statuses.inDistribution'), value: totalBinding, color: '#60a5fa' },
+      { id: 'reserved', name: t('statuses.distributed'), value: totalReserved, color: '#3b82f6' },
+      { id: 'moving', name: t('statuses.inTransit'), value: totalMoving, color: '#8b5cf6' },
+      { id: 'complete', name: t('statuses.atDealer'), value: totalComplete, color: '#10b981' },
+      { id: 'booked', name: t('statuses.reserved'), value: totalBooked, color: '#6366f1' }
     ];
   };
   
   const statusData = calculateStatusData();
   
-  // Статусы оплаты с обновленным названием
+  // Категории оплаты с обновленным названием
   const calculatePaymentCategories = () => {
-    // Используем напрямую paid_count и no_paid_count для расчетов
     let totalPaid = 0;
     let totalUnpaid = 0;
     
@@ -262,8 +260,8 @@ const toggleWholesale = (wholesale) => {
     }
     
     return {
-      'oplachen': { name: 'ОПЛАЧЕНО', value: totalPaid, color: '#10b981' },
-      'neoplachen': { name: 'НЕ ОПЛАЧЕНО/ЧАСТИЧНО ОПЛАЧЕНО', value: totalUnpaid, color: '#ef4444' }
+      'oplachen': { name: t('statuses.paid'), value: totalPaid, color: '#10b981' },
+      'neoplachen': { name: t('statuses.partiallyPaid'), value: totalUnpaid, color: '#ef4444' }
     };
   };
   
@@ -323,7 +321,6 @@ const toggleWholesale = (wholesale) => {
         setCurrentView('general');
       }
     } else {
-      // Находим модель по имени в массиве моделей
       const modelArray = selectedRegion 
         ? (modelsByRegion[selectedRegion.id] || [])
         : models;
@@ -353,7 +350,6 @@ const toggleWholesale = (wholesale) => {
   
   // Фильтрация моделей на основе выбранных фильтров
   const getFilteredModels = () => {
-    // Определяем базовый набор моделей
     let filteredModels = [];
     
     if (currentView === 'general') {
@@ -364,7 +360,6 @@ const toggleWholesale = (wholesale) => {
       filteredModels = [selectedModel];
     }
     
-    // Применяем фильтр по модели
     if (filterModel !== 'all' && currentView !== 'model') {
       filteredModels = filteredModels.filter(model => model.name === filterModel);
     }
@@ -375,17 +370,16 @@ const toggleWholesale = (wholesale) => {
   useEffect(() => {
     renderDonutChart();
     
-    // Отрисовываем графики в зависимости от текущего представления
     if ((currentView === 'general' || currentView === 'region') && statusView === 'chart') {
       renderStatusChart();
     }
     
     renderModelsChart();
-  }, [currentView, selectedRegion, selectedModel, viewMode, filterModel, filterRegion, data, statusView]);
+  }, [currentView, selectedRegion, selectedModel, viewMode, filterModel, filterRegion, data, statusView, currentLocale]);
 
   // Функция форматирования чисел
   const formatNumber = (num) => {
-    return num.toLocaleString('ru-RU');
+    return num.toLocaleString(currentLocale === 'ru' ? 'ru-RU' : 'uz-UZ');
   };
 
   // Функция для отрисовки диаграммы прогресса (пончик)
@@ -402,9 +396,9 @@ const toggleWholesale = (wholesale) => {
     const width = containerWidth;
     const height = containerHeight;
     
-    // Рассчитываем радиус диаграммы как процент от меньшей стороны
+    // Рассчитываем радиус диаграммы
     const size = Math.min(width, height);
-    const margin = size * 0.08; // Адаптивный отступ
+    const margin = size * 0.08;
     const radius = (size / 2) - margin;
 
     // Создаем SVG с адаптивными размерами
@@ -476,20 +470,20 @@ const toggleWholesale = (wholesale) => {
       .sort(null)
       .padAngle(0.02);
 
-    // Тень для сегмента с адаптивными параметрами
+    // Тень для сегмента
     const filter = defs.append('filter')
       .attr('id', 'drop-shadow')
       .attr('height', '120%');
     
     filter.append('feGaussianBlur')
       .attr('in', 'SourceAlpha')
-      .attr('stdDeviation', size * 0.008) // Адаптивное размытие
+      .attr('stdDeviation', size * 0.008)
       .attr('result', 'blur');
     
     filter.append('feOffset')
       .attr('in', 'blur')
       .attr('dx', 0)
-      .attr('dy', size * 0.004) // Адаптивное смещение
+      .attr('dy', size * 0.004)
       .attr('result', 'offsetBlur');
     
     const feComponentTransfer = filter.append('feComponentTransfer')
@@ -582,7 +576,7 @@ const toggleWholesale = (wholesale) => {
       .attr('dy', `${textSizeLarge * 0.8}px`)
       .attr('font-size', `${textSizeMedium}px`)
       .attr('fill', '#94a3b8')
-      .text('Прибыль')
+      .text(currentLocale === 'ru' ? 'Прибыль' : 'Foyda')
       .style('opacity', 0)
       .transition()
       .duration(800)
@@ -596,7 +590,7 @@ const toggleWholesale = (wholesale) => {
       .attr('font-size', `${textSizeSmall}px`)
       .attr('font-weight', 'medium')
       .attr('fill', '#94a3b8')
-      .text(`UZS${revenueData.total.toLocaleString('ru-RU')}`)
+      .text(`UZS${revenueData.total.toLocaleString(currentLocale === 'ru' ? 'ru-RU' : 'uz-UZ')}`)
       .style('opacity', 0)
       .transition()
       .duration(800)
@@ -604,7 +598,7 @@ const toggleWholesale = (wholesale) => {
       .style('opacity', 1);
   };
 
-  // Функция для отрисовки графика моделей
+  // Функция для отрисовки графика моделей (карточки и список)
   const renderModelsChart = () => {
     if (!modelsChartRef.current) return;
     d3.select(modelsChartRef.current).selectAll('*').remove();
@@ -622,7 +616,297 @@ const toggleWholesale = (wholesale) => {
         .style('padding', '30px')
         .style('color', '#94a3b8')
         .style('font-size', '16px')
-        .text('Нет данных для отображения');
+        .text(t('noData'));
+      return;
+    }
+
+    // В начале функции renderModelsChart(), перед любым отображением данных, добавьте проверку:
+    if (currentView === 'model' && selectedModel) {
+      // Очищаем весь контейнер перед отрисовкой
+      container.selectAll("*").remove();
+      
+      // Создаем сразу двухколоночную карточку для детальной информации без верхней карточки
+      const detailContainer = container.append('div')
+        .style('display', 'grid')
+        .style('grid-template-columns', 'repeat(auto-fit, minmax(300px, 1fr))')
+        .style('gap', '20px')
+        .style('animation', 'fadeInUp 0.6s both');
+      
+      // КОЛОНКА 1: Информация и статусы
+      const infoColumn = detailContainer.append('div')
+        .style('background', 'linear-gradient(145deg, #1e293b, #1a2234)')
+        .style('border-radius', '16px')
+        .style('padding', '20px')
+        .style('border', '1px solid rgba(30, 41, 59, 0.8)')
+        .style('box-shadow', '0 10px 15px -3px rgba(0, 0, 0, 0.3)');
+      
+      // Добавляем название модели вверху
+      infoColumn.append('div')
+        .style('font-weight', 'bold')
+        .style('color', '#f1f5f9')
+        .style('font-size', '22px')
+        .style('margin-bottom', '15px')
+        .style('text-align', 'center')
+        .text(selectedModel.name.toUpperCase());
+      
+      // Все ВСЕГО - ОПЛАЧЕНО - НЕ ОПЛАЧЕНО
+      const statsHeader = infoColumn.append('div')
+        .style('display', 'grid')
+        .style('grid-template-columns', 'repeat(3, 1fr)')
+        .style('gap', '10px')
+        .style('margin-bottom', '20px');
+      
+      // ВСЕГО
+      const totalStats = statsHeader.append('div')
+        .style('padding', '10px')
+        .style('background', 'rgba(15, 23, 42, 0.3)')
+        .style('border-radius', '8px')
+        .style('text-align', 'center');
+      
+      totalStats.append('div')
+        .style('color', '#94a3b8')
+        .style('font-size', '12px')
+        .style('margin-bottom', '5px')
+        .text(t('statuses.total'));
+      
+      totalStats.append('div')
+        .style('font-size', '22px')
+        .style('font-weight', 'bold')
+        .style('color', '#f1f5f9')
+        .text(selectedModel.totalCount || 0);
+      
+      // ОПЛАЧЕНО
+      const paidStats = statsHeader.append('div')
+        .style('padding', '10px')
+        .style('background', 'rgba(15, 23, 42, 0.3)')
+        .style('border-radius', '8px')
+        .style('text-align', 'center');
+      
+      paidStats.append('div')
+        .style('color', '#94a3b8')
+        .style('font-size', '12px')
+        .style('margin-bottom', '5px')
+        .text(t('statuses.paid'));
+      
+      paidStats.append('div')
+        .style('font-size', '22px')
+        .style('font-weight', 'bold')
+        .style('color', '#10b981')
+        .text(selectedModel.paid_count || 0);
+      
+      // НЕ ОПЛАЧЕНО/ЧАСТИЧНО ОПЛАЧЕНО - ИЗМЕНЕНО НАЗВАНИЕ с учетом формата через слеш
+      const unpaidStats = statsHeader.append('div')
+        .style('padding', '10px')
+        .style('background', 'rgba(15, 23, 42, 0.3)')
+        .style('border-radius', '8px')
+        .style('text-align', 'center');
+      
+      unpaidStats.append('div')
+        .style('color', '#94a3b8')
+        .style('font-size', '11px') // Уменьшил размер, чтобы вместить текст
+        .style('margin-bottom', '5px')
+        .text(t('statuses.partiallyPaid'));
+      
+      unpaidStats.append('div')
+        .style('font-size', '22px')
+        .style('font-weight', 'bold')
+        .style('color', '#ef4444')
+        .text(selectedModel.no_paid_count || 0);
+      
+      // Заголовок секции статусов
+      infoColumn.append('div')
+        .style('margin', '20px 0 15px 0')
+        .style('color', '#94a3b8')
+        .style('font-size', '14px')
+        .style('font-weight', 'medium')
+        .text(t('statuses.title'));
+      
+      // Прогресс-бар статусов
+      const progressSection = infoColumn.append('div')
+        .style('margin-bottom', '15px');
+      
+      // Создаем прогресс-бар с подписями
+      const progressData = [
+        { name: t('statuses.partiallyPaid'), value: selectedModel.state_new || 0, color: '#ef4444' },
+        { name: t('statuses.paid'), value: selectedModel.state_waiting || 0, color: '#f59e0b' },
+        { name: t('statuses.inDistribution'), value: selectedModel.state_binding || 0, color: '#60a5fa' },
+        { name: t('statuses.distributed'), value: selectedModel.state_reserved || 0, color: '#3b82f6' },
+        { name: t('statuses.inTransit'), value: selectedModel.state_moving || 0, color: '#8b5cf6' },
+        { name: t('statuses.atDealer'), value: selectedModel.state_complete || 0, color: '#10b981' },
+        { name: t('statuses.reserved'), value: selectedModel.state_booked || 0, color: '#6366f1' }
+      ];
+      
+      const total = progressData.reduce((sum, item) => sum + item.value, 0);
+      
+      // Контейнер для прогресс-бара
+      const progressBarContainer = progressSection.append('div')
+        .style('width', '100%')
+        .style('height', '8px')
+        .style('background', '#334155')
+        .style('border-radius', '4px')
+        .style('overflow', 'hidden')
+        .style('margin-bottom', '10px')
+        .style('display', 'flex');
+      
+      // Добавляем сегменты прогресс-бара
+      if (total > 0) {
+        progressData.forEach(item => {
+          const width = (item.value / total) * 100;
+          if (width > 0) {
+            progressBarContainer.append('div')
+              .style('height', '100%')
+              .style('width', `${width}%`)
+              .style('background', item.color);
+          }
+        });
+      }
+      
+      // Легенда прогресс-бара
+      const legend = progressSection.append('div')
+        .style('display', 'flex')
+        .style('flex-wrap', 'wrap')
+        .style('gap', '8px')
+        .style('margin-bottom', '15px');
+      
+      progressData.forEach(item => {
+        if (item.value > 0) {
+          const legendItem = legend.append('div')
+            .style('display', 'flex')
+            .style('align-items', 'center')
+            .style('margin-right', '10px');
+          
+          legendItem.append('div')
+            .style('width', '10px')
+            .style('height', '10px')
+            .style('border-radius', '50%')
+            .style('background', item.color)
+            .style('margin-right', '5px')
+            .style('box-shadow', `0 0 5px ${item.color}80`);
+          
+          // В легенде для экономии места используем сокращение
+          const displayName = item.name;
+          
+          legendItem.append('div')
+            .style('color', '#94a3b8')
+            .style('font-size', '11px')
+            .text(`${displayName}: ${item.value}`);
+        }
+      });
+      
+      // Таблица статусов
+      const statusesSection = infoColumn.append('div');
+      
+      // Заголовки таблицы
+      const tableHeader = statusesSection.append('div')
+        .style('display', 'flex')
+        .style('justify-content', 'space-between')
+        .style('padding', '10px 5px')
+        .style('border-bottom', '1px solid rgba(30, 41, 59, 0.8)')
+        .style('margin-bottom', '10px');
+      
+      tableHeader.append('div')
+        .style('color', '#94a3b8')
+        .style('font-size', '12px')
+        .style('font-weight', 'medium')
+        .text(t('modelDetails.statusesTable'));
+      
+      tableHeader.append('div')
+        .style('color', '#94a3b8')
+        .style('font-size', '12px')
+        .style('font-weight', 'medium')
+        .text(t('modelDetails.quantityTable'));
+      
+      // Строки таблицы статусов
+      progressData.forEach((status, index) => {
+        const row = statusesSection.append('div')
+          .style('display', 'flex')
+          .style('justify-content', 'space-between')
+          .style('padding', '8px 5px')
+          .style('border-bottom', index < progressData.length - 1 ? '1px solid rgba(30, 41, 59, 0.4)' : 'none');
+        
+        const statusLabel = row.append('div')
+          .style('display', 'flex')
+          .style('align-items', 'center');
+        
+        statusLabel.append('div')
+          .style('width', '8px')
+          .style('height', '8px')
+          .style('border-radius', '50%')
+          .style('background', status.color)
+          .style('margin-right', '8px');
+        
+        statusLabel.append('div')
+          .style('color', '#f1f5f9')
+          .style('font-size', '13px')
+          .text(status.name);
+        
+        row.append('div')
+          .style('color', status.color)
+          .style('font-size', '14px')
+          .style('font-weight', 'medium')
+          .text(status.value);
+      });
+      
+      // КОЛОНКА 2: Только изображение
+      const imageColumn = detailContainer.append('div')
+        .style('background', 'linear-gradient(145deg, #1e293b, #1a2234)')
+        .style('border-radius', '16px')
+        .style('border', '1px solid rgba(30, 41, 59, 0.8)')
+        .style('overflow', 'hidden')
+        .style('box-shadow', '0 10px 15px -3px rgba(0, 0, 0, 0.3)')
+        .style('display', 'flex')
+        .style('flex-direction', 'column');
+
+      // Заголовок с названием "Изображение"
+      imageColumn.append('div')
+        .style('padding', '15px 20px')
+        .style('border-bottom', '1px solid rgba(30, 41, 59, 0.8)')
+        .style('font-weight', 'medium')
+        .style('color', '#f1f5f9')
+        .style('font-size', '16px')
+        .text(t('modelDetails.image'));
+      
+      // Контейнер для изображения
+      const imageContainer = imageColumn.append('div')
+        .style('flex', '1')
+        .style('padding', '30px 20px')
+        .style('display', 'flex')
+        .style('flex-direction', 'column')
+        .style('justify-content', 'center')
+        .style('align-items', 'center')
+        .style('background', `linear-gradient(145deg, ${selectedModel.color}10, ${selectedModel.color}05)`)
+        .style('position', 'relative');
+      
+      // Добавляем декоративный элемент
+      imageContainer.append('div')
+        .style('position', 'absolute')
+        .style('top', '0')
+        .style('left', '0')
+        .style('width', '100%')
+        .style('height', '100%')
+        .style('background', `radial-gradient(circle at center, ${selectedModel.color}15 0%, transparent 70%)`);
+      
+      // Изображение модели
+      imageContainer.append('img')
+        .attr('src', `https://uzavtosalon.uz/b/core/m$load_image?sha=${selectedModel.image}&width=800&height=600`)
+        .style('max-width', '100%')
+        .style('max-height', '300px')
+        .style('object-fit', 'contain')
+        .style('border-radius', '8px')
+        .style('z-index', '1')
+        .style('filter', 'drop-shadow(0px 10px 15px rgba(0, 0, 0, 0.2))');
+      
+      // Название модели под изображением
+      imageContainer.append('div')
+        .style('margin-top', '20px')
+        .style('font-weight', 'bold')
+        .style('color', '#f1f5f9')
+        .style('font-size', '20px')
+        .style('text-align', 'center')
+        .style('z-index', '1')
+        .text(selectedModel.name.toUpperCase());
+      
+      // Важно: После создания всего детального вида, сразу вернуть из функции
       return;
     }
 
@@ -631,7 +915,7 @@ const toggleWholesale = (wholesale) => {
       // Сетка для карточек
       const grid = container.append('div')
         .style('display', 'grid')
-        .style('grid-template-columns', 'repeat(auto-fill, minmax(250px, 1fr))')
+        .style('grid-template-columns', 'repeat(auto-fill, minmax(280px, 1fr))')
         .style('gap', '16px');
 
       // Добавляем карточки моделей с анимацией и изображениями
@@ -750,7 +1034,7 @@ const toggleWholesale = (wholesale) => {
           .style('color', '#94a3b8')
           .style('font-size', '11px')
           .style('margin-bottom', '2px')
-          .text('ОПЛАЧЕНО');
+          .text(t('statuses.paid'));
         
         paidBlock.append('div')
           .style('color', '#10b981')
@@ -768,7 +1052,7 @@ const toggleWholesale = (wholesale) => {
           .style('color', '#94a3b8')
           .style('font-size', '11px')
           .style('margin-bottom', '2px')
-          .text('НЕ/ЧАСТ. ОПЛАЧЕНО');
+          .text(t('statuses.partiallyPaid'));
         
         unpaidBlock.append('div')
           .style('color', '#ef4444')
@@ -791,7 +1075,7 @@ const toggleWholesale = (wholesale) => {
         newStatus.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Не/част. оплачено:');
+          .text(`${t('statuses.partiallyPaid')}:`);
           
         newStatus.append('div')
           .style('color', '#ef4444')
@@ -808,7 +1092,7 @@ const toggleWholesale = (wholesale) => {
         waitingStatus.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Оплачено:');
+          .text(`${t('statuses.paid')}:`);
           
         waitingStatus.append('div')
           .style('color', '#f59e0b')
@@ -825,7 +1109,7 @@ const toggleWholesale = (wholesale) => {
         bindingStatus.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('На распределении:');
+          .text(`${t('statuses.inDistribution')}:`);
           
         bindingStatus.append('div')
           .style('color', '#60a5fa')
@@ -842,7 +1126,7 @@ const toggleWholesale = (wholesale) => {
         reservedStatus.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Распределён:');
+          .text(`${t('statuses.distributed')}:`);
           
         reservedStatus.append('div')
           .style('color', '#3b82f6')
@@ -859,7 +1143,7 @@ const toggleWholesale = (wholesale) => {
         movingStatus.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('В пути:');
+          .text(`${t('statuses.inTransit')}:`);
           
         movingStatus.append('div')
           .style('color', '#8b5cf6')
@@ -876,7 +1160,7 @@ const toggleWholesale = (wholesale) => {
         completeStatus.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('У дилера:');
+          .text(`${t('statuses.atDealer')}:`);
           
         completeStatus.append('div')
           .style('color', '#10b981')
@@ -893,7 +1177,7 @@ const toggleWholesale = (wholesale) => {
         bookedStatus.append('div')
           .style('color', '#94a3b8')
           .style('font-size', '12px')
-          .text('Бронь:');
+          .text(`${t('statuses.reserved')}:`);
           
         bookedStatus.append('div')
           .style('color', '#6366f1')
@@ -912,7 +1196,10 @@ const toggleWholesale = (wholesale) => {
           .style('display', 'flex');
         
         // Рассчитываем доли для прогресс-бара
-        const total = (model.state_new || 0) + (model.state_waiting || 0) + (model.state_complete || 0) + (model.state_moving || 0) + (model.state_reserved || 0) + (model.state_binding || 0) + (model.state_booked || 0);
+        const total = (model.state_new || 0) + (model.state_waiting || 0) + 
+                      (model.state_complete || 0) + (model.state_moving || 0) + 
+                      (model.state_reserved || 0) + (model.state_binding || 0) + 
+                      (model.state_booked || 0);
         
         if (total > 0) {
           const newWidth = ((model.state_new || 0) / total) * 100;
@@ -952,7 +1239,7 @@ const toggleWholesale = (wholesale) => {
               .style('background', '#3b82f6');
           }
           
-          if (movingWidth > 0) {
+       if (movingWidth > 0) {
             progressContainer.append('div')
               .style('height', '100%')
               .style('width', `${movingWidth}%`)
@@ -975,470 +1262,331 @@ const toggleWholesale = (wholesale) => {
         }
       });
     } else {
-      // Отображение списком
-      const list = container.append('div')
-        .style('width', '100%')
-        .style('background', 'linear-gradient(145deg, #1e293b, #1a2234)')
-        .style('border-radius', '16px')
-        .style('overflow', 'hidden')
-        .style('border', '1px solid rgba(30, 41, 59, 0.8)');
       
-      data.forEach((model, index) => {
-        const isHovered = hoveredCard === model.id;
-        
-        const listItem = list.append('div')
-          .style('padding', '16px')
-          .style('border-bottom', index < data.length - 1 ? '1px solid rgba(30, 41, 59, 0.8)' : 'none')
-          .style('background', isHovered ? `linear-gradient(145deg, #1e293b, ${model.color}10)` : 'transparent')
-          .style('transition', 'all 0.3s ease-in-out')
-          .style('cursor', 'pointer')
-          .style('animation', `fadeInUp 0.6s ${index * 0.05}s both`)
-          .on('mouseenter', () => {
-            setHoveredCard(model.id);
-          })
-          .on('mouseleave', () => {
-            setHoveredCard(null);
-          })
-          .on('click', () => {
-            handleModelCardClick(model);
-          });
-        
-        const rowContent = listItem.append('div')
-          .style('display', 'flex')
-          .style('align-items', 'center')
-          .style('justify-content', 'space-between');
-        
-        // Левая часть с изображением и названием
-        const leftPart = rowContent.append('div')
-          .style('display', 'flex')
-          .style('align-items', 'center');
-        
-        leftPart.append('div')
-          .style('width', '48px')
-          .style('height', '48px')
-          .style('background', `linear-gradient(145deg, ${model.color}40, ${model.color}20)`)
-          .style('border-radius', '12px')
-          .style('margin-right', '16px')
-          .style('display', 'flex')
-          .style('align-items', 'center')
-          .style('justify-content', 'center')
-          .style('overflow', 'hidden')
-          .append('img')
-          .attr('src', `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.image}&width=400&height=400`)
-          .style('width', '100%')
-          .style('height', '100%')
-          .style('object-fit', 'contain');
-        
-        const nameContainer = leftPart.append('div');
-        
-        nameContainer.append('div')
-          .style('font-weight', 'bold')
-          .style('color', '#f1f5f9')
-          .style('font-size', '16px')
-          .text(model.name);
-        
-        // Правая часть с статусами
-        const rightPart = rowContent.append('div')
-          .style('display', 'flex')
-          .style('align-items', 'center')
-          .style('gap', '20px');
-        
-        // Оплачено / Не оплачено - ИЗМЕНЕНЫ НАЗВАНИЯ
-        const paidBlock = rightPart.append('div')
-          .style('display', 'flex')
-          .style('flex-direction', 'column')
-          .style('align-items', 'flex-end');
-        
-        paidBlock.append('div')
-          .style('color', '#94a3b8')
-          .style('font-size', '12px')
-          .text('Оплачено');
-        
-        paidBlock.append('div')
-          .style('color', '#10b981')
-          .style('font-size', '14px')
-          .style('font-weight', 'bold')
-          .text(model.paid_count || 0);
-        
-        const unpaidBlock = rightPart.append('div')
-          .style('display', 'flex')
-          .style('flex-direction', 'column')
-          .style('align-items', 'flex-end');
-        
-        unpaidBlock.append('div')
-          .style('color', '#94a3b8')
-          .style('font-size', '12px')
-          .text('Не/част. оплачено');
-        
-        unpaidBlock.append('div')
-          .style('color', '#ef4444')
-          .style('font-size', '14px')
-          .style('font-weight', 'bold')
-          .text(model.no_paid_count || 0);
-        
-        // Статусы
-        const newBlock = rightPart.append('div')
-          .style('display', 'flex')
-          .style('flex-direction', 'column')
-          .style('align-items', 'flex-end');
+   // Отображение списком (исправленный код)
+const list = container.append('div')
+  .style('width', '100%')
+  .style('background', 'linear-gradient(145deg, #1e293b, #1a2234)')
+  .style('border-radius', '16px')
+  .style('overflow', 'hidden')
+  .style('border', '1px solid rgba(30, 41, 59, 0.8)');
 
-        newBlock.append('div')
-          .style('color', '#94a3b8')
-          .style('font-size', '12px')
-          .text('Не/част. оплачено');
-
-        newBlock.append('div')
-          .style('color', '#ef4444')
-          .style('font-size', '14px')
-          .style('font-weight', 'bold')
-          .text(model.state_new || 0);
-                
-        // Оплачено
-        const waitingBlock = rightPart.append('div')
-          .style('display', 'flex')
-          .style('flex-direction', 'column')
-          .style('align-items', 'flex-end');
-
-        waitingBlock.append('div')
-          .style('color', '#94a3b8')
-          .style('font-size', '12px')
-          .text('Оплачено');
-
-        waitingBlock.append('div')
-          .style('color', '#f59e0b')
-          .style('font-size', '14px')
-          .style('font-weight', 'bold')
-          .text(model.state_waiting || 0);
-
-        // У дилера
-        const completeBlock = rightPart.append('div')
-          .style('display', 'flex')
-          .style('flex-direction', 'column')
-          .style('align-items', 'flex-end');
-
-        completeBlock.append('div')
-          .style('color', '#94a3b8')
-          .style('font-size', '12px')
-          .text('У дилера');
-
-        completeBlock.append('div')
-          .style('color', '#10b981')
-          .style('font-size', '14px')
-          .style('font-weight', 'bold')
-          .text(model.state_complete || 0);
-                
-        // Всего
-        const totalBlock = rightPart.append('div')
-          .style('display', 'flex')
-          .style('flex-direction', 'column')
-          .style('align-items', 'flex-end');
-        
-        totalBlock.append('div')
-          .style('color', '#94a3b8')
-          .style('font-size', '12px')
-          .text('Всего');
-        
-        totalBlock.append('div')
-          .style('color', '#f1f5f9')
-          .style('font-size', '14px')
-          .style('font-weight', 'bold')
-          .text(model.totalCount || 0);
-      });
-    }
-
-    // Улучшенный раздел детальной информации по модели
-  // В начале функции renderModelsChart(), перед любым отображением данных, добавьте проверку:
-if (currentView === 'model' && selectedModel) {
-  // Очищаем весь контейнер перед отрисовкой
-  container.selectAll("*").remove();
+data.forEach((model, index) => {
+  const isHovered = hoveredCard === model.id;
   
-  // Создаем сразу двухколоночную карточку для детальной информации без верхней карточки
-  const detailContainer = container.append('div')
-    .style('display', 'grid')
-    .style('grid-template-columns', 'repeat(auto-fit, minmax(300px, 1fr))')
-    .style('gap', '20px')
-    .style('animation', 'fadeInUp 0.6s both');
-  
-  // КОЛОНКА 1: Информация и статусы
-  const infoColumn = detailContainer.append('div')
-    .style('background', 'linear-gradient(145deg, #1e293b, #1a2234)')
-    .style('border-radius', '16px')
-    .style('padding', '20px')
-    .style('border', '1px solid rgba(30, 41, 59, 0.8)')
-    .style('box-shadow', '0 10px 15px -3px rgba(0, 0, 0, 0.3)');
-  
-  // Добавляем название модели вверху
-  infoColumn.append('div')
-    .style('font-weight', 'bold')
-    .style('color', '#f1f5f9')
-    .style('font-size', '22px')
-    .style('margin-bottom', '15px')
-    .style('text-align', 'center')
-    .text(selectedModel.name.toUpperCase());
-  
-  // Все ВСЕГО - ОПЛАЧЕНО - НЕ ОПЛАЧЕНО
-  const statsHeader = infoColumn.append('div')
-    .style('display', 'grid')
-    .style('grid-template-columns', 'repeat(3, 1fr)')
-    .style('gap', '10px')
-    .style('margin-bottom', '20px');
-  
-  // ВСЕГО
-  const totalStats = statsHeader.append('div')
-    .style('padding', '10px')
-    .style('background', 'rgba(15, 23, 42, 0.3)')
-    .style('border-radius', '8px')
-    .style('text-align', 'center');
-  
-  totalStats.append('div')
-    .style('color', '#94a3b8')
-    .style('font-size', '12px')
-    .style('margin-bottom', '5px')
-    .text('ВСЕГО');
-  
-  totalStats.append('div')
-    .style('font-size', '22px')
-    .style('font-weight', 'bold')
-    .style('color', '#f1f5f9')
-    .text(selectedModel.totalCount || 0);
-  
-  // ОПЛАЧЕНО
-  const paidStats = statsHeader.append('div')
-    .style('padding', '10px')
-    .style('background', 'rgba(15, 23, 42, 0.3)')
-    .style('border-radius', '8px')
-    .style('text-align', 'center');
-  
-  paidStats.append('div')
-    .style('color', '#94a3b8')
-    .style('font-size', '12px')
-    .style('margin-bottom', '5px')
-    .text('ОПЛАЧЕНО');
-  
-  paidStats.append('div')
-    .style('font-size', '22px')
-    .style('font-weight', 'bold')
-    .style('color', '#10b981')
-    .text(selectedModel.paid_count || 0);
-  
-  // НЕ ОПЛАЧЕНО/ЧАСТИЧНО ОПЛАЧЕНО - ИЗМЕНЕНО НАЗВАНИЕ с учетом формата через слеш
-  const unpaidStats = statsHeader.append('div')
-    .style('padding', '10px')
-    .style('background', 'rgba(15, 23, 42, 0.3)')
-    .style('border-radius', '8px')
-    .style('text-align', 'center');
-  
-  unpaidStats.append('div')
-    .style('color', '#94a3b8')
-    .style('font-size', '11px') // Уменьшил размер, чтобы вместить текст
-    .style('margin-bottom', '5px')
-    .text('НЕ/ЧАСТ. ОПЛАЧЕНО');
-  
-  unpaidStats.append('div')
-    .style('font-size', '22px')
-    .style('font-weight', 'bold')
-    .style('color', '#ef4444')
-    .text(selectedModel.no_paid_count || 0);
-  
-  // Заголовок секции статусов
-  infoColumn.append('div')
-    .style('margin', '20px 0 15px 0')
-    .style('color', '#94a3b8')
-    .style('font-size', '14px')
-    .style('font-weight', 'medium')
-    .text('СТАТУСЫ ЗАКАЗОВ');
-  
-  // Прогресс-бар статусов
-  const progressSection = infoColumn.append('div')
-    .style('margin-bottom', '15px');
-  
-  // Создаем прогресс-бар с подписями
-  const progressData = [
-    // ИЗМЕНЕНО "Не оплачено/частично оплачено" ВМЕСТО "Частично оплачено"
-    { name: 'Не оплачено/частично оплачено', value: selectedModel.state_new || 0, color: '#ef4444' },
-    { name: 'Оплачено', value: selectedModel.state_waiting || 0, color: '#f59e0b' },
-    { name: 'На распределении', value: selectedModel.state_binding || 0, color: '#60a5fa' },
-    { name: 'Распределён', value: selectedModel.state_reserved || 0, color: '#3b82f6' },
-    { name: 'В пути', value: selectedModel.state_moving || 0, color: '#8b5cf6' },
-    { name: 'У дилера', value: selectedModel.state_complete || 0, color: '#10b981' },
-    { name: 'Бронь', value: selectedModel.state_booked || 0, color: '#6366f1' }
-  ];
-  
-  const total = progressData.reduce((sum, item) => sum + item.value, 0);
-  
-  // Контейнер для прогресс-бара
-  const progressBarContainer = progressSection.append('div')
-    .style('width', '100%')
-    .style('height', '8px')
-    .style('background', '#334155')
-    .style('border-radius', '4px')
-    .style('overflow', 'hidden')
-    .style('margin-bottom', '10px')
-    .style('display', 'flex');
-  
-  // Добавляем сегменты прогресс-бара
-  if (total > 0) {
-    progressData.forEach(item => {
-      const width = (item.value / total) * 100;
-      if (width > 0) {
-        progressBarContainer.append('div')
-          .style('height', '100%')
-          .style('width', `${width}%`)
-          .style('background', item.color);
-      }
+  const listItem = list.append('div')
+    .style('padding', '16px')
+    .style('border-bottom', index < data.length - 1 ? '1px solid rgba(30, 41, 59, 0.8)' : 'none')
+    .style('background', isHovered ? `linear-gradient(145deg, #1e293b, ${model.color}10)` : 'transparent')
+    .style('transition', 'all 0.3s ease-in-out')
+    .style('cursor', 'pointer')
+    .style('animation', `fadeInUp 0.6s ${index * 0.05}s both`)
+    .on('mouseenter', () => {
+      setHoveredCard(model.id);
+    })
+    .on('mouseleave', () => {
+      setHoveredCard(null);
+    })
+    .on('click', () => {
+      handleModelCardClick(model);
     });
+  
+  // Создаем адаптивную структуру с горизонтальной прокруткой для узких экранов
+  const rowContainer = listItem.append('div')
+    .style('overflow-x', 'auto') // Добавляем горизонтальную прокрутку
+    .style('scrollbar-width', 'thin') // Тонкий скроллбар для Firefox
+    .style('scrollbar-color', 'rgba(30, 41, 59, 0.5) transparent') // Цвет скроллбара для Firefox
+    .style('margin-bottom', '5px') // Немного места для скроллбара
+    .style('-webkit-overflow-scrolling', 'touch') // Плавный скролл на iOS
+    .style('padding-bottom', '5px'); // Пространство для скроллбара
+  
+  // Добавляем стили скроллбара для webkit браузеров
+  const style = document.createElement('style');
+  if (!document.head.querySelector('[data-custom-scrollbar]')) {
+    style.setAttribute('data-custom-scrollbar', 'true');
+    style.textContent = `
+      ::-webkit-scrollbar {
+        height: 4px;
+        width: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(30, 41, 59, 0.5);
+        border-radius: 4px;
+      }
+    `;
+    document.head.appendChild(style);
   }
   
-  // Легенда прогресс-бара
-  const legend = progressSection.append('div')
+  // Основное содержимое теперь внутри контейнера с прокруткой
+  const rowContent = rowContainer.append('div')
     .style('display', 'flex')
-    .style('flex-wrap', 'wrap')
-    .style('gap', '8px')
-    .style('margin-bottom', '15px');
-  
-  progressData.forEach(item => {
-    if (item.value > 0) {
-      const legendItem = legend.append('div')
-        .style('display', 'flex')
-        .style('align-items', 'center')
-        .style('margin-right', '10px');
-      
-      legendItem.append('div')
-        .style('width', '10px')
-        .style('height', '10px')
-        .style('border-radius', '50%')
-        .style('background', item.color)
-        .style('margin-right', '5px')
-        .style('box-shadow', `0 0 5px ${item.color}80`);
-      
-      // В легенде для экономии места используем сокращение
-      const displayName = item.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : item.name;
-      
-      legendItem.append('div')
-        .style('color', '#94a3b8')
-        .style('font-size', '11px')
-        .text(`${displayName}: ${item.value}`);
-    }
-  });
-  
-  // Таблица статусов
-  const statusesSection = infoColumn.append('div');
-  
-  // Заголовки таблицы
-  const tableHeader = statusesSection.append('div')
-    .style('display', 'flex')
-    .style('justify-content', 'space-between')
-    .style('padding', '10px 5px')
-    .style('border-bottom', '1px solid rgba(30, 41, 59, 0.8)')
-    .style('margin-bottom', '10px');
-  
-  tableHeader.append('div')
-    .style('color', '#94a3b8')
-    .style('font-size', '12px')
-    .style('font-weight', 'medium')
-    .text('СТАТУС');
-  
-  tableHeader.append('div')
-    .style('color', '#94a3b8')
-    .style('font-size', '12px')
-    .style('font-weight', 'medium')
-    .text('КОЛИЧЕСТВО');
-  
-  // Строки таблицы статусов
-  progressData.forEach((status, index) => {
-    const row = statusesSection.append('div')
-      .style('display', 'flex')
-      .style('justify-content', 'space-between')
-      .style('padding', '8px 5px')
-      .style('border-bottom', index < progressData.length - 1 ? '1px solid rgba(30, 41, 59, 0.4)' : 'none');
-    
-    const statusLabel = row.append('div')
-      .style('display', 'flex')
-      .style('align-items', 'center');
-    
-    statusLabel.append('div')
-      .style('width', '8px')
-      .style('height', '8px')
-      .style('border-radius', '50%')
-      .style('background', status.color)
-      .style('margin-right', '8px');
-    
-    // В таблице для экономии места используем сокращение
-    const displayName = status.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : status.name;
-    
-    statusLabel.append('div')
-      .style('color', '#f1f5f9')
-      .style('font-size', '13px')
-      .text(displayName);
-    
-    row.append('div')
-      .style('color', status.color)
-      .style('font-size', '14px')
-      .style('font-weight', 'medium')
-      .text(status.value);
-  });
-  // КОЛОНКА 2: Только изображение
-  const imageColumn = detailContainer.append('div')
-    .style('background', 'linear-gradient(145deg, #1e293b, #1a2234)')
-    .style('border-radius', '16px')
-    .style('border', '1px solid rgba(30, 41, 59, 0.8)')
-    .style('overflow', 'hidden')
-    .style('box-shadow', '0 10px 15px -3px rgba(0, 0, 0, 0.3)')
-    .style('display', 'flex')
-    .style('flex-direction', 'column');
-
-  // Заголовок с названием "Изображение"
-  imageColumn.append('div')
-    .style('padding', '15px 20px')
-    .style('border-bottom', '1px solid rgba(30, 41, 59, 0.8)')
-    .style('font-weight', 'medium')
-    .style('color', '#f1f5f9')
-    .style('font-size', '16px')
-    .text('ИЗОБРАЖЕНИЕ');
-  
-  // Контейнер для изображения
-  const imageContainer = imageColumn.append('div')
-    .style('flex', '1')
-    .style('padding', '30px 20px')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('justify-content', 'center')
+    .style('min-width', 'max-content') // Важно! Гарантирует, что содержимое не будет сжиматься
     .style('align-items', 'center')
-    .style('background', `linear-gradient(145deg, ${selectedModel.color}10, ${selectedModel.color}05)`)
-    .style('position', 'relative');
+    .style('gap', '20px');
   
-  // Добавляем декоративный элемент
-  imageContainer.append('div')
-    .style('position', 'absolute')
-    .style('top', '0')
-    .style('left', '0')
+  // Левая часть с изображением и названием (фиксированная слева)
+  const leftPart = listItem.append('div') // Важно: добавляем к listItem напрямую
+    .style('display', 'flex')
+    .style('align-items', 'center')
+    .style('margin-bottom', '10px'); // Добавляем отступ от прокручиваемой части
+  
+  leftPart.append('div')
+    .style('width', '48px')
+    .style('height', '48px')
+    .style('min-width', '48px')
+    .style('background', `linear-gradient(145deg, ${model.color}40, ${model.color}20)`)
+    .style('border-radius', '12px')
+    .style('margin-right', '16px')
+    .style('display', 'flex')
+    .style('align-items', 'center')
+    .style('justify-content', 'center')
+    .style('overflow', 'hidden')
+    .append('img')
+    .attr('src', `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.image}&width=400&height=400`)
     .style('width', '100%')
     .style('height', '100%')
-    .style('background', `radial-gradient(circle at center, ${selectedModel.color}15 0%, transparent 70%)`);
+    .style('object-fit', 'contain');
   
-  // Изображение модели
-  imageContainer.append('img')
-    .attr('src', `https://uzavtosalon.uz/b/core/m$load_image?sha=${selectedModel.image}&width=800&height=600`)
-    .style('max-width', '100%')
-    .style('max-height', '300px')
-    .style('object-fit', 'contain')
-    .style('border-radius', '8px')
-    .style('z-index', '1')
-    .style('filter', 'drop-shadow(0px 10px 15px rgba(0, 0, 0, 0.2))');
+  const nameContainer = leftPart.append('div');
   
-  // Название модели под изображением
-  imageContainer.append('div')
-    .style('margin-top', '20px')
+  nameContainer.append('div')
     .style('font-weight', 'bold')
     .style('color', '#f1f5f9')
-    .style('font-size', '20px')
-    .style('text-align', 'center')
-    .style('z-index', '1')
-    .text(selectedModel.name.toUpperCase());
+    .style('font-size', '16px')
+    .text(model.name);
   
-  // Важно: После создания всего детального вида, сразу вернуть из функции
-  return;
-}
+  // Добавляем подпись "Всего" для модели рядом с названием
+  nameContainer.append('div')
+    .style('display', 'flex')
+    .style('align-items', 'center')
+    .style('margin-top', '4px');
+  
+  nameContainer.select('div:last-child')
+    .append('span')
+    .style('color', '#94a3b8')
+    .style('font-size', '12px')
+    .style('margin-right', '4px')
+    .text(`${t('statuses.total')}:`);
+  
+  nameContainer.select('div:last-child')
+    .append('span')
+    .style('color', '#f1f5f9')
+    .style('font-size', '14px')
+    .style('font-weight', 'bold')
+    .text(model.totalCount || 0);
+  
+  // Все статусы теперь в прокручиваемом контейнере
+  
+  // 1. Оплачено
+  const paidBlock = rowContent.append('div')
+    .style('display', 'flex')
+    .style('flex-direction', 'column')
+    .style('align-items', 'center')
+    .style('min-width', '80px'); // Минимальная ширина для блока
+  
+  paidBlock.append('div')
+    .style('color', '#94a3b8')
+    .style('font-size', '12px')
+    .style('white-space', 'nowrap') // Предотвращаем перенос текста
+    .text(t('statuses.paid'));
+  
+  paidBlock.append('div')
+    .style('color', '#10b981')
+    .style('font-size', '14px')
+    .style('font-weight', 'bold')
+    .text(model.paid_count || 0);
+  
+  // 2. Не оплачено/частично
+  const unpaidBlock = rowContent.append('div')
+    .style('display', 'flex')
+    .style('flex-direction', 'column')
+    .style('align-items', 'center')
+    .style('min-width', '80px');
+  
+  unpaidBlock.append('div')
+    .style('color', '#94a3b8')
+    .style('font-size', '12px')
+    .style('white-space', 'nowrap')
+    .text(t('statuses.partiallyPaid'));
+  
+  unpaidBlock.append('div')
+    .style('color', '#ef4444')
+    .style('font-size', '14px')
+    .style('font-weight', 'bold')
+    .text(model.no_paid_count || 0);
+  
+  // 3. Не/част. оплачено
+  const newBlock = rowContent.append('div')
+    .style('display', 'flex')
+    .style('flex-direction', 'column')
+    .style('align-items', 'center')
+    .style('min-width', '80px');
+  
+  newBlock.append('div')
+    .style('color', '#94a3b8')
+    .style('font-size', '12px')
+    .style('white-space', 'nowrap')
+    .text(t('statuses.partiallyPaid'));
+  
+  newBlock.append('div')
+    .style('color', '#ef4444')
+    .style('font-size', '14px')
+    .style('font-weight', 'bold')
+    .text(model.state_new || 0);
+  
+  // 4. Оплачено (статус)
+  const waitingBlock = rowContent.append('div')
+    .style('display', 'flex')
+    .style('flex-direction', 'column')
+    .style('align-items', 'center')
+    .style('min-width', '80px');
+  
+  waitingBlock.append('div')
+    .style('color', '#94a3b8')
+    .style('font-size', '12px')
+    .style('white-space', 'nowrap')
+    .text(t('statuses.paid'));
+  
+  waitingBlock.append('div')
+    .style('color', '#f59e0b')
+    .style('font-size', '14px')
+    .style('font-weight', 'bold')
+    .text(model.state_waiting || 0);
+  
+  // 5. На распределении
+  const bindingBlock = rowContent.append('div')
+    .style('display', 'flex')
+    .style('flex-direction', 'column')
+    .style('align-items', 'center')
+    .style('min-width', '80px');
+  
+  bindingBlock.append('div')
+    .style('color', '#94a3b8')
+    .style('font-size', '12px')
+    .style('white-space', 'nowrap')
+    .text(t('statuses.inDistribution'));
+  
+  bindingBlock.append('div')
+    .style('color', '#60a5fa')
+    .style('font-size', '14px')
+    .style('font-weight', 'bold')
+    .text(model.state_binding || 0);
+  
+  // 6. Распределён
+  const reservedBlock = rowContent.append('div')
+    .style('display', 'flex')
+    .style('flex-direction', 'column')
+    .style('align-items', 'center')
+    .style('min-width', '80px');
+  
+  reservedBlock.append('div')
+    .style('color', '#94a3b8')
+    .style('font-size', '12px')
+    .style('white-space', 'nowrap')
+    .text(t('statuses.distributed'));
+  
+  reservedBlock.append('div')
+    .style('color', '#3b82f6')
+    .style('font-size', '14px')
+    .style('font-weight', 'bold')
+    .text(model.state_reserved || 0);
+  
+  // 7. В пути
+  const movingBlock = rowContent.append('div')
+    .style('display', 'flex')
+    .style('flex-direction', 'column')
+    .style('align-items', 'center')
+    .style('min-width', '80px');
+  
+  movingBlock.append('div')
+    .style('color', '#94a3b8')
+    .style('font-size', '12px')
+    .style('white-space', 'nowrap')
+    .text(t('statuses.inTransit'));
+  
+  movingBlock.append('div')
+    .style('color', '#8b5cf6')
+    .style('font-size', '14px')
+    .style('font-weight', 'bold')
+    .text(model.state_moving || 0);
+  
+  // 8. У дилера
+  const completeBlock = rowContent.append('div')
+    .style('display', 'flex')
+    .style('flex-direction', 'column')
+    .style('align-items', 'center')
+    .style('min-width', '80px');
+  
+  completeBlock.append('div')
+    .style('color', '#94a3b8')
+    .style('font-size', '12px')
+    .style('white-space', 'nowrap')
+    .text(t('statuses.atDealer'));
+  
+  completeBlock.append('div')
+    .style('color', '#10b981')
+    .style('font-size', '14px')
+    .style('font-weight', 'bold')
+    .text(model.state_complete || 0);
+  
+  // 9. Бронь
+  const bookedBlock = rowContent.append('div')
+    .style('display', 'flex')
+    .style('flex-direction', 'column')
+    .style('align-items', 'center')
+    .style('min-width', '80px');
+  
+  bookedBlock.append('div')
+    .style('color', '#94a3b8')
+    .style('font-size', '12px')
+    .style('white-space', 'nowrap')
+    .text(t('statuses.reserved'));
+  
+  bookedBlock.append('div')
+    .style('color', '#6366f1')
+    .style('font-size', '14px')
+    .style('font-weight', 'bold')
+    .text(model.state_booked || 0);
+  
+  // Добавляем индикатор скролла для ясности UI
+  const scrollIndicator = listItem.append('div')
+    .style('display', 'flex')
+    .style('justify-content', 'center')
+    .style('align-items', 'center')
+    .style('margin-top', '6px')
+    .style('color', '#94a3b8')
+    .style('font-size', '10px');
+  
+  scrollIndicator.append('svg')
+    .attr('xmlns', 'http://www.w3.org/2000/svg')
+    .attr('width', '16')
+    .attr('height', '16')
+    .attr('viewBox', '0 0 24 24')
+    .attr('fill', 'none')
+    .attr('stroke', 'currentColor')
+    .attr('stroke-width', '2')
+    .attr('stroke-linecap', 'round')
+    .attr('stroke-linejoin', 'round')
+    .html('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline>');
+  
+  scrollIndicator.append('span')
+    .style('margin-left', '4px')
+    .text(currentLocale === 'ru' ? 'Прокрутите для просмотра всех статусов' : 'Barcha holatlarni ko\'rish uchun aylantiring');
+  
+  // Показываем индикатор скролла только если контент выходит за пределы видимой области
+  setTimeout(() => {
+    const rowContentWidth = rowContent.node().getBoundingClientRect().width;
+    const containerWidth = rowContainer.node().getBoundingClientRect().width;
+    
+    if (rowContentWidth <= containerWidth) {
+      scrollIndicator.style('display', 'none');
+    }
+  }, 100);
+});
+    }
 
     // Добавляем стили анимации
     if (!document.querySelector('style[data-animation="fadeInUp"]')) {
@@ -1460,234 +1608,245 @@ if (currentView === 'model' && selectedModel) {
     }
   };
 
-const renderStatusChart = () => {
-  if (!statusChartRef.current) return;
-  d3.select(statusChartRef.current).selectAll('*').remove();
+  // Функция для отрисовки графика статусов
+  const renderStatusChart = () => {
+    if (!statusChartRef.current) return;
+    d3.select(statusChartRef.current).selectAll('*').remove();
 
-  const width = statusChartRef.current.clientWidth;
-  const height = 400; // Увеличенная высота графика
-  const margin = { top: 40, right: 20, bottom: 100, left: 50 }; // Увеличенный нижний отступ для подписей
+    const width = statusChartRef.current.clientWidth;
+    // Проверяем ширину экрана для адаптивной высоты графика
+    const isMobile = window.innerWidth < 768;
+    const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
+    
+    // Адаптируем высоту и отступы в зависимости от размера экрана
+    const height = isMobile ? 300 : (isTablet ? 350 : 400);
+    const margin = { 
+      top: 40, 
+      right: isMobile ? 10 : 20,
+      bottom: isMobile ? 120 : 100,
+      left: isMobile ? 40 : 50
+    };
 
-  // Создаем SVG
-  const svg = d3.select(statusChartRef.current)
-    .append('svg')
-    .attr('width', width)
-    .attr('height', height + 60) // Увеличиваем высоту для подписей
-    .style('overflow', 'visible');
+    // Создаем SVG
+    const svg = d3.select(statusChartRef.current)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height + 60) // Увеличиваем высоту для подписей
+      .style('overflow', 'visible');
 
-  // Создаем фильтр для эффекта свечения
-  const defs = svg.append('defs');
-  const filter = defs.append('filter')
-    .attr('id', 'glow');
-  filter.append('feGaussianBlur')
-    .attr('stdDeviation', '3.5')
-    .attr('result', 'coloredBlur');
+    // Создаем фильтр для эффекта свечения
+    const defs = svg.append('defs');
+    const filter = defs.append('filter')
+      .attr('id', 'glow');
+    filter.append('feGaussianBlur')
+      .attr('stdDeviation', '3.5')
+      .attr('result', 'coloredBlur');
 
-  const feMerge = filter.append('feMerge');
-  feMerge.append('feMergeNode')
-    .attr('in', 'coloredBlur');
-  feMerge.append('feMergeNode')
-    .attr('in', 'SourceGraphic');
+    const feMerge = filter.append('feMerge');
+    feMerge.append('feMergeNode')
+      .attr('in', 'coloredBlur');
+    feMerge.append('feMergeNode')
+      .attr('in', 'SourceGraphic');
 
-  // Создаем градиенты для столбцов
-  statusData.forEach((d, i) => {
-    const gradientId = `status-gradient-${i}`;
-    const gradient = defs.append('linearGradient')
-      .attr('id', gradientId)
-      .attr('x1', '0%')
-      .attr('y1', '0%')
-      .attr('x2', '0%')
-      .attr('y2', '100%');
-      
-    gradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', d3.color(d.color).brighter(0.5));
-      
-    gradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', d.color);
-  });
-
-  // Создаем всплывающую подсказку
-  const tooltip = d3.select('body')
-    .append('div')
-    .attr('class', 'tooltip')
-    .style('position', 'absolute')
-    .style('visibility', 'hidden')
-    .style('background', 'rgba(15, 23, 42, 0.9)')
-    .style('color', '#f1f5f9')
-    .style('padding', '10px')
-    .style('border-radius', '6px')
-    .style('font-size', '12px')
-    .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.3)')
-    .style('z-index', '1000')
-    .style('max-width', '220px')
-    .style('border', '1px solid rgba(59, 130, 246, 0.2)');
-
-  // Создаем шкалы
-  const x = d3.scaleBand()
-    .domain(statusData.map(d => {
-      // Для экономии места в графике используем сокращенное название
-      return d.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : d.name;
-    }))
-    .range([margin.left, width - margin.right])
-    .padding(0.5);
-
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(statusData, d => d.value) * 1.1])
-    .nice()
-    .range([height - margin.bottom, margin.top]);
-
-  // Добавляем оси
-  svg.append('g')
-    .attr('transform', `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x).tickSize(0))
-    .call(g => g.select('.domain').remove())
-    .selectAll('text')
-    .attr('transform', 'rotate(-25)')
-    .style('text-anchor', 'end')
-    .style('font-size', '12px')
-    .style('fill', '#94a3b8');
-
-  svg.append('g')
-    .attr('transform', `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y).ticks(5).tickFormat(d => d))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('.tick line')
-      .attr('x2', width - margin.left - margin.right)
-      .attr('stroke', '#334155')
-      .attr('stroke-opacity', 0.2))
-    .selectAll('text')
-    .style('font-size', '12px')
-    .style('fill', '#94a3b8');
-
-  // Добавляем сетку
-  svg.selectAll('.grid-line')
-    .data(y.ticks(5))
-    .enter()
-    .append('line')
-    .attr('class', 'grid-line')
-    .attr('x1', margin.left)
-    .attr('x2', width - margin.right)
-    .attr('y1', d => y(d))
-    .attr('y2', d => y(d))
-    .attr('stroke', '#334155')
-    .attr('stroke-opacity', 0.2)
-    .attr('stroke-dasharray', '4,4');
-
-  // Добавляем столбцы с анимацией
-  const bars = svg.selectAll('.bar')
-    .data(statusData)
-    .enter()
-    .append('rect')
-    .attr('class', 'bar')
-    .attr('x', d => x(d.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : d.name))
-    .attr('width', x.bandwidth())
-    .attr('y', height - margin.bottom)
-    .attr('height', 0)
-    .attr('rx', 8)
-    .attr('fill', (d, i) => `url(#status-gradient-${i})`)
-    .attr('stroke', '#0f172a')
-    .attr('stroke-width', 1);
-  
-  // Добавляем обработчики событий без изменения цвета
-  bars.on('mouseover', function(event, d) {
-      tooltip
-        .style('visibility', 'visible')
-        .html(`
-          <div>
-            <div style="display: flex; align-items: center; margin-bottom: 5px;">
-              <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${d.color}; margin-right: 5px;"></div>
-              <strong>${d.name}</strong>
-            </div>
-            <div style="margin-top: 8px; font-weight: bold;">Количество: ${d.value}</div>
-          </div>
-        `)
-        .style('left', (event.pageX + 15) + 'px')
-        .style('top', (event.pageY - 20) + 'px');
-    })
-    .on('mousemove', function(event) {
-      tooltip
-        .style('left', (event.pageX + 15) + 'px')
-        .style('top', (event.pageY - 20) + 'px');
-    })
-    .on('mouseout', function() {
-      tooltip.style('visibility', 'hidden');
+    // Создаем градиенты для столбцов
+    statusData.forEach((d, i) => {
+      const gradientId = `status-gradient-${i}`;
+      const gradient = defs.append('linearGradient')
+        .attr('id', gradientId)
+        .attr('x1', '0%')
+        .attr('y1', '0%')
+        .attr('x2', '0%')
+        .attr('y2', '100%');
+        
+      gradient.append('stop')
+        .attr('offset', '0%')
+        .attr('stop-color', d3.color(d.color).brighter(0.5));
+        
+      gradient.append('stop')
+        .attr('offset', '100%')
+        .attr('stop-color', d.color);
     });
-  
-  // Анимируем столбцы
-  bars.transition()
-    .duration(800)
-    .delay((d, i) => i * 100)
-    .attr('y', d => y(d.value))
-    .attr('height', d => height - margin.bottom - y(d.value));
 
-  // Добавляем подписи над столбцами
-  svg.selectAll('.bar-label')
-    .data(statusData)
-    .enter()
-    .append('text')
-    .attr('class', 'bar-label')
-    .attr('x', d => x(d.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : d.name) + x.bandwidth() / 2)
-    .attr('y', d => y(d.value) - 10)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '14px') // Увеличенный размер шрифта
-    .style('font-weight', 'bold')
-    .style('fill', d => d3.color(d.color).brighter(0.3))
-    .style('filter', 'url(#glow)')
-    .text(d => d.value)
-    .style('opacity', 0)
-    .transition()
-    .duration(500)
-    .delay((d, i) => i * 100 + 800)
-    .style('opacity', 1);
+    // Создаем всплывающую подсказку
+    const tooltip = d3.select('body')
+      .append('div')
+      .attr('class', 'tooltip')
+      .style('position', 'absolute')
+      .style('visibility', 'hidden')
+      .style('background', 'rgba(15, 23, 42, 0.9)')
+      .style('color', '#f1f5f9')
+      .style('padding', '10px')
+      .style('border-radius', '6px')
+      .style('font-size', '12px')
+      .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.3)')
+      .style('z-index', '1000')
+      .style('max-width', '220px')
+      .style('border', '1px solid rgba(59, 130, 246, 0.2)');
 
-  // Добавляем линию тренда
-  const line = d3.line()
-    .x(d => x(d.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : d.name) + x.bandwidth() / 2)
-    .y(d => y(d.value))
-    .curve(d3.curveMonotoneX);
+    // Создаем шкалы
+    const x = d3.scaleBand()
+      .domain(statusData.map(d => d.name))
+      .range([margin.left, width - margin.right])
+      .padding(isMobile ? 0.3 : 0.5); // Уменьшаем отступы для мобильных устройств
 
-  svg.append('path')
-    .datum(statusData)
-    .attr('fill', 'none')
-    .attr('stroke', '#94a3b8')
-    .attr('stroke-width', 2)
-    .attr('stroke-dasharray', '6,4')
-    .attr('d', line)
-    .style('opacity', 0)
-    .transition()
-    .duration(800)
-    .delay(1000)
-    .style('opacity', 0.6);
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(statusData, d => d.value) * 1.1])
+      .nice()
+      .range([height - margin.bottom, margin.top]);
 
-  // Добавляем точки пересечения
-  svg.selectAll('.dot')
-    .data(statusData)
-    .enter()
-    .append('circle')
-    .attr('class', 'dot')
-    .attr('cx', d => x(d.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : d.name) + x.bandwidth() / 2)
-    .attr('cy', d => y(d.value))
-    .attr('r', 5)
-    .attr('fill', '#f8fafc')
-    .attr('stroke', d => d.color)
-    .attr('stroke-width', 2)
-    .style('filter', 'url(#glow)')
-    .style('opacity', 0)
-    .transition()
-    .duration(300)
-    .delay((d, i) => i * 100 + 1100)
-    .style('opacity', 1);
-};
+    // Добавляем оси
+    svg.append('g')
+      .attr('transform', `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(x).tickSize(0))
+      .call(g => g.select('.domain').remove())
+      .selectAll('text')
+      .attr('transform', `rotate(${isMobile ? -35 : -25})`) // Больший угол наклона для мобильных
+      .style('text-anchor', 'end')
+      .style('font-size', isMobile ? '10px' : '12px') // Меньший размер шрифта для мобильных
+      .style('fill', '#94a3b8');
 
-// Функция для отображения таблицы статусов
+    svg.append('g')
+      .attr('transform', `translate(${margin.left},0)`)
+      .call(d3.axisLeft(y).ticks(isMobile ? 3 : 5).tickFormat(d => d)) // Меньше делений для мобильных
+      .call(g => g.select('.domain').remove())
+      .call(g => g.selectAll('.tick line')
+        .attr('x2', width - margin.left - margin.right)
+        .attr('stroke', '#334155')
+        .attr('stroke-opacity', 0.2))
+      .selectAll('text')
+      .style('font-size', isMobile ? '10px' : '12px')
+      .style('fill', '#94a3b8');
+
+    // Добавляем сетку (меньше линий для мобильных)
+    svg.selectAll('.grid-line')
+      .data(y.ticks(isMobile ? 3 : 5))
+      .enter()
+      .append('line')
+      .attr('class', 'grid-line')
+      .attr('x1', margin.left)
+      .attr('x2', width - margin.right)
+      .attr('y1', d => y(d))
+      .attr('y2', d => y(d))
+      .attr('stroke', '#334155')
+      .attr('stroke-opacity', 0.2)
+      .attr('stroke-dasharray', '4,4');
+
+    // Добавляем столбцы с анимацией
+    const bars = svg.selectAll('.bar')
+      .data(statusData)
+      .enter()
+      .append('rect')
+      .attr('class', 'bar')
+      .attr('x', d => x(d.name))
+      .attr('width', x.bandwidth())
+      .attr('y', height - margin.bottom)
+      .attr('height', 0)
+      .attr('rx', isMobile ? 4 : 8) // Уменьшаем скругление для мобильных
+      .attr('fill', (d, i) => `url(#status-gradient-${i})`)
+      .attr('stroke', '#0f172a')
+      .attr('stroke-width', 1);
+    
+    // Добавляем обработчики событий без изменения цвета
+    bars.on('mouseover', function(event, d) {
+        tooltip
+          .style('visibility', 'visible')
+          .html(`
+            <div>
+              <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${d.color}; margin-right: 5px;"></div>
+                <strong>${d.name}</strong>
+              </div>
+              <div style="margin-top: 8px; font-weight: bold;">${t('modelDetails.quantityTable')}: ${d.value}</div>
+            </div>
+          `)
+          .style('left', (event.pageX + 15) + 'px')
+          .style('top', (event.pageY - 20) + 'px');
+      })
+      .on('mousemove', function(event) {
+        tooltip
+          .style('left', (event.pageX + 15) + 'px')
+          .style('top', (event.pageY - 20) + 'px');
+      })
+      .on('mouseout', function() {
+        tooltip.style('visibility', 'hidden');
+      });
+    
+    // Анимируем столбцы
+    bars.transition()
+      .duration(800)
+      .delay((d, i) => i * 100)
+      .attr('y', d => y(d.value))
+      .attr('height', d => height - margin.bottom - y(d.value));
+
+    // Добавляем подписи над столбцами (скрываем на мобильных, если слишком много или значения маленькие)
+    svg.selectAll('.bar-label')
+      .data(statusData)
+      .enter()
+      .filter(d => !isMobile || d.value > 5) // Фильтруем метки для мобильных
+      .append('text')
+      .attr('class', 'bar-label')
+      .attr('x', d => x(d.name) + x.bandwidth() / 2)
+      .attr('y', d => y(d.value) - (isMobile ? 5 : 10))
+      .attr('text-anchor', 'middle')
+      .style('font-size', isMobile ? '12px' : '14px')
+      .style('font-weight', 'bold')
+      .style('fill', d => d3.color(d.color).brighter(0.3))
+      .style('filter', 'url(#glow)')
+      .text(d => d.value)
+      .style('opacity', 0)
+      .transition()
+      .duration(500)
+      .delay((d, i) => i * 100 + 800)
+      .style('opacity', 1);
+
+    // Добавляем линию тренда (убираем для очень узких экранов)
+    if (!isMobile) {
+      const line = d3.line()
+        .x(d => x(d.name) + x.bandwidth() / 2)
+        .y(d => y(d.value))
+        .curve(d3.curveMonotoneX);
+
+      svg.append('path')
+        .datum(statusData)
+        .attr('fill', 'none')
+        .attr('stroke', '#94a3b8')
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', '6,4')
+        .attr('d', line)
+        .style('opacity', 0)
+        .transition()
+        .duration(800)
+        .delay(1000)
+        .style('opacity', 0.6);
+
+      // Добавляем точки пересечения
+      svg.selectAll('.dot')
+        .data(statusData)
+        .enter()
+        .append('circle')
+        .attr('class', 'dot')
+        .attr('cx', d => x(d.name) + x.bandwidth() / 2)
+        .attr('cy', d => y(d.value))
+        .attr('r', isTablet ? 4 : 5) // Меньший размер для планшетов
+        .attr('fill', '#f8fafc')
+        .attr('stroke', d => d.color)
+        .attr('stroke-width', 2)
+        .style('filter', 'url(#glow)')
+        .style('opacity', 0)
+        .transition()
+        .duration(300)
+        .delay((d, i) => i * 100 + 1100)
+        .style('opacity', 1);
+    }
+  };
+
+  // Функция для отображения таблицы статусов
   const renderStatusTable = () => {
     return (
-      <div>
+      <div className="overflow-x-auto">
         <div className="flex mb-2 pb-2 border-b border-slate-700/50">
-          <div className="text-xs font-medium text-slate-400 uppercase tracking-wider pl-3 w-1/2">Статус</div>
-          <div className="text-xs font-medium text-slate-400 uppercase tracking-wider w-1/2">Количество</div>
+          <div className="text-xs font-medium text-slate-400 uppercase tracking-wider pl-3 w-1/2">{t('modelDetails.statusesTable')}</div>
+          <div className="text-xs font-medium text-slate-400 uppercase tracking-wider w-1/2">{t('modelDetails.quantityTable')}</div>
         </div>
         
         {statusData.map((status, index) => (
@@ -1704,8 +1863,7 @@ const renderStatusChart = () => {
                 }}
               ></div>
               <div className="text-sm text-slate-300">
-                {/* Для экономии места в таблице используем сокращенное название */}
-                {status.name === 'Не оплачено/частично оплачено' ? 'Не/част. оплачено' : status.name}
+                {status.name}
               </div>
             </div>
             <div className="text-sm text-slate-400 w-1/2">{status.value}</div>
@@ -1713,7 +1871,7 @@ const renderStatusChart = () => {
         ))}
         
         <div className="flex pt-2 mt-2 border-t border-slate-700/50 font-medium">
-          <div className="text-sm text-slate-300 pl-3 w-1/2">ИТОГО</div>
+          <div className="text-sm text-slate-300 pl-3 w-1/2">{t('statuses.total').toUpperCase()}</div>
           <div className="text-sm text-slate-300 w-1/2">
             {statusData.reduce((acc, curr) => acc + curr.value, 0)}
           </div>
@@ -1722,19 +1880,20 @@ const renderStatusChart = () => {
     );
   };
 
+  // Компонент для отображения UI
   return (
     <>
       {isLoading && <ContentReadyLoader timeout={2000} />}
       
-      <div className="bg-dark text-white p-6 rounded-xl shadow-2xl border border-slate-800">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 text-transparent bg-clip-text">
-            {isWholesale ? 'ОПТОВЫЕ ЗАКАЗЫ' : 'РОЗНИЧНЫЕ ЗАКАЗЫ'}: СТАТУС И РАСПРЕДЕЛЕНИЕ
+      <div className="bg-dark text-white p-3 md:p-6 rounded-xl shadow-2xl border border-slate-800">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 text-transparent bg-clip-text">
+            {isWholesale ? t('wholesale') : t('retail')}: {t('statusAndDistribution')}
           </h1>
           
-          <div className="flex space-x-3">
+          <div className="flex flex-wrap gap-3">
             {/* Переключатель между режимами опт/розница */}
-            <div className="flex space-x-2 mr-4 bg-slate-800 p-1 rounded-lg">
+            <div className="flex space-x-2 bg-slate-800 p-1 rounded-lg">
               <button
                 onClick={() => toggleWholesale(false)}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -1743,7 +1902,7 @@ const renderStatusChart = () => {
                     : 'bg-transparent text-slate-300 hover:bg-slate-700'
                 }`}
               >
-                Розница
+                {currentLocale === 'ru' ? 'Розница' : 'Chakana'}
               </button>
               <button
                 onClick={() => toggleWholesale(true)}
@@ -1753,36 +1912,38 @@ const renderStatusChart = () => {
                     : 'bg-transparent text-slate-300 hover:bg-slate-700'
                 }`}
               >
-                Опт
+                {currentLocale === 'ru' ? 'Опт' : 'Ulgurji'}
               </button>
             </div>
             
             {/* Переключатель режима отображения */}
-            <button 
-              onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                viewMode === 'grid' 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' 
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              Сетка
-            </button>
-            <button 
-              onClick={() => setViewMode('list')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                viewMode === 'list' 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' 
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              Список
-            </button>
+            {/* <div className="flex space-x-2">
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  viewMode === 'grid' 
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' 
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {t('viewModes.grid')}
+              </button>
+              <button 
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  viewMode === 'list' 
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' 
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {t('viewModes.list')}
+              </button>
+            </div> */}
           </div>
         </div>
         
         {/* Навигационная панель и фильтры */}
-        <div className="bg-slate-800 p-4 rounded-xl mb-6 border border-slate-700/50 shadow-md">
+        <div className="bg-slate-800 p-3 md:p-4 rounded-xl mb-6 border border-slate-700/50 shadow-md">
           <div className="flex flex-wrap items-center gap-4">
             {/* Сброс всех фильтров */}
             <button 
@@ -1792,18 +1953,18 @@ const renderStatusChart = () => {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
-              Сбросить
+              {t('filters.reset')}
             </button>
             
             {/* Выбор региона */}
             <div className="flex items-center">
-              <span className="text-slate-400 mr-2 text-sm">Регион:</span>
+              <span className="text-slate-400 mr-2 text-sm">{t('filters.region')}:</span>
               <select 
                 value={filterRegion}
                 onChange={handleRegionSelect}
                 className="bg-slate-700 text-slate-200 px-3 py-2 rounded-lg border-0 focus:ring-2 focus:ring-blue-500"
               >
-                <option value="all">Все регионы</option>
+                <option value="all">{t('filters.allRegions')}</option>
                 {data.map((region, index) => (
                   <option key={`region-${index}`} value={`region-${index}`}>{region.region}</option>
                 ))}
@@ -1811,14 +1972,13 @@ const renderStatusChart = () => {
             </div>
             
             <div className="flex items-center">
-              <span className="text-slate-400 mr-2 text-sm">Модель:</span>
+              <span className="text-slate-400 mr-2 text-sm">{t('filters.model')}:</span>
               <select 
                 value={filterModel}
                 onChange={handleModelSelect}
                 className="bg-slate-700 text-slate-200 px-3 py-2 rounded-lg border-0 focus:ring-2 focus:ring-blue-500"
               >
-                <option value="all">Все модели</option>
-                {/* Создаем уникальный список моделей без дубликатов */}
+                <option value="all">{t('filters.allModels')}</option>
                 {Array.from(new Set(data.flatMap(region => region.models.map(model => model.model))))
                   .sort()
                   .map((modelName, index) => (
@@ -1829,17 +1989,17 @@ const renderStatusChart = () => {
             </div>
             
             {/* Отображение текущего пути */}
-            <div className="flex items-center ml-auto">
-              <span className="text-slate-400 text-sm">Просмотр:</span>
+            <div className="flex items-center ml-auto mt-2 md:mt-0">
+              <span className="text-slate-400 text-sm">{t('filters.currentView')}:</span>
               <div className="flex items-center ml-2">
                 <span className="text-blue-400 font-medium text-sm">
                   {currentView === 'general' 
-                    ? 'Общий обзор' 
+                    ? t('views.general')
                     : currentView === 'region' 
-                      ? `Регион: ${selectedRegion?.name}` 
+                      ? t('views.region', { regionName: selectedRegion?.name }) 
                       : currentView === 'model' && selectedRegion 
-                        ? `${selectedRegion.name} > ${selectedModel?.name}` 
-                        : `Модель: ${selectedModel?.name}`
+                        ? t('views.regionModel', { regionName: selectedRegion.name, modelName: selectedModel?.name }) 
+                        : t('views.model', { modelName: selectedModel?.name })
                   }
                 </span>
               </div>
@@ -1847,23 +2007,23 @@ const renderStatusChart = () => {
           </div>
         </div>
         
-        <p className="text-slate-400 mb-6 font-medium">
+        <p className="text-slate-400 mb-6 font-medium text-sm md:text-base">
           {currentView === 'general' 
-            ? `СТАТУСЫ ЗАКАЗОВ ${isWholesale ? '(ОПТОВЫЕ)' : '(РОЗНИЧНЫЕ)'}: НЕ ОПЛАЧЕНО/ЧАСТИЧНО ОПЛАЧЕНО, ОПЛАЧЕНО, НА РАСПРЕДЕЛЕНИИ, РАСПРЕДЕЛЁН, В ПУТИ, У ДИЛЕРА, БРОНЬ`
+            ? `${t('statuses.title')} ${isWholesale ? `(${t('wholesale')})` : `(${t('retail')})`}`
             : currentView === 'region'
-              ? `СТАТИСТИКА ПО РЕГИОНУ: ${selectedRegion?.name}`
-              : `ДЕТАЛЬНАЯ ИНФОРМАЦИЯ ПО МОДЕЛИ: ${selectedModel?.name}`}
+              ? t('modelDetails.titleRegion', { regionName: selectedRegion?.name })
+              : t('modelDetails.titleModel', { modelName: selectedModel?.name })}
         </p>
         
         <div className="mb-6">
           {currentView !== 'model' && (
-            <div className="lg:col-span-8 bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl shadow-xl border border-slate-700/50 relative overflow-hidden mb-6">
+            <div className="lg:col-span-8 bg-gradient-to-br from-slate-800 to-slate-900 p-4 md:p-6 rounded-2xl shadow-xl border border-slate-700/50 relative overflow-hidden mb-6">
               <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-purple-500/5 to-pink-500/5 z-0 pointer-events-none"></div>
               <div className="relative z-10">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-bold text-slate-200">СТАТУС ЗАКАЗОВ</h2>
-                  <div className="text-[18px] font-medium text-purple-400">
-                    Всего заказов: {statusData.reduce((acc, curr) => acc + curr.value, 0)}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
+                  <h2 className="text-lg font-bold text-slate-200">{t('statuses.title')}</h2>
+                  <div className="text-base md:text-[18px] font-medium text-purple-400">
+                    {t('statuses.totalOrders')}: {statusData.reduce((acc, curr) => acc + curr.value, 0)}
                   </div>
                 </div>
                 
@@ -1877,7 +2037,7 @@ const renderStatusChart = () => {
                         : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                     }`}
                   >
-                    График
+                    {t('statuses.chart')}
                   </button>
                   <button
                     onClick={() => setStatusView('table')}
@@ -1887,15 +2047,15 @@ const renderStatusChart = () => {
                         : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                     }`}
                   >
-                    Таблица
+                    {t('statuses.table')}
                   </button>
                 </div>
                 
-                <div className="flex justify-center space-x-10 mb-6">
+                <div className="flex flex-wrap justify-center gap-6 mb-6">
                   {/* Используем напрямую поля paid_count и no_paid_count */}
                   <div className="flex flex-col items-center">
                     <div 
-                      className="w-20 h-20 rounded-full flex items-center justify-center mb-2 shadow-lg relative"
+                      className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center mb-2 shadow-lg relative"
                       style={{ 
                         background: `radial-gradient(circle, #10b98130 0%, #10b98110 70%)`
                       }}
@@ -1904,18 +2064,18 @@ const renderStatusChart = () => {
                         className="absolute inset-0 rounded-full z-0"
                         style={{ boxShadow: `0 0 20px #10b98130` }}
                       ></div>
-                      <span className="text-2xl font-bold relative z-10" style={{ color: '#10b981' }}>
+                      <span className="text-xl md:text-2xl font-bold relative z-10" style={{ color: '#10b981' }}>
                         {selectedRegion
                           ? modelsByRegion[selectedRegion.id]?.reduce((sum, model) => sum + (model.paid_count || 0), 0)
                           : models.reduce((sum, model) => sum + (model.paid_count || 0), 0)}
                       </span>
                     </div>
-                    <span className="text-sm font-medium text-slate-300">ОПЛАЧЕНО</span>
+                    <span className="text-xs md:text-sm font-medium text-slate-300">{t('statuses.paid')}</span>
                   </div>
                   
                   <div className="flex flex-col items-center">
                     <div 
-                      className="w-20 h-20 rounded-full flex items-center justify-center mb-2 shadow-lg relative"
+                      className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center mb-2 shadow-lg relative"
                       style={{ 
                         background: `radial-gradient(circle, #ef444430 0%, #ef444410 70%)`
                       }}
@@ -1924,19 +2084,19 @@ const renderStatusChart = () => {
                         className="absolute inset-0 rounded-full z-0"
                         style={{ boxShadow: `0 0 20px #ef444430` }}
                       ></div>
-                      <span className="text-2xl font-bold relative z-10" style={{ color: '#ef4444' }}>
+                      <span className="text-xl md:text-2xl font-bold relative z-10" style={{ color: '#ef4444' }}>
                         {selectedRegion
                           ? modelsByRegion[selectedRegion.id]?.reduce((sum, model) => sum + (model.no_paid_count || 0), 0)
                           : models.reduce((sum, model) => sum + (model.no_paid_count || 0), 0)}
                       </span>
                     </div>
-                    <span className="text-sm font-medium text-slate-300">НЕ ОПЛАЧЕНО</span>
+                    <span className="text-xs md:text-sm font-medium text-slate-300">{t('statuses.unpaid')}</span>
                   </div>
                 </div>
                 
                 {/* Отображаем график или таблицу в зависимости от выбранной вкладки */}
                 {statusView === 'chart' ? (
-                  <div ref={statusChartRef} className="w-full" style={{ height: '400px' }}></div>
+                  <div ref={statusChartRef} className="w-full" ></div>
                 ) : (
                   renderStatusTable()
                 )}
@@ -1946,21 +2106,24 @@ const renderStatusChart = () => {
         </div>
         
         {/* Карточка с моделями или регионами */}
-        <div className="bg-gradient-to-br h-full from-slate-800 to-slate-900 p-6 rounded-2xl shadow-xl border border-slate-700/50 mb-6 relative overflow-hidden">
+        <div className="bg-gradient-to-br h-full from-slate-800 to-slate-900 p-4 md:p-6 rounded-2xl shadow-xl border border-slate-700/50 mb-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-indigo-500/5 to-blue-500/5 z-0"></div>
           <div className="relative z-10">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-bold text-slate-200">
+              <h2 className="text-base md:text-lg font-bold text-slate-200">
                 {currentView === 'general' 
-                  ? `${isWholesale ? 'ОПТОВЫЕ' : 'РОЗНИЧНЫЕ'} МОДЕЛИ В РАЗРЕЗЕ`
+                  ? (isWholesale ? t('modelDetails.titleWholesale') : t('modelDetails.titleRetail'))
                   : currentView === 'region'
-                    ? `МОДЕЛИ В РЕГИОНЕ: ${selectedRegion?.name}`
+                    ? t('modelDetails.titleRegion', { regionName: selectedRegion?.name })
                     : currentView === 'model' && selectedRegion
-                      ? `ДЕТАЛЬНАЯ ИНФОРМАЦИЯ: ${selectedModel?.name} В ${selectedRegion?.name}`
-                      : `ДЕТАЛЬНАЯ ИНФОРМАЦИЯ: ${selectedModel?.name}`}
+                      ? t('modelDetails.titleModelRegion', { modelName: selectedModel?.name, regionName: selectedRegion?.name })
+                      : t('modelDetails.titleModel', { modelName: selectedModel?.name })}
               </h2>
             </div>
-           <div ref={modelsChartRef} className="w-full" style={{ maxHeight: currentView === 'model' ? 'none' : '650px', overflowY: currentView === 'model' ? 'visible' : 'auto' }}></div>
+            <div ref={modelsChartRef} className="w-full" style={{ 
+              maxHeight: currentView === 'model' ? 'none' : '650px', 
+              overflowY: currentView === 'model' ? 'visible' : 'auto' 
+            }}></div>
           </div>
         </div>
 
@@ -1984,6 +2147,22 @@ const renderStatusChart = () => {
           
           .text-transparent {
             color: transparent;
+          }
+          
+          /* Адаптивные стили для мобильных устройств */
+          @media (max-width: 640px) {
+            .tooltip {
+              max-width: 180px;
+              font-size: 10px;
+              padding: 8px;
+            }
+          }
+          
+          /* Адаптивные стили для планшетов */
+          @media (min-width: 641px) and (max-width: 1024px) {
+            .tooltip {
+              max-width: 200px;
+            }
           }
         `}</style>
       </div>

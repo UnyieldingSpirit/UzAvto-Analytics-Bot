@@ -385,7 +385,7 @@ const LanguageSwitcher = () => {
   return (
     <>
       {/* Боковая навигация */}
-      <div ref={menuRef} className={`sidebar ${isNavOpen ? 'open' : ''}`}>
+      <div ref={menuRef} className={`pb-4  sidebar ${isNavOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div className="logo-container">
             <motion.div 
@@ -679,6 +679,16 @@ const LanguageSwitcher = () => {
 
           .sidebar.open {
             transform: translateX(0);
+          }
+          
+          /* Добавляем отступ для основного контента на мобильных устройствах */
+          main, .main-content, #content-wrapper, [role="main"], .page-content {
+            padding-top: var(--header-height);
+          }
+          
+          /* Специфичный стиль для страниц, не имеющих классов выше */
+          body > div:not(.sidebar):not(.mobile-header):not(.backdrop) {
+            padding-top: var(--header-height);
           }
         }
 

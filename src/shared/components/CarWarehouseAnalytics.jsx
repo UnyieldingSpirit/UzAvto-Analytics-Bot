@@ -4,8 +4,14 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { useTranslation } from '../../hooks/useTranslation';
+import { warehouseAnalyticsTranslations } from './locales/WarehouseAnalytics';
+import ContentReadyLoader from '../layout/ContentReadyLoader';
 
 const CarWarehouseAnalytics = () => {
+  // Инициализация переводов
+  const { t } = useTranslation(warehouseAnalyticsTranslations);
+  
   // Refs для графиков
   const warehouseDistributionRef = useRef(null);
   const manufacturerChartRef = useRef(null);
@@ -36,6 +42,20 @@ const CarWarehouseAnalytics = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [colorFilter, setColorFilter] = useState('');
   const [notifications, setNotifications] = useState([]);
+  
+  // Состояние для адаптивного дизайна
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Отслеживание размера экрана для адаптивности
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
   
   // Фильтрация модификаций
   const filteredModifications = useMemo(() => {
@@ -92,68 +112,58 @@ const CarWarehouseAnalytics = () => {
         
         setLoading(false);
       } catch (err) {
-        console.error('Ошибка при загрузке данных:', err);
-        setError('Не удалось загрузить данные. Пожалуйста, попробуйте позже.');
+        console.error(t('errors.loadingData'), err);
+        setError(t('errors.failedToLoad'));
         setLoading(false);
-        addNotification('Ошибка загрузки данных', 'error');
+        addNotification(t('errors.loadingData'), 'error');
       }
     };
     
     fetchData();
-  }, []);
+  }, [t]);
   
   // Функция для обработки загруженных данных
-const processData = (warehouses) => {
-  const carModels = [];
-  
-  // Создаем итоговые объекты для подсчета общего количества по всем складам
-  let totalModelsCount = {};
-  
-  // Обработка данных для создания структуры автомобилей
-  warehouses.forEach(warehouse => {
-    if (!warehouse.models || warehouse.models.length === 0) return;
+  const processData = (warehouses) => {
+    const carModels = [];
     
-    warehouse.models.forEach(model => {
-      // Если нет моди или они пустые, пропускаем
-      if (!model.modifications || model.modifications.length === 0) return;
+    // Создаем итоговые объекты для подсчета общего количества по всем складам
+    let totalModelsCount = {};
+    
+    // Обработка данных для создания структуры автомобилей
+    warehouses.forEach(warehouse => {
+      if (!warehouse.models || warehouse.models.length === 0) return;
       
-      // Инициализируем счетчик для текущей модели, если еще не сделано
-      if (!totalModelsCount[model.model]) {
-        totalModelsCount[model.model] = {
-          totalCount: 0,
-          available: 0,
-          reserved: 0,
-          defective: 0,
-          defectiveOk: 0,
-          colors: {},
-          modifications: {}
-        };
-      }
-      
-      // Проходим по модификациям этой модели
-      model.modifications.forEach(mod => {
-        // Если нет цветов или они пустые, пропускаем
-        if (!mod.colors || mod.colors.length === 0) return;
+      warehouse.models.forEach(model => {
+        // Если нет моди или они пустые, пропускаем
+        if (!model.modifications || model.modifications.length === 0) return;
         
-        // Инициализируем счетчик для текущей модификации, если еще не сделано
-        if (!totalModelsCount[model.model].modifications[mod.modification]) {
-          totalModelsCount[model.model].modifications[mod.modification] = {
+        // Инициализируем счетчик для текущей модели, если еще не сделано
+        if (!totalModelsCount[model.model]) {
+          totalModelsCount[model.model] = {
             totalCount: 0,
             available: 0,
             reserved: 0,
             defective: 0,
-            defectiveOk: 0
+            defectiveOk: 0,
+            colors: {},
+            modifications: {},
+            photo_sha: model.photo_sha || null // Сохраняем photo_sha для модели
           };
         }
         
-        // Проходим по цветам этой модификации
-        mod.colors.forEach(color => {
-          // Если нет статусов или они пустые, пропускаем
-          if (!color.statuses || color.statuses.length === 0) return;
+        // Запоминаем photo_sha, если еще не было сохранено
+        if (!totalModelsCount[model.model].photo_sha && model.photo_sha) {
+          totalModelsCount[model.model].photo_sha = model.photo_sha;
+        }
+        
+        // Проходим по модификациям этой модели
+        model.modifications.forEach(mod => {
+          // Если нет цветов или они пустые, пропускаем
+          if (!mod.colors || mod.colors.length === 0) return;
           
-          // Инициализируем счетчик для текущего цвета, если еще не сделано
-          if (!totalModelsCount[model.model].colors[color.color]) {
-            totalModelsCount[model.model].colors[color.color] = {
+          // Инициализируем счетчик для текущей модификации, если еще не сделано
+          if (!totalModelsCount[model.model].modifications[mod.modification]) {
+            totalModelsCount[model.model].modifications[mod.modification] = {
               totalCount: 0,
               available: 0,
               reserved: 0,
@@ -162,217 +172,242 @@ const processData = (warehouses) => {
             };
           }
           
-          // Проходим по статусам этого цвета
-          color.statuses.forEach(status => {
-            const count = parseInt(status.count);
+          // Проходим по цветам этой модификации
+          mod.colors.forEach(color => {
+            // Если нет статусов или они пустые, пропускаем
+            if (!color.statuses || color.statuses.length === 0) return;
             
-            // Увеличиваем общий счетчик для этой модели
-            totalModelsCount[model.model].totalCount += count;
-            
-            // Увеличиваем общий счетчик для этого цвета
-            totalModelsCount[model.model].colors[color.color].totalCount += count;
-            
-            // Увеличиваем общий счетчик для этой модификации
-            totalModelsCount[model.model].modifications[mod.modification].totalCount += count;
-            
-            // Распределяем по статусам
-            if (status.status_name === "Свободно") {
-              totalModelsCount[model.model].available += count;
-              totalModelsCount[model.model].colors[color.color].available += count;
-              totalModelsCount[model.model].modifications[mod.modification].available += count;
-            } else if (status.status_name === "Именной" || status.status_name === "Закрепленные") {
-              totalModelsCount[model.model].reserved += count;
-              totalModelsCount[model.model].colors[color.color].reserved += count;
-              totalModelsCount[model.model].modifications[mod.modification].reserved += count;
-            } else if (status.status_name === "Брак") {
-              totalModelsCount[model.model].defective += count;
-              totalModelsCount[model.model].colors[color.color].defective += count;
-              totalModelsCount[model.model].modifications[mod.modification].defective += count;
-            } else if (status.status_name === "Брак-ОК") {
-              totalModelsCount[model.model].defectiveOk += count;
-              totalModelsCount[model.model].colors[color.color].defectiveOk += count;
-              totalModelsCount[model.model].modifications[mod.modification].defectiveOk += count;
+            // Инициализируем счетчик для текущего цвета, если еще не сделано
+            if (!totalModelsCount[model.model].colors[color.color]) {
+              totalModelsCount[model.model].colors[color.color] = {
+                totalCount: 0,
+                available: 0,
+                reserved: 0,
+                defective: 0,
+                defectiveOk: 0
+              };
             }
+            
+            // Проходим по статусам этого цвета
+            color.statuses.forEach(status => {
+              const count = parseInt(status.count);
+              
+              // Увеличиваем общий счетчик для этой модели
+              totalModelsCount[model.model].totalCount += count;
+              
+              // Увеличиваем общий счетчик для этого цвета
+              totalModelsCount[model.model].colors[color.color].totalCount += count;
+              
+              // Увеличиваем общий счетчик для этой модификации
+              totalModelsCount[model.model].modifications[mod.modification].totalCount += count;
+              
+              // Распределяем по статусам
+              if (status.status_name === "Свободно") {
+                totalModelsCount[model.model].available += count;
+                totalModelsCount[model.model].colors[color.color].available += count;
+                totalModelsCount[model.model].modifications[mod.modification].available += count;
+              } else if (status.status_name === "Именной" || status.status_name === "Закрепленные") {
+                totalModelsCount[model.model].reserved += count;
+                totalModelsCount[model.model].colors[color.color].reserved += count;
+                totalModelsCount[model.model].modifications[mod.modification].reserved += count;
+              } else if (status.status_name === "Брак") {
+                totalModelsCount[model.model].defective += count;
+                totalModelsCount[model.model].colors[color.color].defective += count;
+                totalModelsCount[model.model].modifications[mod.modification].defective += count;
+              } else if (status.status_name === "Брак-ОК") {
+                totalModelsCount[model.model].defectiveOk += count;
+                totalModelsCount[model.model].colors[color.color].defectiveOk += count;
+                totalModelsCount[model.model].modifications[mod.modification].defectiveOk += count;
+              }
+            });
           });
         });
       });
     });
-  });
-  
-  // Преобразуем объект с итогами в массив для использования в компоненте
-  Object.entries(totalModelsCount).forEach(([modelName, modelData]) => {
-    // Преобразуем объекты цветов и модификаций в массивы
-    let colorsArray = Object.entries(modelData.colors).map(([colorName, colorData]) => ({
-      name: colorName,
-      count: colorData.totalCount,
-      available: colorData.available,
-      reserved: colorData.reserved,
-      defective: colorData.defective,
-      defectiveOk: colorData.defectiveOk,
-      hex: getColorHex(colorName)
-    }));
     
-    let modificationsArray = Object.entries(modelData.modifications).map(([modName, modData]) => ({
-      id: `${modelName}-${modName}`,
-      name: modName,
-      count: modData.totalCount,
-      available: modData.available,
-      reserved: modData.reserved,
-      defective: modData.defective,
-      defectiveOk: modData.defectiveOk,
-      image: `https://source.unsplash.com/random/400x300/?car,${modelName.toLowerCase()}`
-    }));
-    
-    // Добавляем модель в итоговый массив
-    carModels.push({
-      id: modelName,
-      name: modelName,
-      category: getCategoryForModel(modelName),
-      totalCount: modelData.totalCount,
-      available: modelData.available,
-      reserved: modelData.reserved,
-      defective: modelData.defective,
-      defectiveOk: modelData.defectiveOk,
-      colors: colorsArray,
-      modifications: modificationsArray,
-      img: `https://source.unsplash.com/random/400x300/?car,${modelName.toLowerCase()}`
-    });
-  });
-  
-  // Сортируем модели по количеству
-  carModels.sort((a, b) => b.totalCount - a.totalCount);
-  
-  // Обработка данных о складах
-  const processedWarehouses = warehouses.map(warehouse => {
-    // Если нет моделей, возвращаем пустой объект
-    if (!warehouse.models || warehouse.models.length === 0) {
-      return null;
-    }
-    
-    // Подсчитываем остатки по всем моделям на этом складе
-    const modelCounts = [];
-    let totalCount = 0;
-    let defective = 0;
-    let defectiveOk = 0;
-    let reserved = 0;
-    let available = 0;
-    
-    // Маппинг категорий для этого склада
-    const categoryCountsMap = {};
-    
-    warehouse.models.forEach(model => {
-      let modelTotal = 0;
-      let modelAvailable = 0;
-      let modelReserved = 0;
-      let modelDefective = 0;
-      let modelDefectiveOk = 0;
+    // Преобразуем объект с итогами в массив для использования в компоненте
+    Object.entries(totalModelsCount).forEach(([modelName, modelData]) => {
+      // Преобразуем объекты цветов и модификаций в массивы
+      let colorsArray = Object.entries(modelData.colors).map(([colorName, colorData]) => ({
+        name: colorName,
+        count: colorData.totalCount,
+        available: colorData.available,
+        reserved: colorData.reserved,
+        defective: colorData.defective,
+        defectiveOk: colorData.defectiveOk,
+        hex: getColorHex(colorName)
+      }));
       
-      if (!model.modifications) return;
+      let modificationsArray = Object.entries(modelData.modifications).map(([modName, modData]) => ({
+        id: `${modelName}-${modName}`,
+        name: modName,
+        count: modData.totalCount,
+        available: modData.available,
+        reserved: modData.reserved,
+        defective: modData.defective,
+        defectiveOk: modData.defectiveOk
+      }));
       
-      model.modifications.forEach(mod => {
-        if (!mod.colors) return;
-        
-        mod.colors.forEach(color => {
-          if (!color.statuses) return;
-          
-          color.statuses.forEach(status => {
-            const count = parseInt(status.count);
-            totalCount += count;
-            modelTotal += count;
-            
-            if (status.status_name === "Свободно") {
-              available += count;
-              modelAvailable += count;
-            } else if (status.status_name === "Именной" || status.status_name === "Закрепленные") {
-              reserved += count;
-              modelReserved += count;
-            } else if (status.status_name === "Брак") {
-              defective += count;
-              modelDefective += count;
-            } else if (status.status_name === "Брак-ОК") {
-              defectiveOk += count;
-              modelDefectiveOk += count;
-            }
-          });
-        });
+      // Формируем URL изображения на основе photo_sha
+      const imageUrl = `https://uzavtosalon.uz/b/core/m$load_image?sha=${modelData.photo_sha}&width=400&height=400`
+      
+      // Добавляем модель в итоговый массив
+      carModels.push({
+        id: modelName,
+        name: modelName,
+        category: getCategoryForModel(modelName),
+        totalCount: modelData.totalCount,
+        available: modelData.available,
+        reserved: modelData.reserved,
+        defective: modelData.defective,
+        defectiveOk: modelData.defectiveOk,
+        colors: colorsArray,
+        modifications: modificationsArray,
+        img: imageUrl,
+        photo_sha: modelData.photo_sha
       });
-      
-      if (modelTotal > 0) {
-        const category = getCategoryForModel(model.model);
-        
-        // Добавляем в счетчик категорий
-        if (!categoryCountsMap[category]) {
-          categoryCountsMap[category] = 0;
-        }
-        categoryCountsMap[category] += modelTotal;
-        
-        modelCounts.push({
-          id: model.model,
-          name: model.model,
-          count: modelTotal,
-          available: modelAvailable,
-          reserved: modelReserved,
-          defective: modelDefective,
-          defectiveOk: modelDefectiveOk,
-          category: category
-        });
+    });
+    
+    // Сортируем модели по количеству
+    carModels.sort((a, b) => b.totalCount - a.totalCount);
+    
+    // Обработка данных о складах
+    const processedWarehouses = warehouses.map(warehouse => {
+      // Если нет моделей, возвращаем пустой объект
+      if (!warehouse.models || warehouse.models.length === 0) {
+        return null;
       }
-    });
+      
+      // Подсчитываем остатки по всем моделям на этом складе
+      const modelCounts = [];
+      let totalCount = 0;
+      let defective = 0;
+      let defectiveOk = 0;
+      let reserved = 0;
+      let available = 0;
+      
+      // Маппинг категорий для этого склада
+      const categoryCountsMap = {};
+      
+      warehouse.models.forEach(model => {
+        let modelTotal = 0;
+        let modelAvailable = 0;
+        let modelReserved = 0;
+        let modelDefective = 0;
+        let modelDefectiveOk = 0;
+        
+        if (!model.modifications) return;
+        
+        model.modifications.forEach(mod => {
+          if (!mod.colors) return;
+          
+          mod.colors.forEach(color => {
+            if (!color.statuses) return;
+            
+            color.statuses.forEach(status => {
+              const count = parseInt(status.count);
+              totalCount += count;
+              modelTotal += count;
+              
+              if (status.status_name === "Свободно") {
+                available += count;
+                modelAvailable += count;
+              } else if (status.status_name === "Именной" || status.status_name === "Закрепленные") {
+                reserved += count;
+                modelReserved += count;
+              } else if (status.status_name === "Брак") {
+                defective += count;
+                modelDefective += count;
+              } else if (status.status_name === "Брак-ОК") {
+                defectiveOk += count;
+                modelDefectiveOk += count;
+              }
+            });
+          });
+        });
+        
+        if (modelTotal > 0) {
+          const category = getCategoryForModel(model.model);
+          
+          // Добавляем в счетчик категорий
+          if (!categoryCountsMap[category]) {
+            categoryCountsMap[category] = 0;
+          }
+          categoryCountsMap[category] += modelTotal;
+          
+          // Получаем photo_sha из модели
+          const photo_sha = model.photo_sha || null;
+     const imageUrl = `https://uzavtosalon.uz/b/core/m$load_image?sha=${photo_sha}&width=400&height=400`
+          
+          modelCounts.push({
+            id: model.model,
+            name: model.model,
+            count: modelTotal,
+            available: modelAvailable,
+            reserved: modelReserved,
+            defective: modelDefective,
+            defectiveOk: modelDefectiveOk,
+            category: category,
+            img: imageUrl,
+            photo_sha: photo_sha
+          });
+        }
+      });
+      
+      // Если на складе нет автомобилей, пропускаем его
+      if (totalCount === 0) {
+        return null;
+      }
+      
+      // Используем точное значение volume из API
+      const volume = parseInt(warehouse.volume || 0);
+      
+      // Рассчитываем вместимость и заполненность
+      // Если volume = 0, считаем capacity равным текущему totalCount
+      const capacity = volume > 0 ? volume : totalCount;
+      
+      // Рассчитываем процент заполненности
+      // Если volume = 0, считаем заполненность 100%
+      const occupancyRate = volume > 0 ? Math.round((totalCount / volume) * 100) : 100;
+      
+      // Преобразуем мапу категорий в массив для графиков
+      const categories = Object.keys(categoryCountsMap).map(key => ({
+        name: key === 'suv' ? t('categories.suv') : 
+              key === 'sedan' ? t('categories.sedan') : 
+              key === 'minivan' ? t('categories.minivan') : key,
+        count: categoryCountsMap[key]
+      }));
+      
+      return {
+        id: warehouse.warehouse,
+        name: warehouse.warehouse,
+        totalCount,
+        defective,
+        defectiveOk,
+        reserved,
+        available,
+        models: modelCounts,
+        categories,
+        capacity,
+        volume: warehouse.volume || 0, // Сохраняем исходное значение volume
+        occupancyRate,
+        status: occupancyRate > 90 ? 'critical' : 
+                occupancyRate > 75 ? 'high' : 
+                occupancyRate > 50 ? 'medium' : 'low'
+      };
+    }).filter(Boolean); // Удаляем null элементы
     
-    // Если на складе нет автомобилей, пропускаем его
-    if (totalCount === 0) {
-      return null;
-    }
+    // Обновляем состояния с обработанными данными
+    setEnhancedCarModels(carModels);
+    setEnhancedWarehouses(processedWarehouses);
     
-    // Используем точное значение volume из API
-    const volume = parseInt(warehouse.volume);
-    
-    // Рассчитываем вместимость и заполненность
-    // Если volume = 0, считаем capacity равным текущему totalCount
-    const capacity = volume > 0 ? volume : totalCount;
-    
-    // Рассчитываем процент заполненности
-    // Если volume = 0, считаем заполненность 100%
-    const occupancyRate = volume > 0 ? Math.round((totalCount / volume) * 100) : 100;
-    
-    // Преобразуем мапу категорий в массив для графиков
-    const categories = Object.keys(categoryCountsMap).map(key => ({
-      name: key === 'suv' ? 'Внедорожники' : 
-            key === 'sedan' ? 'Седаны' : 
-            key === 'minivan' ? 'Минивэны' : key,
-      count: categoryCountsMap[key]
-    }));
-    
-    return {
-      id: warehouse.warehouse,
-      name: warehouse.warehouse,
-      totalCount,
-      defective,
-      defectiveOk,
-      reserved,
-      available,
-      models: modelCounts,
-      categories,
-      capacity,
-      volume: warehouse.volume, // Сохраняем исходное значение volume
-      occupancyRate,
-      status: occupancyRate > 90 ? 'критический' : 
-              occupancyRate > 75 ? 'высокий' : 
-              occupancyRate > 50 ? 'средний' : 'низкий'
-    };
-  }).filter(Boolean); // Удаляем null элементы
-  
-  // Обновляем состояния с обработанными данными
-  setEnhancedCarModels(carModels);
-  setEnhancedWarehouses(processedWarehouses);
-  
-  // Общие статистические данные
-  setTotalVehicles(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.totalCount, 0));
-  setTotalDefective(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.defective, 0));
-  setTotalDefectiveOk(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.defectiveOk, 0));
-  setTotalReserved(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.reserved, 0));
-  setTotalAvailable(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.available, 0));
-};
+    // Общие статистические данные
+    setTotalVehicles(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.totalCount, 0));
+    setTotalDefective(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.defective, 0));
+    setTotalDefectiveOk(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.defectiveOk, 0));
+    setTotalReserved(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.reserved, 0));
+    setTotalAvailable(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.available, 0));
+  };
   
   // Функция для переключения отображения модели в контексте склада
   const toggleModelDetailInWarehouse = (modelId) => {
@@ -469,11 +504,20 @@ const processData = (warehouses) => {
     
     return colorMap[colorName] || '#CCCCCC';
   }
-  
+
   // Функция для экспорта данных о складах в CSV
   const exportWarehouseData = () => {
     // Создаем строки для CSV
-    const headers = ['Склад', 'Всего', 'Свободные', 'Закрепленные', 'Брак-ОК', 'Брак', 'Заполненность'];
+    const headers = [
+      t('export.warehouse'), 
+      t('export.total'), 
+      t('export.available'), 
+      t('export.reserved'), 
+      t('export.defectiveOk'), 
+      t('export.defective'), 
+      t('export.occupancy')
+    ];
+    
     const rows = enhancedWarehouses.map(warehouse => [
       warehouse.name,
       warehouse.totalCount,
@@ -501,18 +545,27 @@ const processData = (warehouses) => {
     link.click();
     document.body.removeChild(link);
     
-    addNotification('Данные успешно экспортированы в CSV', 'success');
+    addNotification(t('notifications.exportSuccessWarehouse'), 'success');
   };
   
   // Функция для экспорта данных о моделях в CSV
   const exportModelData = () => {
     // Создаем строки для CSV
-    const headers = ['Модель', 'Категория', 'Всего', 'Свободные', 'Закрепленные', 'Брак-ОК', 'Брак'];
+    const headers = [
+      t('export.model'), 
+      t('export.category'), 
+      t('export.total'), 
+      t('export.available'), 
+      t('export.reserved'), 
+      t('export.defectiveOk'), 
+      t('export.defective')
+    ];
+    
     const rows = enhancedCarModels.map(model => [
       model.name,
-      model.category === 'sedan' ? 'Седан' : 
-      model.category === 'suv' ? 'Внедорожник' : 
-      model.category === 'minivan' ? 'Минивэн' : model.category,
+      model.category === 'sedan' ? t('categories.sedan') : 
+      model.category === 'suv' ? t('categories.suv') : 
+      model.category === 'minivan' ? t('categories.minivan') : model.category,
       model.totalCount,
       model.available,
       model.reserved,
@@ -537,7 +590,7 @@ const processData = (warehouses) => {
     link.click();
     document.body.removeChild(link);
     
-    addNotification('Данные о моделях экспортированы в CSV', 'success');
+    addNotification(t('notifications.exportSuccessModels'), 'success');
   };
 
   useEffect(() => {
@@ -571,7 +624,7 @@ const processData = (warehouses) => {
       window.addEventListener('resize', handleResize);
       return () => window.removeEventListener('resize', handleResize);
     }
-  }, [loading, enhancedWarehouses, selectedCarModel, selectedWarehouse]);
+  }, [loading, enhancedWarehouses, selectedCarModel, selectedWarehouse, t]);
 
   // Рендер диаграммы распределения по складам
   const renderWarehouseDistribution = () => {
@@ -580,9 +633,11 @@ const processData = (warehouses) => {
     const container = warehouseDistributionRef.current;
     container.innerHTML = '';
     
-    const margin = { top: 30, right: 20, bottom: 40, left: 160 };
+    const margin = { top: 30, right: 20, bottom: 40, left: isMobile ? 100 : 160 };
     const width = container.clientWidth - margin.left - margin.right;
     const height = container.clientHeight - margin.top - margin.bottom;
+    
+    if (width < 100 || height < 100) return; // Слишком маленький размер для рендеринга
     
     const svg = d3.select(container)
       .append('svg')
@@ -596,9 +651,9 @@ const processData = (warehouses) => {
       .attr('x', width / 2)
       .attr('y', -margin.top / 2)
       .attr('text-anchor', 'middle')
-      .style('font-size', '16px')
+      .style('font-size', isMobile ? '14px' : '16px')
       .style('fill', '#f9fafb')
-      .text('Распределение автомобилей по складам');
+      .text(t('charts.warehouseDistribution'));
       
     // Получаем данные для графика из расширенных складов
     const warehouseData = enhancedWarehouses.map(warehouse => ({
@@ -630,7 +685,7 @@ const processData = (warehouses) => {
     svg.append('g')
       .call(d3.axisLeft(y))
       .selectAll('text')
-      .style('font-size', '12px')
+      .style('font-size', isMobile ? '10px' : '12px')
       .style('fill', '#d1d5db')
       .style('cursor', 'pointer')
       .on('click', (event, d) => {
@@ -649,7 +704,7 @@ const processData = (warehouses) => {
       
     // Добавляем стеки
     const stack = d3.stack()
-      .keys(['defective', 'defectiveOk', 'reserved', 'available'])
+      .keys(['available', 'reserved', 'defectiveOk', 'defective'])
       .order(d3.stackOrderNone)
       .offset(d3.stackOffsetNone);
       
@@ -728,53 +783,55 @@ const processData = (warehouses) => {
       .style('opacity', 1);
       
     // Добавляем легенду с новыми статусами
-    const legend = svg.append('g')
-      .attr('transform', `translate(${width - 160}, ${height - 100})`);
+    if (!isMobile) {
+      const legend = svg.append('g')
+        .attr('transform', `translate(${width - 160}, ${height - 100})`);
+        
+      const legendData = [
+        { key: 'available', label: t('status.available') },
+        { key: 'reserved', label: t('status.reserved') },
+        { key: 'defectiveOk', label: t('status.defectiveOk') },
+        { key: 'defective', label: t('status.defective') }
+      ];
       
-    const legendData = [
-      { key: 'available', label: 'Свободные' },
-      { key: 'reserved', label: 'Закрепленные' },
-      { key: 'defectiveOk', label: 'Брак-ОК' },
-      { key: 'defective', label: 'Брак' }
-    ];
-    
-    legendData.forEach((d, i) => {
-      const legendRow = legend.append('g')
-        .attr('transform', `translate(0, ${i * 20})`);
+      legendData.forEach((d, i) => {
+        const legendRow = legend.append('g')
+          .attr('transform', `translate(0, ${i * 20})`);
+          
+        legendRow.append('rect')
+          .attr('width', 15)
+          .attr('height', 15)
+          .attr('fill', colorScale(d.key))
+          .attr('rx', 2);
+          
+        legendRow.append('text')
+          .attr('x', 20)
+          .attr('y', 12)
+          .style('font-size', '12px')
+          .style('fill', '#d1d5db')
+          .text(d.label);
+      });
+      
+      // Добавляем метку для линии емкости
+      legend.append('g')
+        .attr('transform', `translate(0, ${legendData.length * 20})`);
+      
+      legend.append('line')
+        .attr('x1', 0)
+        .attr('y1', legendData.length * 20 + 7.5)
+        .attr('x2', 15)
+        .attr('y2', legendData.length * 20 + 7.5)
+        .attr('stroke', '#f97316')
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', '5,3');
         
-      legendRow.append('rect')
-        .attr('width', 15)
-        .attr('height', 15)
-        .attr('fill', colorScale(d.key))
-        .attr('rx', 2);
-        
-      legendRow.append('text')
+      legend.append('text')
         .attr('x', 20)
-        .attr('y', 12)
+        .attr('y', legendData.length * 20 + 12)
         .style('font-size', '12px')
         .style('fill', '#d1d5db')
-        .text(d.label);
-    });
-    
-    // Добавляем метку для линии емкости
-    legend.append('g')
-      .attr('transform', `translate(0, ${legendData.length * 20})`);
-    
-    legend.append('line')
-      .attr('x1', 0)
-      .attr('y1', legendData.length * 20 + 7.5)
-      .attr('x2', 15)
-      .attr('y2', legendData.length * 20 + 7.5)
-      .attr('stroke', '#f97316')
-      .attr('stroke-width', 2)
-      .attr('stroke-dasharray', '5,3');
-      
-    legend.append('text')
-      .attr('x', 20)
-      .attr('y', legendData.length * 20 + 12)
-      .style('font-size', '12px')
-      .style('fill', '#d1d5db')
-      .text('Макс. емкость');
+        .text(t('status.maxCapacity'));
+    }
   };
    
   // Рендер круговой диаграммы складов
@@ -786,6 +843,9 @@ const processData = (warehouses) => {
     
     const width = container.clientWidth;
     const height = container.clientHeight;
+    
+    if (width < 100 || height < 100) return; // Слишком маленький размер для рендеринга
+    
     const radius = Math.min(width, height) / 2 * 0.8;
     
     const svg = d3.select(container)
@@ -877,7 +937,7 @@ const processData = (warehouses) => {
           
         // Обновляем центральный текст
         centerLabel.text(d.data.warehouse);
-        centerValue.text(`${d.data.percentage}% (${d.data.value} шт.)`);
+        centerValue.text(`${d.data.percentage}% (${d.data.value} ${t('units')})`);
       })
       .on('mouseout', function() {
         d3.select(this)
@@ -886,8 +946,8 @@ const processData = (warehouses) => {
           .attr('d', arc);
           
         // Сбрасываем центральный текст
-        centerLabel.text('Распределение');
-        centerValue.text('По складам');
+        centerLabel.text(t('charts.distribution'));
+        centerValue.text(t('charts.byWarehouse'));
       })
       .on('click', function(event, d) {
         const warehouse = enhancedWarehouses.find(w => w.name === d.data.warehouse);
@@ -903,11 +963,10 @@ const processData = (warehouses) => {
       });
       
     // Добавляем легенду
-    const legendG = svg.append('g')
-      .attr('transform', `translate(${radius + 20}, -${radius - 20})`);
-    
-    // Показываем легенду только если достаточно места
-    if (width > 350) {
+    if (width > 350 && !isMobile) {
+      const legendG = svg.append('g')
+        .attr('transform', `translate(${radius + 20}, -${radius - 20})`);
+      
       const legend = legendG.selectAll('.legend')
         .data(data_ready)
         .enter()
@@ -936,17 +995,17 @@ const processData = (warehouses) => {
     const centerLabel = svg.append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '-0.5em')
-      .style('font-size', '16px')
+      .style('font-size', isMobile ? '14px' : '16px')
       .style('fill', '#d1d5db')
-      .text('Распределение');
+      .text(t('charts.distribution'));
       
     const centerValue = svg.append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '1em')
-      .style('font-size', '24px')
+      .style('font-size', isMobile ? '20px' : '24px')
       .style('font-weight', 'bold')
       .style('fill', '#ffffff')
-      .text('По складам');
+      .text(t('charts.byWarehouse'));
   };
   
   // Рендер графика инвентаря моделей с обновленными статусами
@@ -956,9 +1015,11 @@ const processData = (warehouses) => {
     const container = modelInventoryChartRef.current;
     container.innerHTML = '';
     
-    const margin = { top: 30, right: 20, bottom: 50, left: 100 };
+    const margin = { top: 30, right: 20, bottom: 50, left: isMobile ? 80 : 100 };
     const width = container.clientWidth - margin.left - margin.right;
     const height = container.clientHeight - margin.top - margin.bottom;
+    
+    if (width < 100 || height < 100) return; // Слишком маленький размер для рендеринга
     
     const svg = d3.select(container)
       .append('svg')
@@ -972,12 +1033,13 @@ const processData = (warehouses) => {
       .attr('x', width / 2)
       .attr('y', -margin.top / 2)
       .attr('text-anchor', 'middle')
-      .style('font-size', '16px')
+      .style('font-size', isMobile ? '14px' : '16px')
       .style('fill', '#f9fafb')
-      .text('Статус автомобилей на складах');
+      .text(t('charts.carStatusInWarehouses'));
       
     // Данные для графика из расширенных моделей
-    const carModelInventory = enhancedCarModels.slice(0, 5).map(model => ({
+    const maxModels = isMobile ? 3 : 5;
+    const carModelInventory = enhancedCarModels.slice(0, maxModels).map(model => ({
       model: model.name,
       available: Math.round((model.available / model.totalCount) * 100),
       reserved: Math.round((model.reserved / model.totalCount) * 100),
@@ -999,7 +1061,7 @@ const processData = (warehouses) => {
     svg.append('g')
       .call(d3.axisLeft(y))
       .selectAll('text')
-      .style('font-size', '12px')
+      .style('font-size', isMobile ? '10px' : '12px')
       .style('fill', '#d1d5db')
       .style('cursor', 'pointer')
       .on('click', (event, d) => {
@@ -1206,7 +1268,7 @@ const processData = (warehouses) => {
               .attr('dy', '0.35em')
               .attr('text-anchor', 'middle')
               .style('fill', '#ffffff')
-              .style('font-size', '12px')
+              .style('font-size', isMobile ? '10px' : '12px')
               .style('font-weight', 'bold')
               .style('opacity', 0)
               .text(`${percent}%`)
@@ -1224,63 +1286,65 @@ const processData = (warehouses) => {
     addLabel('defective-label', 'defective', d => d.available + d.reserved + d.defectiveOk, 5);
       
     // Добавляем легенду с отступом, чтобы не перекрывалась с графиком
-    const legend = svg.append('g')
-      .attr('transform', `translate(${width - 330}, ${height - 30})`);
-      
-    legend.append('rect')
-      .attr('width', 15)
-      .attr('height', 15)
-      .attr('fill', '#22c55e')
-      .attr('rx', 2);
-      
-    legend.append('text')
-      .attr('x', 20)
-      .attr('y', 12)
-      .style('font-size', '12px')
-      .style('fill', '#d1d5db')
-      .text('Свободные');
-      
-    legend.append('rect')
-      .attr('width', 15)
-      .attr('height', 15)
-      .attr('fill', '#3b82f6')
-      .attr('rx', 2)
-      .attr('transform', 'translate(95, 0)');
-      
-    legend.append('text')
-      .attr('x', 115)
-      .attr('y', 12)
-      .style('font-size', '12px')
-      .style('fill', '#d1d5db')
-      .text('Закрепленные');
-      
-    legend.append('rect')
-      .attr('width', 15)
-      .attr('height', 15)
-      .attr('fill', '#f59e0b')
-      .attr('rx', 2)
-      .attr('transform', 'translate(210, 0)');
-      
-    legend.append('text')
-      .attr('x', 230)
-      .attr('y', 12)
-      .style('font-size', '12px')
-      .style('fill', '#d1d5db')
-      .text('Брак-ОК');
-      
-    legend.append('rect')
-      .attr('width', 15)
-      .attr('height', 15)
-      .attr('fill', '#ef4444')
-      .attr('rx', 2)
-      .attr('transform', 'translate(295, 0)');
-      
-    legend.append('text')
-      .attr('x', 315)
-      .attr('y', 12)
-      .style('font-size', '12px')
-      .style('fill', '#d1d5db')
-      .text('Брак');
+    if (!isMobile) {
+      const legend = svg.append('g')
+        .attr('transform', `translate(${width - 330}, ${height - 30})`);
+        
+      legend.append('rect')
+        .attr('width', 15)
+        .attr('height', 15)
+        .attr('fill', '#22c55e')
+        .attr('rx', 2);
+        
+      legend.append('text')
+        .attr('x', 20)
+        .attr('y', 12)
+        .style('font-size', '12px')
+        .style('fill', '#d1d5db')
+        .text(t('status.available'));
+        
+      legend.append('rect')
+        .attr('width', 15)
+        .attr('height', 15)
+        .attr('fill', '#3b82f6')
+        .attr('rx', 2)
+        .attr('transform', 'translate(95, 0)');
+        
+      legend.append('text')
+        .attr('x', 115)
+        .attr('y', 12)
+        .style('font-size', '12px')
+        .style('fill', '#d1d5db')
+        .text(t('status.reserved'));
+        
+      legend.append('rect')
+        .attr('width', 15)
+        .attr('height', 15)
+        .attr('fill', '#f59e0b')
+        .attr('rx', 2)
+        .attr('transform', 'translate(210, 0)');
+        
+      legend.append('text')
+        .attr('x', 230)
+        .attr('y', 12)
+        .style('font-size', '12px')
+        .style('fill', '#d1d5db')
+        .text(t('status.defectiveOk'));
+        
+      legend.append('rect')
+        .attr('width', 15)
+        .attr('height', 15)
+        .attr('fill', '#ef4444')
+        .attr('rx', 2)
+        .attr('transform', 'translate(295, 0)');
+        
+      legend.append('text')
+        .attr('x', 315)
+        .attr('y', 12)
+        .style('font-size', '12px')
+        .style('fill', '#d1d5db')
+        .text(t('status.defective'));
+    }
   };
 
   // Функция для отрисовки графика распределения по цветам для выбранной модели
@@ -1290,9 +1354,11 @@ const processData = (warehouses) => {
     const container = colorDistributionRef.current;
     container.innerHTML = '';
     
-    const margin = { top: 20, right: 30, bottom: 30, left: 90 };
+    const margin = { top: 20, right: 30, bottom: 30, left: isMobile ? 60 : 90 };
     const width = container.clientWidth - margin.left - margin.right;
     const height = container.clientHeight - margin.top - margin.bottom;
+    
+    if (width < 100 || height < 100) return; // Слишком маленький размер для рендеринга
     
     const svg = d3.select(container)
       .append('svg')
@@ -1324,6 +1390,7 @@ const processData = (warehouses) => {
     svg.append('g')
       .call(d3.axisLeft(y))
       .selectAll('text')
+      .style('font-size', isMobile ? '10px' : '12px')
       .style('fill', '#9ca3af');
       
     // Создаем полосы с анимацией
@@ -1342,7 +1409,7 @@ const processData = (warehouses) => {
       .delay((d, i) => i * 100)
       .attr('width', d => x(d.count));
       
-    // Улучшенная логика отображения надписей, чтобы не отображать надписи для маленьких полос
+// Улучшенная логика отображения надписей, чтобы не отображать надписи для маленьких полос
     svg.selectAll('.color-label')
       .data(colorData)
       .join('text')
@@ -1364,7 +1431,7 @@ const processData = (warehouses) => {
             .attr('y', y(d.name) + y.bandwidth() / 2)
             .attr('dy', '0.35em')
             .attr('text-anchor', textAnchor)
-            .style('font-size', '12px')
+            .style('font-size', isMobile ? '10px' : '12px')
             .style('fill', textColor)
             .style('opacity', 0)
             .transition()
@@ -1380,9 +1447,9 @@ const processData = (warehouses) => {
       .attr('x', width / 2)
       .attr('y', -margin.top / 2)
       .attr('text-anchor', 'middle')
-      .style('font-size', '14px')
+      .style('font-size', isMobile ? '12px' : '14px')
       .style('fill', '#f9fafb')
-      .text('Распределение по цветам');
+      .text(t('charts.colorDistribution'));
   };
 
   // Метод для рендеринга графика заполненности склада
@@ -1394,6 +1461,9 @@ const processData = (warehouses) => {
     
     const width = container.clientWidth;
     const height = container.clientHeight;
+    
+    if (width < 100 || height < 100) return; // Слишком маленький размер для рендеринга
+    
     const radius = Math.min(width, height) / 2 * 0.8;
     
     const svg = d3.select(container)
@@ -1405,11 +1475,11 @@ const processData = (warehouses) => {
       
     // Данные о заполненности склада
     const data = [
-      { name: 'Свободно', value: warehouse.capacity - warehouse.totalCount, color: '#94a3b8' },
-      { name: 'Брак', value: warehouse.defective, color: '#ef4444' }, 
-      { name: 'Брак-ОК', value: warehouse.defectiveOk, color: '#f59e0b' },
-      { name: 'Закреплено', value: warehouse.reserved, color: '#3b82f6' },
-      { name: 'Доступно', value: warehouse.available, color: '#22c55e' }
+      { name: t('status.free'), value: warehouse.capacity - warehouse.totalCount, color: '#94a3b8' },
+      { name: t('status.defective'), value: warehouse.defective, color: '#ef4444' }, 
+      { name: t('status.defectiveOk'), value: warehouse.defectiveOk, color: '#f59e0b' },
+      { name: t('status.reserved'), value: warehouse.reserved, color: '#3b82f6' },
+      { name: t('status.available'), value: warehouse.available, color: '#22c55e' }
     ];
     
     // Создаем пирог
@@ -1421,7 +1491,7 @@ const processData = (warehouses) => {
     
     // Создаем дуги
     const arc = d3.arc()
-  .innerRadius(radius * 0.7) // Делаем кольцевую диаграмму
+      .innerRadius(radius * 0.7) // Делаем кольцевую диаграмму
       .outerRadius(radius);
       
     const arcHover = d3.arc()
@@ -1481,7 +1551,7 @@ const processData = (warehouses) => {
           .attr('d', arc);
           
         // Сбрасываем центральный текст
-        centerLabel.text('Заполненность');
+        centerLabel.text(t('charts.occupancy'));
         centerValue.text(`${warehouse.occupancyRate}%`);
       })
       .transition()
@@ -1497,14 +1567,14 @@ const processData = (warehouses) => {
     const centerLabel = svg.append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '-0.5em')
-      .style('font-size', '16px')
+      .style('font-size', isMobile ? '14px' : '16px')
       .style('fill', '#d1d5db')
-      .text('Заполненность');
+      .text(t('charts.occupancy'));
       
     const centerValue = svg.append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '1em')
-      .style('font-size', '24px')
+      .style('font-size', isMobile ? '20px' : '24px')
       .style('font-weight', 'bold')
       .style('fill', '#ffffff')
       .text(`${warehouse.occupancyRate}%`);
@@ -1513,24 +1583,24 @@ const processData = (warehouses) => {
     svg.append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '2.5em')
-      .style('font-size', '12px')
+      .style('font-size', isMobile ? '10px' : '12px')
       .style('fill', '#d1d5db')
-      .text('Показывает текущую заполненность');
+      .text(t('charts.currentOccupancy'));
       
     // Статус заполненности склада с цветовой индикацией
     const statusColors = {
-      'критический': '#ef4444',
-      'высокий': '#f97316',
-      'средний': '#facc15',
-      'низкий': '#22c55e'
+      'critical': '#ef4444',
+      'high': '#f97316',
+      'medium': '#facc15',
+      'low': '#22c55e'
     };
     
     svg.append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '4em')
-      .style('font-size', '12px')
+      .style('font-size', isMobile ? '10px' : '12px')
       .style('fill', statusColors[warehouse.status] || '#d1d5db')
-      .text(`Статус: ${warehouse.status}`);
+      .text(`${t('charts.status')}: ${t(`occupancyStatus.${warehouse.status}`)}`);
   };
 
   // Компонент всплывающих подсказок
@@ -1585,11 +1655,7 @@ const processData = (warehouses) => {
 
   // Если данные загружаются, показываем индикатор загрузки
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen bg-gray-900 text-gray-100">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <ContentReadyLoader />;
   }
   
   // Если произошла ошибка, показываем сообщение об ошибке
@@ -1600,7 +1666,7 @@ const processData = (warehouses) => {
           <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <h2 className="text-xl font-bold mb-2">Ошибка загрузки данных</h2>
+          <h2 className="text-xl font-bold mb-2">{t('errors.loadingDataTitle')}</h2>
           <p>{error}</p>
         </div>
       </div>
@@ -1613,14 +1679,14 @@ const processData = (warehouses) => {
       <div className="mb-6 bg-gray-800 p-4 rounded-lg shadow-md">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
           <div>
-            <h1 className="text-2xl font-bold text-white">Аналитика автосклада</h1>
-            <p className="text-gray-400 mt-1">Мониторинг в реальном времени</p>
+            <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
+            <p className="text-gray-400 mt-1">{t('subtitle')}</p>
           </div>
         </div>
       </div>
       
       {/* Ключевые метрики с обновленными статусами */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-gray-800 p-4 rounded-lg shadow-md">
           <div className="flex items-center">
             <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
@@ -1629,7 +1695,7 @@ const processData = (warehouses) => {
               </svg>
             </div>
             <div>
-              <div className="text-sm text-gray-400">Всего</div>
+              <div className="text-sm text-gray-400">{t('metrics.total')}</div>
               <div className="text-xl font-bold">{totalVehicles}</div>
             </div>
           </div>
@@ -1643,7 +1709,7 @@ const processData = (warehouses) => {
               </svg>
             </div>
             <div>
-              <div className="text-sm text-gray-400">Свободные</div>
+              <div className="text-sm text-gray-400">{t('metrics.available')}</div>
               <div className="text-xl font-bold">{totalAvailable}</div>
             </div>
           </div>
@@ -1657,7 +1723,7 @@ const processData = (warehouses) => {
               </svg>
             </div>
             <div>
-              <div className="text-sm text-gray-400">Закрепленные</div>
+              <div className="text-sm text-gray-400">{t('metrics.reserved')}</div>
               <div className="text-xl font-bold">{totalReserved}</div>
             </div>
           </div>
@@ -1671,7 +1737,7 @@ const processData = (warehouses) => {
               </svg>
             </div>
             <div>
-              <div className="text-sm text-gray-400">Брак-ОК</div>
+              <div className="text-sm text-gray-400">{t('metrics.defectiveOk')}</div>
               <div className="text-xl font-bold">{totalDefectiveOk}</div>
             </div>
           </div>
@@ -1685,7 +1751,7 @@ const processData = (warehouses) => {
               </svg>
             </div>
             <div>
-              <div className="text-sm text-gray-400">Бракованные</div>
+              <div className="text-sm text-gray-400">{t('metrics.defective')}</div>
               <div className="text-xl font-bold">{totalDefective}</div>
             </div>
           </div>
@@ -1696,11 +1762,11 @@ const processData = (warehouses) => {
       <div className="bg-gray-800 p-4 rounded-lg shadow-md mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-sm text-gray-400">Всего моделей автомобилей: {enhancedCarModels.length}</span>
+            <span className="text-sm text-gray-400">{t('metrics.totalCarModels', { count: enhancedCarModels.length })}</span>
           </div>
           
           <div className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm">
-            Обновлено: {new Date().toLocaleTimeString()}
+            {t('metrics.updatedAt')} {new Date().toLocaleTimeString()}
           </div>
         </div>
       </div>
@@ -1709,16 +1775,16 @@ const processData = (warehouses) => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-gray-800 rounded-lg p-4 shadow-md">
           <div className="flex justify-between mb-2">
-            <h2 className="text-lg font-medium">Распределение по складам</h2>
-            <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Доли запасов</span>
+            <h2 className="text-lg font-medium">{t('charts.warehouseDistribution')}</h2>
+            <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">{t('charts.inventoryShare')}</span>
           </div>
           <div ref={manufacturerChartRef} className="h-[300px]"></div>
         </div>
        
         <div className="bg-gray-800 rounded-lg p-4 shadow-md">
           <div className="flex justify-between mb-2">
-            <h2 className="text-lg font-medium">Распределение автомобилей по складам</h2>
-            <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Интерактивно</span>
+            <h2 className="text-lg font-medium">{t('charts.carsByWarehouse')}</h2>
+            <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">{t('charts.interactive')}</span>
           </div>
           <div ref={warehouseDistributionRef} className="h-[300px]"></div>
         </div>
@@ -1727,8 +1793,8 @@ const processData = (warehouses) => {
       {/* График статусов моделей */}
       <div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
         <div className="flex justify-between mb-2">
-          <h2 className="text-lg font-medium">Статус автомобилей на складах</h2>
-          <span className="text-sm bg-green-500/20 text-green-400 px-2 py-1 rounded-full">Процентное соотношение</span>
+          <h2 className="text-lg font-medium">{t('charts.carStatusInWarehouses')}</h2>
+          <span className="text-sm bg-green-500/20 text-green-400 px-2 py-1 rounded-full">{t('charts.percentageRatio')}</span>
         </div>
         <div ref={modelInventoryChartRef} className="h-[300px]"></div>
       </div>
@@ -1737,8 +1803,8 @@ const processData = (warehouses) => {
       <div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
         <div className="flex justify-between mb-4">
           <div>
-            <h2 className="text-lg font-medium">Модели автомобилей</h2>
-            <p className="text-sm text-gray-400">Выберите модель для просмотра деталей</p>
+            <h2 className="text-lg font-medium">{t('sections.carModels')}</h2>
+            <p className="text-sm text-gray-400">{t('sections.selectModelHint')}</p>
           </div>
         </div>
        
@@ -1760,29 +1826,29 @@ const processData = (warehouses) => {
                   />
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-gray-900/70 text-xs text-white text-center">
-                  {model.category === 'sedan' ? 'Седан' :
-                  model.category === 'suv' ? 'Внедорожник' :
-                  model.category === 'minivan' ? 'Минивэн' : model.category}
+                  {model.category === 'sedan' ? t('categories.sedan') :
+                  model.category === 'suv' ? t('categories.suv') :
+                  model.category === 'minivan' ? t('categories.minivan') : model.category}
                 </div>
               </div>
               <div className="p-3">
                 <div className="font-medium text-white mb-1">{model.name}</div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Всего:</span>
+                  <span className="text-gray-400">{t('metrics.total')}:</span>
                   <span className="text-white">{model.totalCount}</span>
                 </div>
                 <div className="mt-2 flex gap-1 flex-wrap">
                   <span className="text-xs px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded">
-                    {model.available} своб.
+                    {model.available} {t('status.availableShort')}
                   </span>
                   <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">
-                    {model.reserved} закр.
+                    {model.reserved} {t('status.reservedShort')}
                   </span>
                   <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded">
-                    {model.defectiveOk} брак-ок
+                    {model.defectiveOk} {t('status.defectiveOkShort')}
                   </span>
                   <span className="text-xs px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded">
-                    {model.defective} брак
+                    {model.defective} {t('status.defectiveShort')}
                   </span>
                 </div>
               </div>
@@ -1797,14 +1863,14 @@ const processData = (warehouses) => {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-900/60 text-gray-400 text-left">
-                <th className="p-3 rounded-l-lg">Название склада</th>
-                <th className="p-3">Емкость</th>
-                <th className="p-3">Заполнено</th>
-                <th className="p-3">Свободные</th>
-                <th className="p-3">Закрепленные</th>
-                <th className="p-3">Брак-ОК</th>
-                <th className="p-3">Брак</th>
-                <th className="p-3 rounded-r-lg">Действия</th>
+                <th className="p-3 rounded-l-lg">{t('table.warehouseName')}</th>
+                <th className="p-3">{t('table.capacity')}</th>
+                <th className="p-3">{t('table.occupied')}</th>
+                <th className="p-3">{t('table.available')}</th>
+                <th className="p-3">{t('table.reserved')}</th>
+                <th className="p-3">{t('table.defectiveOk')}</th>
+                <th className="p-3">{t('table.defective')}</th>
+                <th className="p-3 rounded-r-lg">{t('table.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
@@ -1871,29 +1937,29 @@ const processData = (warehouses) => {
             transition={{ duration: 0.3 }}
             className="bg-gray-800 rounded-lg p-5 shadow-md mb-6 border border-blue-900/30"
           >
-            <div className="flex justify-between items-start mb-5">
-              <div className="flex items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start mb-5">
+              <div className="flex flex-col md:flex-row items-start md:items-center">
                 <img 
                   src={selectedCarModel.img} 
                   alt={selectedCarModel.name} 
-                  className="h-16 w-24 object-contain bg-gray-700 rounded mr-4" 
+                  className="h-16 w-24 object-contain bg-gray-700 rounded mb-3 md:mb-0 md:mr-4" 
                 />
                 <div>
                   <h2 className="text-xl font-bold text-white">{selectedCarModel.name}</h2>
-                  <p className="text-blue-400 text-sm">Детальная информация о модели</p>
+                  <p className="text-blue-400 text-sm">{t('details.carModelDetails')}</p>
                   <div className="flex items-center mt-1">
-                    <span className="text-lg font-semibold text-white mr-2">{selectedCarModel.totalCount} шт.</span>
+                    <span className="text-lg font-semibold text-white mr-2">{selectedCarModel.totalCount} {t('units')}</span>
                     <span className="text-sm capitalize bg-gray-700 px-2 py-0.5 rounded">{
-                      selectedCarModel.category === 'sedan' ? 'Седан' :
-                      selectedCarModel.category === 'suv' ? 'Внедорожник' :
-                      selectedCarModel.category === 'minivan' ? 'Минивэн' : selectedCarModel.category
+                      selectedCarModel.category === 'sedan' ? t('categories.sedan') :
+                      selectedCarModel.category === 'suv' ? t('categories.suv') :
+                      selectedCarModel.category === 'minivan' ? t('categories.minivan') : selectedCarModel.category
                     }</span>
                   </div>
                 </div>
               </div>
               <button 
                 onClick={() => setSelectedCarModel(null)}
-                className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700/50"
+                className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700/50 mt-3 md:mt-0"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1904,26 +1970,26 @@ const processData = (warehouses) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
               {/* Краткая информация о статусах */}
               <div className="bg-gray-700/50 p-4 rounded-lg">
-                <h3 className="text-white font-medium mb-3">Статистика по модели</h3>
+                <h3 className="text-white font-medium mb-3">{t('details.modelStatistics')}</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">Всего на складах</div>
+                    <div className="text-gray-400 text-xs">{t('metrics.totalInWarehouses')}</div>
                     <div className="text-white text-lg font-medium">{selectedCarModel.totalCount}</div>
                   </div>
                   <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">Свободные</div>
+                    <div className="text-gray-400 text-xs">{t('metrics.available')}</div>
                     <div className="text-white text-lg font-medium">{selectedCarModel.available}</div>
                   </div>
                   <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">Закрепленные</div>
+                    <div className="text-gray-400 text-xs">{t('metrics.reserved')}</div>
                     <div className="text-white text-lg font-medium">{selectedCarModel.reserved}</div>
                   </div>
                   <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">Брак-ОК</div>
+                    <div className="text-gray-400 text-xs">{t('metrics.defectiveOk')}</div>
                     <div className="text-white text-lg font-medium">{selectedCarModel.defectiveOk}</div>
                   </div>
                   <div className="bg-gray-800/70 p-3 rounded-lg col-span-2">
-                    <div className="text-gray-400 text-xs">Бракованные</div>
+                    <div className="text-gray-400 text-xs">{t('metrics.defective')}</div>
                     <div className="text-white text-lg font-medium">{selectedCarModel.defective}</div>
                   </div>
                 </div>
@@ -1931,14 +1997,14 @@ const processData = (warehouses) => {
              
               {/* Доступность модели - изменено на линейные индикаторы */}
               <div className="bg-gray-700/50 p-4 rounded-lg md:col-span-2">
-                <h3 className="text-white font-medium">Распределение по статусам</h3>
+                <h3 className="text-white font-medium">{t('details.statusDistribution')}</h3>
                 <div className="space-y-4 mt-3">
                   {/* Свободные автомобили */}
                   <div>
                     <div className="flex justify-between mb-1">
-                      <span className="text-gray-300">Свободные</span>
+                      <span className="text-gray-300">{t('status.available')}</span>
                       <span className="text-white font-medium">
-                        {selectedCarModel.available} шт. 
+                        {selectedCarModel.available} {t('units')} 
                         ({Math.round((selectedCarModel.available / selectedCarModel.totalCount) * 100)}%)
                       </span>
                     </div>
@@ -1953,9 +2019,9 @@ const processData = (warehouses) => {
                   {/* Закрепленные автомобили */}
                   <div>
                     <div className="flex justify-between mb-1">
-                      <span className="text-gray-300">Закрепленные</span>
+                      <span className="text-gray-300">{t('status.reserved')}</span>
                       <span className="text-white font-medium">
-                        {selectedCarModel.reserved} шт. 
+                        {selectedCarModel.reserved} {t('units')} 
                         ({Math.round((selectedCarModel.reserved / selectedCarModel.totalCount) * 100)}%)
                       </span>
                     </div>
@@ -1970,9 +2036,9 @@ const processData = (warehouses) => {
                   {/* Брак-ОК автомобили */}
                   <div>
                     <div className="flex justify-between mb-1">
-                      <span className="text-gray-300">Брак-ОК</span>
+                      <span className="text-gray-300">{t('status.defectiveOk')}</span>
                       <span className="text-white font-medium">
-                        {selectedCarModel.defectiveOk} шт. 
+                        {selectedCarModel.defectiveOk} {t('units')} 
                         ({Math.round((selectedCarModel.defectiveOk / selectedCarModel.totalCount) * 100)}%)
                       </span>
                     </div>
@@ -1987,9 +2053,9 @@ const processData = (warehouses) => {
                   {/* Бракованные автомобили */}
                   <div>
                     <div className="flex justify-between mb-1">
-                      <span className="text-gray-300">Брак</span>
+                      <span className="text-gray-300">{t('status.defective')}</span>
                       <span className="text-white font-medium">
-                        {selectedCarModel.defective} шт. 
+                        {selectedCarModel.defective} {t('units')} 
                         ({Math.round((selectedCarModel.defective / selectedCarModel.totalCount) * 100)}%)
                       </span>
                     </div>
@@ -2007,9 +2073,9 @@ const processData = (warehouses) => {
             {/* График распределения по цветам - заменяем на улучшенную сетку цветов */}
             <div className="bg-gray-700/50 p-4 rounded-lg mb-5">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-white font-medium">Распределение по цветам</h3>
+                <h3 className="text-white font-medium">{t('details.colorDistribution')}</h3>
                 <div className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
-                  {selectedCarModel.colors.length} доступных цветов
+                  {t('details.availableColors', { count: selectedCarModel.colors.length })}
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -2023,13 +2089,13 @@ const processData = (warehouses) => {
                         />
                         <span className="text-white text-sm font-medium">{color.name}</span>
                       </div>
-                      <span className="text-gray-300 text-xs">{color.count} шт.</span>
+                      <span className="text-gray-300 text-xs">{color.count} {t('units')}</span>
                     </div>
                     
                     {/* Индикаторы статусов */}
                     <div className="space-y-2 mt-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-400">Свободные:</span>
+                        <span className="text-xs text-gray-400">{t('status.available')}:</span>
                         <div className="flex items-center">
                           <span className="text-xs text-white mr-1">{color.available}</span>
                           <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
@@ -2042,7 +2108,7 @@ const processData = (warehouses) => {
                       </div>
                       
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-400">Закрепленные:</span>
+                        <span className="text-xs text-gray-400">{t('status.reserved')}:</span>
                         <div className="flex items-center">
                           <span className="text-xs text-white mr-1">{color.reserved}</span>
                           <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
@@ -2055,7 +2121,7 @@ const processData = (warehouses) => {
                       </div>
                       
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-400">Брак-ОК:</span>
+                        <span className="text-xs text-gray-400">{t('status.defectiveOk')}:</span>
                         <div className="flex items-center">
                           <span className="text-xs text-white mr-1">{color.defectiveOk}</span>
                           <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
@@ -2068,7 +2134,7 @@ const processData = (warehouses) => {
                       </div>
                       
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-400">Брак:</span>
+                        <span className="text-xs text-gray-400">{t('status.defective')}:</span>
                         <div className="flex items-center">
                           <span className="text-xs text-white mr-1">{color.defective}</span>
                           <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
@@ -2088,9 +2154,9 @@ const processData = (warehouses) => {
             {/* Выбор модификации - улучшенное отображение */}
             <div className="bg-gray-700/50 p-4 rounded-lg mb-5">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-white font-medium">Модификации {selectedCarModel.name}</h3>
+                <h3 className="text-white font-medium">{t('details.modifications', { model: selectedCarModel.name })}</h3>
                 <div className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
-                  {selectedCarModel.modifications.length} модификаций
+                  {t('details.modificationsCount', { count: selectedCarModel.modifications.length })}
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -2104,7 +2170,7 @@ const processData = (warehouses) => {
                   >
                     <div className="flex justify-between mb-2">
                       <span className="text-white font-medium">{modification.name}</span>
-                      <span className="text-sm text-gray-400">{modification.count} шт.</span>
+                      <span className="text-sm text-gray-400">{modification.count} {t('units')}</span>
                     </div>
                     
                     {/* Полоса прогресса для отображения статусов */}
@@ -2129,19 +2195,19 @@ const processData = (warehouses) => {
                     
                     <div className="grid grid-cols-2 gap-2">
                       <div className="flex justify-between items-center bg-green-500/10 px-2 py-1 rounded">
-                        <span className="text-xs text-green-400">Свободные</span>
+                        <span className="text-xs text-green-400">{t('status.available')}</span>
                         <span className="text-xs text-white">{modification.available}</span>
                       </div>
                       <div className="flex justify-between items-center bg-blue-500/10 px-2 py-1 rounded">
-                        <span className="text-xs text-blue-400">Закреплено</span>
+                        <span className="text-xs text-blue-400">{t('status.reserved')}</span>
                         <span className="text-xs text-white">{modification.reserved}</span>
                       </div>
                       <div className="flex justify-between items-center bg-amber-500/10 px-2 py-1 rounded">
-                        <span className="text-xs text-amber-400">Брак-ОК</span>
+                        <span className="text-xs text-amber-400">{t('status.defectiveOk')}</span>
                         <span className="text-xs text-white">{modification.defectiveOk}</span>
                       </div>
                       <div className="flex justify-between items-center bg-red-500/10 px-2 py-1 rounded">
-                        <span className="text-xs text-red-400">Брак</span>
+                        <span className="text-xs text-red-400">{t('status.defective')}</span>
                         <span className="text-xs text-white">{modification.defective}</span>
                       </div>
                     </div>
@@ -2157,39 +2223,39 @@ const processData = (warehouses) => {
                   <div className="md:w-1/2">
                     <h3 className="text-white font-medium mb-3">{selectedCarModel.name} - {selectedModification.name}</h3>
                     <img 
-                      src={selectedModification.image} 
+                      src={selectedCarModel.img} 
                       alt={`${selectedCarModel.name} ${selectedModification.name}`} 
                       className="w-full h-64 object-cover rounded-lg"
                     />
                   </div>
                   <div className="md:w-1/2 flex flex-col">
-                    <h3 className="text-white font-medium mb-3">Детали модификации</h3>
+                    <h3 className="text-white font-medium mb-3">{t('details.modificationDetails')}</h3>
                     <div className="grid grid-cols-2 gap-3 mb-auto">
                       <div className="bg-gray-800/70 p-3 rounded-lg">
-                        <div className="text-gray-400 text-xs">Всего</div>
+                        <div className="text-gray-400 text-xs">{t('metrics.total')}</div>
                         <div className="text-white text-lg font-medium">{selectedModification.count}</div>
                       </div>
                       <div className="bg-gray-800/70 p-3 rounded-lg">
-                        <div className="text-gray-400 text-xs">Свободные</div>
+                        <div className="text-gray-400 text-xs">{t('metrics.available')}</div>
                         <div className="text-white text-lg font-medium">{selectedModification.available}</div>
                       </div>
                       <div className="bg-gray-800/70 p-3 rounded-lg">
-                        <div className="text-gray-400 text-xs">Закрепленные</div>
+                        <div className="text-gray-400 text-xs">{t('metrics.reserved')}</div>
                         <div className="text-white text-lg font-medium">{selectedModification.reserved}</div>
                       </div>
                       <div className="bg-gray-800/70 p-3 rounded-lg">
-                        <div className="text-gray-400 text-xs">Брак-ОК</div>
+                        <div className="text-gray-400 text-xs">{t('metrics.defectiveOk')}</div>
                         <div className="text-white text-lg font-medium">{selectedModification.defectiveOk}</div>
                       </div>
                       <div className="bg-gray-800/70 p-3 rounded-lg col-span-2">
-                        <div className="text-gray-400 text-xs">Бракованные</div>
+                        <div className="text-gray-400 text-xs">{t('metrics.defective')}</div>
                         <div className="text-white text-lg font-medium">{selectedModification.defective}</div>
                       </div>
                     </div>
                     
                     {/* Добавляем блок распределения по складам */}
                     <div className="mt-5">
-                      <h4 className="text-white font-medium mb-2">Распределение по складам</h4>
+                      <h4 className="text-white font-medium mb-2">{t('details.warehouseDistribution')}</h4>
                       <div className="bg-gray-800/70 p-3 rounded-lg">
                         <div className="space-y-2">
                           {[...Array(Math.min(5, enhancedWarehouses.length))].map((_, index) => {
@@ -2202,7 +2268,7 @@ const processData = (warehouses) => {
                               <div key={index} className="flex justify-between items-center">
                                 <span className="text-xs text-gray-400">{warehouse.name}</span>
                                 <div className="flex items-center">
-                                  <span className="text-xs text-white mr-1">≈{availableCount} шт</span>
+                                  <span className="text-xs text-white mr-1">≈{availableCount} {t('units')}</span>
                                   <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
                                     <div 
                                       className="h-full bg-blue-500 rounded-full"
@@ -2237,16 +2303,16 @@ const processData = (warehouses) => {
             <div className="flex justify-between items-start mb-5">
               <div>
                 <h2 className="text-xl font-bold text-white">{selectedWarehouse.name}</h2>
-                <p className="text-purple-400 text-sm">Детальная информация о складе</p>
+                <p className="text-purple-400 text-sm">{t('details.warehouseDetails')}</p>
                 <div className="flex items-center mt-1">
-                  <span className="text-lg font-semibold text-white mr-2">{selectedWarehouse.totalCount} авто</span>
+                  <span className="text-lg font-semibold text-white mr-2">{selectedWarehouse.totalCount} {t('car')}</span>
                   <span className={`text-sm px-2 py-0.5 rounded ${
-                    selectedWarehouse.status === 'критический' ? 'bg-red-500/20 text-red-400' :
-                    selectedWarehouse.status === 'высокий' ? 'bg-orange-500/20 text-orange-400' :
-                    selectedWarehouse.status === 'средний' ? 'bg-yellow-500/20 text-yellow-400' :
+                    selectedWarehouse.status === 'critical' ? 'bg-red-500/20 text-red-400' :
+                    selectedWarehouse.status === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                    selectedWarehouse.status === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
                     'bg-green-500/20 text-green-400'
                   }`}>
-                    Заполнение: {selectedWarehouse.occupancyRate}%
+                    {t('details.occupancy')}: {selectedWarehouse.occupancyRate}%
                   </span>
                 </div>
               </div>
@@ -2263,26 +2329,26 @@ const processData = (warehouses) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
               {/* Краткая информация с обновленными статусами */}
               <div className="bg-gray-700/50 p-4 rounded-lg">
-                <h3 className="text-white font-medium mb-3">Информация о складе</h3>
+                <h3 className="text-white font-medium mb-3">{t('details.warehouseInfo')}</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">Всего авто</div>
+                    <div className="text-gray-400 text-xs">{t('metrics.totalCars')}</div>
                     <div className="text-white text-lg font-medium">{selectedWarehouse.totalCount}</div>
                   </div>
                   <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">Свободные</div>
+                    <div className="text-gray-400 text-xs">{t('metrics.available')}</div>
                     <div className="text-white text-lg font-medium">{selectedWarehouse.available}</div>
                   </div>
                   <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">Закрепленные</div>
+                    <div className="text-gray-400 text-xs">{t('metrics.reserved')}</div>
                     <div className="text-white text-lg font-medium">{selectedWarehouse.reserved}</div>
                   </div>
                   <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">Брак-ОК</div>
+                    <div className="text-gray-400 text-xs">{t('metrics.defectiveOk')}</div>
                     <div className="text-white text-lg font-medium">{selectedWarehouse.defectiveOk}</div>
                   </div>
                   <div className="bg-gray-800/70 p-3 rounded-lg col-span-2">
-                    <div className="text-gray-400 text-xs">Бракованные</div>
+                    <div className="text-gray-400 text-xs">{t('metrics.defective')}</div>
                     <div className="text-white text-lg font-medium">{selectedWarehouse.defective}</div>
                   </div>
                 </div>
@@ -2290,7 +2356,7 @@ const processData = (warehouses) => {
              
               {/* График заполненности склада */}
               <div className="bg-gray-700/50 p-4 rounded-lg md:col-span-2">
-                <h3 className="text-white font-medium mb-3">Заполненность склада</h3>
+                <h3 className="text-white font-medium mb-3">{t('details.warehouseOccupancy')}</h3>
                 <div ref={warehouseOccupancyRef} className="h-[200px]"></div>
               </div>
             </div>
@@ -2298,19 +2364,19 @@ const processData = (warehouses) => {
             <div className="grid grid-cols-1 md:grid-cols-1 gap-5 mb-5">
               {/* Распределение по моделям */}
               <div className="bg-gray-700/50 p-4 rounded-lg">
-                <h3 className="text-white font-medium mb-3">Распределение по моделям</h3>
+                <h3 className="text-white font-medium mb-3">{t('details.modelDistribution')}</h3>
                 <div className="space-y-3">
                   {selectedWarehouse.models.filter(model => model.count > 0).slice(0, 5).map(model => (
                     <div key={model.id} className="group cursor-pointer" onClick={() => toggleModelDetailInWarehouse(model.id)}>
                       <div className="flex justify-between mb-1">
                         <span className="text-gray-300">{model.name}</span>
                         <div>
-                          <span className="font-medium text-white">{model.count} шт.</span>
+                          <span className="font-medium text-white">{model.count} {t('units')}</span>
                           <span className="ml-2 text-xs text-red-400">
-                            {model.defective > 0 ? `(${model.defective} брак)` : ''}
+                            {model.defective > 0 ? `(${model.defective} ${t('status.defectiveShort')})` : ''}
                           </span>
                           <span className="ml-2 text-xs text-amber-400">
-                            {model.defectiveOk > 0 ? `(${model.defectiveOk} брак-ок)` : ''}
+                            {model.defectiveOk > 0 ? `(${model.defectiveOk} ${t('status.defectiveOkShort')})` : ''}
                           </span>
                         </div>
                       </div>
@@ -2340,12 +2406,12 @@ const processData = (warehouses) => {
                         // Находим полные данные модели
                         const fullModelData = enhancedCarModels.find(m => m.id === selectedWarehouseModel);
                         
-                        if (!modelData || !fullModelData) return <div>Данные не найдены</div>;
+                        if (!modelData || !fullModelData) return <div>{t('errors.dataNotFound')}</div>;
                         
                         return (
                           <>
                             <div className="flex justify-between items-center mb-4">
-                              <h4 className="text-lg font-medium text-white">{modelData.name} на складе {selectedWarehouse.name}</h4>
+                              <h4 className="text-lg font-medium text-white">{modelData.name} {t('details.inWarehouse')} {selectedWarehouse.name}</h4>
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -2362,24 +2428,23 @@ const processData = (warehouses) => {
                             {/* Статистика по модели на этом складе */}
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                               <div className="bg-gray-700 p-3 rounded-lg">
-                                <div className="text-gray-400 text-xs">Всего</div>
+                                <div className="text-gray-400 text-xs">{t('metrics.total')}</div>
                                 <div className="text-white text-lg font-medium">{modelData.count}</div>
                               </div>
                               <div className="bg-green-900/30 p-3 rounded-lg">
-                                <div className="text-green-400 text-xs">Свободные</div>
+                                <div className="text-green-400 text-xs">{t('metrics.available')}</div>
                                 <div className="text-white text-lg font-medium">{modelData.available}</div>
                               </div>
                               <div className="bg-blue-900/30 p-3 rounded-lg">
-                                <div className="text-blue-400 text-xs">Закрепленные</div>
+                                <div className="text-blue-400 text-xs">{t('metrics.reserved')}</div>
                                 <div className="text-white text-lg font-medium">{modelData.reserved}</div>
                               </div>
                               <div className="bg-amber-900/30 p-3 rounded-lg">
-                                <div className="text-amber-400 text-xs">Брак</div>
+                                <div className="text-amber-400 text-xs">{t('metrics.defective')}</div>
                                 <div className="text-white text-lg font-medium">{modelData.defective + modelData.defectiveOk}</div>
                               </div>
                             </div>
-                            
-                            {/* Табы для выбора между цветами и модификациями */}
+                          {/* Табы для выбора между цветами и модификациями */}
                             <div className="border-b border-gray-700 mb-4">
                               <nav className="-mb-px flex space-x-6">
                                 <button 
@@ -2390,7 +2455,7 @@ const processData = (warehouses) => {
                                   }`}
                                   onClick={() => setWarehouseModelViewTab('modifications')}
                                 >
-                                  Модификации
+                                  {t('tabs.modifications')}
                                 </button>
                                 <button 
                                   className={`pb-2 font-medium text-sm ${
@@ -2400,7 +2465,7 @@ const processData = (warehouses) => {
                                   }`}
                                   onClick={() => setWarehouseModelViewTab('colors')}
                                 >
-                                  Цвета
+                                  {t('tabs.colors')}
                                 </button>
                               </nav>
                             </div>
@@ -2408,7 +2473,7 @@ const processData = (warehouses) => {
                             {/* Содержимое таба модификаций */}
                             {warehouseModelViewTab === 'modifications' && (
                               <div className="space-y-3">
-                                <h5 className="text-sm font-medium text-gray-300 mb-2">Все модификации {modelData.name}</h5>
+                                <h5 className="text-sm font-medium text-gray-300 mb-2">{t('details.allModifications', { model: modelData.name })}</h5>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                   {fullModelData.modifications.map(mod => {
                                     // Получаем данные только для этого склада с помощью API (упрощенный пример)
@@ -2426,23 +2491,23 @@ const processData = (warehouses) => {
                                       <div key={mod.id} className="bg-gray-700/50 p-3 rounded-lg">
                                         <div className="flex justify-between mb-1">
                                           <span className="text-white text-sm">{mod.name}</span>
-                                          <span className="text-gray-400 text-xs">{warehouseMod.warehouseCount} шт.</span>
+                                          <span className="text-gray-400 text-xs">{warehouseMod.warehouseCount} {t('units')}</span>
                                         </div>
                                         <div className="grid grid-cols-2 gap-1 mt-2">
                                           <div className="bg-green-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-green-400 text-xs">Своб:</span>
+                                            <span className="text-green-400 text-xs">{t('status.availableShort')}:</span>
                                             <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.available / modelData.count))}</span>
                                           </div>
                                           <div className="bg-blue-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-blue-400 text-xs">Закр:</span>
+                                            <span className="text-blue-400 text-xs">{t('status.reservedShort')}:</span>
                                             <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.reserved / modelData.count))}</span>
                                           </div>
                                           <div className="bg-amber-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-amber-400 text-xs">Б-ОК:</span>
+                                            <span className="text-amber-400 text-xs">{t('status.defectiveOkShort')}:</span>
                                             <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.defectiveOk / modelData.count))}</span>
                                           </div>
                                           <div className="bg-red-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-red-400 text-xs">Брак:</span>
+                                            <span className="text-red-400 text-xs">{t('status.defectiveShort')}:</span>
                                             <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.defective / modelData.count))}</span>
                                           </div>
                                         </div>
@@ -2456,7 +2521,7 @@ const processData = (warehouses) => {
                             {/* Содержимое таба цветов */}
                             {warehouseModelViewTab === 'colors' && (
                               <div className="space-y-3">
-                                <h5 className="text-sm font-medium text-gray-300 mb-2">Распределение по цветам</h5>
+                                <h5 className="text-sm font-medium text-gray-300 mb-2">{t('details.colorDistribution')}</h5>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                   {fullModelData.colors.map(color => {
                                     // Получаем данные только для этого склада
@@ -2479,23 +2544,23 @@ const processData = (warehouses) => {
                                             />
                                             <span className="text-white text-sm">{color.name}</span>
                                           </div>
-                                          <span className="text-gray-400 text-xs">{warehouseColor.warehouseCount} шт.</span>
+                                          <span className="text-gray-400 text-xs">{warehouseColor.warehouseCount} {t('units')}</span>
                                         </div>
                                         <div className="grid grid-cols-2 gap-1 mt-2">
                                           <div className="bg-green-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-green-400 text-xs">Своб:</span>
+                                            <span className="text-green-400 text-xs">{t('status.availableShort')}:</span>
                                             <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.available / modelData.count))}</span>
                                           </div>
                                           <div className="bg-blue-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-blue-400 text-xs">Закр:</span>
+                                            <span className="text-blue-400 text-xs">{t('status.reservedShort')}:</span>
                                             <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.reserved / modelData.count))}</span>
                                           </div>
                                           <div className="bg-amber-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-amber-400 text-xs">Б-ОК:</span>
+                                            <span className="text-amber-400 text-xs">{t('status.defectiveOkShort')}:</span>
                                             <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.defectiveOk / modelData.count))}</span>
                                           </div>
                                           <div className="bg-red-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-red-400 text-xs">Брак:</span>
+                                            <span className="text-red-400 text-xs">{t('status.defectiveShort')}:</span>
                                             <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.defective / modelData.count))}</span>
                                           </div>
                                         </div>
@@ -2516,6 +2581,9 @@ const processData = (warehouses) => {
           </motion.div>
         )}
       </AnimatePresence>
+      
+      {/* Контейнер уведомлений */}
+      <NotificationsContainer />
     </div>
   );
 };
