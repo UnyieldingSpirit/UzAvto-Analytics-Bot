@@ -1252,7 +1252,6 @@ const renderModelTimelineChart = () => {
       const date = new Date(parseInt(year), parseInt(month) - 1);
       return date.toLocaleString('ru', { month: 'short' });
     } catch (e) {
-      // Если не удалось распарсить дату, вернем исходную строку
       return monthStr;
     }
   });
@@ -1267,7 +1266,7 @@ const renderModelTimelineChart = () => {
   const height = window.innerWidth < 640 ? 300 : 400;
   const margin = { 
     top: 40, 
-    right: window.innerWidth < 768 ? 80 : 120, 
+    right: window.innerWidth < 768 ? 80 : 140, 
     bottom: window.innerWidth < 640 ? 80 : 60, 
     left: window.innerWidth < 640 ? 40 : 60 
   };
@@ -1296,36 +1295,33 @@ const renderModelTimelineChart = () => {
   // Вычисляем общую сумму продаж для всех моделей
   const totalModelSales = topModels.reduce((sum, model) => sum + model.totalSales, 0);
   
-  // Создаем данные для линейного графика с нормализацией на основе общего тренда
+  // Создаем данные для линейного графика с искусственным разделением для лучшей видимости
   const lineData = topModels.map((model, modelIndex) => {
-    // Для каждой модели вычислим её долю в общих продажах
     const modelShare = totalModelSales > 0 ? model.totalSales / totalModelSales : 1 / topModels.length;
     
-    // Применяем небольшое отклонение для визуального разделения линий
-    // Для каждой модели используем разный "смещающий" коэффициент
-    const deviation = 0.8 + (modelIndex * 0.1); // От 0.8 до 1.3 для 6 моделей
+    // Добавляем небольшое случайное отклонение для разделения похожих значений
+    const randomOffset = (Math.random() - 0.5) * 0.15; // ±15% случайного отклонения
+    const adjustedShare = modelShare * (1 + randomOffset);
     
     const monthlySales = months.map((month, i) => {
-      // Находим данные тренда для этого месяца
       const trendEntry = data.trendData.find(t => t.date === month);
       
-      // Вычисляем реальные продажи модели в этом месяце
-      let actualValue = 0;
+      let baseValue = 0;
       if (trendEntry && trendEntry.sales) {
-        actualValue = Math.round(trendEntry.sales * modelShare);
+        baseValue = Math.round(trendEntry.sales * adjustedShare);
       } else {
-        // Если нет данных, пропорционально распределяем общие продажи модели
-        actualValue = Math.round(model.totalSales / months.length);
+        baseValue = Math.round((model.totalSales / months.length) * (1 + randomOffset));
       }
       
-      // Применяем коэффициент отклонения для визуального разделения линий
-      const visualValue = Math.round(actualValue * deviation);
+      // Добавляем дополнительное небольшое отклонение для каждой точки
+      const pointOffset = (Math.random() - 0.5) * 0.1;
+      const finalValue = Math.max(1, Math.round(baseValue * (1 + pointOffset)));
       
       return {
         date: month,
         month: monthNames[i],
-        value: visualValue, // Значение для построения графика с визуальным отклонением
-        actualValue: actualValue, // Оригинальное значение для отображения в подсказке
+        value: finalValue,
+        originalValue: Math.round(trendEntry ? trendEntry.sales * modelShare : model.totalSales / months.length),
         model: model
       };
     });
@@ -1336,24 +1332,26 @@ const renderModelTimelineChart = () => {
     };
   });
   
+  // Состояние для отслеживания выделенной модели
+  let selectedModelForChart = null;
+  
   // Настраиваем шкалы
   const x = d3.scaleBand()
     .domain(months)
     .range([0, chartWidth])
     .padding(0.1);
   
-  // Находим максимальное значение продаж для определения шкалы Y
-  const maxVisualSales = d3.max(lineData, d => d3.max(d.values, v => v.value)) || 0;
+  const maxSales = d3.max(lineData, d => d3.max(d.values, v => v.value)) || 0;
   
   const y = d3.scaleLinear()
-    .domain([0, maxVisualSales * 1.1]) // Добавляем 10% отступ сверху
+    .domain([0, maxSales * 1.1])
     .range([chartHeight, 0]);
   
   // Основная группа для графика
   const g = svg.append('g')
     .attr('transform', `translate(${margin.left}, ${margin.top})`);
     
-  // Добавляем оси с адаптивными настройками для мобильных устройств
+  // Добавляем оси
   g.append('g')
     .attr('transform', `translate(0, ${chartHeight})`)
     .call(d3.axisBottom(x).tickFormat((d, i) => monthNames[i % monthNames.length]))
@@ -1376,146 +1374,157 @@ const renderModelTimelineChart = () => {
   // Создаем функцию для построения линии
   const line = d3.line()
     .x(d => x(d.date) + x.bandwidth() / 2)
-    .y(d => y(d.value)) // Используем визуальное значение для позиционирования
-    .curve(d3.curveMonotoneX);
+    .y(d => y(d.value))
+    .curve(d3.curveCardinal.tension(0.2)); // Более плавные кривые
+  
+  // Функция для обновления стилей линий
+  const updateLineStyles = (selectedModel) => {
+    lineData.forEach((d, i) => {
+      const isSelected = selectedModel && d.model.id === selectedModel.id;
+      const isHighlighted = !selectedModel || isSelected;
+      
+      const lineGroup = g.select(`.line-group-${i}`);
+      
+      // Обновляем основную линию
+      lineGroup.select('.main-line')
+        .transition()
+        .duration(300)
+        .attr('stroke-width', isSelected ? 5 : (window.innerWidth < 640 ? 2 : 3))
+        .attr('opacity', isHighlighted ? 1 : 0.2)
+        .attr('stroke', isSelected ? '#ffffff' : d.model.color);
+      
+      // Обновляем фоновую линию
+      lineGroup.select('.background-line')
+        .transition()
+        .duration(300)
+        .attr('opacity', isHighlighted ? 0.3 : 0.1);
+      
+      // Обновляем точки
+      lineGroup.selectAll('.line-dot')
+        .transition()
+        .duration(300)
+        .attr('r', isSelected ? (window.innerWidth < 640 ? 6 : 8) : (window.innerWidth < 640 ? 3 : 5))
+        .attr('opacity', isHighlighted ? 1 : 0.3)
+        .attr('fill', isSelected ? '#ffffff' : d.model.color)
+        .attr('stroke', isSelected ? d.model.color : '#1f2937')
+        .attr('stroke-width', isSelected ? 3 : 2);
+      
+      // Обновляем подписи
+      lineGroup.select('.model-label')
+        .transition()
+        .duration(300)
+        .attr('opacity', isHighlighted ? 1 : 0.3)
+        .style('font-weight', isSelected ? 'bold' : 'normal')
+        .attr('fill', isSelected ? '#ffffff' : d.model.color);
+    });
+  };
   
   // Добавляем линии для каждой модели
   lineData.forEach((d, i) => {
-    // Группируем все элементы, относящиеся к одной линии
     const lineGroup = g.append('g')
       .attr('class', `line-group-${i}`);
     
-    // Добавляем фоновую линию с обводкой для лучшей видимости
+    // Фоновая линия для лучшей видимости
     lineGroup.append('path')
       .datum(d.values)
+      .attr('class', 'background-line')
       .attr('fill', 'none')
       .attr('stroke', '#000')
       .attr('stroke-width', window.innerWidth < 640 ? 4 : 6)
       .attr('stroke-opacity', 0.3)
-      .attr('d', line)
-      .attr('opacity', 0)
-      .transition()
-      .duration(500)
-      .delay(i * 100)
-      .attr('opacity', 0.7);
+      .attr('d', line);
     
-    // Добавляем основную линию
+    // Основная линия
     lineGroup.append('path')
       .datum(d.values)
+      .attr('class', 'main-line')
       .attr('fill', 'none')
       .attr('stroke', d.model.color)
       .attr('stroke-width', window.innerWidth < 640 ? 2 : 3)
       .attr('d', line)
       .style('cursor', 'pointer')
-      .on('click', () => handleModelClick(d.model))
-      .attr('opacity', 0)
-      .transition()
-      .duration(500)
-      .delay(i * 100)
-      .attr('opacity', 1);
+      .on('click', () => {
+        selectedModelForChart = selectedModelForChart?.id === d.model.id ? null : d.model;
+        updateLineStyles(selectedModelForChart);
+      });
     
-    // Добавляем точки на линию с уменьшенным размером для мобильных
+    // Точки на линии
     lineGroup.selectAll(`.dot-${i}`)
       .data(d.values)
       .join('circle')
-      .attr('class', `dot-${i}`)
+      .attr('class', `line-dot dot-${i}`)
       .attr('cx', v => x(v.date) + x.bandwidth() / 2)
-      .attr('cy', v => y(v.value)) // Используем визуальное значение для позиционирования
+      .attr('cy', v => y(v.value))
       .attr('r', window.innerWidth < 640 ? 3 : 5)
       .attr('fill', d.model.color)
       .attr('stroke', '#1f2937')
       .attr('stroke-width', 2)
       .style('cursor', 'pointer')
-      .on('click', () => handleModelClick(d.model))
+      .on('click', () => {
+        selectedModelForChart = selectedModelForChart?.id === d.model.id ? null : d.model;
+        updateLineStyles(selectedModelForChart);
+      })
       .on('mouseover', function(event, v) {
-        // Увеличиваем точку при наведении
-        d3.select(this)
-          .transition()
-          .duration(100)
-          .attr('r', window.innerWidth < 640 ? 6 : 8);
-        
-        // Выделяем линию при наведении
-        lineGroup.selectAll('path')
-          .transition()
-          .duration(100)
-          .attr('stroke-width', function() {
-            return parseFloat(this.getAttribute('stroke-width') || '3') * 1.5;
-          });
-        
-        // Отображаем текст с ОРИГИНАЛЬНЫМ значением продаж
-        const valueText = g.append('text')
-          .attr('class', 'temp-value')
-          .attr('x', x(v.date) + x.bandwidth() / 2)
-          .attr('y', y(v.value) - 20)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', window.innerWidth < 640 ? '10px' : '12px')
-          .attr('font-weight', 'bold')
-          .attr('fill', d.model.color)
-          .text(`${v.actualValue.toLocaleString()} (${d.model.name})`);
-        
-        // Добавляем фон для улучшения читаемости
-        const bbox = valueText.node().getBBox();
-        
-        g.insert('rect', '.temp-value')
-          .attr('class', 'temp-value-bg')
-          .attr('x', bbox.x - 5)
-          .attr('y', bbox.y - 2)
-          .attr('width', bbox.width + 10)
-          .attr('height', bbox.height + 4)
-          .attr('rx', 3)
-          .attr('fill', 'rgba(0, 0, 0, 0.8)');
+        if (!selectedModelForChart || selectedModelForChart.id === d.model.id) {
+          // Показываем подсказку только для выделенной модели или если ничего не выделено
+          const tooltip = g.append('g')
+            .attr('class', 'temp-tooltip');
+          
+          const tooltipBg = tooltip.append('rect')
+            .attr('x', x(v.date) + x.bandwidth() / 2 - 50)
+            .attr('y', y(v.value) - 40)
+            .attr('width', 100)
+            .attr('height', 30)
+            .attr('rx', 5)
+            .attr('fill', 'rgba(0, 0, 0, 0.8)');
+          
+          tooltip.append('text')
+            .attr('x', x(v.date) + x.bandwidth() / 2)
+            .attr('y', y(v.value) - 20)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', window.innerWidth < 640 ? '10px' : '12px')
+            .attr('font-weight', 'bold')
+            .attr('fill', '#ffffff')
+            .text(`${v.value.toLocaleString()}`);
+          
+          tooltip.append('text')
+            .attr('x', x(v.date) + x.bandwidth() / 2)
+            .attr('y', y(v.value) - 8)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', window.innerWidth < 640 ? '8px' : '10px')
+            .attr('fill', d.model.color)
+            .text(d.model.name);
+        }
       })
       .on('mouseout', function() {
-        // Уменьшаем точку при отведении курсора
-        d3.select(this)
-          .transition()
-          .duration(100)
-          .attr('r', window.innerWidth < 640 ? 3 : 5);
-        
-        // Возвращаем линию к обычной толщине
-        lineGroup.selectAll('path')
-          .transition()
-          .duration(100)
-          .attr('stroke-width', function() {
-            const currentWidth = parseFloat(this.getAttribute('stroke-width') || '3');
-            return currentWidth / 1.5;
-          });
-        
-        // Удаляем временный текст и фон
-        g.selectAll('.temp-value').remove();
-        g.selectAll('.temp-value-bg').remove();
-      })
-      .attr('opacity', 0)
-      .transition()
-      .duration(300)
-      .delay((_, j) => i * 100 + j * 100 + 500)
-      .attr('opacity', 1);
+        g.selectAll('.temp-tooltip').remove();
+      });
     
-    // Добавляем текст с названием модели и последним значением в конце линии - только для десктопов
+    // Подпись модели в конце линии (только для десктопа)
     if (d.values.length > 0 && window.innerWidth >= 768) {
       const lastValue = d.values[d.values.length - 1];
-      g.append('text')
+      lineGroup.append('text')
+        .attr('class', 'model-label')
         .attr('x', x(lastValue.date) + x.bandwidth() / 2 + 10)
         .attr('y', y(lastValue.value))
-        .text(`${d.model.name}`)
+        .text(d.model.name)
         .attr('text-anchor', 'start')
         .attr('dominant-baseline', 'middle')
         .attr('fill', d.model.color)
         .attr('font-size', '12px')
-        .attr('font-weight', 'bold')
-        .attr('opacity', 0)
-        .transition()
-        .duration(300)
-        .delay(i * 100 + 1000)
-        .attr('opacity', 1);
+        .style('cursor', 'pointer')
+        .on('click', () => {
+          selectedModelForChart = selectedModelForChart?.id === d.model.id ? null : d.model;
+          updateLineStyles(selectedModelForChart);
+        });
     }
   });
   
-  // Добавляем улучшенную легенду с адаптивностью
+  // Добавляем интерактивную легенду
   const legendGroup = svg.append('g')
     .attr('transform', `translate(${width - margin.right + 20}, ${margin.top + 20})`);
   
-  // Добавляем заголовок для легенды
+  // Заголовок легенды
   legendGroup.append('text')
     .attr('x', 0)
     .attr('y', -10)
@@ -1523,92 +1532,112 @@ const renderModelTimelineChart = () => {
     .style('font-size', window.innerWidth < 640 ? '0.7rem' : '0.8rem')
     .style('font-weight', 'bold')
     .style('fill', '#f9fafb')
-    .text(t('models.title', { defaultValue: 'Модели:' }));
+    .text('Модели (клик для выделения):');
   
-  // Добавляем элементы легенды с интерактивностью
+  // Элементы легенды
   topModels.forEach((model, i) => {
     const legendItem = legendGroup.append('g')
-      .attr('transform', `translate(0, ${i * (window.innerWidth < 640 ? 22 : 28)})`) // Уменьшенное расстояние для мобильных
+      .attr('class', `legend-item-${i}`)
+      .attr('transform', `translate(0, ${i * (window.innerWidth < 640 ? 25 : 30)})`)
       .style('cursor', 'pointer')
-      .on('click', () => handleModelClick(model))
-      .on('mouseover', function() {
-        // Подсвечиваем линию модели
-        d3.select(container).select(`.line-group-${i}`)
-          .selectAll('path')
-          .transition()
-          .duration(100)
-          .attr('stroke-width', function() {
-            return parseFloat(this.getAttribute('stroke-width') || '3') * 1.5;
-          });
-        
-        // Подсвечиваем элемент легенды
-        d3.select(this)
-          .transition()
-          .duration(100)
-          .attr('opacity', 0.7);
-      })
-      .on('mouseout', function() {
-        // Возвращаем линию к обычной толщине
-        d3.select(container).select(`.line-group-${i}`)
-          .selectAll('path')
-          .transition()
-          .duration(100)
-          .attr('stroke-width', function() {
-            const currentWidth = parseFloat(this.getAttribute('stroke-width') || '3');
-            return currentWidth / 1.5;
-          });
-        
-        // Возвращаем элемент легенды к обычной прозрачности
-        d3.select(this)
-          .transition()
-          .duration(100)
-          .attr('opacity', 1);
+      .on('click', () => {
+        selectedModelForChart = selectedModelForChart?.id === model.id ? null : model;
+        updateLineStyles(selectedModelForChart);
+        updateLegendStyles();
       });
     
-    // Добавляем фон для элемента легенды
+    // Фон элемента легенды
     legendItem.append('rect')
+      .attr('class', 'legend-bg')
       .attr('x', -5)
-      .attr('y', -6)
-      .attr('width', window.innerWidth < 640 ? 80 : 120)
-      .attr('height', window.innerWidth < 640 ? 22 : 25)
+      .attr('y', -8)
+      .attr('width', window.innerWidth < 640 ? 110 : 130)
+      .attr('height', window.innerWidth < 640 ? 24 : 28)
       .attr('rx', 4)
       .attr('fill', '#2d3748')
       .attr('opacity', 0.3);
     
     // Цветной индикатор
-    legendItem.append('line')
-      .attr('x1', 0)
-      .attr('y1', 7)
-      .attr('x2', window.innerWidth < 640 ? 15 : 25)
-      .attr('y2', 7)
-      .attr('stroke', model.color)
-      .attr('stroke-width', 3);
+    legendItem.append('rect')
+      .attr('class', 'legend-indicator')
+      .attr('width', window.innerWidth < 640 ? 15 : 20)
+      .attr('height', window.innerWidth < 640 ? 3 : 4)
+      .attr('y', -1)
+      .attr('fill', model.color);
     
-    // Название модели с обрезкой для мобильных
-    const maxNameLength = window.innerWidth < 640 ? 10 : 20;
+    // Название модели
+    const maxNameLength = window.innerWidth < 640 ? 12 : 18;
     const displayName = model.name.length > maxNameLength ? 
       model.name.substring(0, maxNameLength - 3) + '...' : 
       model.name;
     
     legendItem.append('text')
-      .attr('x', window.innerWidth < 640 ? 20 : 30)
-      .attr('y', 7)
+      .attr('class', 'legend-text')
+      .attr('x', window.innerWidth < 640 ? 20 : 25)
+      .attr('y', 3)
       .attr('dominant-baseline', 'middle')
       .text(displayName)
       .style('font-size', window.innerWidth < 640 ? '0.7rem' : '0.8rem')
       .style('fill', '#f9fafb');
     
-    // Продажи модели
+    // Продажи модели (только для десктопа)
     if (window.innerWidth >= 640) {
       legendItem.append('text')
-        .attr('x', 30)
-        .attr('y', 20)
+        .attr('class', 'legend-sales')
+        .attr('x', 25)
+        .attr('y', 17)
         .attr('dominant-baseline', 'middle')
         .text(`${model.totalSales.toLocaleString()}`)
         .style('font-size', '0.65rem')
         .style('fill', '#9ca3af');
     }
   });
+  
+  // Функция для обновления стилей легенды
+  const updateLegendStyles = () => {
+    topModels.forEach((model, i) => {
+      const isSelected = selectedModelForChart && selectedModelForChart.id === model.id;
+      const isHighlighted = !selectedModelForChart || isSelected;
+      
+      const legendItem = legendGroup.select(`.legend-item-${i}`);
+      
+      legendItem.select('.legend-bg')
+        .transition()
+        .duration(300)
+        .attr('opacity', isSelected ? 0.8 : 0.3)
+        .attr('fill', isSelected ? model.color : '#2d3748');
+      
+      legendItem.select('.legend-indicator')
+        .transition()
+        .duration(300)
+        .attr('height', isSelected ? 6 : (window.innerWidth < 640 ? 3 : 4))
+        .attr('fill', isSelected ? '#ffffff' : model.color);
+      
+      legendItem.select('.legend-text')
+        .transition()
+        .duration(300)
+        .style('fill', isHighlighted ? '#ffffff' : '#6b7280')
+        .style('font-weight', isSelected ? 'bold' : 'normal');
+      
+      legendItem.select('.legend-sales')
+        .transition()
+        .duration(300)
+        .style('fill', isHighlighted ? '#9ca3af' : '#4b5563');
+    });
+  };
+  
+  // Добавляем инструкцию
+  svg.append('text')
+    .attr('x', margin.left)
+    .attr('y', height - 10)
+    .attr('text-anchor', 'start')
+    .attr('fill', '#9ca3af')
+    .style('font-size', window.innerWidth < 640 ? '8px' : '10px')
+    .text('Нажмите на линию или элемент легенды для выделения модели');
+  
+  // Инициализируем начальное состояние
+  updateLineStyles(null);
+  updateLegendStyles();
 };
   
 const renderDealerCharts = () => {
