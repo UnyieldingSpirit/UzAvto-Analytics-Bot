@@ -11,7 +11,7 @@ import ContentReadyLoader from '../layout/ContentReadyLoader';
 const CarWarehouseAnalytics = () => {
   // Инициализация переводов
   const { t } = useTranslation(warehouseAnalyticsTranslations);
-  
+  const [lastUpdateDate, setLastUpdateDate] = useState(null);
   // Refs для графиков
   const warehouseDistributionRef = useRef(null);
   const manufacturerChartRef = useRef(null);
@@ -96,31 +96,78 @@ const CarWarehouseAnalytics = () => {
   };
   
   // Загрузка данных с API
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get('https://uzavtosalon.uz/b/dashboard/infos&get_stock');
+// Загрузка данных с API
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('https://uzavtosalon.uz/b/dashboard/infos&get_stock');
+      
+      console.log('Полный ответ API:', response.data);
+      
+      // Проверяем структуру ответа - это массив с объектами
+      let updateDate = null;
+      let warehouses = [];
+      
+      if (Array.isArray(response.data)) {
+        // Берем первый элемент массива, который содержит date и data
+        const firstDataEntry = response.data[0];
         
-        // Фильтрация данных - оставляем только склады с машинами
-        const warehouses = response.data.filter(warehouse => 
-          warehouse.models && warehouse.models.length > 0
-        );
-        
-        // Обработка данных
-        processData(warehouses);
-        
-        setLoading(false);
-      } catch (err) {
-        console.error(t('errors.loadingData'), err);
-        setError(t('errors.failedToLoad'));
-        setLoading(false);
-        addNotification(t('errors.loadingData'), 'error');
+        if (firstDataEntry && firstDataEntry.date && firstDataEntry.data) {
+          updateDate = firstDataEntry.date;
+          warehouses = firstDataEntry.data;
+          console.log('Найдена структура с date и data в массиве');
+        } else {
+          console.error('Неожиданная структура в первом элементе:', firstDataEntry);
+          throw new Error('Неожиданная структура данных от API');
+        }
+      } else {
+        console.error('Ответ не является массивом:', response.data);
+        throw new Error('Данные от API не в ожидаемом формате');
       }
-    };
-    
-    fetchData();
-  }, [t]);
+      
+      // Проверяем, что warehouses существует и является массивом
+      if (!warehouses || !Array.isArray(warehouses)) {
+        console.error('Warehouses не является массивом:', warehouses);
+        throw new Error('Данные складов отсутствуют или имеют неверный формат');
+      }
+      
+      console.log('Дата обновления:', updateDate);
+      console.log('Количество складов:', warehouses.length);
+      
+      // Устанавливаем дату последнего обновления
+      if (updateDate) {
+        setLastUpdateDate(updateDate);
+      } else {
+        console.warn('Дата обновления не найдена в ответе API');
+        setLastUpdateDate(new Date().toISOString().split('T')[0]);
+      }
+      
+      // Фильтрация данных - оставляем только склады с машинами
+      const filteredWarehouses = warehouses.filter(warehouse => 
+        warehouse.models && warehouse.models.length > 0
+      );
+      
+      console.log('Отфильтрованные склады:', filteredWarehouses.length);
+      
+      // Обработка данных
+      processData(filteredWarehouses);
+      
+      setLoading(false);
+    } catch (err) {
+      console.error(t('errors.loadingData'), err);
+      setError(t('errors.failedToLoad'));
+      setLoading(false);
+      addNotification(t('errors.loadingData'), 'error');
+    }
+  };
+  
+  fetchData();
+}, [t]);
+  
+  const formatDate = (dateString) => {
+  return dateString || 'Нет данных'; 
+};
   
   // Функция для обработки загруженных данных
   const processData = (warehouses) => {
@@ -1759,17 +1806,17 @@ const CarWarehouseAnalytics = () => {
       </div>
      
       {/* Обновленная метрика с временем обновления */}
-      <div className="bg-gray-800 p-4 rounded-lg shadow-md mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-sm text-gray-400">{t('metrics.totalCarModels', { count: enhancedCarModels.length })}</span>
-          </div>
-          
-          <div className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm">
-            {t('metrics.updatedAt')} {new Date().toLocaleTimeString()}
-          </div>
-        </div>
-      </div>
+  <div className="bg-gray-800 p-4 rounded-lg shadow-md mb-6">
+  <div className="flex items-center justify-between">
+    <div>
+      <span className="text-sm text-gray-400">{t('metrics.totalCarModels', { count: enhancedCarModels.length })}</span>
+    </div>
+    
+    <div className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm">
+      {t('metrics.updatedAt')} {formatDate(lastUpdateDate)}
+    </div>
+  </div>
+</div>
      
       {/* Основные графики */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
