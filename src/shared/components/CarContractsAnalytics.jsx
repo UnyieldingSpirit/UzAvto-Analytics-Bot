@@ -4884,94 +4884,6 @@ const stats = getStats();
             className="w-full h-[300px]"
           ></div>
         </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-            <h3 className="text-xl font-semibold mb-4">Каналы розничных продаж</h3>
-            <div className="space-y-4">
-              <div className="p-3 bg-gray-700 rounded-lg">
-                <div className="flex justify-between mb-1">
-                  <span>Дилерские центры</span>
-                  <span className="font-bold">67%</span>
-                </div>
-                <div className="w-full bg-gray-600 h-2 rounded-full">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: '67%' }}></div>
-                </div>
-              </div>
-              
-          <div className="p-3 bg-gray-700 rounded-lg">
- <div className="flex justify-between mb-1">
-   <span>Официальный сайт</span>
-   <span className="font-bold">22%</span>
- </div>
- <div className="w-full bg-gray-600 h-2 rounded-full">
-   <div className="bg-green-500 h-2 rounded-full" style={{ width: '22%' }}></div>
- </div>
-</div>
-
-<div className="p-3 bg-gray-700 rounded-lg">
- <div className="flex justify-between mb-1">
-   <span>Мобильное приложение</span>
-   <span className="font-bold">11%</span>
- </div>
- <div className="w-full bg-gray-600 h-2 rounded-full">
-   <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '11%' }}></div>
- </div>
-</div>
-            </div>
-          </div>
-          
-          <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-            <h3 className="text-xl font-semibold mb-4">Демография покупателей</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-gray-700 rounded-lg text-center">
-                <h4 className="text-sm text-gray-400 mb-2">Возрастные группы</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm">18-24</span>
-                    <span className="text-sm font-bold">12%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">25-34</span>
-                    <span className="text-sm font-bold">38%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">35-44</span>
-                    <span className="text-sm font-bold">27%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">45-54</span>
-                    <span className="text-sm font-bold">15%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">55+</span>
-                    <span className="text-sm font-bold">8%</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-3 bg-gray-700 rounded-lg text-center">
-                <h4 className="text-sm text-gray-400 mb-2">Пол</h4>
-                <div className="flex items-center justify-center h-32">
-                  <div className="flex flex-col items-center mr-10">
-                    <div className="w-20 bg-blue-500 rounded-t-lg" style={{ height: '80px' }}></div>
-                    <div className="mt-2">
-                      <div>Мужчины</div>
-                      <div className="font-bold">65%</div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div className="w-20 bg-pink-500 rounded-t-lg" style={{ height: '40px' }}></div>
-                    <div className="mt-2">
-                      <div>Женщины</div>
-                      <div className="font-bold">35%</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </>
     )}
     
@@ -5001,62 +4913,6 @@ const stats = getStats();
             ref={timelineContractsRef} 
             className="w-full h-[300px]"
           ></div>
-        </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-            <h3 className="text-xl font-semibold mb-4">Типы оптовых клиентов</h3>
-            <div className="space-y-4">
-              <div className="p-3 bg-gray-700 rounded-lg">
-                <div className="flex justify-between mb-1">
-                  <span>Дилерские центры</span>
-                  <span className="font-bold">45%</span>
-                </div>
-                <div className="w-full bg-gray-600 h-2 rounded-full">
-                  <div className="bg-purple-500 h-2 rounded-full" style={{ width: '45%' }}></div>
-                </div>
-              </div>
-              
-              <div className="p-3 bg-gray-700 rounded-lg">
-                <div className="flex justify-between mb-1">
-                  <span>Корпоративные клиенты</span>
-                  <span className="font-bold">30%</span>
-                </div>
-                <div className="w-full bg-gray-600 h-2 rounded-full">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: '30%' }}></div>
-                </div>
-              </div>
-              
-              <div className="p-3 bg-gray-700 rounded-lg">
-                <div className="flex justify-between mb-1">
-                  <span>Государственные закупки</span>
-                  <span className="font-bold">15%</span>
-                </div>
-                <div className="w-full bg-gray-600 h-2 rounded-full">
-                  <div className="bg-green-500 h-2 rounded-full" style={{ width: '15%' }}></div>
-                </div>
-              </div>
-              
-              <div className="p-3 bg-gray-700 rounded-lg">
-                <div className="flex justify-between mb-1">
-                  <span>Другие оптовики</span>
-                  <span className="font-bold">10%</span>
-                </div>
-                <div className="w-full bg-gray-600 h-2 rounded-full">
-                  <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '10%' }}></div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-            <h3 className="text-xl font-semibold mb-4">Средний размер оптовой закупки</h3>
-            <div className="flex flex-col items-center justify-center h-48">
-              <div className="text-5xl font-bold text-blue-400 mb-4">15</div>
-              <div className="text-xl text-gray-300">автомобилей</div>
-              <div className="mt-4 text-gray-400">+23% по сравнению с прошлым периодом</div>
-            </div>
-          </div>
         </div>
       </>
     )}
@@ -5089,43 +4945,103 @@ const stats = getStats();
           ></div>
         </div>
         
-        <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
-          <h3 className="text-xl font-semibold mb-4">Эффективность акций</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-gray-700 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-300">Конверсия просмотров в продажи</span>
-                <span className="text-green-400 font-bold">24.8%</span>
-              </div>
-              <div className="w-full bg-gray-600 h-2 rounded-full">
-                <div className="bg-green-400 h-2 rounded-full" style={{ width: '24.8%' }}></div>
-              </div>
-            </div>
-            
-            <div className="p-4 bg-gray-700 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-300">Средняя скидка</span>
-                <span className="text-blue-400 font-bold">15.3%</span>
-              </div>
-              <div className="w-full bg-gray-600 h-2 rounded-full">
-                <div className="bg-blue-400 h-2 rounded-full" style={{ width: '15.3%' }}></div>
-              </div>
-            </div>
-            
-            <div className="p-4 bg-gray-700 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-300">ROI акций</span>
-                <span className="text-purple-400 font-bold">132%</span>
-              </div>
-              <div className="w-full bg-gray-600 h-2 rounded-full">
-                <div className="bg-purple-400 h-2 rounded-full" style={{ width: '100%' }}></div>
-              </div>
-            </div>
-          </div>
-          </div>
+     <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
+  <h3 className="text-xl font-semibold mb-4">Типы акций</h3>
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+    {/* Рассрочка моделей Onix и Tracker (2025) */}
+    <div className="p-4 bg-gray-700 rounded-lg border-l-4 border-green-400">
+      <h4 className="text-lg font-medium text-green-400 mb-2">Рассрочка Onix & Tracker</h4>
+      <div className="space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span className="text-gray-300">Год выпуска:</span>
+          <span className="text-white font-medium">2025</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-300">Первоначальный взнос:</span>
+          <span className="text-green-400 font-bold">50%</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-300">Срок рассрочки:</span>
+          <span className="text-white font-medium">30 месяцев</span>
+        </div>
+      </div>
+    </div>
+
+    {/* Рассрочка для сотрудников Узавтосаноат */}
+    <div className="p-4 bg-gray-700 rounded-lg border-l-4 border-blue-400">
+      <h4 className="text-lg font-medium text-blue-400 mb-2">Льготы для сотрудников</h4>
+      <div className="space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span className="text-gray-300">Организация:</span>
+          <span className="text-white font-medium">Узавтосаноат</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-300">Модель:</span>
+          <span className="text-white font-medium">Onix (2024)</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-300">Первоначальный взнос:</span>
+          <span className="text-blue-400 font-bold">30%</span>
+        </div>
+      </div>
+    </div>
+
+    {/* Рассрочка для "Ватанпарвар" */}
+    <div className="p-4 bg-gray-700 rounded-lg border-l-4 border-purple-400">
+      <h4 className="text-lg font-medium text-purple-400 mb-2">Корпоративная программа</h4>
+      <div className="space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span className="text-gray-300">Организация:</span>
+          <span className="text-white font-medium">Ватанпарвар</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-300">Модель:</span>
+          <span className="text-white font-medium">Onix (2024)</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-300">Первоначальный взнос:</span>
+          <span className="text-purple-400 font-bold">30%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* <h3 className="text-xl font-semibold mb-4">Эффективность акций</h3> */}
+  {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="p-4 bg-gray-700 rounded-lg">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-gray-300">Конверсия просмотров в продажи</span>
+        <span className="text-green-400 font-bold">24.8%</span>
+      </div>
+      <div className="w-full bg-gray-600 h-2 rounded-full">
+        <div className="bg-green-400 h-2 rounded-full" style={{ width: '24.8%' }}></div>
+      </div>
+    </div>
+    
+    <div className="p-4 bg-gray-700 rounded-lg">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-gray-300">Средняя скидка</span>
+        <span className="text-blue-400 font-bold">15.3%</span>
+      </div>
+      <div className="w-full bg-gray-600 h-2 rounded-full">
+        <div className="bg-blue-400 h-2 rounded-full" style={{ width: '15.3%' }}></div>
+      </div>
+    </div>
+    
+    <div className="p-4 bg-gray-700 rounded-lg">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-gray-300">ROI акций</span>
+        <span className="text-purple-400 font-bold">132%</span>
+      </div>
+      <div className="w-full bg-gray-600 h-2 rounded-full">
+        <div className="bg-purple-400 h-2 rounded-full" style={{ width: '100%' }}></div>
+      </div>
+    </div>
+  </div> */}
+</div>
           
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
             <h3 className="text-xl font-semibold mb-4">Типы акций</h3>
             <div className="space-y-4">
@@ -5223,7 +5139,7 @@ const stats = getStats();
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
       </>
     )}
 
