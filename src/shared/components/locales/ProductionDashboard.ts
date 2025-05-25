@@ -3,7 +3,7 @@ import { LocaleMessages } from "@/src/types/locale";
 export const productionDashboardTranslations: LocaleMessages = {
     'ru': {
         // Заголовки
-        title: 'Производство',
+        title: 'Производства (event #700)',
         subtitle: 'Исследуйте данные производства автомобилей',
 
         // Фильтры и параметры

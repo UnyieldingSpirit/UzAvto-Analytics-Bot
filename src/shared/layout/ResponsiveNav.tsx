@@ -18,7 +18,7 @@ const navTranslations = {
   'ru': {
     dashboard: 'Обзорная панель',
     salesAnalytics: 'Аналитика продаж',
-    salesMonitoring: 'Мониторинг продаж',
+    salesMonitoring: 'Мониторинг отгрузок',
     modelTracking: 'Отслеживание моделей',
     businessAnalytics: 'Бизнес-аналитика',
     production: 'Производство',

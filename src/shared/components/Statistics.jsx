@@ -61,57 +61,87 @@ export default function Statistics() {
     : [];
 
   // Функция для получения данных за выбранный период
-  const fetchMarketData = async (startDate, endDate) => {
-    setIsLoading(true); // Устанавливаем состояние загрузки при начале запроса
-    
-    try {
-      // Форматирование дат в требуемый формат DD.MM.YYYY
-      const formatDateForApi = (date) => {
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}.${month}.${year}`;
-      };
+const fetchMarketData = async (startDate, endDate) => {
+  setIsLoading(true);
+  
+  try {
+    // Форматирование дат в требуемый формат DD.MM.YYYY
+    const formatDateForApi = (date) => {
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}.${month}.${year}`;
+    };
 
-      const requestBody = {
-        begin_date: formatDateForApi(startDate),
-        end_date: formatDateForApi(endDate)
-      };
+    const requestBody = {
+      begin_date: formatDateForApi(startDate),
+      end_date: formatDateForApi(endDate)
+    };
 
-      console.log('Отправляем запрос с данными:', requestBody);
+    console.log('Отправляем запрос с данными:', requestBody);
 
-      const response = await fetch('https://uzavtosalon.uz/b/dashboard/infos&auto_statistics', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
-      });
+    const response = await fetch('https://uzavtosalon.uz/b/dashboard/infos&auto_statistics', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
+    });
 
-      if (!response.ok) {
-        throw new Error(`Ошибка запроса: ${response.status}`);
-      }
-
-      const apiData = await response.json();
-      console.log('Получены данные с сервера:', apiData);
-      
-      // Преобразуем данные из API в формат, понятный компоненту
-      const transformedData = transformApiData(apiData);
-      
-      // Обновляем состояние компонента
-      setData(transformedData);
-      setIsLoading(false); // Отключаем состояние загрузки
-      
-      return apiData;
-    } catch (error) {
-      console.error('Ошибка при получении данных рынка:', error);
-      // В случае ошибки загружаем демо-данные
-      const fallbackData = generateDemoData(dateRange.startDate, dateRange.endDate);
-      setData(fallbackData);
-      setIsLoading(false); // Отключаем состояние загрузки даже в случае ошибки
-      return null;
+    if (!response.ok) {
+      throw new Error(`Ошибка запроса: ${response.status}`);
     }
-  };
+
+    const apiData = await response.json();
+    console.log('Получены данные с сервера:', apiData);
+    
+    // ВАЖНО: Сохраняем оригинальные данные глобально для использования в графиках
+    window.originalApiData = apiData;
+    
+    // Добавляем отладку для проверки данных по месяцам
+    console.log('=== ОТЛАДКА ДАННЫХ ПО МЕСЯЦАМ ===');
+    apiData.forEach(model => {
+      console.log(`\nМодель: ${model.model_name} (ID: ${model.model_id})`);
+      let modelTotal = 0;
+      if (model.filter_by_month) {
+        model.filter_by_month.forEach(monthData => {
+          let monthTotal = 0;
+          if (monthData.dealers) {
+            monthData.dealers.forEach(dealer => {
+              if (dealer.user_list) {
+                dealer.user_list.forEach(user => {
+                  const userSales = parseInt(user.contract) || 0;
+                  monthTotal += userSales;
+                });
+              }
+            });
+          }
+          modelTotal += monthTotal;
+          console.log(`  Месяц ${monthData.month}: ${monthTotal} продаж`);
+        });
+      }
+      console.log(`  ИТОГО по модели: ${modelTotal} продаж`);
+    });
+    console.log('=== КОНЕЦ ОТЛАДКИ ===');
+    
+    // Преобразуем данные из API в формат, понятный компоненту
+    const transformedData = transformApiData(apiData);
+    
+    // Обновляем состояние компонента
+    setData(transformedData);
+    setIsLoading(false);
+    
+    return apiData;
+  } catch (error) {
+    console.error('Ошибка при получении данных рынка:', error);
+    // В случае ошибки загружаем демо-данные
+    const fallbackData = generateDemoData(dateRange.startDate, dateRange.endDate);
+    setData(fallbackData);
+    setIsLoading(false);
+    return null;
+  }
+};
+
   
 const transformApiData = (apiData) => {
   // Цвета для моделей
@@ -302,46 +332,46 @@ const transformApiData = (apiData) => {
     return Array.from(dealerMap.values());
   };
   
-  const generateTrendDataFromApi = (apiData) => {
-    const trendData = [];
-    
-    // Группируем данные по месяцам
-    const salesByMonth = new Map();
-    
-    apiData.forEach(model => {
-      if (model.filter_by_month && model.filter_by_month.length) {
-        model.filter_by_month.forEach(monthData => {
-          const month = monthData.month;
-          let monthlySales = salesByMonth.get(month) || 0;
-          
-          if (monthData.dealers && monthData.dealers.length) {
-            monthData.dealers.forEach(dealer => {
-              if (dealer.user_list && dealer.user_list.length) {
-                dealer.user_list.forEach(user => {
-                  monthlySales += parseInt(user.contract) || 0;
-                });
-              }
-            });
-          }
-          
-          salesByMonth.set(month, monthlySales);
-        });
-      }
-    });
-    
-    // Преобразуем Map в массив объектов для тренда
-    for (const [month, sales] of salesByMonth.entries()) {
-      trendData.push({
-        date: month, // Формат: YYYY-MM
-        sales: sales
+const generateTrendDataFromApi = (apiData) => {
+  const trendData = [];
+  
+  // Группируем данные по месяцам
+  const salesByMonth = new Map();
+  
+  apiData.forEach(model => {
+    if (model.filter_by_month && model.filter_by_month.length) {
+      model.filter_by_month.forEach(monthData => {
+        const month = monthData.month; // Это и есть "2025-01" формат
+        let monthlySales = salesByMonth.get(month) || 0;
+        
+        if (monthData.dealers && monthData.dealers.length) {
+          monthData.dealers.forEach(dealer => {
+            if (dealer.user_list && dealer.user_list.length) {
+              dealer.user_list.forEach(user => {
+                monthlySales += parseInt(user.contract) || 0;
+              });
+            }
+          });
+        }
+        
+        salesByMonth.set(month, monthlySales);
       });
     }
-    
-    // Сортируем по дате
-    trendData.sort((a, b) => a.date.localeCompare(b.date));
-    
-    return trendData;
-  };
+  });
+  
+  // Преобразуем Map в массив объектов для тренда
+  for (const [month, sales] of salesByMonth.entries()) {
+    trendData.push({
+      date: month, // Сохраняем формат "2025-01"
+      sales: sales
+    });
+  }
+  
+  // Сортируем по дате
+  trendData.sort((a, b) => a.date.localeCompare(b.date));
+  
+  return trendData;
+};
   
   // Заглушка для данных о платежах, которых нет в API
   const generatePaymentDataFromDealers = (dealerData) => {
@@ -520,7 +550,7 @@ const getGlobalTopSalespeople = () => {
     if (cityMatch && cityMatch[1]) return cityMatch[1].trim();
     
     // Если не смогли определить, возвращаем значение по умолчанию
-    return 'Неизвестный регион';
+    return '';
   }
   
   // Преобразуем карту в массив и определяем основного дилера для каждого продавца
@@ -1245,6 +1275,8 @@ const renderModelTimelineChart = () => {
   // Если данных не за полные 6 месяцев, возьмем последние 6 или сколько есть
   const months = allMonths.slice(-6);
   
+  console.log('Отображаемые месяцы на графике:', months);
+  
   // Вычисляем названия месяцев для отображения
   const monthNames = months.map(monthStr => {
     try {
@@ -1292,39 +1324,55 @@ const renderModelTimelineChart = () => {
     .style('fill', '#f9fafb')
     .text(t('charts.modelTimeline', { period: getDateRangeLabel(), defaultValue: `Динамика продаж по месяцам (${getDateRangeLabel()})` }));
   
-  // Вычисляем общую сумму продаж для всех моделей
-  const totalModelSales = topModels.reduce((sum, model) => sum + model.totalSales, 0);
-  
-  // Создаем данные для линейного графика с искусственным разделением для лучшей видимости
-  const lineData = topModels.map((model, modelIndex) => {
-    const modelShare = totalModelSales > 0 ? model.totalSales / totalModelSales : 1 / topModels.length;
+  // Создаем реальные данные по моделям и месяцам
+  const lineData = topModels.map((model) => {
+    console.log(`\nОбработка модели для графика: ${model.name} (ID: ${model.id})`);
     
-    // Добавляем небольшое случайное отклонение для разделения похожих значений
-    const randomOffset = (Math.random() - 0.5) * 0.15; // ±15% случайного отклонения
-    const adjustedShare = modelShare * (1 + randomOffset);
-    
+    // Для каждой модели собираем данные по месяцам
     const monthlySales = months.map((month, i) => {
-      const trendEntry = data.trendData.find(t => t.date === month);
+      let monthSales = 0;
       
-      let baseValue = 0;
-      if (trendEntry && trendEntry.sales) {
-        baseValue = Math.round(trendEntry.sales * adjustedShare);
+      // Используем сохраненные оригинальные данные API
+      if (window.originalApiData && Array.isArray(window.originalApiData)) {
+        // Находим данные для конкретной модели
+        const modelApiData = window.originalApiData.find(m => m.model_id === model.id);
+        
+        if (modelApiData && modelApiData.filter_by_month) {
+          // Находим данные для конкретного месяца
+          const monthData = modelApiData.filter_by_month.find(m => m.month === month);
+          
+          if (monthData && monthData.dealers) {
+            // Суммируем продажи всех дилеров за этот месяц для этой модели
+            monthData.dealers.forEach(dealer => {
+              if (dealer.user_list && dealer.user_list.length) {
+                dealer.user_list.forEach(user => {
+                  const userSales = parseInt(user.contract) || 0;
+                  monthSales += userSales;
+                });
+              }
+            });
+            console.log(`  ${month}: ${monthSales} продаж (найдены данные)`);
+          } else {
+            console.log(`  ${month}: 0 продаж (нет данных для месяца)`);
+          }
+        } else {
+          console.log(`  Модель ${model.id} не найдена в оригинальных API данных`);
+        }
       } else {
-        baseValue = Math.round((model.totalSales / months.length) * (1 + randomOffset));
+        console.log('  Оригинальные данные API недоступны в window.originalApiData!');
       }
-      
-      // Добавляем дополнительное небольшое отклонение для каждой точки
-      const pointOffset = (Math.random() - 0.5) * 0.1;
-      const finalValue = Math.max(1, Math.round(baseValue * (1 + pointOffset)));
       
       return {
         date: month,
         month: monthNames[i],
-        value: finalValue,
-        originalValue: Math.round(trendEntry ? trendEntry.sales * modelShare : model.totalSales / months.length),
+        value: monthSales,
         model: model
       };
     });
+    
+    // Проверяем общую сумму
+    const totalFromChart = monthlySales.reduce((sum, m) => sum + m.value, 0);
+    console.log(`  Итого по графику: ${totalFromChart}, Ожидалось (totalSales): ${model.totalSales}`);
     
     return {
       model: model,
@@ -1350,6 +1398,20 @@ const renderModelTimelineChart = () => {
   // Основная группа для графика
   const g = svg.append('g')
     .attr('transform', `translate(${margin.left}, ${margin.top})`);
+  
+  // Добавляем сетку для Y оси
+  g.append('g')
+    .attr('class', 'grid')
+    .call(d3.axisLeft(y)
+      .ticks(5)
+      .tickSize(-chartWidth)
+      .tickFormat('')
+    )
+    .call(g => g.select('.domain').remove())
+    .call(g => g.selectAll('.tick line')
+      .attr('stroke', '#374151')
+      .attr('stroke-opacity', 0.3)
+      .attr('stroke-dasharray', '2,2'));
     
   // Добавляем оси
   g.append('g')
@@ -1375,7 +1437,7 @@ const renderModelTimelineChart = () => {
   const line = d3.line()
     .x(d => x(d.date) + x.bandwidth() / 2)
     .y(d => y(d.value))
-    .curve(d3.curveCardinal.tension(0.2)); // Более плавные кривые
+    .curve(d3.curveMonotoneX); // Используем монотонную интерполяцию
   
   // Функция для обновления стилей линий
   const updateLineStyles = (selectedModel) => {
@@ -1446,6 +1508,7 @@ const renderModelTimelineChart = () => {
       .on('click', () => {
         selectedModelForChart = selectedModelForChart?.id === d.model.id ? null : d.model;
         updateLineStyles(selectedModelForChart);
+        updateLegendStyles();
       });
     
     // Точки на линии
@@ -1463,6 +1526,7 @@ const renderModelTimelineChart = () => {
       .on('click', () => {
         selectedModelForChart = selectedModelForChart?.id === d.model.id ? null : d.model;
         updateLineStyles(selectedModelForChart);
+        updateLegendStyles();
       })
       .on('mouseover', function(event, v) {
         if (!selectedModelForChart || selectedModelForChart.id === d.model.id) {
@@ -1470,30 +1534,56 @@ const renderModelTimelineChart = () => {
           const tooltip = g.append('g')
             .attr('class', 'temp-tooltip');
           
+          const tooltipTexts = [
+            `${v.value.toLocaleString()} ${t('models.sales', { defaultValue: 'продаж' })}`,
+            d.model.name,
+            v.month
+          ];
+          
+          // Вычисляем максимальную ширину текста
+          const tempText = tooltip.append('text')
+            .style('visibility', 'hidden')
+            .style('font-size', window.innerWidth < 640 ? '10px' : '12px');
+          
+          const maxWidth = Math.max(...tooltipTexts.map(text => {
+            tempText.text(text);
+            return tempText.node().getComputedTextLength();
+          })) + 20;
+          
+          tempText.remove();
+          
           const tooltipBg = tooltip.append('rect')
-            .attr('x', x(v.date) + x.bandwidth() / 2 - 50)
-            .attr('y', y(v.value) - 40)
-            .attr('width', 100)
-            .attr('height', 30)
+            .attr('x', x(v.date) + x.bandwidth() / 2 - maxWidth / 2)
+            .attr('y', y(v.value) - 55)
+            .attr('width', maxWidth)
+            .attr('height', 45)
             .attr('rx', 5)
             .attr('fill', 'rgba(0, 0, 0, 0.8)');
           
           tooltip.append('text')
             .attr('x', x(v.date) + x.bandwidth() / 2)
-            .attr('y', y(v.value) - 20)
+            .attr('y', y(v.value) - 35)
             .attr('text-anchor', 'middle')
             .attr('font-size', window.innerWidth < 640 ? '10px' : '12px')
             .attr('font-weight', 'bold')
             .attr('fill', '#ffffff')
-            .text(`${v.value.toLocaleString()}`);
+            .text(tooltipTexts[0]);
           
           tooltip.append('text')
             .attr('x', x(v.date) + x.bandwidth() / 2)
-            .attr('y', y(v.value) - 8)
+            .attr('y', y(v.value) - 22)
             .attr('text-anchor', 'middle')
             .attr('font-size', window.innerWidth < 640 ? '8px' : '10px')
             .attr('fill', d.model.color)
-            .text(d.model.name);
+            .text(tooltipTexts[1]);
+          
+          tooltip.append('text')
+            .attr('x', x(v.date) + x.bandwidth() / 2)
+            .attr('y', y(v.value) - 10)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', window.innerWidth < 640 ? '8px' : '9px')
+            .attr('fill', '#9ca3af')
+            .text(tooltipTexts[2]);
         }
       })
       .on('mouseout', function() {
@@ -1516,6 +1606,7 @@ const renderModelTimelineChart = () => {
         .on('click', () => {
           selectedModelForChart = selectedModelForChart?.id === d.model.id ? null : d.model;
           updateLineStyles(selectedModelForChart);
+          updateLegendStyles();
         });
     }
   });
@@ -1532,7 +1623,7 @@ const renderModelTimelineChart = () => {
     .style('font-size', window.innerWidth < 640 ? '0.7rem' : '0.8rem')
     .style('font-weight', 'bold')
     .style('fill', '#f9fafb')
-    .text('Модели (клик для выделения):');
+    .text(t('models.title', { defaultValue: 'Модели' }) + ':');
   
   // Элементы легенды
   topModels.forEach((model, i) => {
@@ -1633,12 +1724,13 @@ const renderModelTimelineChart = () => {
     .attr('text-anchor', 'start')
     .attr('fill', '#9ca3af')
     .style('font-size', window.innerWidth < 640 ? '8px' : '10px')
-    .text('Нажмите на линию или элемент легенды для выделения модели');
+    .text(t('charts.clickDot', { defaultValue: 'Нажмите на линию или элемент легенды для выделения модели' }));
   
   // Инициализируем начальное состояние
   updateLineStyles(null);
   updateLegendStyles();
 };
+
   
 const renderDealerCharts = () => {
   if (!dealerChartRef.current || !dealerSecondaryChartRef.current || !filteredDealerData.length || !selectedModel) return;
