@@ -1,3 +1,4 @@
+// src/shared/components/AuthForm.jsx
 "use client";
 
 import { useState } from 'react';
@@ -40,7 +41,12 @@ export default function AuthForm() {
         setError('Неверное имя пользователя или пароль');
       }
     } catch (err) {
-      setError('Произошла ошибка при входе. Пожалуйста, попробуйте позже.');
+      console.error('Ошибка авторизации:', err);
+      if (err.response && err.response.status === 401) {
+        setError('Неверное имя пользователя или пароль');
+      } else {
+        setError('Произошла ошибка при входе. Пожалуйста, попробуйте позже.');
+      }
     } finally {
       setIsLoading(false);
     }

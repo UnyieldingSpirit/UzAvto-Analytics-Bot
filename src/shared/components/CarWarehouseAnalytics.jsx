@@ -96,11 +96,12 @@ const CarWarehouseAnalytics = () => {
   };
   
   // Загрузка данных с API
-// Загрузка данных с API
 useEffect(() => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      
+      // Токен уже будет добавлен автоматически через axios interceptor
       const response = await axios.get('https://uzavtosalon.uz/b/dashboard/infos&get_stock');
       
       console.log('Полный ответ API:', response.data);
@@ -159,6 +160,7 @@ useEffect(() => {
       setError(t('errors.failedToLoad'));
       setLoading(false);
       addNotification(t('errors.loadingData'), 'error');
+      
     }
   };
   

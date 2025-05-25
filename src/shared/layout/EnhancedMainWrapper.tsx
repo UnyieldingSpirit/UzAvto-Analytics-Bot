@@ -6,6 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import TelegramWebAppInitializer from './TelegramWebAppInitializer';
 import ResponsiveNav from './ResponsiveNav';
 import ContentReadyLoader from './ContentReadyLoader';
+import { setupAxiosInterceptors } from '@/src/utils/axiosConfig';
+import { useAuth } from '@/src/hooks/useAuth';
 
 interface EnhancedMainWrapperProps {
   children: ReactNode;
@@ -19,17 +21,28 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
   const [isIOS, setIsIOS] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const { checkAuth } = useAuth();
   
   // Проверяем, находимся ли мы на странице авторизации
   const isAuthPage = pathname === '/auth';
   // Проверяем, находимся ли мы на странице онбординга
   const isOnboardingPage = pathname === '/onboarding';
 
+  // Настройка axios перехватчиков при монтировании
+  useEffect(() => {
+    setupAxiosInterceptors(() => {
+      router.push('/auth');
+    });
+  }, [router]);
+
   // Проверка авторизации
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('authToken');
       const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-      if (!isAuthenticated && !isAuthPage && !isOnboardingPage) {
+      
+      // Если нет токена или не авторизован, и мы не на странице авторизации или онбординга
+      if ((!token || !isAuthenticated) && !isAuthPage && !isOnboardingPage) {
         router.push('/auth');
       }
     }
