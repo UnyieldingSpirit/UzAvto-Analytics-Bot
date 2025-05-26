@@ -1980,7 +1980,7 @@ const InstallmentDashboard = () => {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-amber-300">Просрочки за 2 месяца</h3>
+                  <h3 className="text-sm font-medium text-amber-300">Просрочка более 2 месяцев</h3>
                   <p className="text-2xl font-bold text-white">{formatNumber(data.overdue_last_2_months)}</p>
                   <p className="text-amber-300/70 text-xs mt-1">
                     {overduePercent2Months}% от общей просрочки
@@ -1998,7 +1998,7 @@ const InstallmentDashboard = () => {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-orange-300">Просрочки за 3 месяца</h3>
+                  <h3 className="text-sm font-medium text-orange-300">Просрочка более 3 месяцев</h3>
                   <p className="text-2xl font-bold text-white">{formatNumber(data.overdue_last_3_months)}</p>
                   <p className="text-orange-300/70 text-xs mt-1">
                     {overduePercent3Months}% от общей просрочки

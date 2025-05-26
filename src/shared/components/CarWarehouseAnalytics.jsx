@@ -2176,34 +2176,6 @@ const CarWarehouseAnalytics = () => {
                         <div className="text-white text-lg font-medium">{selectedModification.tradeIn}</div>
                       </div>
                     </div>
-                    
-                    {/* <div className="mt-5">
-                      <h4 className="text-white font-medium mb-2">{t('details.warehouseDistribution')}</h4>
-                      <div className="bg-gray-800/70 p-3 rounded-lg">
-                        <div className="space-y-2">
-                          {[...Array(Math.min(5, enhancedWarehouses.length))].map((_, index) => {
-                            const warehouse = enhancedWarehouses[index];
-                            const availableCount = Math.floor(selectedModification.available * (Math.random() * 0.5 + 0.5));
-                            const warehousePercent = Math.floor((availableCount / selectedModification.available) * 100);
-                            
-                            return (
-                              <div key={index} className="flex justify-between items-center">
-                                <span className="text-xs text-gray-400">{warehouse.name}</span>
-                                <div className="flex items-center">
-                                  <span className="text-xs text-white mr-1">≈{availableCount} {t('units')}</span>
-                                  <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                                    <div 
-                                      className="h-full bg-blue-500 rounded-full"
-                                      style={{ width: `${warehousePercent}%` }}
-                                    ></div>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div> */}
                   </div>
                 </div>
               </div>
