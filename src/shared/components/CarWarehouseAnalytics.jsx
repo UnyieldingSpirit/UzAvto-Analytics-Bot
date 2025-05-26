@@ -2178,7 +2178,7 @@ const CarWarehouseAnalytics = () => {
                     </div>
                     
                     {/* Добавляем блок распределения по складам */}
-                    <div className="mt-5">
+                    {/* <div className="mt-5">
                       <h4 className="text-white font-medium mb-2">{t('details.warehouseDistribution')}</h4>
                       <div className="bg-gray-800/70 p-3 rounded-lg">
                         <div className="space-y-2">
@@ -2204,7 +2204,7 @@ const CarWarehouseAnalytics = () => {
                           })}
                         </div>
                       </div>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>

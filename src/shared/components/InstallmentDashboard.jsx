@@ -13,6 +13,7 @@ const InstallmentDashboard = () => {
   const paymentStatusRef = useRef(null);
   const monthlyTrendsRef = useRef(null);
   const regionChartRef = useRef(null);
+  const overdueHistoryRef = useRef(null); // Новый ref для графика истории просрочек
 
   // Используем хук локализации
   const { t } = useTranslation(installmentDashboardTranslations);
@@ -30,7 +31,9 @@ const InstallmentDashboard = () => {
     paidPercentage: 0,
     overduePercentage: 0,
     totalPaid: 0,
-    totalPrepayment: 0
+    totalPrepayment: 0,
+    overdueLastTwoMonths: 0,
+    overdueLastThreeMonths: 0
   });
 
   // Состояние
@@ -108,6 +111,8 @@ const InstallmentDashboard = () => {
     let totalPaid = 0;
     let totalPrepayment = 0;
     let totalOverdue = 0;
+    let totalOverdueLastTwoMonths = 0;
+    let totalOverdueLastThreeMonths = 0;
 
     if (selectedModelId !== 'all') {
       const modelData = apiData.find(model => model.model_id === selectedModelId);
@@ -122,6 +127,8 @@ const InstallmentDashboard = () => {
             totalPaid = safeParseInt(regionData.total_paid);
             totalPrepayment = safeParseInt(regionData.total_prepayment);
             totalOverdue = safeParseInt(regionData.total_overdue);
+            totalOverdueLastTwoMonths = safeParseInt(regionData.overdue_last_2_months);
+            totalOverdueLastThreeMonths = safeParseInt(regionData.overdue_last_3_months);
           }
         } else {
           if (modelData.filter_by_region && Array.isArray(modelData.filter_by_region)) {
@@ -131,6 +138,8 @@ const InstallmentDashboard = () => {
               totalPaid += safeParseInt(region.total_paid);
               totalPrepayment += safeParseInt(region.total_prepayment);
               totalOverdue += safeParseInt(region.total_overdue);
+              totalOverdueLastTwoMonths += safeParseInt(region.overdue_last_2_months);
+              totalOverdueLastThreeMonths += safeParseInt(region.overdue_last_3_months);
             });
           }
         }
@@ -145,6 +154,8 @@ const InstallmentDashboard = () => {
             totalPaid += safeParseInt(regionData.total_paid);
             totalPrepayment += safeParseInt(regionData.total_prepayment);
             totalOverdue += safeParseInt(regionData.total_overdue);
+            totalOverdueLastTwoMonths += safeParseInt(regionData.overdue_last_2_months);
+            totalOverdueLastThreeMonths += safeParseInt(regionData.overdue_last_3_months);
           }
         }
       });
@@ -157,6 +168,8 @@ const InstallmentDashboard = () => {
             totalPaid += safeParseInt(region.total_paid);
             totalPrepayment += safeParseInt(region.total_prepayment);
             totalOverdue += safeParseInt(region.total_overdue);
+            totalOverdueLastTwoMonths += safeParseInt(region.overdue_last_2_months);
+            totalOverdueLastThreeMonths += safeParseInt(region.overdue_last_3_months);
           });
         }
       });
@@ -179,7 +192,9 @@ const InstallmentDashboard = () => {
       paidPercentage: paidPercentage,
       overduePercentage: overduePercentage,
       totalPaid: totalPaid,
-      totalPrepayment: totalPrepayment
+      totalPrepayment: totalPrepayment,
+      overdueLastTwoMonths: totalOverdueLastTwoMonths,
+      overdueLastThreeMonths: totalOverdueLastThreeMonths
     };
   };
 
@@ -204,6 +219,7 @@ const InstallmentDashboard = () => {
       renderPaymentStatus();
       renderMonthlyTrends();
       renderRegionChart();
+      renderOverdueHistory();
     }
   }, [statsData, selectedRegion, selectedModel, viewMode, modelCompareMode, isLoading, apiData, windowWidth]);
 
@@ -298,14 +314,18 @@ const InstallmentDashboard = () => {
           total_price: acc.total_price + safeParseInt(region.total_price),
           total_paid: acc.total_paid + safeParseInt(region.total_paid),
           total_prepayment: acc.total_prepayment + safeParseInt(region.total_prepayment),
-          total_overdue: acc.total_overdue + safeParseInt(region.total_overdue)
+          total_overdue: acc.total_overdue + safeParseInt(region.total_overdue),
+          overdue_last_2_months: acc.overdue_last_2_months + safeParseInt(region.overdue_last_2_months),
+          overdue_last_3_months: acc.overdue_last_3_months + safeParseInt(region.overdue_last_3_months)
         };
       }, { 
         contract_count: 0, 
         total_price: 0, 
         total_paid: 0, 
         total_prepayment: 0, 
-        total_overdue: 0 
+        total_overdue: 0,
+        overdue_last_2_months: 0,
+        overdue_last_3_months: 0
       });
     } else {
       const regionData = model.filter_by_region.find(r => r.region_id === regionId);
@@ -316,7 +336,9 @@ const InstallmentDashboard = () => {
         total_price: safeParseInt(regionData.total_price),
         total_paid: safeParseInt(regionData.total_paid),
         total_prepayment: safeParseInt(regionData.total_prepayment),
-        total_overdue: safeParseInt(regionData.total_overdue)
+        total_overdue: safeParseInt(regionData.total_overdue),
+        overdue_last_2_months: safeParseInt(regionData.overdue_last_2_months),
+        overdue_last_3_months: safeParseInt(regionData.overdue_last_3_months)
       };
     }
   };
@@ -334,6 +356,8 @@ const InstallmentDashboard = () => {
             acc.total_paid += safeParseInt(region.total_paid);
             acc.total_prepayment += safeParseInt(region.total_prepayment);
             acc.total_overdue += safeParseInt(region.total_overdue);
+            acc.overdue_last_2_months += safeParseInt(region.overdue_last_2_months);
+            acc.overdue_last_3_months += safeParseInt(region.overdue_last_3_months);
           });
         }
         return acc;
@@ -342,7 +366,9 @@ const InstallmentDashboard = () => {
         total_price: 0, 
         total_paid: 0, 
         total_prepayment: 0, 
-        total_overdue: 0 
+        total_overdue: 0,
+        overdue_last_2_months: 0,
+        overdue_last_3_months: 0
       });
     }
     
@@ -355,6 +381,8 @@ const InstallmentDashboard = () => {
           acc.total_paid += safeParseInt(regionData.total_paid);
           acc.total_prepayment += safeParseInt(regionData.total_prepayment);
           acc.total_overdue += safeParseInt(regionData.total_overdue);
+          acc.overdue_last_2_months += safeParseInt(regionData.overdue_last_2_months);
+          acc.overdue_last_3_months += safeParseInt(regionData.overdue_last_3_months);
         }
       }
       return acc;
@@ -363,7 +391,9 @@ const InstallmentDashboard = () => {
       total_price: 0, 
       total_paid: 0, 
       total_prepayment: 0, 
-      total_overdue: 0 
+      total_overdue: 0,
+      overdue_last_2_months: 0,
+      overdue_last_3_months: 0
     });
   };
 
@@ -389,6 +419,193 @@ const InstallmentDashboard = () => {
         unpaid: monthlyOverdue
       };
     });
+  };
+
+  // Новая функция для рендеринга графика истории просрочек
+  const renderOverdueHistory = () => {
+    if (!overdueHistoryRef.current || !statsData) return;
+    
+    const container = overdueHistoryRef.current;
+    const width = container.clientWidth;
+    const height = 280;
+    
+    d3.select(container).selectAll("*").remove();
+    
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height);
+    
+    // Заголовок
+    svg.append('text')
+      .attr('x', width / 2)
+      .attr('y', 20)
+      .attr('text-anchor', 'middle')
+      .attr('fill', 'white')
+      .attr('font-size', '16px')
+      .attr('font-weight', 'bold')
+      .text('История просрочек по периодам');
+    
+    // Проверяем наличие данных
+    if (statsData.overdueLastTwoMonths === 0 && statsData.overdueLastThreeMonths === 0 && statsData.overdue === 0) {
+      svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height / 2)
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'middle')
+        .attr('fill', '#94a3b8')
+        .attr('font-size', '14px')
+        .text('Нет данных о просрочках');
+      return;
+    }
+    
+    // Подготовка данных
+    const data = [
+      { 
+        period: 'Последние 2 месяца', 
+        amount: statsData.overdueLastTwoMonths,
+        color: '#fbbf24',
+        gradientStart: '#f59e0b',
+        gradientEnd: '#fbbf24'
+      },
+      { 
+        period: 'Последние 3 месяца', 
+        amount: statsData.overdueLastThreeMonths,
+        color: '#fb923c',
+        gradientStart: '#ea580c',
+        gradientEnd: '#fb923c'
+      },
+      { 
+        period: 'Всего просрочено', 
+        amount: statsData.overdue,
+        color: '#ef4444',
+        gradientStart: '#dc2626',
+        gradientEnd: '#ef4444'
+      }
+    ];
+    
+    // Настройки графика
+    const margin = { top: 50, right: 40, bottom: 80, left: 60 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+    
+    const g = svg.append('g')
+      .attr('transform', `translate(${margin.left}, ${margin.top})`);
+    
+    // Создаем градиенты
+    const defs = svg.append('defs');
+    
+    data.forEach((d, i) => {
+      const gradient = defs.append('linearGradient')
+        .attr('id', `overdueGradient${i}`)
+        .attr('x1', '0%')
+        .attr('y1', '0%')
+        .attr('x2', '0%')
+        .attr('y2', '100%');
+        
+      gradient.append('stop')
+        .attr('offset', '0%')
+        .attr('stop-color', d.gradientStart);
+        
+      gradient.append('stop')
+        .attr('offset', '100%')
+        .attr('stop-color', d.gradientEnd);
+    });
+    
+    // Шкалы
+    const x = d3.scaleBand()
+      .domain(data.map(d => d.period))
+      .range([0, innerWidth])
+      .padding(0.3);
+      
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(data, d => d.amount) * 1.1])
+      .nice()
+      .range([innerHeight, 0]);
+    
+    // Оси
+    g.append('g')
+      .attr('transform', `translate(0, ${innerHeight})`)
+      .call(d3.axisBottom(x))
+      .selectAll('text')
+      .attr('fill', '#94a3b8')
+      .style('text-anchor', 'middle')
+      .attr('dy', '1em');
+    
+    g.append('g')
+      .call(d3.axisLeft(y).tickFormat(d => formatNumber(d)))
+      .selectAll('text')
+      .attr('fill', '#94a3b8');
+    
+    // Линии сетки
+    g.append('g')
+      .attr('class', 'grid')
+      .call(d3.axisLeft(y)
+        .tickSize(-innerWidth)
+        .tickFormat('')
+      )
+      .selectAll('line')
+      .attr('stroke', '#334155')
+      .attr('stroke-dasharray', '2,2')
+      .attr('opacity', 0.5);
+    
+    // Столбцы
+    const bars = g.selectAll('.bar')
+      .data(data)
+      .enter().append('rect')
+      .attr('class', 'bar')
+      .attr('x', d => x(d.period))
+      .attr('width', x.bandwidth())
+      .attr('y', innerHeight)
+      .attr('height', 0)
+      .attr('fill', (d, i) => `url(#overdueGradient${i})`)
+      .attr('rx', 6)
+      .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))');
+    
+    // Анимация столбцов
+    bars.transition()
+      .duration(800)
+      .delay((d, i) => i * 200)
+      .attr('y', d => y(d.amount))
+      .attr('height', d => innerHeight - y(d.amount));
+    
+    // Значения над столбцами
+    g.selectAll('.value')
+      .data(data)
+      .enter().append('text')
+      .attr('class', 'value')
+      .attr('x', d => x(d.period) + x.bandwidth() / 2)
+      .attr('y', d => y(d.amount) - 10)
+      .attr('text-anchor', 'middle')
+      .attr('fill', 'white')
+      .attr('font-size', '14px')
+      .attr('font-weight', 'bold')
+      .attr('opacity', 0)
+      .text(d => formatNumber(d.amount))
+      .transition()
+      .duration(800)
+      .delay((d, i) => i * 200 + 400)
+      .attr('opacity', 1);
+    
+    // Процентное соотношение
+    const total = statsData.overdue;
+    if (total > 0) {
+      g.selectAll('.percentage')
+        .data(data.slice(0, 2)) // Только для 2 и 3 месяцев
+        .enter().append('text')
+        .attr('class', 'percentage')
+        .attr('x', d => x(d.period) + x.bandwidth() / 2)
+        .attr('y', d => y(d.amount) + 20)
+        .attr('text-anchor', 'middle')
+        .attr('fill', '#94a3b8')
+        .attr('font-size', '12px')
+        .attr('opacity', 0)
+        .text(d => `${Math.round((d.amount / total) * 100)}% от общей`)
+        .transition()
+        .duration(800)
+        .delay((d, i) => i * 200 + 600)
+        .attr('opacity', 1);
+    }
   };
 
   const renderMainChart = () => {
@@ -1154,6 +1371,7 @@ const InstallmentDashboard = () => {
       .attr('offset', '100%')
       .attr('stop-color', '#94a3b8');
     
+// Определяем радиус и положение диаграммы
     // Определяем радиус и положение диаграммы
     let chartRadius, chartX, chartY, legendX, legendY;
     
@@ -1675,69 +1893,121 @@ const InstallmentDashboard = () => {
     const paidPercentageAll = calculateExactPercentage(totalPaidAll, totalPriceAll);
     const overduePercentageAll = calculateExactPercentage(totalOverdueAll, totalPriceAll);
     
+    // Процент просрочек за 2 и 3 месяца от общей суммы просрочек
+    const overduePercent2Months = data.total_overdue > 0 
+      ? Math.round((data.overdue_last_2_months / data.total_overdue) * 100) 
+      : 0;
+    const overduePercent3Months = data.total_overdue > 0 
+      ? Math.round((data.overdue_last_3_months / data.total_overdue) * 100) 
+      : 0;
+    
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {/* Карточка по количеству рассрочек */}
-        <div className="bg-gradient-to-br from-blue-900/40 to-blue-800/20 rounded-xl p-4 shadow-lg border border-blue-800/30">
-          <div className="flex items-center">
-            <div className="w-12 h-12 rounded-full bg-blue-600/30 flex items-center justify-center mr-4">
-              <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
+      <div className="space-y-4 mb-6">
+        {/* Первая строка карточек */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Карточка по количеству рассрочек */}
+          <div className="bg-gradient-to-br from-blue-900/40 to-blue-800/20 rounded-xl p-4 shadow-lg border border-blue-800/30">
+            <div className="flex items-center">
+              <div className="w-12 h-12 rounded-full bg-blue-600/30 flex items-center justify-center mr-4">
+                <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-blue-300">{t('metrics.contracts')}</h3>
+                <p className="text-2xl font-bold text-white">{data.contract_count} {t('units.pieces')}</p>
+                <p className="text-blue-300/70 text-xs mt-1">{t('metrics.activeContracts')}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-medium text-blue-300">{t('metrics.contracts')}</h3>
-              <p className="text-2xl font-bold text-white">{data.contract_count} {t('units.pieces')}</p>
-              <p className="text-blue-300/70 text-xs mt-1">{t('metrics.activeContracts')}</p>
+          </div>
+          
+          {/* Карточка по проценту оплаты */}
+          <div className="bg-gradient-to-br from-green-900/40 to-green-800/20 rounded-xl p-4 shadow-lg border border-green-800/30">
+            <div className="flex items-center">
+              <div className="w-12 h-12 rounded-full bg-green-600/30 flex items-center justify-center mr-4">
+                <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-green-300">{t('metrics.paymentStatus')}</h3>
+                <p className="text-2xl font-bold text-white">{paidPercentage}%</p>
+                <p className="text-green-300/70 text-xs mt-1">
+                  {formatNumber(paidTotal)} {t('metrics.outOf')} {formatNumber(data.total_price)}
+                </p>
+                {selectedRegion !== 'all' && (
+                  <p className="text-green-300/70 text-xs">
+                    {t('metrics.total')}: {paidPercentageAll}% ({formatNumber(totalPaidAll)})
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Карточка по проценту просрочки */}
+          <div className="bg-gradient-to-br from-red-900/40 to-red-800/20 rounded-xl p-4 shadow-lg border border-red-800/30">
+            <div className="flex items-center">
+              <div className="w-12 h-12 rounded-full bg-red-600/30 flex items-center justify-center mr-4">
+                <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-red-300">{t('metrics.overdue')}</h3>
+                <p className="text-2xl font-bold text-white">{overduePercentage}%</p>
+                <p className="text-red-300/70 text-xs mt-1">
+                  {formatNumber(data.total_overdue)} {t('metrics.outOf')} {formatNumber(data.total_price)}
+                </p>
+                {selectedRegion !== 'all' && (
+                  <p className="text-red-300/70 text-xs">
+                    {t('metrics.total')}: {overduePercentageAll}% ({formatNumber(totalOverdueAll)})
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
         
-        {/* Карточка по проценту оплаты */}
-        <div className="bg-gradient-to-br from-green-900/40 to-green-800/20 rounded-xl p-4 shadow-lg border border-green-800/30">
-          <div className="flex items-center">
-            <div className="w-12 h-12 rounded-full bg-green-600/30 flex items-center justify-center mr-4">
-              <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+        {/* Вторая строка карточек - просрочки по периодам */}
+        {(data.overdue_last_2_months > 0 || data.overdue_last_3_months > 0) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Карточка просрочек за 2 месяца */}
+            <div className="bg-gradient-to-br from-amber-900/40 to-amber-800/20 rounded-xl p-4 shadow-lg border border-amber-800/30">
+              <div className="flex items-center">
+                <div className="w-12 h-12 rounded-full bg-amber-600/30 flex items-center justify-center mr-4">
+                  <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-amber-300">Просрочки за 2 месяца</h3>
+                  <p className="text-2xl font-bold text-white">{formatNumber(data.overdue_last_2_months)}</p>
+                  <p className="text-amber-300/70 text-xs mt-1">
+                    {overduePercent2Months}% от общей просрочки
+                  </p>
+                </div>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-medium text-green-300">{t('metrics.paymentStatus')}</h3>
-              <p className="text-2xl font-bold text-white">{paidPercentage}%</p>
-              <p className="text-green-300/70 text-xs mt-1">
-                {formatNumber(paidTotal)} {t('metrics.outOf')} {formatNumber(data.total_price)}
-              </p>
-              {selectedRegion !== 'all' && (
-                <p className="text-green-300/70 text-xs">
-                  {t('metrics.total')}: {paidPercentageAll}% ({formatNumber(totalPaidAll)})
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* Карточка по проценту просрочки */}
-        <div className="bg-gradient-to-br from-red-900/40 to-red-800/20 rounded-xl p-4 shadow-lg border border-red-800/30">
-          <div className="flex items-center">
-            <div className="w-12 h-12 rounded-full bg-red-600/30 flex items-center justify-center mr-4">
-              <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-red-300">{t('metrics.overdue')}</h3>
-              <p className="text-2xl font-bold text-white">{overduePercentage}%</p>
-              <p className="text-red-300/70 text-xs mt-1">
-                {formatNumber(data.total_overdue)} {t('metrics.outOf')} {formatNumber(data.total_price)}
-              </p>
-              {selectedRegion !== 'all' && (
-                <p className="text-red-300/70 text-xs">
-                  {t('metrics.total')}: {overduePercentageAll}% ({formatNumber(totalOverdueAll)})
-                </p>
-              )}
+            
+            {/* Карточка просрочек за 3 месяца */}
+            <div className="bg-gradient-to-br from-orange-900/40 to-orange-800/20 rounded-xl p-4 shadow-lg border border-orange-800/30">
+              <div className="flex items-center">
+                <div className="w-12 h-12 rounded-full bg-orange-600/30 flex items-center justify-center mr-4">
+                  <svg className="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-orange-300">Просрочки за 3 месяца</h3>
+                  <p className="text-2xl font-bold text-white">{formatNumber(data.overdue_last_3_months)}</p>
+                  <p className="text-orange-300/70 text-xs mt-1">
+                    {overduePercent3Months}% от общей просрочки
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
@@ -2104,6 +2374,31 @@ const InstallmentDashboard = () => {
               </div>
             </div>
             
+            {/* Информация о просрочках по периодам */}
+            {(modelData.overdue_last_2_months > 0 || modelData.overdue_last_3_months > 0) && (
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-amber-900/20 p-3 rounded-lg border border-amber-800/30">
+                  <div className="text-amber-400 text-sm">Просрочки за 2 месяца</div>
+                  <div className="text-white text-lg font-bold">{formatNumber(modelData.overdue_last_2_months)}</div>
+                  <div className="text-amber-400/70 text-xs">
+                    {modelData.total_overdue > 0 
+                      ? Math.round((modelData.overdue_last_2_months / modelData.total_overdue) * 100) 
+                      : 0}% от общей просрочки
+                  </div>
+                </div>
+                
+                <div className="bg-orange-900/20 p-3 rounded-lg border border-orange-800/30">
+                  <div className="text-orange-400 text-sm">Просрочки за 3 месяца</div>
+                  <div className="text-white text-lg font-bold">{formatNumber(modelData.overdue_last_3_months)}</div>
+                  <div className="text-orange-400/70 text-xs">
+                    {modelData.total_overdue > 0 
+                      ? Math.round((modelData.overdue_last_3_months / modelData.total_overdue) * 100) 
+                      : 0}% от общей просрочки
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Полоса прогресса оплаты */}
             <div className="mb-6">
               <div className="flex justify-between text-sm mb-2">
@@ -2159,6 +2454,8 @@ const InstallmentDashboard = () => {
                 <th className="p-2 text-right">{t('table.count')}</th>
                 <th className="p-2 text-right">{t('table.paidPercent')}</th>
                 <th className="p-2 text-right">{t('table.overduePercent')}</th>
+                <th className="p-2 text-right">Просрочки 2 мес.</th>
+                <th className="p-2 text-right">Просрочки 3 мес.</th>
                 <th className="p-2 text-right">{t('table.remainingAmount')}</th>
               </tr>
             </thead>
@@ -2189,6 +2486,12 @@ const InstallmentDashboard = () => {
                     <td className="p-2 text-right">{(modelInRegion.contract_count)} {t('units.pieces')} </td>
                     <td className="p-2 text-right text-green-400">{paidPercentage}%</td>
                     <td className="p-2 text-right text-red-400">{overduePercentage}%</td>
+                    <td className="p-2 text-right text-amber-400">
+                      {modelInRegion.overdue_last_2_months > 0 ? formatNumber(modelInRegion.overdue_last_2_months) : '-'}
+                    </td>
+                    <td className="p-2 text-right text-orange-400">
+                      {modelInRegion.overdue_last_3_months > 0 ? formatNumber(modelInRegion.overdue_last_3_months) : '-'}
+                    </td>
                     <td className="p-2 text-right">{formatNumber(remaining)}</td>
                   </tr>
                 );
@@ -2283,8 +2586,7 @@ const InstallmentDashboard = () => {
               {t('clickToViewDetails')}
             </div>
           </div>
-          
-          {renderModelCards()}
+        {renderModelCards()}
         </div>
       )}
       
@@ -2309,10 +2611,6 @@ const InstallmentDashboard = () => {
           <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
             <div ref={paymentStatusRef} className="w-full h-[300px]"></div>
           </div>
-        </div>
-        
-        <div className="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
-          <div ref={monthlyTrendsRef} className="w-full h-[250px]"></div>
         </div>
       </div>
     </div>
