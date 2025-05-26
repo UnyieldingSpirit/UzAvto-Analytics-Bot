@@ -34,6 +34,7 @@ const CarWarehouseAnalytics = () => {
   const [totalDefectiveOk, setTotalDefectiveOk] = useState(0);
   const [totalReserved, setTotalReserved] = useState(0);
   const [totalAvailable, setTotalAvailable] = useState(0);
+  const [totalTradeIn, setTotalTradeIn] = useState(0); // Новое состояние для Trade-in
   
   // Дополнительные состояния для улучшенного взаимодействия
   const [selectedWarehouseModel, setSelectedWarehouseModel] = useState(null);
@@ -70,6 +71,7 @@ const CarWarehouseAnalytics = () => {
       if (statusFilter === 'reserved' && mod.reserved > 0) return true;
       if (statusFilter === 'defectiveOk' && mod.defectiveOk > 0) return true;
       if (statusFilter === 'defective' && mod.defective > 0) return true;
+      if (statusFilter === 'tradeIn' && mod.tradeIn > 0) return true;
       
       return false;
     });
@@ -96,97 +98,85 @@ const CarWarehouseAnalytics = () => {
   };
   
   // Загрузка данных с API
-useEffect(() => {
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      
-      // Токен уже будет добавлен автоматически через axios interceptor
-      const response = await axios.get('https://uzavtosalon.uz/b/dashboard/infos&get_stock');
-      
-      console.log('Полный ответ API:', response.data);
-      
-      // Проверяем структуру ответа - это массив с объектами
-      let updateDate = null;
-      let warehouses = [];
-      
-      if (Array.isArray(response.data)) {
-        // Берем первый элемент массива, который содержит date и data
-        const firstDataEntry = response.data[0];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
         
-        if (firstDataEntry && firstDataEntry.date && firstDataEntry.data) {
-          updateDate = firstDataEntry.date;
-          warehouses = firstDataEntry.data;
-          console.log('Найдена структура с date и data в массиве');
+        const response = await axios.get('https://uzavtosalon.uz/b/dashboard/infos&get_stock');
+        
+        console.log('Полный ответ API:', response.data);
+        
+        let updateDate = null;
+        let warehouses = [];
+        
+        if (Array.isArray(response.data)) {
+          const firstDataEntry = response.data[0];
+          
+          if (firstDataEntry && firstDataEntry.date && firstDataEntry.data) {
+            updateDate = firstDataEntry.date;
+            warehouses = firstDataEntry.data;
+            console.log('Найдена структура с date и data в массиве');
+          } else {
+            console.error('Неожиданная структура в первом элементе:', firstDataEntry);
+            throw new Error('Неожиданная структура данных от API');
+          }
         } else {
-          console.error('Неожиданная структура в первом элементе:', firstDataEntry);
-          throw new Error('Неожиданная структура данных от API');
+          console.error('Ответ не является массивом:', response.data);
+          throw new Error('Данные от API не в ожидаемом формате');
         }
-      } else {
-        console.error('Ответ не является массивом:', response.data);
-        throw new Error('Данные от API не в ожидаемом формате');
+        
+        if (!warehouses || !Array.isArray(warehouses)) {
+          console.error('Warehouses не является массивом:', warehouses);
+          throw new Error('Данные складов отсутствуют или имеют неверный формат');
+        }
+        
+        console.log('Дата обновления:', updateDate);
+        console.log('Количество складов:', warehouses.length);
+        
+        if (updateDate) {
+          setLastUpdateDate(updateDate);
+        } else {
+          console.warn('Дата обновления не найдена в ответе API');
+          setLastUpdateDate(new Date().toISOString().split('T')[0]);
+        }
+        
+        const filteredWarehouses = warehouses.filter(warehouse => 
+          warehouse.models && warehouse.models.length > 0
+        );
+        
+        console.log('Отфильтрованные склады:', filteredWarehouses.length);
+        
+        processData(filteredWarehouses);
+        
+        setLoading(false);
+      } catch (err) {
+        console.error(t('errors.loadingData'), err);
+        setError(t('errors.failedToLoad'));
+        setLoading(false);
+        addNotification(t('errors.loadingData'), 'error');
       }
-      
-      // Проверяем, что warehouses существует и является массивом
-      if (!warehouses || !Array.isArray(warehouses)) {
-        console.error('Warehouses не является массивом:', warehouses);
-        throw new Error('Данные складов отсутствуют или имеют неверный формат');
-      }
-      
-      console.log('Дата обновления:', updateDate);
-      console.log('Количество складов:', warehouses.length);
-      
-      // Устанавливаем дату последнего обновления
-      if (updateDate) {
-        setLastUpdateDate(updateDate);
-      } else {
-        console.warn('Дата обновления не найдена в ответе API');
-        setLastUpdateDate(new Date().toISOString().split('T')[0]);
-      }
-      
-      // Фильтрация данных - оставляем только склады с машинами
-      const filteredWarehouses = warehouses.filter(warehouse => 
-        warehouse.models && warehouse.models.length > 0
-      );
-      
-      console.log('Отфильтрованные склады:', filteredWarehouses.length);
-      
-      // Обработка данных
-      processData(filteredWarehouses);
-      
-      setLoading(false);
-    } catch (err) {
-      console.error(t('errors.loadingData'), err);
-      setError(t('errors.failedToLoad'));
-      setLoading(false);
-      addNotification(t('errors.loadingData'), 'error');
-      
-    }
-  };
-  
-  fetchData();
-}, [t]);
+    };
+    
+    fetchData();
+  }, [t]);
   
   const formatDate = (dateString) => {
-  return dateString || 'Нет данных'; 
-};
+    return dateString || 'Нет данных'; 
+  };
   
   // Функция для обработки загруженных данных
   const processData = (warehouses) => {
     const carModels = [];
     
-    // Создаем итоговые объекты для подсчета общего количества по всем складам
     let totalModelsCount = {};
     
-    // Обработка данных для создания структуры автомобилей
     warehouses.forEach(warehouse => {
       if (!warehouse.models || warehouse.models.length === 0) return;
       
       warehouse.models.forEach(model => {
-        // Если нет моди или они пустые, пропускаем
         if (!model.modifications || model.modifications.length === 0) return;
         
-        // Инициализируем счетчик для текущей модели, если еще не сделано
         if (!totalModelsCount[model.model]) {
           totalModelsCount[model.model] = {
             totalCount: 0,
@@ -194,60 +184,50 @@ useEffect(() => {
             reserved: 0,
             defective: 0,
             defectiveOk: 0,
+            tradeIn: 0, // Добавляем Trade-in
             colors: {},
             modifications: {},
-            photo_sha: model.photo_sha || null // Сохраняем photo_sha для модели
+            photo_sha: model.photo_sha || null
           };
         }
         
-        // Запоминаем photo_sha, если еще не было сохранено
         if (!totalModelsCount[model.model].photo_sha && model.photo_sha) {
           totalModelsCount[model.model].photo_sha = model.photo_sha;
         }
         
-        // Проходим по модификациям этой модели
         model.modifications.forEach(mod => {
-          // Если нет цветов или они пустые, пропускаем
           if (!mod.colors || mod.colors.length === 0) return;
           
-          // Инициализируем счетчик для текущей модификации, если еще не сделано
           if (!totalModelsCount[model.model].modifications[mod.modification]) {
             totalModelsCount[model.model].modifications[mod.modification] = {
               totalCount: 0,
               available: 0,
               reserved: 0,
               defective: 0,
-              defectiveOk: 0
+              defectiveOk: 0,
+              tradeIn: 0 // Добавляем Trade-in
             };
           }
           
-          // Проходим по цветам этой модификации
           mod.colors.forEach(color => {
-            // Если нет статусов или они пустые, пропускаем
             if (!color.statuses || color.statuses.length === 0) return;
             
-            // Инициализируем счетчик для текущего цвета, если еще не сделано
             if (!totalModelsCount[model.model].colors[color.color]) {
               totalModelsCount[model.model].colors[color.color] = {
                 totalCount: 0,
                 available: 0,
                 reserved: 0,
                 defective: 0,
-                defectiveOk: 0
+                defectiveOk: 0,
+                tradeIn: 0 // Добавляем Trade-in
               };
             }
             
-            // Проходим по статусам этого цвета
             color.statuses.forEach(status => {
               const count = parseInt(status.count);
               
-              // Увеличиваем общий счетчик для этой модели
               totalModelsCount[model.model].totalCount += count;
-              
-              // Увеличиваем общий счетчик для этого цвета
               totalModelsCount[model.model].colors[color.color].totalCount += count;
-              
-              // Увеличиваем общий счетчик для этой модификации
               totalModelsCount[model.model].modifications[mod.modification].totalCount += count;
               
               // Распределяем по статусам
@@ -267,6 +247,10 @@ useEffect(() => {
                 totalModelsCount[model.model].defectiveOk += count;
                 totalModelsCount[model.model].colors[color.color].defectiveOk += count;
                 totalModelsCount[model.model].modifications[mod.modification].defectiveOk += count;
+              } else if (status.status_name === "Trade-in") {
+                totalModelsCount[model.model].tradeIn += count;
+                totalModelsCount[model.model].colors[color.color].tradeIn += count;
+                totalModelsCount[model.model].modifications[mod.modification].tradeIn += count;
               }
             });
           });
@@ -276,7 +260,6 @@ useEffect(() => {
     
     // Преобразуем объект с итогами в массив для использования в компоненте
     Object.entries(totalModelsCount).forEach(([modelName, modelData]) => {
-      // Преобразуем объекты цветов и модификаций в массивы
       let colorsArray = Object.entries(modelData.colors).map(([colorName, colorData]) => ({
         name: colorName,
         count: colorData.totalCount,
@@ -284,6 +267,7 @@ useEffect(() => {
         reserved: colorData.reserved,
         defective: colorData.defective,
         defectiveOk: colorData.defectiveOk,
+        tradeIn: colorData.tradeIn,
         hex: getColorHex(colorName)
       }));
       
@@ -294,13 +278,12 @@ useEffect(() => {
         available: modData.available,
         reserved: modData.reserved,
         defective: modData.defective,
-        defectiveOk: modData.defectiveOk
+        defectiveOk: modData.defectiveOk,
+        tradeIn: modData.tradeIn
       }));
       
-      // Формируем URL изображения на основе photo_sha
       const imageUrl = `https://uzavtosalon.uz/b/core/m$load_image?sha=${modelData.photo_sha}&width=400&height=400`
       
-      // Добавляем модель в итоговый массив
       carModels.push({
         id: modelName,
         name: modelName,
@@ -310,6 +293,7 @@ useEffect(() => {
         reserved: modelData.reserved,
         defective: modelData.defective,
         defectiveOk: modelData.defectiveOk,
+        tradeIn: modelData.tradeIn,
         colors: colorsArray,
         modifications: modificationsArray,
         img: imageUrl,
@@ -317,25 +301,22 @@ useEffect(() => {
       });
     });
     
-    // Сортируем модели по количеству
     carModels.sort((a, b) => b.totalCount - a.totalCount);
     
     // Обработка данных о складах
     const processedWarehouses = warehouses.map(warehouse => {
-      // Если нет моделей, возвращаем пустой объект
       if (!warehouse.models || warehouse.models.length === 0) {
         return null;
       }
       
-      // Подсчитываем остатки по всем моделям на этом складе
       const modelCounts = [];
       let totalCount = 0;
       let defective = 0;
       let defectiveOk = 0;
       let reserved = 0;
       let available = 0;
+      let tradeIn = 0; // Добавляем Trade-in
       
-      // Маппинг категорий для этого склада
       const categoryCountsMap = {};
       
       warehouse.models.forEach(model => {
@@ -344,6 +325,7 @@ useEffect(() => {
         let modelReserved = 0;
         let modelDefective = 0;
         let modelDefectiveOk = 0;
+        let modelTradeIn = 0; // Добавляем Trade-in
         
         if (!model.modifications) return;
         
@@ -370,6 +352,9 @@ useEffect(() => {
               } else if (status.status_name === "Брак-ОК") {
                 defectiveOk += count;
                 modelDefectiveOk += count;
+              } else if (status.status_name === "Trade-in") {
+                tradeIn += count;
+                modelTradeIn += count;
               }
             });
           });
@@ -378,15 +363,13 @@ useEffect(() => {
         if (modelTotal > 0) {
           const category = getCategoryForModel(model.model);
           
-          // Добавляем в счетчик категорий
           if (!categoryCountsMap[category]) {
             categoryCountsMap[category] = 0;
           }
           categoryCountsMap[category] += modelTotal;
           
-          // Получаем photo_sha из модели
           const photo_sha = model.photo_sha || null;
-     const imageUrl = `https://uzavtosalon.uz/b/core/m$load_image?sha=${photo_sha}&width=400&height=400`
+          const imageUrl = `https://uzavtosalon.uz/b/core/m$load_image?sha=${photo_sha}&width=400&height=400`
           
           modelCounts.push({
             id: model.model,
@@ -396,6 +379,7 @@ useEffect(() => {
             reserved: modelReserved,
             defective: modelDefective,
             defectiveOk: modelDefectiveOk,
+            tradeIn: modelTradeIn,
             category: category,
             img: imageUrl,
             photo_sha: photo_sha
@@ -403,23 +387,14 @@ useEffect(() => {
         }
       });
       
-      // Если на складе нет автомобилей, пропускаем его
       if (totalCount === 0) {
         return null;
       }
       
-      // Используем точное значение volume из API
       const volume = parseInt(warehouse.volume || 0);
-      
-      // Рассчитываем вместимость и заполненность
-      // Если volume = 0, считаем capacity равным текущему totalCount
       const capacity = volume > 0 ? volume : totalCount;
-      
-      // Рассчитываем процент заполненности
-      // Если volume = 0, считаем заполненность 100%
       const occupancyRate = volume > 0 ? Math.round((totalCount / volume) * 100) : 100;
       
-      // Преобразуем мапу категорий в массив для графиков
       const categories = Object.keys(categoryCountsMap).map(key => ({
         name: key === 'suv' ? t('categories.suv') : 
               key === 'sedan' ? t('categories.sedan') : 
@@ -435,16 +410,17 @@ useEffect(() => {
         defectiveOk,
         reserved,
         available,
+        tradeIn,
         models: modelCounts,
         categories,
         capacity,
-        volume: warehouse.volume || 0, // Сохраняем исходное значение volume
+        volume: warehouse.volume || 0,
         occupancyRate,
         status: occupancyRate > 90 ? 'critical' : 
                 occupancyRate > 75 ? 'high' : 
                 occupancyRate > 50 ? 'medium' : 'low'
       };
-    }).filter(Boolean); // Удаляем null элементы
+    }).filter(Boolean);
     
     // Обновляем состояния с обработанными данными
     setEnhancedCarModels(carModels);
@@ -456,6 +432,7 @@ useEffect(() => {
     setTotalDefectiveOk(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.defectiveOk, 0));
     setTotalReserved(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.reserved, 0));
     setTotalAvailable(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.available, 0));
+    setTotalTradeIn(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.tradeIn, 0));
   };
   
   // Функция для переключения отображения модели в контексте склада
@@ -476,8 +453,8 @@ useEffect(() => {
     } else {
       const selectedModelData = enhancedCarModels.find(m => m.id === model.id || m.name === model);
       setSelectedCarModel(selectedModelData);
-      setSelectedWarehouse(null); // Снимаем выбор склада при выборе модели
-      setSelectedModification(null); // Сбрасываем выбор модификации
+      setSelectedWarehouse(null);
+      setSelectedModification(null);
       setModificationFilter('');
       setStatusFilter('all');
       setColorFilter('');
@@ -491,8 +468,8 @@ useEffect(() => {
     } else {
       const selectedWarehouseData = enhancedWarehouses.find(w => w.id === warehouse.id || w.name === warehouse);
       setSelectedWarehouse(selectedWarehouseData);
-      setSelectedCarModel(null); // Снимаем выбор модели при выборе склада
-      setSelectedModification(null); // Сбрасываем выбор модификации
+      setSelectedCarModel(null);
+      setSelectedModification(null);
       setSelectedWarehouseModel(null);
     }
   };
@@ -556,14 +533,14 @@ useEffect(() => {
 
   // Функция для экспорта данных о складах в CSV
   const exportWarehouseData = () => {
-    // Создаем строки для CSV
     const headers = [
       t('export.warehouse'), 
       t('export.total'), 
       t('export.available'), 
       t('export.reserved'), 
       t('export.defectiveOk'), 
-      t('export.defective'), 
+      t('export.defective'),
+      'Trade-in', // Добавляем Trade-in
       t('export.occupancy')
     ];
     
@@ -574,16 +551,15 @@ useEffect(() => {
       warehouse.reserved,
       warehouse.defectiveOk,
       warehouse.defective,
+      warehouse.tradeIn,
       `${warehouse.occupancyRate}%`
     ]);
     
-    // Объединяем в CSV
     const csv = [
       headers.join(','),
       ...rows.map(row => row.join(','))
     ].join('\n');
     
-    // Создаем и скачиваем файл
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -599,7 +575,6 @@ useEffect(() => {
   
   // Функция для экспорта данных о моделях в CSV
   const exportModelData = () => {
-    // Создаем строки для CSV
     const headers = [
       t('export.model'), 
       t('export.category'), 
@@ -607,7 +582,8 @@ useEffect(() => {
       t('export.available'), 
       t('export.reserved'), 
       t('export.defectiveOk'), 
-      t('export.defective')
+      t('export.defective'),
+      'Trade-in' // Добавляем Trade-in
     ];
     
     const rows = enhancedCarModels.map(model => [
@@ -619,16 +595,15 @@ useEffect(() => {
       model.available,
       model.reserved,
       model.defectiveOk,
-      model.defective
+      model.defective,
+      model.tradeIn
     ]);
     
-    // Объединяем в CSV
     const csv = [
       headers.join(','),
       ...rows.map(row => row.join(','))
     ].join('\n');
     
-    // Создаем и скачиваем файл
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -686,7 +661,7 @@ useEffect(() => {
     const width = container.clientWidth - margin.left - margin.right;
     const height = container.clientHeight - margin.top - margin.bottom;
     
-    if (width < 100 || height < 100) return; // Слишком маленький размер для рендеринга
+    if (width < 100 || height < 100) return;
     
     const svg = d3.select(container)
       .append('svg')
@@ -695,7 +670,6 @@ useEffect(() => {
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
       
-    // Добавляем заголовок
     svg.append('text')
       .attr('x', width / 2)
       .attr('y', -margin.top / 2)
@@ -704,16 +678,15 @@ useEffect(() => {
       .style('fill', '#f9fafb')
       .text(t('charts.warehouseDistribution'));
       
-    // Получаем данные для графика из расширенных складов
     const warehouseData = enhancedWarehouses.map(warehouse => ({
       name: warehouse.name,
       available: warehouse.available,
       reserved: warehouse.reserved,
       defective: warehouse.defective,
-      defectiveOk: warehouse.defectiveOk
+      defectiveOk: warehouse.defectiveOk,
+      tradeIn: warehouse.tradeIn // Добавляем Trade-in
     }));
     
-    // Создаем шкалы
     const x = d3.scaleLinear()
       .domain([0, d3.max(enhancedWarehouses, d => d.capacity)])
       .range([0, width]);
@@ -723,7 +696,6 @@ useEffect(() => {
       .range([0, height])
       .padding(0.3);
       
-    // Добавляем оси
     svg.append('g')
       .attr('transform', `translate(0,${height})`)
       .call(d3.axisBottom(x))
@@ -742,7 +714,6 @@ useEffect(() => {
         handleWarehouseClick(warehouse);
       });
       
-    // Добавляем сетку
     svg.append('g')
       .attr('class', 'grid')
       .call(d3.axisBottom(x)
@@ -751,22 +722,20 @@ useEffect(() => {
       .selectAll('line')
       .style('stroke', 'rgba(255, 255, 255, 0.1)');
       
-    // Добавляем стеки
     const stack = d3.stack()
-      .keys(['available', 'reserved', 'defectiveOk', 'defective'])
+      .keys(['available', 'reserved', 'defectiveOk', 'defective', 'tradeIn']) // Добавляем Trade-in
       .order(d3.stackOrderNone)
       .offset(d3.stackOffsetNone);
       
     const stackedData = stack(warehouseData);
     
     const colorScale = d3.scaleOrdinal()
-      .domain(['available', 'reserved', 'defectiveOk', 'defective'])
-      .range(['#22c55e', '#3b82f6', '#f59e0b', '#ef4444']);
+      .domain(['available', 'reserved', 'defectiveOk', 'defective', 'tradeIn']) // Добавляем Trade-in
+      .range(['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6']); // Фиолетовый для Trade-in
       
-    // Создаем градиенты
     const defs = svg.append('defs');
     
-    ['available', 'reserved', 'defectiveOk', 'defective'].forEach((key, i) => {
+    ['available', 'reserved', 'defectiveOk', 'defective', 'tradeIn'].forEach((key, i) => {
       const gradientId = `stackGradient-${key}`;
       const color = colorScale(key);
       
@@ -788,7 +757,6 @@ useEffect(() => {
         .attr('stop-opacity', 1);
     });
     
-    // Добавляем стеки с анимацией
     svg.append('g')
       .selectAll('g')
       .data(stackedData)
@@ -813,7 +781,6 @@ useEffect(() => {
       .delay((d, i) => i * 100)
       .attr('width', d => x(d[1]) - x(d[0]));
       
-    // Добавляем заполненность склада (линию емкости)
     svg.selectAll('.capacity-line')
       .data(enhancedWarehouses)
       .join('line')
@@ -831,16 +798,16 @@ useEffect(() => {
       .delay(1000)
       .style('opacity', 1);
       
-    // Добавляем легенду с новыми статусами
     if (!isMobile) {
       const legend = svg.append('g')
-        .attr('transform', `translate(${width - 160}, ${height - 100})`);
+        .attr('transform', `translate(${width - 160}, ${height - 120})`); // Увеличиваем место для легенды
         
       const legendData = [
         { key: 'available', label: t('status.available') },
         { key: 'reserved', label: t('status.reserved') },
         { key: 'defectiveOk', label: t('status.defectiveOk') },
-        { key: 'defective', label: t('status.defective') }
+        { key: 'defective', label: t('status.defective') },
+        { key: 'tradeIn', label: 'Trade-in' } // Добавляем Trade-in
       ];
       
       legendData.forEach((d, i) => {
@@ -861,7 +828,6 @@ useEffect(() => {
           .text(d.label);
       });
       
-      // Добавляем метку для линии емкости
       legend.append('g')
         .attr('transform', `translate(0, ${legendData.length * 20})`);
       
@@ -893,7 +859,7 @@ useEffect(() => {
     const width = container.clientWidth;
     const height = container.clientHeight;
     
-    if (width < 100 || height < 100) return; // Слишком маленький размер для рендеринга
+    if (width < 100 || height < 100) return;
     
     const radius = Math.min(width, height) / 2 * 0.8;
     
@@ -904,7 +870,6 @@ useEffect(() => {
       .append('g')
       .attr('transform', `translate(${width/2},${height/2})`);
       
-    // Используем все склады, у которых есть автомобили
     const warehouseData = enhancedWarehouses
       .map(warehouse => ({
         warehouse: warehouse.name,
@@ -912,30 +877,19 @@ useEffect(() => {
         percentage: Math.round((warehouse.totalCount / totalVehicles) * 100)
       }));
       
-    // Создаем фиксированную цветовую схему для складов
     const colorScale = d3.scaleOrdinal()
       .domain(warehouseData.map(d => d.warehouse))
       .range([
-        '#3b82f6', // синий
-        '#ef4444', // красный
-        '#f59e0b', // оранжевый
-        '#22c55e', // зеленый
-        '#8b5cf6', // фиолетовый
-        '#ec4899', // розовый
-        '#14b8a6', // бирюзовый
-        '#f97316', // оранжево-красный
-        '#6366f1', // индиго
-        '#84cc16'  // лайм
+        '#3b82f6', '#ef4444', '#f59e0b', '#22c55e', '#8b5cf6',
+        '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16'
       ]);
       
-    // Создаем пирог
     const pie = d3.pie()
       .value(d => d.value)
       .sort(null);
       
     const data_ready = pie(warehouseData);
     
-    // Создаем дуги
     const arc = d3.arc()
       .innerRadius(radius * 0.4)
       .outerRadius(radius);
@@ -944,7 +898,6 @@ useEffect(() => {
       .innerRadius(radius * 0.4)
       .outerRadius(radius * 1.07);
       
-    // Создаем градиенты
     const defs = svg.append('defs');
     
     warehouseData.forEach((d, i) => {
@@ -968,7 +921,6 @@ useEffect(() => {
         .attr('stop-opacity', 1);
     });
     
-    // Добавляем дуги с градиентами
     svg.selectAll('path')
       .data(data_ready)
       .join('path')
@@ -984,7 +936,6 @@ useEffect(() => {
           .duration(200)
           .attr('d', arcHover);
           
-        // Обновляем центральный текст
         centerLabel.text(d.data.warehouse);
         centerValue.text(`${d.data.percentage}% (${d.data.value} ${t('units')})`);
       })
@@ -994,7 +945,6 @@ useEffect(() => {
           .duration(200)
           .attr('d', arc);
           
-        // Сбрасываем центральный текст
         centerLabel.text(t('charts.distribution'));
         centerValue.text(t('charts.byWarehouse'));
       })
@@ -1011,7 +961,6 @@ useEffect(() => {
         };
       });
       
-    // Добавляем легенду
     if (width > 350 && !isMobile) {
       const legendG = svg.append('g')
         .attr('transform', `translate(${radius + 20}, -${radius - 20})`);
@@ -1040,7 +989,6 @@ useEffect(() => {
         .style('fill', '#d1d5db');
     }
       
-    // Центральный текст
     const centerLabel = svg.append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '-0.5em')
@@ -1068,7 +1016,7 @@ useEffect(() => {
     const width = container.clientWidth - margin.left - margin.right;
     const height = container.clientHeight - margin.top - margin.bottom;
     
-    if (width < 100 || height < 100) return; // Слишком маленький размер для рендеринга
+    if (width < 100 || height < 100) return;
     
     const svg = d3.select(container)
       .append('svg')
@@ -1077,7 +1025,6 @@ useEffect(() => {
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
       
-    // Добавляем заголовок
     svg.append('text')
       .attr('x', width / 2)
       .attr('y', -margin.top / 2)
@@ -1086,17 +1033,16 @@ useEffect(() => {
       .style('fill', '#f9fafb')
       .text(t('charts.carStatusInWarehouses'));
       
-    // Данные для графика из расширенных моделей
     const maxModels = isMobile ? 3 : 5;
     const carModelInventory = enhancedCarModels.slice(0, maxModels).map(model => ({
       model: model.name,
       available: Math.round((model.available / model.totalCount) * 100),
       reserved: Math.round((model.reserved / model.totalCount) * 100),
       defective: Math.round((model.defective / model.totalCount) * 100),
-      defectiveOk: Math.round((model.defectiveOk / model.totalCount) * 100)
+      defectiveOk: Math.round((model.defectiveOk / model.totalCount) * 100),
+      tradeIn: Math.round((model.tradeIn / model.totalCount) * 100) // Добавляем Trade-in
     }));
     
-    // Создаем шкалы
     const y = d3.scaleBand()
       .domain(carModelInventory.map(d => d.model))
       .range([0, height])
@@ -1106,7 +1052,6 @@ useEffect(() => {
       .domain([0, 100])
       .range([0, width]);
       
-    // Добавляем оси
     svg.append('g')
       .call(d3.axisLeft(y))
       .selectAll('text')
@@ -1125,7 +1070,6 @@ useEffect(() => {
       .style('font-size', '12px')
       .style('fill', '#d1d5db');
       
-    // Добавляем сетку
     svg.append('g')
       .attr('class', 'grid')
       .call(d3.axisBottom(x)
@@ -1134,169 +1078,70 @@ useEffect(() => {
       .selectAll('line')
       .style('stroke', 'rgba(255, 255, 255, 0.1)');
       
-    // Создаем градиенты
     const defs = svg.append('defs');
     
-    // Градиент для свободных авто
-    const availableGradient = defs.append('linearGradient')
-      .attr('id', 'availableGradient')
-      .attr('x1', '0%')
-      .attr('y1', '0%')
-      .attr('x2', '100%')
-      .attr('y2', '0%');
-      
-    availableGradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#22c55e')
-      .attr('stop-opacity', 1);
-      
-    availableGradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#4ade80')
-      .attr('stop-opacity', 1);
-      
-    // Градиент для закрепленных авто
-    const reservedGradient = defs.append('linearGradient')
-      .attr('id', 'reservedGradient')
-      .attr('x1', '0%')
-      .attr('y1', '0%')
-      .attr('x2', '100%')
-      .attr('y2', '0%');
-      
-    reservedGradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#3b82f6')
-      .attr('stop-opacity', 1);
-      
-    reservedGradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#60a5fa')
-      .attr('stop-opacity', 1);
-      
-    // Градиент для брак-ок авто
-    const defectiveOkGradient = defs.append('linearGradient')
-      .attr('id', 'defectiveOkGradient')
-      .attr('x1', '0%')
-      .attr('y1', '0%')
-      .attr('x2', '100%')
-      .attr('y2', '0%');
-      
-    defectiveOkGradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#f59e0b')
-      .attr('stop-opacity', 1);
-      
-    defectiveOkGradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#fbbf24')
-      .attr('stop-opacity', 1);
-      
-    // Градиент для бракованных авто
-    const defectiveGradient = defs.append('linearGradient')
-      .attr('id', 'defectiveGradient')
-      .attr('x1', '0%')
-      .attr('y1', '0%')
-      .attr('x2', '100%')
-      .attr('y2', '0%');
-      
-    defectiveGradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#ef4444')
-      .attr('stop-opacity', 1);
-      
-    defectiveGradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#f87171')
-      .attr('stop-opacity', 1);
+    // Градиенты для всех статусов включая Trade-in
+    const gradients = [
+      { id: 'availableGradient', startColor: '#22c55e', endColor: '#4ade80' },
+      { id: 'reservedGradient', startColor: '#3b82f6', endColor: '#60a5fa' },
+      { id: 'defectiveOkGradient', startColor: '#f59e0b', endColor: '#fbbf24' },
+      { id: 'defectiveGradient', startColor: '#ef4444', endColor: '#f87171' },
+      { id: 'tradeInGradient', startColor: '#8b5cf6', endColor: '#a78bfa' } // Градиент для Trade-in
+    ];
     
-    // Добавляем полосы для свободных
-    svg.selectAll('.available-bar')
-      .data(carModelInventory)
-      .join('rect')
-      .attr('class', 'available-bar')
-      .attr('y', d => y(d.model))
-      .attr('height', y.bandwidth())
-      .attr('x', 0)
-      .attr('rx', 4)
-      .attr('ry', 4)
-      .attr('fill', 'url(#availableGradient)')
-      .attr('width', 0)
-      .style('cursor', 'pointer')
-      .on('click', (event, d) => {
-        const model = enhancedCarModels.find(m => m.name === d.model);
-        handleCarModelClick(model);
-      })
-      .transition()
-      .duration(800)
-      .attr('width', d => x(d.available));
+    gradients.forEach(g => {
+      const gradient = defs.append('linearGradient')
+        .attr('id', g.id)
+        .attr('x1', '0%')
+        .attr('y1', '0%')
+        .attr('x2', '100%')
+        .attr('y2', '0%');
+        
+      gradient.append('stop')
+        .attr('offset', '0%')
+        .attr('stop-color', g.startColor)
+        .attr('stop-opacity', 1);
+        
+      gradient.append('stop')
+        .attr('offset', '100%')
+        .attr('stop-color', g.endColor)
+        .attr('stop-opacity', 1);
+    });
+    
+    // Добавляем полосы для всех статусов
+    const statuses = ['available', 'reserved', 'defectiveOk', 'defective', 'tradeIn'];
+    const gradientUrls = ['availableGradient', 'reservedGradient', 'defectiveOkGradient', 'defectiveGradient', 'tradeInGradient'];
+    
+    statuses.forEach((status, statusIndex) => {
+      svg.selectAll(`.${status}-bar`)
+        .data(carModelInventory)
+        .join('rect')
+        .attr('class', `${status}-bar`)
+        .attr('y', d => y(d.model))
+        .attr('height', y.bandwidth())
+        .attr('x', d => {
+          let sum = 0;
+          for (let i = 0; i < statusIndex; i++) {
+            sum += d[statuses[i]];
+          }
+          return x(sum);
+        })
+        .attr('rx', 4)
+        .attr('ry', 4)
+        .attr('fill', `url(#${gradientUrls[statusIndex]})`)
+        .attr('width', 0)
+        .style('cursor', 'pointer')
+        .on('click', (event, d) => {
+          const model = enhancedCarModels.find(m => m.name === d.model);
+          handleCarModelClick(model);
+        })
+        .transition()
+        .duration(800)
+        .delay(statusIndex * 300)
+        .attr('width', d => x(d[status]));
+    });
       
-    // Добавляем полосы для закрепленных
-    svg.selectAll('.reserved-bar')
-      .data(carModelInventory)
-      .join('rect')
-      .attr('class', 'reserved-bar')
-      .attr('y', d => y(d.model))
-      .attr('height', y.bandwidth())
-      .attr('x', d => x(d.available))
-      .attr('rx', 4)
-      .attr('ry', 4)
-      .attr('fill', 'url(#reservedGradient)')
-      .attr('width', 0)
-      .style('cursor', 'pointer')
-      .on('click', (event, d) => {
-        const model = enhancedCarModels.find(m => m.name === d.model);
-        handleCarModelClick(model);
-      })
-      .transition()
-      .duration(800)
-      .delay(300)
-      .attr('width', d => x(d.reserved));
-      
-    // Добавляем полосы для брак-ок
-    svg.selectAll('.defectiveOk-bar')
-      .data(carModelInventory)
-      .join('rect')
-      .attr('class', 'defectiveOk-bar')
-      .attr('y', d => y(d.model))
-      .attr('height', y.bandwidth())
-      .attr('x', d => x(d.available + d.reserved))
-      .attr('rx', 4)
-      .attr('ry', 4)
-      .attr('fill', 'url(#defectiveOkGradient)')
-      .attr('width', 0)
-      .style('cursor', 'pointer')
-      .on('click', (event, d) => {
-        const model = enhancedCarModels.find(m => m.name === d.model);
-        handleCarModelClick(model);
-      })
-      .transition()
-      .duration(800)
-      .delay(600)
-      .attr('width', d => x(d.defectiveOk));
-      
-    // Добавляем полосы для дефектных
-    svg.selectAll('.defective-bar')
-      .data(carModelInventory)
-      .join('rect')
-      .attr('class', 'defective-bar')
-      .attr('y', d => y(d.model))
-      .attr('height', y.bandwidth())
-      .attr('x', d => x(d.available + d.reserved + d.defectiveOk))
-      .attr('rx', 4)
-      .attr('ry', 4)
-      .attr('fill', 'url(#defectiveGradient)')
-      .attr('width', 0)
-      .style('cursor', 'pointer')
-      .on('click', (event, d) => {
-        const model = enhancedCarModels.find(m => m.name === d.model);
-        handleCarModelClick(model);
-      })
-      .transition()
-      .duration(800)
-      .delay(900)
-      .attr('width', d => x(d.defective));
-      
-    // Добавляем значения - Улучшенная логика отображения значений для предотвращения перекрытия
+    // Добавляем значения
     const addLabel = (className, key, offset, minPercent) => {
       svg.selectAll(`.${className}`)
         .data(carModelInventory)
@@ -1307,7 +1152,6 @@ useEffect(() => {
           const barWidth = x(percent);
           const position = x(offset(d)) + barWidth / 2;
           
-          // Если процент меньше minPercent или ширина полосы меньше 40px, не показываем текст
           if (percent < minPercent || barWidth < 40) {
             d3.select(this).style('display', 'none');
           } else {
@@ -1333,66 +1177,38 @@ useEffect(() => {
     addLabel('reserved-label', 'reserved', d => d.available, 5);
     addLabel('defectiveOk-label', 'defectiveOk', d => d.available + d.reserved, 5);
     addLabel('defective-label', 'defective', d => d.available + d.reserved + d.defectiveOk, 5);
+    addLabel('tradeIn-label', 'tradeIn', d => d.available + d.reserved + d.defectiveOk + d.defective, 5);
       
-    // Добавляем легенду с отступом, чтобы не перекрывалась с графиком
+    // Добавляем легенду
     if (!isMobile) {
       const legend = svg.append('g')
-        .attr('transform', `translate(${width - 330}, ${height - 30})`);
+        .attr('transform', `translate(${width - 420}, ${height - 30})`); // Увеличиваем место для легенды
         
-      legend.append('rect')
-        .attr('width', 15)
-        .attr('height', 15)
-        .attr('fill', '#22c55e')
-        .attr('rx', 2);
+      const legendItems = [
+        { key: 'available', label: t('status.available'), color: '#22c55e' },
+        { key: 'reserved', label: t('status.reserved'), color: '#3b82f6' },
+        { key: 'defectiveOk', label: t('status.defectiveOk'), color: '#f59e0b' },
+        { key: 'defective', label: t('status.defective'), color: '#ef4444' },
+        { key: 'tradeIn', label: 'Trade-in', color: '#8b5cf6' } // Добавляем Trade-in
+      ];
+      
+      legendItems.forEach((item, i) => {
+        const xOffset = i * 85;
         
-      legend.append('text')
-        .attr('x', 20)
-        .attr('y', 12)
-        .style('font-size', '12px')
-        .style('fill', '#d1d5db')
-        .text(t('status.available'));
-        
-      legend.append('rect')
-        .attr('width', 15)
-        .attr('height', 15)
-        .attr('fill', '#3b82f6')
-        .attr('rx', 2)
-        .attr('transform', 'translate(95, 0)');
-        
-      legend.append('text')
-        .attr('x', 115)
-        .attr('y', 12)
-        .style('font-size', '12px')
-        .style('fill', '#d1d5db')
-        .text(t('status.reserved'));
-        
-      legend.append('rect')
-        .attr('width', 15)
-        .attr('height', 15)
-        .attr('fill', '#f59e0b')
-        .attr('rx', 2)
-        .attr('transform', 'translate(210, 0)');
-        
-      legend.append('text')
-        .attr('x', 230)
-        .attr('y', 12)
-        .style('font-size', '12px')
-        .style('fill', '#d1d5db')
-        .text(t('status.defectiveOk'));
-        
-      legend.append('rect')
-        .attr('width', 15)
-        .attr('height', 15)
-        .attr('fill', '#ef4444')
-        .attr('rx', 2)
-        .attr('transform', 'translate(295, 0)');
-        
-      legend.append('text')
-        .attr('x', 315)
-        .attr('y', 12)
-        .style('font-size', '12px')
-        .style('fill', '#d1d5db')
-        .text(t('status.defective'));
+        legend.append('rect')
+          .attr('width', 15)
+          .attr('height', 15)
+          .attr('fill', item.color)
+          .attr('rx', 2)
+          .attr('transform', `translate(${xOffset}, 0)`);
+          
+        legend.append('text')
+          .attr('x', xOffset + 20)
+          .attr('y', 12)
+          .style('font-size', '12px')
+          .style('fill', '#d1d5db')
+          .text(item.label);
+      });
     }
   };
 
@@ -1407,7 +1223,7 @@ useEffect(() => {
     const width = container.clientWidth - margin.left - margin.right;
     const height = container.clientHeight - margin.top - margin.bottom;
     
-    if (width < 100 || height < 100) return; // Слишком маленький размер для рендеринга
+    if (width < 100 || height < 100) return;
     
     const svg = d3.select(container)
       .append('svg')
@@ -1416,10 +1232,8 @@ useEffect(() => {
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
       
-    // Получаем данные о цветах для выбранной модели
     const colorData = model.colors;
     
-    // Шкалы
     const y = d3.scaleBand()
       .domain(colorData.map(d => d.name))
       .range([0, height])
@@ -1429,7 +1243,6 @@ useEffect(() => {
       .domain([0, d3.max(colorData, d => d.count) * 1.2])
       .range([0, width]);
       
-    // Оси
     svg.append('g')
       .attr('transform', `translate(0,${height})`)
       .call(d3.axisBottom(x).ticks(5))
@@ -1442,7 +1255,6 @@ useEffect(() => {
       .style('font-size', isMobile ? '10px' : '12px')
       .style('fill', '#9ca3af');
       
-    // Создаем полосы с анимацией
     svg.selectAll('.color-bar')
       .data(colorData)
       .join('rect')
@@ -1458,14 +1270,12 @@ useEffect(() => {
       .delay((d, i) => i * 100)
       .attr('width', d => x(d.count));
       
-// Улучшенная логика отображения надписей, чтобы не отображать надписи для маленьких полос
     svg.selectAll('.color-label')
       .data(colorData)
       .join('text')
       .attr('class', 'color-label')
       .each(function(d) {
         const barWidth = x(d.count);
-        // Если ширина полосы меньше 40px, не показываем надпись
         if (barWidth < 40) {
           d3.select(this).style('display', 'none');
         } else {
@@ -1491,7 +1301,6 @@ useEffect(() => {
         }
       });
       
-    // Добавляем заголовок
     svg.append('text')
       .attr('x', width / 2)
       .attr('y', -margin.top / 2)
@@ -1511,7 +1320,7 @@ useEffect(() => {
     const width = container.clientWidth;
     const height = container.clientHeight;
     
-    if (width < 100 || height < 100) return; // Слишком маленький размер для рендеринга
+    if (width < 100 || height < 100) return;
     
     const radius = Math.min(width, height) / 2 * 0.8;
     
@@ -1522,32 +1331,29 @@ useEffect(() => {
       .append('g')
       .attr('transform', `translate(${width/2},${height/2})`);
       
-    // Данные о заполненности склада
     const data = [
       { name: t('status.free'), value: warehouse.capacity - warehouse.totalCount, color: '#94a3b8' },
       { name: t('status.defective'), value: warehouse.defective, color: '#ef4444' }, 
       { name: t('status.defectiveOk'), value: warehouse.defectiveOk, color: '#f59e0b' },
       { name: t('status.reserved'), value: warehouse.reserved, color: '#3b82f6' },
-      { name: t('status.available'), value: warehouse.available, color: '#22c55e' }
+      { name: t('status.available'), value: warehouse.available, color: '#22c55e' },
+      { name: 'Trade-in', value: warehouse.tradeIn, color: '#8b5cf6' } // Добавляем Trade-in
     ];
     
-    // Создаем пирог
     const pie = d3.pie()
       .value(d => d.value)
       .sort(null);
       
     const data_ready = pie(data);
     
-    // Создаем дуги
     const arc = d3.arc()
-      .innerRadius(radius * 0.7) // Делаем кольцевую диаграмму
+      .innerRadius(radius * 0.7)
       .outerRadius(radius);
       
     const arcHover = d3.arc()
       .innerRadius(radius * 0.68)
       .outerRadius(radius * 1.05);
       
-    // Создаем градиенты
     const defs = svg.append('defs');
     
     data.forEach((d, i) => {
@@ -1570,7 +1376,6 @@ useEffect(() => {
         .attr('stop-opacity', 1);
     });
     
-    // Добавляем дуги с градиентами
     svg.selectAll('path')
       .data(data_ready)
       .join('path')
@@ -1589,7 +1394,6 @@ useEffect(() => {
         const total = d3.sum(data, d => d.value);
         const percent = Math.round((d.data.value / total) * 100);
         
-        // Обновляем центральный текст
         centerLabel.text(d.data.name);
         centerValue.text(`${d.data.value} (${percent}%)`);
       })
@@ -1599,7 +1403,6 @@ useEffect(() => {
           .duration(200)
           .attr('d', arc);
           
-        // Сбрасываем центральный текст
         centerLabel.text(t('charts.occupancy'));
         centerValue.text(`${warehouse.occupancyRate}%`);
       })
@@ -1612,7 +1415,6 @@ useEffect(() => {
         };
       });
       
-    // Центральный текст
     const centerLabel = svg.append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '-0.5em')
@@ -1627,8 +1429,6 @@ useEffect(() => {
       .style('font-weight', 'bold')
       .style('fill', '#ffffff')
       .text(`${warehouse.occupancyRate}%`);
-      
-    // Добавляем пояснение о том, что показывает круг
     svg.append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '2.5em')
@@ -1636,7 +1436,6 @@ useEffect(() => {
       .style('fill', '#d1d5db')
       .text(t('charts.currentOccupancy'));
       
-    // Статус заполненности склада с цветовой индикацией
     const statusColors = {
       'critical': '#ef4444',
       'high': '#f97316',
@@ -1735,7 +1534,7 @@ useEffect(() => {
       </div>
       
       {/* Ключевые метрики с обновленными статусами */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
         <div className="bg-gray-800 p-4 rounded-lg shadow-md">
           <div className="flex items-center">
             <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
@@ -1805,20 +1604,35 @@ useEffect(() => {
             </div>
           </div>
         </div>
+        
+        {/* Новая метрика для Trade-in */}
+        <div className="bg-gray-800 p-4 rounded-lg shadow-md">
+          <div className="flex items-center">
+            <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm text-gray-400">Trade-in</div>
+              <div className="text-xl font-bold">{totalTradeIn}</div>
+            </div>
+          </div>
+        </div>
       </div>
      
       {/* Обновленная метрика с временем обновления */}
-  <div className="bg-gray-800 p-4 rounded-lg shadow-md mb-6">
-  <div className="flex items-center justify-between">
-    <div>
-      <span className="text-sm text-gray-400">{t('metrics.totalCarModels', { count: enhancedCarModels.length })}</span>
-    </div>
-    
-    <div className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm">
-      {t('metrics.updatedAt')} {formatDate(lastUpdateDate)}
-    </div>
-  </div>
-</div>
+      <div className="bg-gray-800 p-4 rounded-lg shadow-md mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-sm text-gray-400">{t('metrics.totalCarModels', { count: enhancedCarModels.length })}</span>
+          </div>
+          
+          <div className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm">
+            {t('metrics.updatedAt')} {formatDate(lastUpdateDate)}
+          </div>
+        </div>
+      </div>
      
       {/* Основные графики */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -1899,6 +1713,11 @@ useEffect(() => {
                   <span className="text-xs px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded">
                     {model.defective} {t('status.defectiveShort')}
                   </span>
+                  {model.tradeIn > 0 && (
+                    <span className="text-xs px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded">
+                      {model.tradeIn} Trade-in
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1919,6 +1738,7 @@ useEffect(() => {
                 <th className="p-3">{t('table.reserved')}</th>
                 <th className="p-3">{t('table.defectiveOk')}</th>
                 <th className="p-3">{t('table.defective')}</th>
+                <th className="p-3">Trade-in</th>
                 <th className="p-3 rounded-r-lg">{t('table.actions')}</th>
               </tr>
             </thead>
@@ -1959,6 +1779,11 @@ useEffect(() => {
                   <td className="p-3">
                     <span className={`bg-red-500/20 text-red-400 px-2 py-1 rounded-full text-xs`}>
                       {warehouse.defective}
+                    </span>
+                  </td>
+                  <td className="p-3">
+                    <span className={`bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full text-xs`}>
+                      {warehouse.tradeIn}
                     </span>
                   </td>
                   <td className="p-3">
@@ -2037,9 +1862,13 @@ useEffect(() => {
                     <div className="text-gray-400 text-xs">{t('metrics.defectiveOk')}</div>
                     <div className="text-white text-lg font-medium">{selectedCarModel.defectiveOk}</div>
                   </div>
-                  <div className="bg-gray-800/70 p-3 rounded-lg col-span-2">
+                  <div className="bg-gray-800/70 p-3 rounded-lg">
                     <div className="text-gray-400 text-xs">{t('metrics.defective')}</div>
                     <div className="text-white text-lg font-medium">{selectedCarModel.defective}</div>
+                  </div>
+                  <div className="bg-gray-800/70 p-3 rounded-lg">
+                    <div className="text-gray-400 text-xs">Trade-in</div>
+                    <div className="text-white text-lg font-medium">{selectedCarModel.tradeIn}</div>
                   </div>
                 </div>
               </div>
@@ -2112,6 +1941,23 @@ useEffect(() => {
                       <div 
                         className="h-full bg-red-500 rounded-full"
                         style={{ width: `${(selectedCarModel.defective / selectedCarModel.totalCount) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  
+                  {/* Trade-in автомобили */}
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-gray-300">Trade-in</span>
+                      <span className="text-white font-medium">
+                        {selectedCarModel.tradeIn} {t('units')} 
+                        ({Math.round((selectedCarModel.tradeIn / selectedCarModel.totalCount) * 100)}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-purple-500 rounded-full"
+                        style={{ width: `${(selectedCarModel.tradeIn / selectedCarModel.totalCount) * 100}%` }}
                       ></div>
                     </div>
                   </div>
@@ -2194,6 +2040,21 @@ useEffect(() => {
                           </div>
                         </div>
                       </div>
+                      
+                      {color.tradeIn > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-400">Trade-in:</span>
+                          <div className="flex items-center">
+                            <span className="text-xs text-white mr-1">{color.tradeIn}</span>
+                            <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-purple-500 rounded-full"
+                                style={{ width: `${(color.tradeIn / color.count) * 100}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -2240,6 +2101,10 @@ useEffect(() => {
                         className="h-full bg-red-500" 
                         style={{ width: `${(modification.defective / modification.count) * 100}%` }}
                       ></div>
+                      <div 
+                        className="h-full bg-purple-500" 
+                        style={{ width: `${(modification.tradeIn / modification.count) * 100}%` }}
+                      ></div>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-2">
@@ -2259,6 +2124,12 @@ useEffect(() => {
                         <span className="text-xs text-red-400">{t('status.defective')}</span>
                         <span className="text-xs text-white">{modification.defective}</span>
                       </div>
+                      {modification.tradeIn > 0 && (
+                        <div className="flex justify-between items-center bg-purple-500/10 px-2 py-1 rounded col-span-2">
+                          <span className="text-xs text-purple-400">Trade-in</span>
+                          <span className="text-xs text-white">{modification.tradeIn}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -2296,9 +2167,13 @@ useEffect(() => {
                         <div className="text-gray-400 text-xs">{t('metrics.defectiveOk')}</div>
                         <div className="text-white text-lg font-medium">{selectedModification.defectiveOk}</div>
                       </div>
-                      <div className="bg-gray-800/70 p-3 rounded-lg col-span-2">
+                      <div className="bg-gray-800/70 p-3 rounded-lg">
                         <div className="text-gray-400 text-xs">{t('metrics.defective')}</div>
                         <div className="text-white text-lg font-medium">{selectedModification.defective}</div>
+                      </div>
+                      <div className="bg-gray-800/70 p-3 rounded-lg">
+                        <div className="text-gray-400 text-xs">Trade-in</div>
+                        <div className="text-white text-lg font-medium">{selectedModification.tradeIn}</div>
                       </div>
                     </div>
                     
@@ -2308,7 +2183,6 @@ useEffect(() => {
                       <div className="bg-gray-800/70 p-3 rounded-lg">
                         <div className="space-y-2">
                           {[...Array(Math.min(5, enhancedWarehouses.length))].map((_, index) => {
-                            // Имитационные данные для примера
                             const warehouse = enhancedWarehouses[index];
                             const availableCount = Math.floor(selectedModification.available * (Math.random() * 0.5 + 0.5));
                             const warehousePercent = Math.floor((availableCount / selectedModification.available) * 100);
@@ -2396,9 +2270,13 @@ useEffect(() => {
                     <div className="text-gray-400 text-xs">{t('metrics.defectiveOk')}</div>
                     <div className="text-white text-lg font-medium">{selectedWarehouse.defectiveOk}</div>
                   </div>
-                  <div className="bg-gray-800/70 p-3 rounded-lg col-span-2">
+                  <div className="bg-gray-800/70 p-3 rounded-lg">
                     <div className="text-gray-400 text-xs">{t('metrics.defective')}</div>
                     <div className="text-white text-lg font-medium">{selectedWarehouse.defective}</div>
+                  </div>
+                  <div className="bg-gray-800/70 p-3 rounded-lg">
+                    <div className="text-gray-400 text-xs">Trade-in</div>
+                    <div className="text-white text-lg font-medium">{selectedWarehouse.tradeIn}</div>
                   </div>
                 </div>
               </div>
@@ -2427,6 +2305,9 @@ useEffect(() => {
                           <span className="ml-2 text-xs text-amber-400">
                             {model.defectiveOk > 0 ? `(${model.defectiveOk} ${t('status.defectiveOkShort')})` : ''}
                           </span>
+                          <span className="ml-2 text-xs text-purple-400">
+                            {model.tradeIn > 0 ? `(${model.tradeIn} Trade-in)` : ''}
+                          </span>
                         </div>
                       </div>
                       <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
@@ -2450,9 +2331,7 @@ useEffect(() => {
                       className="bg-gray-800/60 mt-5 p-4 rounded-lg overflow-hidden"
                     >
                       {(() => {
-                        // Находим данные выбранной модели
                         const modelData = selectedWarehouse.models.find(m => m.id === selectedWarehouseModel);
-                        // Находим полные данные модели
                         const fullModelData = enhancedCarModels.find(m => m.id === selectedWarehouseModel);
                         
                         if (!modelData || !fullModelData) return <div>{t('errors.dataNotFound')}</div>;
@@ -2475,7 +2354,7 @@ useEffect(() => {
                             </div>
                             
                             {/* Статистика по модели на этом складе */}
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
                               <div className="bg-gray-700 p-3 rounded-lg">
                                 <div className="text-gray-400 text-xs">{t('metrics.total')}</div>
                                 <div className="text-white text-lg font-medium">{modelData.count}</div>
@@ -2489,11 +2368,20 @@ useEffect(() => {
                                 <div className="text-white text-lg font-medium">{modelData.reserved}</div>
                               </div>
                               <div className="bg-amber-900/30 p-3 rounded-lg">
-                                <div className="text-amber-400 text-xs">{t('metrics.defective')}</div>
-                                <div className="text-white text-lg font-medium">{modelData.defective + modelData.defectiveOk}</div>
+                                <div className="text-amber-400 text-xs">{t('metrics.defectiveOk')}</div>
+                                <div className="text-white text-lg font-medium">{modelData.defectiveOk}</div>
+                              </div>
+                              <div className="bg-red-900/30 p-3 rounded-lg">
+                                <div className="text-red-400 text-xs">{t('metrics.defective')}</div>
+                                <div className="text-white text-lg font-medium">{modelData.defective}</div>
+                              </div>
+                              <div className="bg-purple-900/30 p-3 rounded-lg">
+                                <div className="text-purple-400 text-xs">Trade-in</div>
+                                <div className="text-white text-lg font-medium">{modelData.tradeIn}</div>
                               </div>
                             </div>
-                          {/* Табы для выбора между цветами и модификациями */}
+                            
+                            {/* Табы для выбора между цветами и модификациями */}
                             <div className="border-b border-gray-700 mb-4">
                               <nav className="-mb-px flex space-x-6">
                                 <button 
@@ -2525,15 +2413,11 @@ useEffect(() => {
                                 <h5 className="text-sm font-medium text-gray-300 mb-2">{t('details.allModifications', { model: modelData.name })}</h5>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                   {fullModelData.modifications.map(mod => {
-                                    // Получаем данные только для этого склада с помощью API (упрощенный пример)
-                                    // В реальном приложении здесь будет запрос к API или фильтрация данных
                                     const warehouseMod = {
                                       ...mod,
-                                      // В примере генерируем примерные данные
                                       warehouseCount: Math.floor(mod.count * (modelData.count / fullModelData.totalCount))
                                     };
                                     
-                                    // Пропускаем модификации без автомобилей на этом складе
                                     if (warehouseMod.warehouseCount <= 0) return null;
                                     
                                     return (
@@ -2543,7 +2427,7 @@ useEffect(() => {
                                           <span className="text-gray-400 text-xs">{warehouseMod.warehouseCount} {t('units')}</span>
                                         </div>
                                         <div className="grid grid-cols-2 gap-1 mt-2">
-                                          <div className="bg-green-900/20 px-1.5 py-1 rounded flex justify-between">
+                                        <div className="bg-green-900/20 px-1.5 py-1 rounded flex justify-between">
                                             <span className="text-green-400 text-xs">{t('status.availableShort')}:</span>
                                             <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.available / modelData.count))}</span>
                                           </div>
@@ -2559,6 +2443,12 @@ useEffect(() => {
                                             <span className="text-red-400 text-xs">{t('status.defectiveShort')}:</span>
                                             <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.defective / modelData.count))}</span>
                                           </div>
+                                          {modelData.tradeIn > 0 && (
+                                            <div className="bg-purple-900/20 px-1.5 py-1 rounded flex justify-between col-span-2">
+                                              <span className="text-purple-400 text-xs">Trade-in:</span>
+                                              <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.tradeIn / modelData.count))}</span>
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
                                     );
@@ -2573,14 +2463,11 @@ useEffect(() => {
                                 <h5 className="text-sm font-medium text-gray-300 mb-2">{t('details.colorDistribution')}</h5>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                   {fullModelData.colors.map(color => {
-                                    // Получаем данные только для этого склада
                                     const warehouseColor = {
                                       ...color,
-                                      // В примере генерируем примерные данные
                                       warehouseCount: Math.floor(color.count * (modelData.count / fullModelData.totalCount))
                                     };
                                     
-                                    // Пропускаем цвета без автомобилей на этом складе
                                     if (warehouseColor.warehouseCount <= 0) return null;
                                     
                                     return (
@@ -2612,6 +2499,12 @@ useEffect(() => {
                                             <span className="text-red-400 text-xs">{t('status.defectiveShort')}:</span>
                                             <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.defective / modelData.count))}</span>
                                           </div>
+                                          {modelData.tradeIn > 0 && (
+                                            <div className="bg-purple-900/20 px-1.5 py-1 rounded flex justify-between col-span-2">
+                                              <span className="text-purple-400 text-xs">Trade-in:</span>
+                                              <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.tradeIn / modelData.count))}</span>
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
                                     );
