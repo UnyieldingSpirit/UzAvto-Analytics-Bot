@@ -2177,7 +2177,6 @@ const CarWarehouseAnalytics = () => {
                       </div>
                     </div>
                     
-                    {/* Добавляем блок распределения по складам */}
                     {/* <div className="mt-5">
                       <h4 className="text-white font-medium mb-2">{t('details.warehouseDistribution')}</h4>
                       <div className="bg-gray-800/70 p-3 rounded-lg">
