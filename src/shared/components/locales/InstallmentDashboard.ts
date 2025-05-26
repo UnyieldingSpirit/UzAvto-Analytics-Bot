@@ -15,7 +15,8 @@ export const installmentDashboardTranslations: LocaleMessages = {
             remaining: 'Остаток',
             totalContracts: 'Всего заказов',
             avgPrice: 'Средняя стоимость',
-            outOf: 'из'
+            outOf: 'из',
+            total: 'Всего'
         },
         views: {
             byRegion: 'По регионам',
@@ -80,7 +81,8 @@ export const installmentDashboardTranslations: LocaleMessages = {
             remaining: 'Qoldiq',
             totalContracts: 'Jami buyurtmalar',
             avgPrice: 'O\'rtacha qiymat',
-            outOf: 'dan'
+            outOf: 'dan',
+            total: 'Jami'
         },
         views: {
             byRegion: 'Viloyatlar bo\'yicha',
