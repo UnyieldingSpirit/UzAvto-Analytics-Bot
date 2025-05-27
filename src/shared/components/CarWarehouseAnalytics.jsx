@@ -165,375 +165,275 @@ const CarWarehouseAnalytics = () => {
     return dateString || 'Нет данных'; 
   };
   
- // Функция для обработки загруженных данных
-const processData = (warehouses) => {
-  const carModels = [];
-  
-  let totalModelsCount = {};
-  
-  warehouses.forEach(warehouse => {
-    if (!warehouse.models || warehouse.models.length === 0) return;
+  // Функция для обработки загруженных данных
+  const processData = (warehouses) => {
+    const carModels = [];
     
-    warehouse.models.forEach(model => {
-      if (!model.modifications || model.modifications.length === 0) return;
+    let totalModelsCount = {};
+    
+    warehouses.forEach(warehouse => {
+      if (!warehouse.models || warehouse.models.length === 0) return;
       
-      if (!totalModelsCount[model.model]) {
-        totalModelsCount[model.model] = {
-          totalCount: 0,
-          available: 0,
-          reserved: 0,
-          defective: 0,
-          defectiveOk: 0,
-          tradeIn: 0,
-          atDealer: 0, // Добавляем статус "У дилера"
-          inTransit: 0, // Добавляем статус "В пути"
-          otherStatuses: {}, // Для любых других статусов
-          colors: {},
-          modifications: {},
-          photo_sha: model.photo_sha || null
-        };
-      }
-      
-      if (!totalModelsCount[model.model].photo_sha && model.photo_sha) {
-        totalModelsCount[model.model].photo_sha = model.photo_sha;
-      }
-      
-      model.modifications.forEach(mod => {
-        if (!mod.colors || mod.colors.length === 0) return;
+      warehouse.models.forEach(model => {
+        if (!model.modifications || model.modifications.length === 0) return;
         
-        if (!totalModelsCount[model.model].modifications[mod.modification]) {
-          totalModelsCount[model.model].modifications[mod.modification] = {
+        if (!totalModelsCount[model.model]) {
+          totalModelsCount[model.model] = {
             totalCount: 0,
             available: 0,
             reserved: 0,
             defective: 0,
             defectiveOk: 0,
-            tradeIn: 0,
-            atDealer: 0,
-            inTransit: 0,
-            otherStatuses: {}
+            tradeIn: 0, // Добавляем Trade-in
+            colors: {},
+            modifications: {},
+            photo_sha: model.photo_sha || null
           };
         }
         
-        mod.colors.forEach(color => {
-          if (!color.statuses || color.statuses.length === 0) return;
+        if (!totalModelsCount[model.model].photo_sha && model.photo_sha) {
+          totalModelsCount[model.model].photo_sha = model.photo_sha;
+        }
+        
+        model.modifications.forEach(mod => {
+          if (!mod.colors || mod.colors.length === 0) return;
           
-          if (!totalModelsCount[model.model].colors[color.color]) {
-            totalModelsCount[model.model].colors[color.color] = {
+          if (!totalModelsCount[model.model].modifications[mod.modification]) {
+            totalModelsCount[model.model].modifications[mod.modification] = {
               totalCount: 0,
               available: 0,
               reserved: 0,
               defective: 0,
               defectiveOk: 0,
-              tradeIn: 0,
-              atDealer: 0,
-              inTransit: 0,
-              otherStatuses: {}
+              tradeIn: 0 // Добавляем Trade-in
             };
           }
           
-          color.statuses.forEach(status => {
-            const count = parseInt(status.count);
-            const statusName = status.status_name;
+          mod.colors.forEach(color => {
+            if (!color.statuses || color.statuses.length === 0) return;
             
-            totalModelsCount[model.model].totalCount += count;
-            totalModelsCount[model.model].colors[color.color].totalCount += count;
-            totalModelsCount[model.model].modifications[mod.modification].totalCount += count;
+            if (!totalModelsCount[model.model].colors[color.color]) {
+              totalModelsCount[model.model].colors[color.color] = {
+                totalCount: 0,
+                available: 0,
+                reserved: 0,
+                defective: 0,
+                defectiveOk: 0,
+                tradeIn: 0 // Добавляем Trade-in
+              };
+            }
             
-            // Распределяем по статусам с учетом всех возможных вариантов
-            switch(statusName) {
-              case "Свободно":
+            color.statuses.forEach(status => {
+              const count = parseInt(status.count);
+              
+              totalModelsCount[model.model].totalCount += count;
+              totalModelsCount[model.model].colors[color.color].totalCount += count;
+              totalModelsCount[model.model].modifications[mod.modification].totalCount += count;
+              
+              // Распределяем по статусам
+              if (status.status_name === "Свободно") {
                 totalModelsCount[model.model].available += count;
                 totalModelsCount[model.model].colors[color.color].available += count;
                 totalModelsCount[model.model].modifications[mod.modification].available += count;
-                break;
-              
-              case "Именной":
-              case "Закрепленные":
+              } else if (status.status_name === "Именной" || status.status_name === "Закрепленные") {
                 totalModelsCount[model.model].reserved += count;
                 totalModelsCount[model.model].colors[color.color].reserved += count;
                 totalModelsCount[model.model].modifications[mod.modification].reserved += count;
-                break;
-              
-              case "Брак":
+              } else if (status.status_name === "Брак") {
                 totalModelsCount[model.model].defective += count;
                 totalModelsCount[model.model].colors[color.color].defective += count;
                 totalModelsCount[model.model].modifications[mod.modification].defective += count;
-                break;
-              
-              case "Брак-ОК":
+              } else if (status.status_name === "Брак-ОК") {
                 totalModelsCount[model.model].defectiveOk += count;
                 totalModelsCount[model.model].colors[color.color].defectiveOk += count;
                 totalModelsCount[model.model].modifications[mod.modification].defectiveOk += count;
-                break;
-              
-              case "Trade-in":
+              } else if (status.status_name === "Trade-in") {
                 totalModelsCount[model.model].tradeIn += count;
                 totalModelsCount[model.model].colors[color.color].tradeIn += count;
                 totalModelsCount[model.model].modifications[mod.modification].tradeIn += count;
-                break;
-              
-              case "У дилера":
-              case "Дилер":
-                totalModelsCount[model.model].atDealer += count;
-                totalModelsCount[model.model].colors[color.color].atDealer += count;
-                totalModelsCount[model.model].modifications[mod.modification].atDealer += count;
-                break;
-              
-              case "В пути":
-              case "Транзит":
-                totalModelsCount[model.model].inTransit += count;
-                totalModelsCount[model.model].colors[color.color].inTransit += count;
-                totalModelsCount[model.model].modifications[mod.modification].inTransit += count;
-                break;
-              
-              default:
-                // Для любых других статусов
-                if (!totalModelsCount[model.model].otherStatuses[statusName]) {
-                  totalModelsCount[model.model].otherStatuses[statusName] = 0;
-                  totalModelsCount[model.model].colors[color.color].otherStatuses[statusName] = 0;
-                  totalModelsCount[model.model].modifications[mod.modification].otherStatuses[statusName] = 0;
-                }
-                totalModelsCount[model.model].otherStatuses[statusName] += count;
-                totalModelsCount[model.model].colors[color.color].otherStatuses[statusName] += count;
-                totalModelsCount[model.model].modifications[mod.modification].otherStatuses[statusName] += count;
-                break;
-            }
+              }
+            });
           });
         });
       });
     });
-  });
-  
-  // Преобразуем объект с итогами в массив для использования в компоненте
-  Object.entries(totalModelsCount).forEach(([modelName, modelData]) => {
-    let colorsArray = Object.entries(modelData.colors).map(([colorName, colorData]) => ({
-      name: colorName,
-      count: colorData.totalCount,
-      available: colorData.available,
-      reserved: colorData.reserved,
-      defective: colorData.defective,
-      defectiveOk: colorData.defectiveOk,
-      tradeIn: colorData.tradeIn,
-      atDealer: colorData.atDealer,
-      inTransit: colorData.inTransit,
-      otherStatuses: colorData.otherStatuses,
-      hex: getColorHex(colorName)
-    }));
     
-    let modificationsArray = Object.entries(modelData.modifications).map(([modName, modData]) => ({
-      id: `${modelName}-${modName}`,
-      name: modName,
-      count: modData.totalCount,
-      available: modData.available,
-      reserved: modData.reserved,
-      defective: modData.defective,
-      defectiveOk: modData.defectiveOk,
-      tradeIn: modData.tradeIn,
-      atDealer: modData.atDealer,
-      inTransit: modData.inTransit,
-      otherStatuses: modData.otherStatuses
-    }));
-    
-    const imageUrl = `https://uzavtosalon.uz/b/core/m$load_image?sha=${modelData.photo_sha}&width=400&height=400`
-    
-    carModels.push({
-      id: modelName,
-      name: modelName,
-      category: getCategoryForModel(modelName),
-      totalCount: modelData.totalCount,
-      available: modelData.available,
-      reserved: modelData.reserved,
-      defective: modelData.defective,
-      defectiveOk: modelData.defectiveOk,
-      tradeIn: modelData.tradeIn,
-      atDealer: modelData.atDealer,
-      inTransit: modelData.inTransit,
-      otherStatuses: modelData.otherStatuses,
-      colors: colorsArray,
-      modifications: modificationsArray,
-      img: imageUrl,
-      photo_sha: modelData.photo_sha
+    // Преобразуем объект с итогами в массив для использования в компоненте
+    Object.entries(totalModelsCount).forEach(([modelName, modelData]) => {
+      let colorsArray = Object.entries(modelData.colors).map(([colorName, colorData]) => ({
+        name: colorName,
+        count: colorData.totalCount,
+        available: colorData.available,
+        reserved: colorData.reserved,
+        defective: colorData.defective,
+        defectiveOk: colorData.defectiveOk,
+        tradeIn: colorData.tradeIn,
+        hex: getColorHex(colorName)
+      }));
+      
+      let modificationsArray = Object.entries(modelData.modifications).map(([modName, modData]) => ({
+        id: `${modelName}-${modName}`,
+        name: modName,
+        count: modData.totalCount,
+        available: modData.available,
+        reserved: modData.reserved,
+        defective: modData.defective,
+        defectiveOk: modData.defectiveOk,
+        tradeIn: modData.tradeIn
+      }));
+      
+      const imageUrl = `https://uzavtosalon.uz/b/core/m$load_image?sha=${modelData.photo_sha}&width=400&height=400`
+      
+      carModels.push({
+        id: modelName,
+        name: modelName,
+        category: getCategoryForModel(modelName),
+        totalCount: modelData.totalCount,
+        available: modelData.available,
+        reserved: modelData.reserved,
+        defective: modelData.defective,
+        defectiveOk: modelData.defectiveOk,
+        tradeIn: modelData.tradeIn,
+        colors: colorsArray,
+        modifications: modificationsArray,
+        img: imageUrl,
+        photo_sha: modelData.photo_sha
+      });
     });
-  });
-  
-  carModels.sort((a, b) => b.totalCount - a.totalCount);
-  
-  // Обработка данных о складах - добавляем те же поля
-  const processedWarehouses = warehouses.map(warehouse => {
-    if (!warehouse.models || warehouse.models.length === 0) {
-      return null;
-    }
     
-    const modelCounts = [];
-    let totalCount = 0;
-    let defective = 0;
-    let defectiveOk = 0;
-    let reserved = 0;
-    let available = 0;
-    let tradeIn = 0;
-    let atDealer = 0;
-    let inTransit = 0;
-    let otherStatuses = {};
+    carModels.sort((a, b) => b.totalCount - a.totalCount);
     
-    const categoryCountsMap = {};
-    
-    warehouse.models.forEach(model => {
-      let modelTotal = 0;
-      let modelAvailable = 0;
-      let modelReserved = 0;
-      let modelDefective = 0;
-      let modelDefectiveOk = 0;
-      let modelTradeIn = 0;
-      let modelAtDealer = 0;
-      let modelInTransit = 0;
-      let modelOtherStatuses = {};
+    // Обработка данных о складах
+    const processedWarehouses = warehouses.map(warehouse => {
+      if (!warehouse.models || warehouse.models.length === 0) {
+        return null;
+      }
       
-      if (!model.modifications) return;
+      const modelCounts = [];
+      let totalCount = 0;
+      let defective = 0;
+      let defectiveOk = 0;
+      let reserved = 0;
+      let available = 0;
+      let tradeIn = 0; // Добавляем Trade-in
       
-      model.modifications.forEach(mod => {
-        if (!mod.colors) return;
+      const categoryCountsMap = {};
+      
+      warehouse.models.forEach(model => {
+        let modelTotal = 0;
+        let modelAvailable = 0;
+        let modelReserved = 0;
+        let modelDefective = 0;
+        let modelDefectiveOk = 0;
+        let modelTradeIn = 0; // Добавляем Trade-in
         
-        mod.colors.forEach(color => {
-          if (!color.statuses) return;
+        if (!model.modifications) return;
+        
+        model.modifications.forEach(mod => {
+          if (!mod.colors) return;
           
-          color.statuses.forEach(status => {
-            const count = parseInt(status.count);
-            const statusName = status.status_name;
-            totalCount += count;
-            modelTotal += count;
+          mod.colors.forEach(color => {
+            if (!color.statuses) return;
             
-            switch(statusName) {
-              case "Свободно":
+            color.statuses.forEach(status => {
+              const count = parseInt(status.count);
+              totalCount += count;
+              modelTotal += count;
+              
+              if (status.status_name === "Свободно") {
                 available += count;
                 modelAvailable += count;
-                break;
-              case "Именной":
-              case "Закрепленные":
+              } else if (status.status_name === "Именной" || status.status_name === "Закрепленные") {
                 reserved += count;
                 modelReserved += count;
-                break;
-              case "Брак":
+              } else if (status.status_name === "Брак") {
                 defective += count;
                 modelDefective += count;
-                break;
-              case "Брак-ОК":
+              } else if (status.status_name === "Брак-ОК") {
                 defectiveOk += count;
                 modelDefectiveOk += count;
-                break;
-              case "Trade-in":
+              } else if (status.status_name === "Trade-in") {
                 tradeIn += count;
                 modelTradeIn += count;
-                break;
-              case "У дилера":
-              case "Дилер":
-                atDealer += count;
-                modelAtDealer += count;
-                break;
-              case "В пути":
-              case "Транзит":
-                inTransit += count;
-                modelInTransit += count;
-                break;
-              default:
-                if (!otherStatuses[statusName]) otherStatuses[statusName] = 0;
-                if (!modelOtherStatuses[statusName]) modelOtherStatuses[statusName] = 0;
-                otherStatuses[statusName] += count;
-                modelOtherStatuses[statusName] += count;
-                break;
-            }
+              }
+            });
           });
         });
+        
+        if (modelTotal > 0) {
+          const category = getCategoryForModel(model.model);
+          
+          if (!categoryCountsMap[category]) {
+            categoryCountsMap[category] = 0;
+          }
+          categoryCountsMap[category] += modelTotal;
+          
+          const photo_sha = model.photo_sha || null;
+          const imageUrl = `https://uzavtosalon.uz/b/core/m$load_image?sha=${photo_sha}&width=400&height=400`
+          
+          modelCounts.push({
+            id: model.model,
+            name: model.model,
+            count: modelTotal,
+            available: modelAvailable,
+            reserved: modelReserved,
+            defective: modelDefective,
+            defectiveOk: modelDefectiveOk,
+            tradeIn: modelTradeIn,
+            category: category,
+            img: imageUrl,
+            photo_sha: photo_sha
+          });
+        }
       });
       
-      if (modelTotal > 0) {
-        const category = getCategoryForModel(model.model);
-        
-        if (!categoryCountsMap[category]) {
-          categoryCountsMap[category] = 0;
-        }
-        categoryCountsMap[category] += modelTotal;
-        
-        const photo_sha = model.photo_sha || null;
-        const imageUrl = `https://uzavtosalon.uz/b/core/m$load_image?sha=${photo_sha}&width=400&height=400`
-        
-        modelCounts.push({
-          id: model.model,
-          name: model.model,
-          count: modelTotal,
-          available: modelAvailable,
-          reserved: modelReserved,
-          defective: modelDefective,
-          defectiveOk: modelDefectiveOk,
-          tradeIn: modelTradeIn,
-          atDealer: modelAtDealer,
-          inTransit: modelInTransit,
-          otherStatuses: modelOtherStatuses,
-          category: category,
-          img: imageUrl,
-          photo_sha: photo_sha
-        });
+      if (totalCount === 0) {
+        return null;
       }
-    });
+      
+      const volume = parseInt(warehouse.volume || 0);
+      const capacity = volume > 0 ? volume : totalCount;
+      const occupancyRate = volume > 0 ? Math.round((totalCount / volume) * 100) : 100;
+      
+      const categories = Object.keys(categoryCountsMap).map(key => ({
+        name: key === 'suv' ? t('categories.suv') : 
+              key === 'sedan' ? t('categories.sedan') : 
+              key === 'minivan' ? t('categories.minivan') : key,
+        count: categoryCountsMap[key]
+      }));
+      
+      return {
+        id: warehouse.warehouse,
+        name: warehouse.warehouse,
+        totalCount,
+        defective,
+        defectiveOk,
+        reserved,
+        available,
+        tradeIn,
+        models: modelCounts,
+        categories,
+        capacity,
+        volume: warehouse.volume || 0,
+        occupancyRate,
+        status: occupancyRate > 90 ? 'critical' : 
+                occupancyRate > 75 ? 'high' : 
+                occupancyRate > 50 ? 'medium' : 'low'
+      };
+    }).filter(Boolean);
     
-    if (totalCount === 0) {
-      return null;
-    }
+    // Обновляем состояния с обработанными данными
+    setEnhancedCarModels(carModels);
+    setEnhancedWarehouses(processedWarehouses);
     
-    const volume = parseInt(warehouse.volume || 0);
-    const capacity = volume > 0 ? volume : totalCount;
-    const occupancyRate = volume > 0 ? Math.round((totalCount / volume) * 100) : 100;
-    
-    const categories = Object.keys(categoryCountsMap).map(key => ({
-      name: key === 'suv' ? t('categories.suv') : 
-            key === 'sedan' ? t('categories.sedan') : 
-            key === 'minivan' ? t('categories.minivan') : key,
-      count: categoryCountsMap[key]
-    }));
-    
-    return {
-      id: warehouse.warehouse,
-      name: warehouse.warehouse,
-      totalCount,
-      defective,
-      defectiveOk,
-      reserved,
-      available,
-      tradeIn,
-      atDealer,
-      inTransit,
-      otherStatuses,
-      models: modelCounts,
-      categories,
-      capacity,
-      volume: warehouse.volume || 0,
-      occupancyRate,
-      status: occupancyRate > 90 ? 'critical' : 
-              occupancyRate > 75 ? 'high' : 
-              occupancyRate > 50 ? 'medium' : 'low'
-    };
-  }).filter(Boolean);
-  
-  // Обновляем состояния с обработанными данными
-  setEnhancedCarModels(carModels);
-  setEnhancedWarehouses(processedWarehouses);
-  
-  // Общие статистические данные
-  setTotalVehicles(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.totalCount, 0));
-  setTotalDefective(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.defective, 0));
-  setTotalDefectiveOk(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.defectiveOk, 0));
-  setTotalReserved(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.reserved, 0));
-  setTotalAvailable(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.available, 0));
-  setTotalTradeIn(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.tradeIn, 0));
-  
-  // Добавляем новые состояния для общих метрик
-  const totalAtDealer = processedWarehouses.reduce((sum, warehouse) => sum + warehouse.atDealer, 0);
-  const totalInTransit = processedWarehouses.reduce((sum, warehouse) => sum + warehouse.inTransit, 0);
-  
-  // Можете добавить новые состояния для этих метрик или обработать их по-другому
-  console.log('Машин у дилера:', totalAtDealer);
-  console.log('Машин в пути:', totalInTransit);
-};
+    // Общие статистические данные
+    setTotalVehicles(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.totalCount, 0));
+    setTotalDefective(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.defective, 0));
+    setTotalDefectiveOk(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.defectiveOk, 0));
+    setTotalReserved(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.reserved, 0));
+    setTotalAvailable(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.available, 0));
+    setTotalTradeIn(processedWarehouses.reduce((sum, warehouse) => sum + warehouse.tradeIn, 0));
+  };
   
   // Функция для переключения отображения модели в контексте склада
   const toggleModelDetailInWarehouse = (modelId) => {
@@ -1796,143 +1696,198 @@ if (!isMobile) {
       </div>
      
       {/* Выбор модели авто с использованием фото */}
-      <div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
-        <div className="flex justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-medium">{t('sections.carModels')}</h2>
-            <p className="text-sm text-gray-400">{t('sections.selectModelHint')}</p>
+<div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
+  <div className="flex justify-between mb-4">
+    <div>
+      <h2 className="text-lg font-medium">{t('sections.carModels')}</h2>
+      <p className="text-sm text-gray-400">{t('sections.selectModelHint')}</p>
+    </div>
+  </div>
+ 
+  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    {enhancedCarModels.map(model => (
+      <div 
+        key={model.id}
+        className={`bg-gray-700 rounded-lg overflow-hidden cursor-pointer transition-all ${
+          selectedCarModel?.id === model.id ? 'ring-2 ring-blue-500' : 'hover:bg-gray-600'
+        }`}
+        onClick={() => handleCarModelClick(model)}
+      >
+        <div className="bg-gray-800 relative overflow-hidden rounded-t-lg">
+          <div className="pt-[75%] relative">
+            <img 
+              src={model.img} 
+              alt={model.name}
+              className="absolute inset-0 w-full h-full object-contain p-2" 
+            />
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-gray-900/70 text-xs text-white text-center">
+            {model.category === 'sedan' ? t('categories.sedan') :
+            model.category === 'suv' ? t('categories.suv') :
+            model.category === 'minivan' ? t('categories.minivan') : model.category}
           </div>
         </div>
-       
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {enhancedCarModels.slice(0, 8).map(model => (
-            <div 
-              key={model.id}
-              className={`bg-gray-700 rounded-lg overflow-hidden cursor-pointer transition-all ${
-                selectedCarModel?.id === model.id ? 'ring-2 ring-blue-500' : 'hover:bg-gray-600'
-              }`}
-              onClick={() => handleCarModelClick(model)}
-            >
-              <div className="bg-gray-800 relative overflow-hidden rounded-t-lg">
-                <div className="pt-[75%] relative">
-                  <img 
-                    src={model.img} 
-                    alt={model.name}
-                    className="absolute inset-0 w-full h-full object-contain p-2" 
-                  />
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-gray-900/70 text-xs text-white text-center">
-                  {model.category === 'sedan' ? t('categories.sedan') :
-                  model.category === 'suv' ? t('categories.suv') :
-                  model.category === 'minivan' ? t('categories.minivan') : model.category}
-                </div>
-              </div>
-              <div className="p-3">
-                <div className="font-medium text-white mb-1">{model.name}</div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">{t('metrics.total')}:</span>
-                  <span className="text-white">{model.totalCount}</span>
-                </div>
-                <div className="mt-2 flex gap-1 flex-wrap">
-                  <span className="text-xs px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded">
-                    {model.available} {t('status.availableShort')}
-                  </span>
-                  <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">
-                    {model.reserved} {t('status.reservedShort')}
-                  </span>
-                  <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded">
-                    {model.defectiveOk} {t('status.defectiveOkShort')}
-                  </span>
-                  <span className="text-xs px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded">
-                    {model.defective} {t('status.defectiveShort')}
-                  </span>
-                  {model.tradeIn > 0 && (
-                    <span className="text-xs px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded">
-                      {model.tradeIn} Trade-in
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="p-3">
+          <div className="font-medium text-white mb-1">{model.name}</div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-400">{t('metrics.total')}:</span>
+            <span className="text-white">{model.totalCount}</span>
+          </div>
+          <div className="mt-2 flex gap-1 flex-wrap">
+            {/* Показываем все статусы, даже если 0 */}
+            <span className={`text-xs px-1.5 py-0.5 rounded ${
+              model.available > 0 ? 'bg-green-500/20 text-green-400' : 'bg-gray-600/20 text-gray-500'
+            }`}>
+              {model.available} {t('status.availableShort')}
+            </span>
+            <span className={`text-xs px-1.5 py-0.5 rounded ${
+              model.reserved > 0 ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-600/20 text-gray-500'
+            }`}>
+              {model.reserved} {t('status.reservedShort')}
+            </span>
+            <span className={`text-xs px-1.5 py-0.5 rounded ${
+              model.defectiveOk > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-gray-600/20 text-gray-500'
+            }`}>
+              {model.defectiveOk} {t('status.defectiveOkShort')}
+            </span>
+            <span className={`text-xs px-1.5 py-0.5 rounded ${
+              model.defective > 0 ? 'bg-red-500/20 text-red-400' : 'bg-gray-600/20 text-gray-500'
+            }`}>
+              {model.defective} {t('status.defectiveShort')}
+            </span>
+            <span className={`text-xs px-1.5 py-0.5 rounded ${
+              model.tradeIn > 0 ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-600/20 text-gray-500'
+            }`}>
+              {model.tradeIn} Trade-in
+            </span>
+            
+            {/* Добавляем новые статусы если они есть */}
+            {model.atDealer !== undefined && (
+              <span className={`text-xs px-1.5 py-0.5 rounded ${
+                model.atDealer > 0 ? 'bg-cyan-500/20 text-cyan-400' : 'bg-gray-600/20 text-gray-500'
+              }`}>
+                {model.atDealer} У дилера
+              </span>
+            )}
+            {model.inTransit !== undefined && (
+              <span className={`text-xs px-1.5 py-0.5 rounded ${
+                model.inTransit > 0 ? 'bg-orange-500/20 text-orange-400' : 'bg-gray-600/20 text-gray-500'
+              }`}>
+                {model.inTransit} В пути
+              </span>
+            )}
+            
+            {/* Показываем другие статусы если есть */}
+            {model.otherStatuses && Object.entries(model.otherStatuses).map(([status, count]) => (
+              <span key={status} className={`text-xs px-1.5 py-0.5 rounded ${
+                count > 0 ? 'bg-gray-500/20 text-gray-400' : 'bg-gray-600/20 text-gray-500'
+              }`}>
+                {count} {status}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
+    ))}
+  </div>
+</div>
      
       {/* Таблица складов с обновленными статусами */}
-      <div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-900/60 text-gray-400 text-left">
-                <th className="p-3 rounded-l-lg">{t('table.warehouseName')}</th>
-                <th className="p-3">{t('table.capacity')}</th>
-                <th className="p-3">{t('table.occupied')}</th>
-                <th className="p-3">{t('table.available')}</th>
-                <th className="p-3">{t('table.reserved')}</th>
-                <th className="p-3">{t('table.defectiveOk')}</th>
-                <th className="p-3">{t('table.defective')}</th>
-                <th className="p-3">Trade-in</th>
-                <th className="p-3 rounded-r-lg">{t('table.actions')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-700">
-              {enhancedWarehouses.map(warehouse => (
-                <motion.tr 
-                  key={warehouse.id} 
-                  className={`hover:bg-gray-700/30 transition-colors cursor-pointer ${
-                    selectedWarehouse?.id === warehouse.id ? 'bg-blue-900/20' : ''
-                  }`}
-                  onClick={() => handleWarehouseClick(warehouse)}
-                  whileHover={{ backgroundColor: 'rgba(55, 65, 81, 0.3)' }}
-                >
-                  <td className="p-3 font-medium">{warehouse.name}</td>
-                  <td className="p-3">{warehouse.capacity}</td>
-                  <td className="p-3">
-                    <div className="flex items-center">
-                      <div className="w-24 bg-gray-700 rounded-full h-2.5 mr-2">
-                        <div 
-                          className={`h-2.5 rounded-full ${
-                            warehouse.occupancyRate > 90 ? 'bg-red-500' : 
-                            warehouse.occupancyRate > 75 ? 'bg-orange-500' : 
-                            warehouse.occupancyRate > 50 ? 'bg-yellow-500' : 'bg-green-500'
-                          }`}
-                          style={{ width: `${warehouse.occupancyRate}%` }}
-                        ></div>
-                      </div>
-                      <span>{warehouse.occupancyRate}%</span>
-                    </div>
-                  </td>
-                  <td className="p-3">{warehouse.available}</td>
-                  <td className="p-3">{warehouse.reserved}</td>
-                  <td className="p-3">
-                    <span className={`bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full text-xs`}>
-                      {warehouse.defectiveOk}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    <span className={`bg-red-500/20 text-red-400 px-2 py-1 rounded-full text-xs`}>
-                      {warehouse.defective}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    <span className={`bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full text-xs`}>
-                      {warehouse.tradeIn}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    <button className="text-blue-400 hover:text-blue-300 transition-colors p-1 rounded-full">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+<div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
+  <div className="overflow-x-auto">
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="bg-gray-900/60 text-gray-400 text-left">
+          <th className="p-3 rounded-l-lg">{t('table.warehouseName')}</th>
+          <th className="p-3">{t('table.capacity')}</th>
+          <th className="p-3">{t('table.occupied')}</th>
+          <th className="p-3">{t('table.available')}</th>
+          <th className="p-3">{t('table.reserved')}</th>
+          <th className="p-3">{t('table.defectiveOk')}</th>
+          <th className="p-3">{t('table.defective')}</th>
+          <th className="p-3">Trade-in</th>
+          {/* Добавляем новые колонки если есть данные */}
+          {enhancedWarehouses.some(w => w.atDealer > 0) && (
+            <th className="p-3">У дилера</th>
+          )}
+          {enhancedWarehouses.some(w => w.inTransit > 0) && (
+            <th className="p-3">В пути</th>
+          )}
+          <th className="p-3 rounded-r-lg">{t('table.actions')}</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-700">
+        {enhancedWarehouses.map(warehouse => (
+          <motion.tr 
+            key={warehouse.id} 
+            className={`hover:bg-gray-700/30 transition-colors cursor-pointer ${
+              selectedWarehouse?.id === warehouse.id ? 'bg-blue-900/20' : ''
+            }`}
+            onClick={() => handleWarehouseClick(warehouse)}
+            whileHover={{ backgroundColor: 'rgba(55, 65, 81, 0.3)' }}
+          >
+            <td className="p-3 font-medium">{warehouse.name}</td>
+            <td className="p-3">{warehouse.capacity}</td>
+            <td className="p-3">
+              <div className="flex items-center">
+                <div className="w-24 bg-gray-700 rounded-full h-2.5 mr-2">
+                  <div 
+                    className={`h-2.5 rounded-full ${
+                      warehouse.occupancyRate > 90 ? 'bg-red-500' : 
+                      warehouse.occupancyRate > 75 ? 'bg-orange-500' : 
+                      warehouse.occupancyRate > 50 ? 'bg-yellow-500' : 'bg-green-500'
+                    }`}
+                    style={{ width: `${warehouse.occupancyRate}%` }}
+                  ></div>
+                </div>
+                <span>{warehouse.occupancyRate}%</span>
+              </div>
+            </td>
+            <td className="p-3">{warehouse.available}</td>
+            <td className="p-3">{warehouse.reserved}</td>
+            <td className="p-3">
+              <span className={`bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full text-xs`}>
+                {warehouse.defectiveOk}
+              </span>
+            </td>
+            <td className="p-3">
+              <span className={`bg-red-500/20 text-red-400 px-2 py-1 rounded-full text-xs`}>
+                {warehouse.defective}
+              </span>
+            </td>
+            <td className="p-3">
+              <span className={`bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full text-xs`}>
+                {warehouse.tradeIn}
+              </span>
+            </td>
+            {enhancedWarehouses.some(w => w.atDealer > 0) && (
+              <td className="p-3">
+                <span className={`bg-cyan-500/20 text-cyan-400 px-2 py-1 rounded-full text-xs`}>
+                  {warehouse.atDealer || 0}
+                </span>
+              </td>
+            )}
+            {enhancedWarehouses.some(w => w.inTransit > 0) && (
+              <td className="p-3">
+                <span className={`bg-orange-500/20 text-orange-400 px-2 py-1 rounded-full text-xs`}>
+                  {warehouse.inTransit || 0}
+                </span>
+              </td>
+            )}
+            <td className="p-3">
+              <button className="text-blue-400 hover:text-blue-300 transition-colors p-1 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </td>
+          </motion.tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
      
       {/* Детальная информация о выбранной модели */}
       <AnimatePresence>
@@ -2393,59 +2348,303 @@ if (!isMobile) {
             </div>
            
             <div className="grid grid-cols-1 md:grid-cols-1 gap-5 mb-5">
-            {/* Распределение по моделям */}
+              {/* Распределение по моделям */}
+              <div className="bg-gray-700/50 p-4 rounded-lg">
+                <h3 className="text-white font-medium mb-3">{t('details.modelDistribution')}</h3>
+           {/* Распределение по моделям */}
 <div className="bg-gray-700/50 p-4 rounded-lg">
   <h3 className="text-white font-medium mb-3">{t('details.modelDistribution')}</h3>
   <div className="space-y-3">
-    {selectedWarehouse.models.filter(model => model.count > 0).slice(0, 5).map(model => (
-      <div key={model.id} className="group cursor-pointer" onClick={() => toggleModelDetailInWarehouse(model.id)}>
-        <div className="flex justify-between mb-1">
-          <span className="text-gray-300">{model.name}</span>
-          <div>
-            <span className="font-medium text-white">{model.count} {t('units')}</span>
-            <span className="ml-2 text-xs text-green-400">
-              ({model.available} {t('status.availableShort')})
-            </span>
-            <span className="ml-2 text-xs text-blue-400">
-              ({model.reserved} {t('status.reservedShort')})
-            </span>
-            <span className="ml-2 text-xs text-amber-400">
-              ({model.defectiveOk} {t('status.defectiveOkShort')})
-            </span>
-            <span className="ml-2 text-xs text-red-400">
-              ({model.defective} {t('status.defectiveShort')})
-            </span>
-            <span className="ml-2 text-xs text-purple-400">
-              ({model.tradeIn} Trade-in)
-            </span>
-            {model.atDealer > 0 && (
-              <span className="ml-2 text-xs text-cyan-400">
-                ({model.atDealer} У дилера)
-              </span>
-            )}
-            {model.inTransit > 0 && (
-              <span className="ml-2 text-xs text-orange-400">
-                ({model.inTransit} В пути)
-              </span>
-            )}
-            {/* Отображаем другие статусы, если есть */}
-            {Object.entries(model.otherStatuses || {}).map(([status, count]) => (
-              <span key={status} className="ml-2 text-xs text-gray-400">
-                ({count} {status})
-              </span>
-            ))}
+    {/* Убираем ограничение slice(0, 5) чтобы показать все модели */}
+    {selectedWarehouse.models
+      .filter(model => model.count > 0)
+      .sort((a, b) => b.count - a.count) // Сортируем по количеству
+      .map(model => {
+        // Для отладки выводим все статусы
+        console.log(`Модель ${model.name}:`, {
+          count: model.count,
+          available: model.available,
+          reserved: model.reserved,
+          defective: model.defective,
+          defectiveOk: model.defectiveOk,
+          tradeIn: model.tradeIn,
+          atDealer: model.atDealer,
+          inTransit: model.inTransit,
+          otherStatuses: model.otherStatuses
+        });
+        
+        return (
+          <div key={model.id} className="group cursor-pointer" onClick={() => toggleModelDetailInWarehouse(model.id)}>
+            <div className="flex flex-col">
+              <div className="flex justify-between mb-1">
+                <span className="text-gray-300">{model.name}</span>
+                <span className="font-medium text-white">{model.count} {t('units')}</span>
+              </div>
+              
+              {/* Показываем все статусы в более компактном виде */}
+              <div className="flex flex-wrap gap-2 text-xs">
+                {model.available > 0 && (
+                  <span className="text-green-400">
+                    {model.available} {t('status.availableShort')}
+                  </span>
+                )}
+                {model.reserved > 0 && (
+                  <span className="text-blue-400">
+                    {model.reserved} {t('status.reservedShort')}
+                  </span>
+                )}
+                {model.defectiveOk > 0 && (
+                  <span className="text-amber-400">
+                    {model.defectiveOk} {t('status.defectiveOkShort')}
+                  </span>
+                )}
+                {model.defective > 0 && (
+                  <span className="text-red-400">
+                    {model.defective} {t('status.defectiveShort')}
+                  </span>
+                )}
+                {model.tradeIn > 0 && (
+                  <span className="text-purple-400">
+                    {model.tradeIn} Trade-in
+                  </span>
+                )}
+                {model.atDealer > 0 && (
+                  <span className="text-cyan-400">
+                    {model.atDealer} У дилера
+                  </span>
+                )}
+                {model.inTransit > 0 && (
+                  <span className="text-orange-400">
+                    {model.inTransit} В пути
+                  </span>
+                )}
+                {/* Отображаем другие статусы */}
+                {Object.entries(model.otherStatuses || {}).map(([status, count]) => 
+                  count > 0 && (
+                    <span key={status} className="text-gray-400">
+                      {count} {status}
+                    </span>
+                  )
+                )}
+              </div>
+            </div>
+            
+            <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden mt-2">
+              <div 
+                className="h-full bg-purple-500 group-hover:bg-purple-400 transition-all rounded-full"
+                style={{ width: `${(model.count / selectedWarehouse.totalCount) * 100}%` }}
+              ></div>
+            </div>
           </div>
-        </div>
-        <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-purple-500 group-hover:bg-purple-400 transition-all rounded-full"
-            style={{ width: `${(model.count / selectedWarehouse.totalCount) * 100}%` }}
-          ></div>
-        </div>
-      </div>
-    ))}
+        );
+      })}
+  </div>
+  
+  {/* Добавляем информацию о количестве моделей */}
+  <div className="mt-3 text-xs text-gray-400">
+    Показано моделей: {selectedWarehouse.models.filter(model => model.count > 0).length} из {selectedWarehouse.models.length}
   </div>
 </div>
+                
+                {/* Расширенное представление для выбранной модели в контексте склада */}
+                <AnimatePresence>
+                  {selectedWarehouseModel && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="bg-gray-800/60 mt-5 p-4 rounded-lg overflow-hidden"
+                    >
+                      {(() => {
+                        const modelData = selectedWarehouse.models.find(m => m.id === selectedWarehouseModel);
+                        const fullModelData = enhancedCarModels.find(m => m.id === selectedWarehouseModel);
+                        
+                        if (!modelData || !fullModelData) return <div>{t('errors.dataNotFound')}</div>;
+                        
+                        return (
+                          <>
+                            <div className="flex justify-between items-center mb-4">
+                              <h4 className="text-lg font-medium text-white">{modelData.name} {t('details.inWarehouse')} {selectedWarehouse.name}</h4>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedWarehouseModel(null);
+                                }}
+                                className="text-gray-400 hover:text-white"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                            
+                            {/* Статистика по модели на этом складе */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+                              <div className="bg-gray-700 p-3 rounded-lg">
+                                <div className="text-gray-400 text-xs">{t('metrics.total')}</div>
+                                <div className="text-white text-lg font-medium">{modelData.count}</div>
+                              </div>
+                              <div className="bg-green-900/30 p-3 rounded-lg">
+                                <div className="text-green-400 text-xs">{t('metrics.available')}</div>
+                                <div className="text-white text-lg font-medium">{modelData.available}</div>
+                              </div>
+                              <div className="bg-blue-900/30 p-3 rounded-lg">
+                                <div className="text-blue-400 text-xs">{t('metrics.reserved')}</div>
+                                <div className="text-white text-lg font-medium">{modelData.reserved}</div>
+                              </div>
+                              <div className="bg-amber-900/30 p-3 rounded-lg">
+                                <div className="text-amber-400 text-xs">{t('metrics.defectiveOk')}</div>
+                                <div className="text-white text-lg font-medium">{modelData.defectiveOk}</div>
+                              </div>
+                              <div className="bg-red-900/30 p-3 rounded-lg">
+                                <div className="text-red-400 text-xs">{t('metrics.defective')}</div>
+                                <div className="text-white text-lg font-medium">{modelData.defective}</div>
+                              </div>
+                              <div className="bg-purple-900/30 p-3 rounded-lg">
+                                <div className="text-purple-400 text-xs">Trade-in</div>
+                                <div className="text-white text-lg font-medium">{modelData.tradeIn}</div>
+                              </div>
+                            </div>
+                            
+                            {/* Табы для выбора между цветами и модификациями */}
+                            <div className="border-b border-gray-700 mb-4">
+                              <nav className="-mb-px flex space-x-6">
+                                <button 
+                                  className={`pb-2 font-medium text-sm ${
+                                    warehouseModelViewTab === 'modifications' 
+                                      ? 'border-b-2 border-blue-500 text-blue-400' 
+                                      : 'text-gray-400 hover:text-gray-300'
+                                  }`}
+                                  onClick={() => setWarehouseModelViewTab('modifications')}
+                                >
+                                  {t('tabs.modifications')}
+                                </button>
+                                <button 
+                                  className={`pb-2 font-medium text-sm ${
+                                    warehouseModelViewTab === 'colors' 
+                                      ? 'border-b-2 border-blue-500 text-blue-400' 
+                                      : 'text-gray-400 hover:text-gray-300'
+                                  }`}
+                                  onClick={() => setWarehouseModelViewTab('colors')}
+                                >
+                                  {t('tabs.colors')}
+                                </button>
+                              </nav>
+                            </div>
+                            
+                            {/* Содержимое таба модификаций */}
+                            {warehouseModelViewTab === 'modifications' && (
+                              <div className="space-y-3">
+                                <h5 className="text-sm font-medium text-gray-300 mb-2">{t('details.allModifications', { model: modelData.name })}</h5>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {fullModelData.modifications.map(mod => {
+                                    const warehouseMod = {
+                                      ...mod,
+                                      warehouseCount: Math.floor(mod.count * (modelData.count / fullModelData.totalCount))
+                                    };
+                                    
+                                    if (warehouseMod.warehouseCount <= 0) return null;
+                                    
+                                    return (
+                                      <div key={mod.id} className="bg-gray-700/50 p-3 rounded-lg">
+                                        <div className="flex justify-between mb-1">
+                                          <span className="text-white text-sm">{mod.name}</span>
+                                          <span className="text-gray-400 text-xs">{warehouseMod.warehouseCount} {t('units')}</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-1 mt-2">
+                                        <div className="bg-green-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-green-400 text-xs">{t('status.availableShort')}:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.available / modelData.count))}</span>
+                                          </div>
+                                          <div className="bg-blue-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-blue-400 text-xs">{t('status.reservedShort')}:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.reserved / modelData.count))}</span>
+                                          </div>
+                                          <div className="bg-amber-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-amber-400 text-xs">{t('status.defectiveOkShort')}:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.defectiveOk / modelData.count))}</span>
+                                          </div>
+                                          <div className="bg-red-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-red-400 text-xs">{t('status.defectiveShort')}:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.defective / modelData.count))}</span>
+                                          </div>
+                                          {modelData.tradeIn > 0 && (
+                                            <div className="bg-purple-900/20 px-1.5 py-1 rounded flex justify-between col-span-2">
+                                              <span className="text-purple-400 text-xs">Trade-in:</span>
+                                              <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.tradeIn / modelData.count))}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  }).filter(Boolean)}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Содержимое таба цветов */}
+                            {warehouseModelViewTab === 'colors' && (
+                              <div className="space-y-3">
+                                <h5 className="text-sm font-medium text-gray-300 mb-2">{t('details.colorDistribution')}</h5>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {fullModelData.colors.map(color => {
+                                    const warehouseColor = {
+                                      ...color,
+                                      warehouseCount: Math.floor(color.count * (modelData.count / fullModelData.totalCount))
+                                    };
+                                    
+                                    if (warehouseColor.warehouseCount <= 0) return null;
+                                    
+                                    return (
+                                      <div key={color.name} className="bg-gray-700/50 p-3 rounded-lg">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <div className="flex items-center">
+                                            <div 
+                                              className="w-4 h-4 rounded-full mr-2 border border-gray-600" 
+                                              style={{ backgroundColor: color.hex }}
+                                            />
+                                            <span className="text-white text-sm">{color.name}</span>
+                                          </div>
+                                          <span className="text-gray-400 text-xs">{warehouseColor.warehouseCount} {t('units')}</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-1 mt-2">
+                                          <div className="bg-green-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-green-400 text-xs">{t('status.availableShort')}:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.available / modelData.count))}</span>
+                                          </div>
+                                          <div className="bg-blue-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-blue-400 text-xs">{t('status.reservedShort')}:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.reserved / modelData.count))}</span>
+                                          </div>
+                                          <div className="bg-amber-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-amber-400 text-xs">{t('status.defectiveOkShort')}:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.defectiveOk / modelData.count))}</span>
+                                          </div>
+                                          <div className="bg-red-900/20 px-1.5 py-1 rounded flex justify-between">
+                                            <span className="text-red-400 text-xs">{t('status.defectiveShort')}:</span>
+                                            <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.defective / modelData.count))}</span>
+                                          </div>
+                                          {modelData.tradeIn > 0 && (
+                                            <div className="bg-purple-900/20 px-1.5 py-1 rounded flex justify-between col-span-2">
+                                              <span className="text-purple-400 text-xs">Trade-in:</span>
+                                              <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.tradeIn / modelData.count))}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  }).filter(Boolean)}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </motion.div>
         )}
