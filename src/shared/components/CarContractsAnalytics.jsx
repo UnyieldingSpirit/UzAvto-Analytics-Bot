@@ -45,20 +45,20 @@ const CarContractsAnalytics = () => {
   };
 
 const extractMonthlyReturnData = (apiData, year) => {
-  const months = [
-    { month: 'Янв', value: 0 },
-    { month: 'Фев', value: 0 },
-    { month: 'Мар', value: 0 },
-    { month: 'Апр', value: 0 },
-    { month: 'Май', value: 0 },
-    { month: 'Июн', value: 0 },
-    { month: 'Июл', value: 0 },
-    { month: 'Авг', value: 0 },
-    { month: 'Сен', value: 0 },
-    { month: 'Окт', value: 0 },
-    { month: 'Ноя', value: 0 },
-    { month: 'Дек', value: 0 }
-  ];
+const months = [
+  { month: t.charts.monthData.january, value: 0 },
+  { month: t.charts.monthData.february, value: 0 },
+  { month: t.charts.monthData.march, value: 0 },
+  { month: t.charts.monthData.april, value: 0 },
+  { month: t.charts.monthData.may, value: 0 },
+  { month: t.charts.monthData.june, value: 0 },
+  { month: t.charts.monthData.july, value: 0 },
+  { month: t.charts.monthData.august, value: 0 },
+  { month: t.charts.monthData.september, value: 0 },
+  { month: t.charts.monthData.october, value: 0 },
+  { month: t.charts.monthData.november, value: 0 },
+  { month: t.charts.monthData.december, value: 0 }
+];
   
   // Отметка будущих месяцев
   const currentDate = new Date();
@@ -612,7 +612,20 @@ const prepareMonthlyDataFromResponse = (apiData, year) => {
   
   const monthlyDataMap = {};
   const valueKey = getValueKeyForActiveTab();
-  const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+const monthNames = [
+  t.charts.monthData.january,
+  t.charts.monthData.february,
+  t.charts.monthData.march,
+  t.charts.monthData.april,
+  t.charts.monthData.may,
+  t.charts.monthData.june,
+  t.charts.monthData.july,
+  t.charts.monthData.august,
+  t.charts.monthData.september,
+  t.charts.monthData.october,
+  t.charts.monthData.november,
+  t.charts.monthData.december
+];
   
   monthNames.forEach((name, index) => {
     monthlyDataMap[name] = {
@@ -684,7 +697,7 @@ const prepareMonthlyDataFromResponse = (apiData, year) => {
   // Функция для применения фильтра дат (кнопка "Применить")
   const applyDateFilter = () => {
     if (!startDate || !endDate) {
-      alert('Пожалуйста, выберите период дат');
+          alert(t.filters.selectDate);
       return;
     }
     
@@ -4006,16 +4019,16 @@ const getFilterDescription = () => {
   let description = '';
   
   if (selectedRegion !== 'all') {
-    const regionName = regions.find(r => r.id === selectedRegion)?.name || '';
-    description += `Регион: ${regionName}`;
+    const regionName = regionsList.find(r => r.id === selectedRegion)?.name || '';
+    description += `${t.filters.region}: ${regionName}`;
   }
   
   if (selectedModel !== 'all') {
     const modelName = carModels.find(m => m.id === selectedModel)?.name || '';
-    description += description ? ` | Модель: ${modelName}` : `Модель: ${modelName}`;
+    description += description ? ` | ${t.filters.model}: ${modelName}` : `${t.filters.model}: ${modelName}`;
   }
   
-  return description || 'Все данные';
+  return description || t.filters.allRegions;
 };
   
   
@@ -4117,7 +4130,7 @@ const StatisticsCards = () => {
                 {t.stats.loading}<LoadingDots />
               </p>
             ) : (
-              <p className="text-2xl font-bold">{stats.count.toLocaleString('ru-RU')}</p>
+              <p className="text-2xl font-bold">{stats.count.toLocaleString(currentLocale === 'ru' ? 'ru-RU' : 'uz-UZ')}</p>
             )}
           </div>
         </div>

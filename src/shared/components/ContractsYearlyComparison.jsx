@@ -1,20 +1,36 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as d3 from 'd3';
 import axios from 'axios';
+import { contractsYearlyComparisonTranslations } from './locales/ContractsYearlyComparison';
 
-const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab }) => {
+const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab, currentLocale }) => {
   const chartRef = useRef(null);
   const [chartData, setChartData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   
+  // Получаем переводы
+  const t = contractsYearlyComparisonTranslations[currentLocale];
+  
   // Получаем текущий и предыдущий год
   const currentYear = new Date().getFullYear();
   const previousYear = currentYear - 1;
   
-  // Массив названий месяцев
-  const MONTHS = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 
-                  'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+  // Массив названий месяцев из переводов
+  const MONTHS = [
+    t.months.january,
+    t.months.february,
+    t.months.march,
+    t.months.april,
+    t.months.may,
+    t.months.june,
+    t.months.july,
+    t.months.august,
+    t.months.september,
+    t.months.october,
+    t.months.november,
+    t.months.december
+  ];
   
   // Функция для форматирования чисел
   const formatNumber = (value) => {
@@ -25,7 +41,7 @@ const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab })
   
   // Функция для форматирования валюты
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('ru-RU', {
+    return new Intl.NumberFormat(currentLocale === 'ru' ? 'ru-RU' : 'uz-UZ', {
       style: 'currency',
       currency: 'UZS',
       maximumFractionDigits: 0
@@ -42,7 +58,7 @@ const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab })
       const year = date.getFullYear();
       return `${day}.${month}.${year}`;
     } catch (error) {
-      console.error('Ошибка форматирования даты:', error);
+      console.error(t.console.dateFormatError, error);
       return '';
     }
   };
@@ -93,11 +109,11 @@ const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab })
     }
     
     try {
-      console.log(`Запрос данных для сравнения ${year} года:`, requestData);
+      console.log(t.console.requestData.replace('{{year}}', year), requestData);
       const response = await axios.post(apiUrl, requestData);
       return response.data;
     } catch (error) {
-      console.error(`Ошибка при запросе данных за ${year} год:`, error);
+      console.error(t.console.errorLoadingYear.replace('{{year}}', year), error);
       return null;
     }
   };
@@ -198,25 +214,25 @@ const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab })
           });
           setError(null);
         } else {
-          setError("Не удалось загрузить данные для сравнения");
+          setError(t.errors.loadDataError);
         }
       } catch (err) {
-        console.error('Ошибка при загрузке данных для сравнения:', err);
-        setError("Ошибка при загрузке данных");
+        console.error(t.errors.loadingDataError, err);
+        setError(t.errors.generalError);
       } finally {
         setIsLoading(false);
       }
     };
     
     loadData();
-  }, [selectedRegion, selectedModel, activeTab]);
+  }, [selectedRegion, selectedModel, activeTab, currentLocale]); // Добавляем currentLocale в зависимости
   
   // Рендеринг графика при изменении данных
   useEffect(() => {
     if (chartData && !isLoading && chartRef.current) {
       renderChart();
     }
-  }, [chartData, isLoading]);
+  }, [chartData, isLoading, currentLocale]); // Добавляем currentLocale в зависимости
   
   // Функция для рендеринга графика
   const renderChart = () => {
@@ -313,6 +329,19 @@ const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab })
       .style("z-index", 1000)
       .style("transition", "opacity 0.2s");
     
+    // Вспомогательная функция для получения названия метрики
+    function getMetricName() {
+      switch(activeTab) {
+        case 'contracts': return t.metrics.contracts;
+        case 'sales': return t.metrics.sales;
+        case 'stock': return t.metrics.stock;
+        case 'retail': return t.metrics.retail;
+        case 'wholesale': return t.metrics.wholesale;
+        case 'promotions': return t.metrics.promotions;
+        default: return t.metrics.contracts;
+      }
+    }
+    
     // Рисуем столбцы предыдущего года
     svg.selectAll(".bar-prev-year")
       .data(previousYearData)
@@ -331,7 +360,7 @@ const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab })
           .html(`
             <div>
               <div style="font-weight: bold; margin-bottom: 4px;">${MONTHS[d.month - 1]} ${previousYear}</div>
-              <div>${getMetricName()}: ${d.value.toLocaleString('ru-RU')}</div>
+              <div>${getMetricName()}: ${d.value.toLocaleString(currentLocale === 'ru' ? 'ru-RU' : 'uz-UZ')}</div>
             </div>
           `)
           .style("left", (event.pageX + 10) + "px")
@@ -376,7 +405,7 @@ const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab })
           .html(`
             <div>
               <div style="font-weight: bold; margin-bottom: 4px;">${MONTHS[d.month - 1]} ${currentYear}</div>
-              <div>${getMetricName()}: ${d.value.toLocaleString('ru-RU')}</div>
+              <div>${getMetricName()}: ${d.value.toLocaleString(currentLocale === 'ru' ? 'ru-RU' : 'uz-UZ')}</div>
             </div>
           `)
           .style("left", (event.pageX + 10) + "px")
@@ -445,7 +474,7 @@ const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab })
       .attr("y", indicatorsY + 9)
       .style("font-size", "11px")
       .style("fill", "#ccc")
-      .text(`${previousYear} год`);
+      .text(`${previousYear} ${t.ui.year}`);
 
     // Индикатор для текущего года
     svg.append("rect")
@@ -462,7 +491,7 @@ const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab })
       .attr("y", indicatorsY + 9)
       .style("font-size", "11px")
       .style("fill", "#ccc")
-      .text(`${currentYear} год`);
+      .text(`${currentYear} ${t.ui.year}`);
     
     // Добавляем линию текущего месяца
     if (currentMonth < 12) {
@@ -481,20 +510,7 @@ const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab })
         .attr("text-anchor", "middle")
         .style("font-size", "10px")
         .style("fill", "#FF9800")
-        .text("Текущий месяц");
-    }
-    
-    // Вспомогательная функция для получения названия метрики
-    function getMetricName() {
-      switch(activeTab) {
-        case 'contracts': return 'Контракты';
-        case 'sales': return 'Продажи';
-        case 'stock': return 'Остаток';
-        case 'retail': return 'Розничные продажи';
-        case 'wholesale': return 'Оптовые продажи';
-        case 'promotions': return 'Акционные продажи';
-        default: return 'Контракты';
-      }
+        .text(t.ui.currentMonth);
     }
   };
   
@@ -540,10 +556,10 @@ const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab })
                   });
                   setError(null);
                 } else {
-                  setError("Не удалось загрузить данные для сравнения");
+                  setError(t.errors.loadDataError);
                 }
               } catch (err) {
-                setError("Ошибка при загрузке данных");
+                setError(t.errors.generalError);
               } finally {
                 setIsLoading(false);
               }
@@ -554,7 +570,7 @@ const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab })
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
-          Загрузить данные
+          {t.ui.retryButton}
         </button>
       </div>
     );
