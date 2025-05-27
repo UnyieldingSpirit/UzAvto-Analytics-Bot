@@ -113,7 +113,8 @@ export const warehouseAnalyticsTranslations: LocaleMessages = {
         'categories': {
             'sedan': 'Седан',
             'suv': 'Внедорожник',
-            'minivan': 'Минивэн'
+            'minivan': 'Минивэн',
+            'other': 'Другое'
         }
     },
     'uz': {
@@ -228,7 +229,8 @@ export const warehouseAnalyticsTranslations: LocaleMessages = {
         'categories': {
             'sedan': 'Sedan',
             'suv': 'Yo\'l tanlamas',
-            'minivan': 'Miniven'
+            'minivan': 'Miniven',
+            'other': 'Boshqa'
         }
     }
 };

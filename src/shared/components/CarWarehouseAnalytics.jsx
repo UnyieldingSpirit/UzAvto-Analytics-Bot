@@ -484,18 +484,20 @@ const CarWarehouseAnalytics = () => {
   };
 
   // Функция для определения категории модели
-  function getCategoryForModel(modelName) {
-    const suvModels = ['TRACKER-2', 'EQUINOX', 'TRAVERSE', 'TAHOE', 'TAHOE-2', 'Captiva 5T'];
-    const sedanModels = ['COBALT', 'MALIBU-2', 'ONIX', 'LACETTI'];
-    const minivanModels = ['DAMAS-2', 'LABO'];
+function getCategoryForModel(modelName) {
+    const suvModels = ['TRACKER-2', 'EQUINOX', 'TRAVERSE', 'TAHOE', 'TAHOE-2'];
+    const sedanModels = ['COBALT', 'MALIBU-2', 'ONIX', 'LACETTI', 'NEXIA-3'];
+    const minivanModels = ['DAMAS-2', 'LABO','SPARK'];
+    const otherModels = ['CAPTIVA'];
     
     if (suvModels.includes(modelName)) return 'suv';
     if (sedanModels.includes(modelName)) return 'sedan';
     if (minivanModels.includes(modelName)) return 'minivan';
-    return 'other';
-  }
+    if (otherModels.includes(modelName)) return 'suv';
+    
+    return 'other'; // По умолчанию
+}
 
-  // Функция для получения HEX-кода по названию цвета
   function getColorHex(colorName) {
     const colorMap = {
       'Summit White': '#FFFFFF',

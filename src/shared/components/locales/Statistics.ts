@@ -32,9 +32,10 @@ export const statisticsTranslations: LocaleMessages = {
             totalSales: 'Общие продажи по моделям',
             category: 'Категория',
             categories: {
-                suv: 'Внедорожник',
                 sedan: 'Седан',
-                minivan: 'Минивэн'
+                suv: 'Внедорожник',
+                minivan: 'Минивэн',
+                other: 'Другое'
             }
         },
         dealers: {
