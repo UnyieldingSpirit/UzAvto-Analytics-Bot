@@ -3,6 +3,7 @@ import { LocaleMessages } from "@/src/types/locale";
 
 export const carContractsAnalyticsTranslations: LocaleMessages = {
     'ru': {
+        // Заголовки
         title: 'Аналитика автомобилей',
         subtitle: 'Комплексный анализ данных по контрактам, продажам и остаткам',
 
@@ -17,7 +18,8 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
             apply: 'Применить',
             reset: 'Сбросить',
             activeFilters: 'Активные фильтры',
-            resetFilters: 'Сбросить фильтры'
+            resetFilters: 'Сбросить фильтры',
+            selectDate: 'Пожалуйста, выберите период дат'
         },
 
         // Вкладки
@@ -39,9 +41,11 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
             totalWholesale: 'Всего оптовых продаж',
             totalPromotions: 'Всего акционных продаж',
             totalAmount: 'Общая сумма',
-            periodData: 'За период',
+            periodData: 'За период с {{startDate}} по {{endDate}}',
             loading: 'Загрузка',
-            noData: 'Нет данных'
+            noData: 'Нет данных',
+            inRegion: 'в {{regionName}}',
+            forModel: 'для {{modelName}}'
         },
 
         // Модельный ряд
@@ -61,21 +65,58 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
             },
             backToModels: 'Вернуться к модельному ряду',
             noModelsAvailable: 'Нет доступных моделей',
-            selectPeriodMessage: 'Выберите период и нажмите "Применить"'
+            selectPeriodMessage: 'Выберите период и нажмите "Применить"',
+            contracts: 'Контрактов',
+            sales: 'Продаж',
+            inStock: 'В наличии',
+            retail: 'Розница',
+            wholesale: 'Опт',
+            promotions: 'По акции',
+            totalAmount: 'Общая сумма',
+            auto: 'Авто'
         },
 
         // Графики
         charts: {
-            regionTitle: 'По регионам',
-            modelTitle: 'По моделям',
-            timelineTitle: 'Динамика',
+            regionTitle: '{{metric}} по регионам',
+            modelTitle: '{{metric}} по моделям',
+            timelineTitle: 'Динамика {{metric}}',
+            modelRegionTitle: '{{metric}} {{modelName}} по регионам',
+            regionModelTitle: '{{metric}} в {{regionName}} по моделям',
+            modelDetailsTitle: '{{metric}} {{modelName}} по модификациям и цветам',
             noData: 'Нет данных для отображения',
+            noDataAfterFilter: 'Нет данных для отображения после фильтрации',
             loading: 'Загрузка данных...',
             yearComparison: 'Сравнение по годам',
             selectYear: 'Выберите год',
             currentMonth: 'Текущий месяц',
             futureMonth: 'Будущий период',
-            dataNotAvailable: 'Данные еще не доступны'
+            dataNotAvailable: 'Данные еще не доступны',
+            retryLoad: 'Загрузить данные',
+            monthData: {
+                january: 'Янв',
+                february: 'Фев',
+                march: 'Мар',
+                april: 'Апр',
+                may: 'Май',
+                june: 'Июн',
+                july: 'Июл',
+                august: 'Авг',
+                september: 'Сен',
+                october: 'Окт',
+                november: 'Ноя',
+                december: 'Дек'
+            },
+            tooltips: {
+                contracts: 'Контракты',
+                sales: 'Продажи',
+                stock: 'Остаток',
+                retail: 'Розница',
+                wholesale: 'Опт',
+                promotions: 'Акции',
+                amount: 'Сумма',
+                selected: 'Выбрано'
+            }
         },
 
         // Возврат денежных средств
@@ -84,14 +125,15 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
             subtitle: 'Отслеживание фактических и ожидаемых возвратов',
             financialAnalytics: 'Финансовая аналитика',
             analysisReturns: 'Анализ возвратов',
-            regionData: 'Данные по региону',
-            modelData: 'Модель',
-            dynamicsTitle: 'Динамика возврата денежных средств',
+            regionLabel: 'Регион',
+            modelLabel: 'Модель',
+            dynamicsTitle: 'Динамика возврата денежных средств {{year}}',
             noDataPeriod: 'Нет данных о возврате для выбранного периода',
             loadError: 'Ошибка при загрузке данных о возврате',
             retryLoad: 'Повторить попытку',
             reloadData: 'Повторить запрос',
-            currentMonthOnly: 'Данные доступны только по текущий месяц'
+            currentMonthOnly: '* Данные доступны только по текущий месяц',
+            returnAmount: 'Сумма возврата'
         },
 
         // Акции и промо
@@ -105,7 +147,26 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
             installmentPeriod: 'Срок рассрочки',
             organization: 'Организация',
             model: 'Модель',
-            months: 'месяцев'
+            months: 'месяцев',
+            effectiveness: 'Эффективность акций',
+            viewsConversion: 'Конверсия просмотров в продажи',
+            averageDiscount: 'Средняя скидка',
+            promotionsROI: 'ROI акций'
+        },
+
+        // Сравнение по годам
+        yearComparison: {
+            title: 'Сравнительный анализ {{metric}} по годам',
+            subtitle: 'Визуализация динамики изменений за несколько лет',
+            totalForYear: 'Всего {{metric}} за {{year}} год',
+            growth: 'Рост',
+            decline: 'Снижение',
+            comparedTo: 'по сравнению с {{year}}',
+            noChange: 'Без изменений',
+            selectYears: 'Выберите годы для сравнения',
+            year2023: '2023',
+            year2024: '2024',
+            year2025: '2025'
         },
 
         // Информационная панель
@@ -118,18 +179,21 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
         units: {
             pieces: 'шт.',
             currency: 'UZS',
-            million: 'млн',
-            thousand: 'тыс'
+            million: 'M',
+            thousand: 'K'
         },
 
         // Сообщения об ошибках
         errors: {
             loadingError: 'Ошибка при загрузке данных',
             noDataFound: 'Данные не найдены',
-            tryAgain: 'Попробовать снова'
+            tryAgain: 'Попробовать снова',
+            incorrectFormat: 'Некорректный формат данных',
+            continueWithTestData: 'Продолжаем с использованием тестовых данных'
         }
     },
     'uz': {
+        // Заголовки
         title: 'Avtomobil analitikasi',
         subtitle: 'Shartnomalar, savdolar va qoldiqlar bo\'yicha keng qamrovli tahlil',
 
@@ -144,7 +208,8 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
             apply: 'Qo\'llash',
             reset: 'Qayta o\'rnatish',
             activeFilters: 'Faol filtrlar',
-            resetFilters: 'Filtrlarni qayta o\'rnatish'
+            resetFilters: 'Filtrlarni qayta o\'rnatish',
+            selectDate: 'Iltimos, davrni tanlang'
         },
 
         // Вкладки
@@ -166,9 +231,11 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
             totalWholesale: 'Jami ulgurji savdo',
             totalPromotions: 'Jami aksiya savdolari',
             totalAmount: 'Jami summa',
-            periodData: 'Davr uchun',
+            periodData: '{{startDate}} dan {{endDate}} gacha davr uchun',
             loading: 'Yuklanmoqda',
-            noData: 'Ma\'lumot yo\'q'
+            noData: 'Ma\'lumot yo\'q',
+            inRegion: '{{regionName}} da',
+            forModel: '{{modelName}} uchun'
         },
 
         // Модельный ряд
@@ -188,21 +255,58 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
             },
             backToModels: 'Modellar qatoriga qaytish',
             noModelsAvailable: 'Mavjud modellar yo\'q',
-            selectPeriodMessage: 'Davrni tanlang va "Qo\'llash" tugmasini bosing'
+            selectPeriodMessage: 'Davrni tanlang va "Qo\'llash" tugmasini bosing',
+            contracts: 'Shartnomalar',
+            sales: 'Savdo',
+            inStock: 'Mavjud',
+            retail: 'Chakana',
+            wholesale: 'Ulgurji',
+            promotions: 'Aksiya',
+            totalAmount: 'Jami summa',
+            auto: 'Avto'
         },
 
         // Графики
         charts: {
-            regionTitle: 'Viloyatlar bo\'yicha',
-            modelTitle: 'Modellar bo\'yicha',
-            timelineTitle: 'Dinamika',
+            regionTitle: 'Viloyatlar bo\'yicha {{metric}}',
+            modelTitle: 'Modellar bo\'yicha {{metric}}',
+            timelineTitle: '{{metric}} dinamikasi',
+            modelRegionTitle: '{{modelName}} {{metric}} viloyatlar bo\'yicha',
+            regionModelTitle: '{{regionName}} da {{metric}} modellar bo\'yicha',
+            modelDetailsTitle: '{{modelName}} {{metric}} modifikatsiyalar va ranglar bo\'yicha',
             noData: 'Ko\'rsatish uchun ma\'lumot yo\'q',
+            noDataAfterFilter: 'Filtrlashdan keyin ko\'rsatish uchun ma\'lumot yo\'q',
             loading: 'Ma\'lumotlar yuklanmoqda...',
             yearComparison: 'Yillar bo\'yicha solishtirish',
             selectYear: 'Yilni tanlang',
             currentMonth: 'Joriy oy',
             futureMonth: 'Kelajak davri',
-            dataNotAvailable: 'Ma\'lumotlar hali mavjud emas'
+            dataNotAvailable: 'Ma\'lumotlar hali mavjud emas',
+            retryLoad: 'Ma\'lumotlarni yuklash',
+            monthData: {
+                january: 'Yan',
+                february: 'Fev',
+                march: 'Mar',
+                april: 'Apr',
+                may: 'May',
+                june: 'Iyn',
+                july: 'Iyl',
+                august: 'Avg',
+                september: 'Sen',
+                october: 'Okt',
+                november: 'Noy',
+                december: 'Dek'
+            },
+            tooltips: {
+                contracts: 'Shartnomalar',
+                sales: 'Savdolar',
+                stock: 'Qoldiq',
+                retail: 'Chakana',
+                wholesale: 'Ulgurji',
+                promotions: 'Aksiyalar',
+                amount: 'Summa',
+                selected: 'Tanlangan'
+            }
         },
 
         // Возврат денежных средств
@@ -211,14 +315,15 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
             subtitle: 'Haqiqiy va kutilayotgan qaytarishlarni kuzatish',
             financialAnalytics: 'Moliyaviy analitika',
             analysisReturns: 'Qaytarishlar tahlili',
-            regionData: 'Viloyat bo\'yicha ma\'lumotlar',
-            modelData: 'Model',
-            dynamicsTitle: 'Pul mablag\'larini qaytarish dinamikasi',
+            regionLabel: 'Viloyat',
+            modelLabel: 'Model',
+            dynamicsTitle: 'Pul mablag\'larini qaytarish dinamikasi {{year}}',
             noDataPeriod: 'Tanlangan davr uchun qaytarish haqida ma\'lumot yo\'q',
             loadError: 'Qaytarish ma\'lumotlarini yuklashda xatolik',
             retryLoad: 'Qayta urinib ko\'ring',
             reloadData: 'So\'rovni takrorlash',
-            currentMonthOnly: 'Ma\'lumotlar faqat joriy oygacha mavjud'
+            currentMonthOnly: '* Ma\'lumotlar faqat joriy oygacha mavjud',
+            returnAmount: 'Qaytarish summasi'
         },
 
         // Акции и промо
@@ -232,7 +337,26 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
             installmentPeriod: 'Bo\'lib to\'lash muddati',
             organization: 'Tashkilot',
             model: 'Model',
-            months: 'oy'
+            months: 'oy',
+            effectiveness: 'Aksiyalar samaradorligi',
+            viewsConversion: 'Ko\'rishlarni savdoga aylantirish',
+            averageDiscount: 'O\'rtacha chegirma',
+            promotionsROI: 'Aksiyalar ROI'
+        },
+
+        // Сравнение по годам
+        yearComparison: {
+            title: 'Yillar bo\'yicha {{metric}} qiyosiy tahlili',
+            subtitle: 'Bir necha yil davomidagi o\'zgarishlar dinamikasini vizualizatsiya qilish',
+            totalForYear: '{{year}} yil uchun jami {{metric}}',
+            growth: 'O\'sish',
+            decline: 'Pasayish',
+            comparedTo: '{{year}} ga nisbatan',
+            noChange: 'O\'zgarishsiz',
+            selectYears: 'Solishtirish uchun yillarni tanlang',
+            year2023: '2023',
+            year2024: '2024',
+            year2025: '2025'
         },
 
         // Информационная панель
@@ -245,15 +369,17 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
         units: {
             pieces: 'dona',
             currency: 'UZS',
-            million: 'mln',
-            thousand: 'ming'
+            million: 'M',
+            thousand: 'K'
         },
 
         // Сообщения об ошибках
         errors: {
             loadingError: 'Ma\'lumotlarni yuklashda xatolik',
             noDataFound: 'Ma\'lumotlar topilmadi',
-            tryAgain: 'Qaytadan urinib ko\'ring'
+            tryAgain: 'Qaytadan urinib ko\'ring',
+            incorrectFormat: 'Noto\'g\'ri ma\'lumotlar formati',
+            continueWithTestData: 'Test ma\'lumotlari bilan davom etamiz'
         }
     }
 };
