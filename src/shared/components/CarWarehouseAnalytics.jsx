@@ -651,203 +651,160 @@ const CarWarehouseAnalytics = () => {
   }, [loading, enhancedWarehouses, selectedCarModel, selectedWarehouse, t]);
 
   // Рендер диаграммы распределения по складам
-  const renderWarehouseDistribution = () => {
-    if (!warehouseDistributionRef.current) return;
+const renderWarehouseDistribution = () => {
+  if (!warehouseDistributionRef.current) return;
+  
+  const container = warehouseDistributionRef.current;
+  container.innerHTML = '';
+  
+  // Сначала определяем colorScale
+  const colorScale = d3.scaleOrdinal()
+    .domain(['available', 'reserved', 'defectiveOk', 'defective', 'tradeIn'])
+    .range(['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6']);
+  
+  // Увеличиваем нижний отступ для легенды
+  const margin = { 
+    top: 30, 
+    right: 20, 
+    bottom: isMobile ? 0 : 0,
+    left: isMobile ? 0 : 0 
+  };
+  const width = container.clientWidth - margin.left - margin.right;
+  const height = container.clientHeight - margin.top - margin.bottom;
+  
+  if (width < 100 || height < 100) return;
+  
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', height + margin.top + margin.bottom)
+    .append('g')
+    .attr('transform', `translate(${margin.left},${margin.top})`);
     
-    const container = warehouseDistributionRef.current;
-    container.innerHTML = '';
+  svg.append('text')
+    .attr('x', width / 2)
+    .attr('y', -margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .style('font-size', isMobile ? '14px' : '16px')
+    .style('fill', '#f9fafb')
+    .text(t('charts.warehouseDistribution'));
     
-    const margin = { top: 30, right: 20, bottom: 40, left: isMobile ? 100 : 160 };
-    const width = container.clientWidth - margin.left - margin.right;
-    const height = container.clientHeight - margin.top - margin.bottom;
+  const warehouseData = enhancedWarehouses.map(warehouse => ({
+    name: warehouse.name,
+    available: warehouse.available,
+    reserved: warehouse.reserved,
+    defective: warehouse.defective,
+    defectiveOk: warehouse.defectiveOk,
+    tradeIn: warehouse.tradeIn
+  }));
+  
+  const x = d3.scaleLinear()
+    .domain([0, d3.max(enhancedWarehouses, d => d.capacity)])
+    .range([0, width]);
     
-    if (width < 100 || height < 100) return;
+  const y = d3.scaleBand()
+    .domain(warehouseData.map(d => d.name))
+    .range([0, height])
+    .padding(0.3);
     
-    const svg = d3.select(container)
-      .append('svg')
-      .attr('width', width + margin.left + margin.right)
-      .attr('height', height + margin.top + margin.bottom)
-      .append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`);
-      
-    svg.append('text')
-      .attr('x', width / 2)
-      .attr('y', -margin.top / 2)
-      .attr('text-anchor', 'middle')
-      .style('font-size', isMobile ? '14px' : '16px')
-      .style('fill', '#f9fafb')
-      .text(t('charts.warehouseDistribution'));
-      
-    const warehouseData = enhancedWarehouses.map(warehouse => ({
-      name: warehouse.name,
-      available: warehouse.available,
-      reserved: warehouse.reserved,
-      defective: warehouse.defective,
-      defectiveOk: warehouse.defectiveOk,
-      tradeIn: warehouse.tradeIn // Добавляем Trade-in
-    }));
+  svg.append('g')
+    .attr('transform', `translate(0,${height})`)
+    .call(d3.axisBottom(x))
+    .selectAll('text')
+    .style('font-size', '12px')
+    .style('fill', '#d1d5db');
     
-    const x = d3.scaleLinear()
-      .domain([0, d3.max(enhancedWarehouses, d => d.capacity)])
-      .range([0, width]);
-      
-    const y = d3.scaleBand()
-      .domain(warehouseData.map(d => d.name))
-      .range([0, height])
-      .padding(0.3);
-      
-    svg.append('g')
-      .attr('transform', `translate(0,${height})`)
-      .call(d3.axisBottom(x))
-      .selectAll('text')
-      .style('font-size', '12px')
-      .style('fill', '#d1d5db');
-      
-    svg.append('g')
-      .call(d3.axisLeft(y))
-      .selectAll('text')
-      .style('font-size', isMobile ? '10px' : '12px')
-      .style('fill', '#d1d5db')
-      .style('cursor', 'pointer')
-      .on('click', (event, d) => {
-        const warehouse = enhancedWarehouses.find(w => w.name === d);
-        handleWarehouseClick(warehouse);
-      });
-      
-    svg.append('g')
-      .attr('class', 'grid')
-      .call(d3.axisBottom(x)
-        .tickSize(height)
-        .tickFormat(''))
-      .selectAll('line')
-      .style('stroke', 'rgba(255, 255, 255, 0.1)');
-      
-    const stack = d3.stack()
-      .keys(['available', 'reserved', 'defectiveOk', 'defective', 'tradeIn']) // Добавляем Trade-in
-      .order(d3.stackOrderNone)
-      .offset(d3.stackOffsetNone);
-      
-    const stackedData = stack(warehouseData);
-    
-    const colorScale = d3.scaleOrdinal()
-      .domain(['available', 'reserved', 'defectiveOk', 'defective', 'tradeIn']) // Добавляем Trade-in
-      .range(['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6']); // Фиолетовый для Trade-in
-      
-    const defs = svg.append('defs');
-    
-    ['available', 'reserved', 'defectiveOk', 'defective', 'tradeIn'].forEach((key, i) => {
-      const gradientId = `stackGradient-${key}`;
-      const color = colorScale(key);
-      
-      const gradient = defs.append('linearGradient')
-        .attr('id', gradientId)
-        .attr('x1', '0%')
-        .attr('y1', '0%')
-        .attr('x2', '100%')
-        .attr('y2', '0%');
-        
-      gradient.append('stop')
-        .attr('offset', '0%')
-        .attr('stop-color', d3.rgb(color).darker(0.3))
-        .attr('stop-opacity', 1);
-        
-      gradient.append('stop')
-        .attr('offset', '100%')
-        .attr('stop-color', color)
-        .attr('stop-opacity', 1);
+  svg.append('g')
+    .call(d3.axisLeft(y))
+    .selectAll('text')
+    .style('font-size', isMobile ? '10px' : '12px')
+    .style('fill', '#d1d5db')
+    .style('cursor', 'pointer')
+    .on('click', (event, d) => {
+      const warehouse = enhancedWarehouses.find(w => w.name === d);
+      handleWarehouseClick(warehouse);
     });
     
-    svg.append('g')
-      .selectAll('g')
-      .data(stackedData)
-      .join('g')
-      .attr('fill', d => `url(#stackGradient-${d.key})`)
-      .selectAll('rect')
-      .data(d => d)
-      .join('rect')
-      .attr('y', d => y(d.data.name))
-      .attr('height', y.bandwidth())
-      .attr('x', d => x(d[0]))
-      .attr('width', 0)
-      .attr('rx', 3)
-      .attr('ry', 3)
-      .style('cursor', 'pointer')
-      .on('click', (event, d) => {
-        const warehouse = enhancedWarehouses.find(w => w.name === d.data.name);
-        handleWarehouseClick(warehouse);
-      })
-      .transition()
-      .duration(800)
-      .delay((d, i) => i * 100)
-      .attr('width', d => x(d[1]) - x(d[0]));
+  svg.append('g')
+    .attr('class', 'grid')
+    .call(d3.axisBottom(x)
+      .tickSize(height)
+      .tickFormat(''))
+    .selectAll('line')
+    .style('stroke', 'rgba(255, 255, 255, 0.1)');
+    
+  const stack = d3.stack()
+    .keys(['available', 'reserved', 'defectiveOk', 'defective', 'tradeIn'])
+    .order(d3.stackOrderNone)
+    .offset(d3.stackOffsetNone);
+    
+  const stackedData = stack(warehouseData);
+  
+  const defs = svg.append('defs');
+  
+  ['available', 'reserved', 'defectiveOk', 'defective', 'tradeIn'].forEach((key, i) => {
+    const gradientId = `stackGradient-${key}`;
+    const color = colorScale(key);
+    
+    const gradient = defs.append('linearGradient')
+      .attr('id', gradientId)
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '100%')
+      .attr('y2', '0%');
       
-    svg.selectAll('.capacity-line')
-      .data(enhancedWarehouses)
-      .join('line')
-      .attr('class', 'capacity-line')
-      .attr('x1', d => x(d.capacity))
-      .attr('y1', d => y(d.name))
-      .attr('x2', d => x(d.capacity))
-      .attr('y2', d => y(d.name) + y.bandwidth())
-      .attr('stroke', '#f97316')
-      .attr('stroke-width', 2)
-      .attr('stroke-dasharray', '5,3')
-      .style('opacity', 0)
-      .transition()
-      .duration(500)
-      .delay(1000)
-      .style('opacity', 1);
+    gradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', d3.rgb(color).darker(0.3))
+      .attr('stop-opacity', 1);
       
-    if (!isMobile) {
-      const legend = svg.append('g')
-        .attr('transform', `translate(${width - 160}, ${height - 120})`); // Увеличиваем место для легенды
-        
-      const legendData = [
-        { key: 'available', label: t('status.available') },
-        { key: 'reserved', label: t('status.reserved') },
-        { key: 'defectiveOk', label: t('status.defectiveOk') },
-        { key: 'defective', label: t('status.defective') },
-        { key: 'tradeIn', label: 'Trade-in' } // Добавляем Trade-in
-      ];
-      
-      legendData.forEach((d, i) => {
-        const legendRow = legend.append('g')
-          .attr('transform', `translate(0, ${i * 20})`);
-          
-        legendRow.append('rect')
-          .attr('width', 15)
-          .attr('height', 15)
-          .attr('fill', colorScale(d.key))
-          .attr('rx', 2);
-          
-        legendRow.append('text')
-          .attr('x', 20)
-          .attr('y', 12)
-          .style('font-size', '12px')
-          .style('fill', '#d1d5db')
-          .text(d.label);
-      });
-      
-      legend.append('g')
-        .attr('transform', `translate(0, ${legendData.length * 20})`);
-      
-      legend.append('line')
-        .attr('x1', 0)
-        .attr('y1', legendData.length * 20 + 7.5)
-        .attr('x2', 15)
-        .attr('y2', legendData.length * 20 + 7.5)
-        .attr('stroke', '#f97316')
-        .attr('stroke-width', 2)
-        .attr('stroke-dasharray', '5,3');
-        
-      legend.append('text')
-        .attr('x', 20)
-        .attr('y', legendData.length * 20 + 12)
-        .style('font-size', '12px')
-        .style('fill', '#d1d5db')
-        .text(t('status.maxCapacity'));
-    }
-  };
+    gradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', color)
+      .attr('stop-opacity', 1);
+  });
+  
+  svg.append('g')
+    .selectAll('g')
+    .data(stackedData)
+    .join('g')
+    .attr('fill', d => `url(#stackGradient-${d.key})`)
+    .selectAll('rect')
+    .data(d => d)
+    .join('rect')
+    .attr('y', d => y(d.data.name))
+    .attr('height', y.bandwidth())
+    .attr('x', d => x(d[0]))
+    .attr('width', 0)
+    .attr('rx', 3)
+    .attr('ry', 3)
+    .style('cursor', 'pointer')
+    .on('click', (event, d) => {
+      const warehouse = enhancedWarehouses.find(w => w.name === d.data.name);
+      handleWarehouseClick(warehouse);
+    })
+    .transition()
+    .duration(800)
+    .delay((d, i) => i * 100)
+    .attr('width', d => x(d[1]) - x(d[0]));
+    
+  svg.selectAll('.capacity-line')
+    .data(enhancedWarehouses)
+    .join('line')
+    .attr('class', 'capacity-line')
+    .attr('x1', d => x(d.capacity))
+    .attr('y1', d => y(d.name))
+    .attr('x2', d => x(d.capacity))
+    .attr('y2', d => y(d.name) + y.bandwidth())
+    .attr('stroke', '#f97316')
+    .attr('stroke-width', 2)
+    .attr('stroke-dasharray', '5,3')
+    .style('opacity', 0)
+    .transition()
+    .duration(500)
+    .delay(1000)
+    .style('opacity', 1);
+};
    
   // Рендер круговой диаграммы складов
   const renderManufacturerChart = () => {
@@ -1677,13 +1634,47 @@ if (!isMobile) {
           <div ref={manufacturerChartRef} className="h-[300px]"></div>
         </div>
        
-        <div className="bg-gray-800 rounded-lg p-4 shadow-md">
-          <div className="flex justify-between mb-2">
-            <h2 className="text-lg font-medium">{t('charts.carsByWarehouse')}</h2>
-            <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">{t('charts.interactive')}</span>
-          </div>
-          <div ref={warehouseDistributionRef} className="h-[300px]"></div>
-        </div>
+<div className="bg-gray-800 rounded-lg p-4 shadow-md">
+  <div className="flex justify-between mb-2">
+    <h2 className="text-lg font-medium">{t('charts.carsByWarehouse')}</h2>
+    <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+      {t('charts.interactive')}
+    </span>
+  </div>
+  
+  {/* График */}
+  <div ref={warehouseDistributionRef} className="h-[280px]"></div>
+  
+  {/* HTML легенда */}
+  <div className="mt-3 pt-3 border-t border-gray-700">
+    <div className="flex flex-wrap gap-x-4 gap-y-2 justify-center text-xs">
+      <div className="flex items-center gap-1.5">
+        <div className="w-3 h-3 bg-green-500 rounded"></div>
+        <span className="text-gray-300">{t('status.available')}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <div className="w-3 h-3 bg-blue-500 rounded"></div>
+        <span className="text-gray-300">{t('status.reserved')}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <div className="w-3 h-3 bg-amber-500 rounded"></div>
+        <span className="text-gray-300">{t('status.defectiveOk')}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <div className="w-3 h-3 bg-red-500 rounded"></div>
+        <span className="text-gray-300">{t('status.defective')}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <div className="w-3 h-3 bg-purple-500 rounded"></div>
+        <span className="text-gray-300">Trade-in</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <div className="w-4 h-0 border-t-2 border-dashed border-orange-500"></div>
+        <span className="text-gray-300">{t('status.maxCapacity')}</span>
+      </div>
+    </div>
+  </div>
+</div>
       </div>
      
       {/* График статусов моделей */}
