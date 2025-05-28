@@ -16,7 +16,7 @@ import { button } from 'framer-motion/client';
 // Переводы для навигации только для русского и узбекского
 const navTranslations = {
   'ru': {
-    dashboard: 'Обзорная панель',
+    dashboard: 'Аналитические отчеты',
     salesAnalytics: 'Аналитика продаж',
     salesMonitoring: 'Мониторинг отгрузок',
     modelTracking: 'Отслеживание моделей',
@@ -45,7 +45,7 @@ const navTranslations = {
     }
   },
   'uz': {
-    dashboard: 'Boshqaruv paneli',
+    dashboard: 'Tahlil paneli',
     salesAnalytics: 'Sotuv tahlili',
     salesMonitoring: 'Sotuv monitoringi',
     modelTracking: 'Model kuzatuvi',

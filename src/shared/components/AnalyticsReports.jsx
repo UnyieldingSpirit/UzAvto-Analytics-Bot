@@ -698,12 +698,7 @@ const AnalyticsReports = () => {
                   <div className="text-sm text-gray-400">
                     {reportData.bestSellingModel.percentage}% {t('reports.marketShare')}
                   </div>
-                  <div className="text-green-400 text-sm mt-2 flex items-center">
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                    +{reportData.bestSellingModel.trendValue}% {t('reports.vsLastYear')}
-                  </div>
+                
                 </div>
               </div>
               
@@ -789,12 +784,6 @@ const AnalyticsReports = () => {
                   <div className="text-sm text-gray-400 mt-1">
                     {t('reports.revenue')}: {formatCurrency(reportData.mostProfitableModel.revenue)}
                   </div>
-                  <div className="text-green-400 text-sm mt-2 flex items-center">
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                    +{reportData.mostProfitableModel.trendValue}% {t('reports.vsLastYear')}
-                  </div>
                 </div>
               </div>
               
@@ -865,12 +854,6 @@ const AnalyticsReports = () => {
                 </div>
                 <div className="text-sm text-gray-400">
                   {t('reports.acrossAllModels')}
-                </div>
-                <div className="text-green-400 text-sm mt-2 flex items-center">
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>
-                  +{reportData.bestSellingColor.trendValue}% {t('reports.vsLastYear')}
                 </div>
               </div>
               
