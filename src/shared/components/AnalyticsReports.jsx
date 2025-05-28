@@ -18,6 +18,9 @@ const AnalyticsReports = () => {
     period: 'year'
   });
   
+  // Состояние для активной развернутой карточки (только одна может быть развернута)
+  const [expandedCard, setExpandedCard] = useState(null);
+  
   // Расширенные моковые данные
   const [reportData] = useState({
     bestSellingModel: {
@@ -143,19 +146,9 @@ const AnalyticsReports = () => {
     { value: 'LTZ', label: 'LTZ' }
   ]);
   
-  // Состояние для развернутых карточек
-  const [expandedCards, setExpandedCards] = useState({
-    bestSelling: false,
-    mostProfitable: false,
-    bestColor: false
-  });
-  
   // Переключение развернутого состояния
   const toggleExpanded = (cardType) => {
-    setExpandedCards(prev => ({
-      ...prev,
-      [cardType]: !prev[cardType]
-    }));
+    setExpandedCard(expandedCard === cardType ? null : cardType);
   };
   
   // Форматирование чисел
@@ -172,65 +165,373 @@ const AnalyticsReports = () => {
     }).format(num);
   };
   
-  // Компонент карточки отчета
-  const ReportCard = ({ title, subtitle, children, icon, gradient, expandable, cardType }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className={`bg-gradient-to-br ${gradient} p-6 rounded-2xl shadow-xl border border-gray-700/50 ${
-        expandable && expandedCards[cardType] ? 'lg:col-span-3' : ''
-      }`}
-      layout
-    >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h3 className="text-xl font-bold text-white mb-1">{title}</h3>
-          {subtitle && <p className="text-gray-300 text-sm">{subtitle}</p>}
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
-            {icon}
+  // Компонент карточки отчета с улучшенной анимацией
+  const ReportCard = ({ title, subtitle, children, icon, gradient, expandable, cardType }) => {
+    const isExpanded = expandedCard === cardType;
+    
+    return (
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, layout: { duration: 0.3 } }}
+        className={`relative bg-gradient-to-br ${gradient} rounded-2xl shadow-xl border border-gray-700/50 overflow-hidden ${
+          isExpanded ? 'col-span-full' : ''
+        }`}
+      >
+        <div className="p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-white mb-1">{title}</h3>
+              {subtitle && <p className="text-gray-300 text-sm">{subtitle}</p>}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+                {icon}
+              </div>
+            </div>
           </div>
-          {expandable && (
-            <button
-              onClick={() => toggleExpanded(cardType)}
-              className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20 transition-colors"
-            >
-              <svg 
-                className={`w-5 h-5 text-white transition-transform ${expandedCards[cardType] ? 'rotate-180' : ''}`} 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
+          {children}
+        </div>
+      </motion.div>
+    );
+  };
+  
+  // Компонент расширенного контента
+  const ExpandedContent = ({ data, type }) => {
+    return (
+      <motion.div
+        initial={{ opacity: 0, height: 0 }}
+        animate={{ opacity: 1, height: 'auto' }}
+        exit={{ opacity: 0, height: 0 }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        className="overflow-hidden"
+      >
+        <div className="mt-6 pt-6 border-t border-gray-700/50">
+          {type === 'bestSelling' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* График продаж по месяцам */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-gray-800/30 p-6 rounded-xl"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+                <h5 className="text-lg font-semibold text-white mb-4">{t('analytics.monthlyBreakdown')}</h5>
+                <div className="h-64 flex items-end gap-2">
+                  {data.monthlyBreakdown.map((item, index) => (
+                    <div key={index} className="flex-1 flex flex-col items-center">
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: `${(item.quantity / Math.max(...data.monthlyBreakdown.map(d => d.quantity))) * 100}%` }}
+                        transition={{ delay: index * 0.05, duration: 0.5 }}
+                        className="w-full bg-gradient-to-t from-blue-600 to-blue-400 rounded-t hover:from-blue-500 hover:to-blue-300 transition-colors relative group"
+                      >
+                        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 px-2 py-1 rounded text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                          {formatNumber(item.quantity)}
+                        </div>
+                      </motion.div>
+                      <span className="text-xs text-gray-400 mt-2 rotate-45 origin-left">{item.month.slice(0, 3)}</span>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+              
+              {/* Разбивка по модификациям и цветам */}
+              <div className="space-y-6">
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <h5 className="text-lg font-semibold text-white mb-3">{t('analytics.byModification')}</h5>
+                  <div className="space-y-3">
+                    {data.byModification.map((mod, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 + index * 0.1 }}
+                        className="bg-gray-800/30 p-4 rounded-lg"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-white font-medium">{mod.name}</span>
+                          <span className="text-2xl font-bold text-blue-400">{formatNumber(mod.quantity)}</span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-2">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${mod.percentage}%` }}
+                            transition={{ delay: 0.5 + index * 0.1, duration: 0.5 }}
+                            className="h-2 bg-gradient-to-r from-blue-500 to-blue-400 rounded-full"
+                          />
+                        </div>
+                        <p className="text-sm text-gray-400 mt-1">{mod.percentage}%</p>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <h5 className="text-lg font-semibold text-white mb-3">{t('analytics.byColor')}</h5>
+                  <div className="grid grid-cols-2 gap-3">
+                    {data.byColor.map((color, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.4 + index * 0.05 }}
+                        whileHover={{ scale: 1.05 }}
+                        className="bg-gray-800/30 p-4 rounded-lg cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <div 
+                            className="w-10 h-10 rounded-full border-2 border-gray-600 shadow-lg"
+                            style={{ backgroundColor: color.hex }}
+                          />
+                          <span className="text-white font-medium flex-1">{color.name}</span>
+                        </div>
+                        <p className="text-xl font-bold text-gray-300">{formatNumber(color.quantity)}</p>
+                        <p className="text-sm text-gray-500">{color.percentage}%</p>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          )}
+          
+          {type === 'mostProfitable' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Квартальная динамика */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-gray-800/30 p-6 rounded-xl"
+              >
+                <h5 className="text-lg font-semibold text-white mb-4">{t('analytics.quarterlyBreakdown')}</h5>
+                <div className="space-y-4">
+                  {data.quarterlyBreakdown.map((quarter, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2 + index * 0.1 }}
+                      className="bg-gray-700/30 p-4 rounded-lg"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-white font-bold text-lg">{quarter.quarter}</span>
+                        <div className="text-right">
+                          <p className="text-green-400 font-bold">{formatCurrency(quarter.profit)}</p>
+                          <p className="text-gray-400 text-sm">из {formatCurrency(quarter.revenue)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-gray-600 rounded-full h-3">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(quarter.profit / quarter.revenue) * 100}%` }}
+                            transition={{ delay: 0.3 + index * 0.1, duration: 0.5 }}
+                            className="h-3 bg-gradient-to-r from-green-500 to-green-400 rounded-full"
+                          />
+                        </div>
+                        <span className="text-gray-400 text-sm w-12 text-right">
+                          {Math.round((quarter.profit / quarter.revenue) * 100)}%
+                        </span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+              
+              {/* Разбивка по модификациям и цветам */}
+              <div className="space-y-6">
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <h5 className="text-lg font-semibold text-white mb-3">{t('analytics.profitByModification')}</h5>
+                  <div className="space-y-3">
+                    {data.byModification.map((mod, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 + index * 0.1 }}
+                        whileHover={{ x: 4 }}
+                        className="bg-gray-800/30 p-4 rounded-lg cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-white font-medium">{mod.name}</span>
+                          <div className="text-right">
+                            <p className="text-xl font-bold text-green-400">{formatCurrency(mod.profit)}</p>
+                            <p className="text-sm text-gray-400">{mod.percentage}%</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <h5 className="text-lg font-semibold text-white mb-3">{t('analytics.profitByColor')}</h5>
+                  <div className="space-y-2">
+                    {data.byColor.map((color, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.4 + index * 0.05 }}
+                        className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <motion.div 
+                            whileHover={{ scale: 1.2 }}
+                            className="w-8 h-8 rounded-full border-2 border-gray-600"
+                            style={{ backgroundColor: color.hex }}
+                          />
+                          <span className="text-white">{color.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-white font-medium">{formatCurrency(color.profit)}</p>
+                          <p className="text-sm text-gray-400">{color.percentage}%</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          )}
+          
+          {type === 'bestColor' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Сравнение всех цветов */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-gray-800/30 p-6 rounded-xl"
+              >
+                <h5 className="text-lg font-semibold text-white mb-4">{t('analytics.colorComparison')}</h5>
+                <div className="space-y-3">
+                  {data.colorComparison.map((color, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2 + index * 0.05 }}
+                      className="relative"
+                    >
+                      <div className="flex items-center justify-between p-3 bg-gray-700/30 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <motion.div
+                            whileHover={{ scale: 1.1, rotate: 360 }}
+                            transition={{ rotate: { duration: 0.5 } }}
+                            className={`text-lg font-bold ${index === 0 ? 'text-yellow-400' : 'text-gray-400'}`}
+                          >
+                            #{index + 1}
+                          </motion.div>
+                          <div 
+                            className="w-8 h-8 rounded-full border-2 border-gray-600"
+                            style={{ backgroundColor: color.hex }}
+                          />
+                          <span className="text-white">{color.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-white font-medium">{formatNumber(color.quantity)}</p>
+                          <p className="text-sm text-gray-400">{color.percentage}%</p>
+                        </div>
+                      </div>
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${color.percentage}%` }}
+                        transition={{ delay: 0.3 + index * 0.05, duration: 0.5 }}
+                        className="absolute bottom-0 left-0 h-1 bg-purple-500 rounded-b-lg"
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+              
+              {/* Динамика по годам и моделям */}
+              <div className="space-y-6">
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <h5 className="text-lg font-semibold text-white mb-3">{t('analytics.yearOverYear')}</h5>
+                  <div className="bg-gray-700/30 p-4 rounded-xl">
+                    <div className="space-y-3">
+                      {data.yearOverYear.map((year, index) => (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.3 + index * 0.1 }}
+                          className="flex items-center justify-between"
+                        >
+                          <span className="text-white font-bold">{year.year}</span>
+                          <div className="flex items-center gap-3">
+                            <div className="w-32 bg-gray-600 rounded-full h-2">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${(year.quantity / Math.max(...data.yearOverYear.map(y => y.quantity))) * 100}%` }}
+                                transition={{ delay: 0.4 + index * 0.1, duration: 0.5 }}
+                                className="h-2 bg-gradient-to-r from-purple-500 to-purple-400 rounded-full"
+                              />
+                            </div>
+                            <span className="text-gray-300 text-sm w-20 text-right">
+                              {formatNumber(year.quantity)}
+                            </span>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <h5 className="text-lg font-semibold text-white mb-3">{t('reports.byModel')}</h5>
+                  <div className="grid grid-cols-2 gap-3">
+                    {data.models.map((model, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.4 + index * 0.05 }}
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        className="bg-gray-800/30 p-3 rounded-lg cursor-pointer"
+                      >
+                        <p className="text-white font-medium">{model.model}</p>
+                        <p className="text-lg font-bold text-purple-400">{formatNumber(model.count)}</p>
+                        <p className="text-xs text-gray-400">{model.percentage}%</p>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              </div>
+            </div>
           )}
         </div>
-      </div>
-      {children}
-    </motion.div>
-  );
-  
-  // Компонент мини-графика
-  const MiniChart = ({ data, type = 'bar', color = '#3b82f6' }) => (
-    <div className="h-20 flex items-end gap-1">
-      {data.map((item, index) => (
-        <div key={index} className="flex-1 flex flex-col items-center">
-          <div 
-            className="w-full bg-opacity-80 rounded-t transition-all hover:opacity-100"
-            style={{
-              height: `${(item.value / Math.max(...data.map(d => d.value))) * 100}%`,
-              backgroundColor: color,
-              minHeight: '4px'
-            }}
-          />
-          <span className="text-xs text-gray-400 mt-1">{item.label}</span>
-        </div>
-      ))}
-    </div>
-  );
+      </motion.div>
+    );
+  };
   
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
@@ -260,7 +561,12 @@ const AnalyticsReports = () => {
       
       {/* Фильтры */}
       <div className="p-6 md:p-8">
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 mb-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 mb-8"
+        >
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Выбор года */}
             <div>
@@ -324,7 +630,9 @@ const AnalyticsReports = () => {
             
             {/* Кнопка сброса фильтров */}
             <div className="flex items-end">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setFilters({ modification: 'all', color: 'all', period: 'year' })}
                 className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-white transition-colors flex items-center justify-center gap-2"
               >
@@ -332,10 +640,10 @@ const AnalyticsReports = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 {t('filters.reset')}
-              </button>
+              </motion.button>
             </div>
           </div>
-        </div>
+        </motion.div>
         
         {/* Основные отчеты */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -354,7 +662,8 @@ const AnalyticsReports = () => {
           >
             <div>
               <div className="flex items-center space-x-4 mb-4">
-                <img 
+                <motion.img 
+                  whileHover={{ scale: 1.05 }}
                   src={reportData.bestSellingModel.image} 
                   alt={reportData.bestSellingModel.model}
                   className="w-24 h-16 object-cover rounded-lg"
@@ -373,7 +682,8 @@ const AnalyticsReports = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">{t('reports.color')}:</span>
                   <div className="flex items-center space-x-2">
-                    <div 
+                    <motion.div 
+                      whileHover={{ scale: 1.2 }}
                       className="w-6 h-6 rounded-full border-2 border-gray-600"
                       style={{ backgroundColor: reportData.bestSellingModel.colorHex }}
                     />
@@ -399,64 +709,29 @@ const AnalyticsReports = () => {
               
               {/* Расширенный контент */}
               <AnimatePresence>
-                {expandedCards.bestSelling && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="mt-6 space-y-6"
-                  >
-                    {/* Разбивка по модификациям */}
-                    <div>
-                      <h5 className="text-lg font-semibold text-white mb-3">{t('analytics.byModification')}</h5>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {reportData.bestSellingModel.byModification.map((mod, index) => (
-                          <div key={index} className="bg-gray-800/30 p-4 rounded-lg">
-                            <p className="text-white font-medium">{mod.name}</p>
-                            <p className="text-2xl font-bold text-blue-400">{formatNumber(mod.quantity)}</p>
-                            <p className="text-sm text-gray-400">{mod.percentage}%</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Разбивка по цветам */}
-                    <div>
-                      <h5 className="text-lg font-semibold text-white mb-3">{t('analytics.byColor')}</h5>
-                      <div className="space-y-2">
-                        {reportData.bestSellingModel.byColor.map((color, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <div 
-                                className="w-8 h-8 rounded-full border-2 border-gray-600"
-                                style={{ backgroundColor: color.hex }}
-                              />
-                              <span className="text-white">{color.name}</span>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-white font-medium">{formatNumber(color.quantity)}</p>
-                              <p className="text-sm text-gray-400">{color.percentage}%</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </motion.div>
+                {expandedCard === 'bestSelling' && (
+                  <ExpandedContent data={reportData.bestSellingModel} type="bestSelling" />
                 )}
               </AnimatePresence>
               
-              <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                <p className="text-sm text-blue-300">
-                  {t('reports.bestSelling.result', {
-                    year: selectedYear,
-                    model: reportData.bestSellingModel.model,
-                    modification: reportData.bestSellingModel.modification,
-                    color: reportData.bestSellingModel.color,
-                    quantity: formatNumber(reportData.bestSellingModel.quantity)
-                  })}
-                </p>
-              </div>
+              {!expandedCard && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg"
+                >
+                  <p className="text-sm text-blue-300">
+                    {t('reports.bestSelling.result', {
+                      year: selectedYear,
+                      model: reportData.bestSellingModel.model,
+                      modification: reportData.bestSellingModel.modification,
+                      color: reportData.bestSellingModel.color,
+                      quantity: formatNumber(reportData.bestSellingModel.quantity)
+                    })}
+                  </p>
+                </motion.div>
+              )}
             </div>
           </ReportCard>
           
@@ -475,7 +750,8 @@ const AnalyticsReports = () => {
           >
             <div>
               <div className="flex items-center space-x-4 mb-4">
-                <img 
+                <motion.img 
+                  whileHover={{ scale: 1.05 }}
                   src={reportData.mostProfitableModel.image} 
                   alt={reportData.mostProfitableModel.model}
                   className="w-24 h-16 object-cover rounded-lg"
@@ -494,7 +770,8 @@ const AnalyticsReports = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">{t('reports.color')}:</span>
                   <div className="flex items-center space-x-2">
-                    <div 
+                    <motion.div 
+                      whileHover={{ scale: 1.2 }}
                       className="w-6 h-6 rounded-full border-2 border-gray-600"
                       style={{ backgroundColor: reportData.mostProfitableModel.colorHex }}
                     />
@@ -523,64 +800,29 @@ const AnalyticsReports = () => {
               
               {/* Расширенный контент */}
               <AnimatePresence>
-                {expandedCards.mostProfitable && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="mt-6 space-y-6"
-                  >
-                    {/* Разбивка по модификациям */}
-                    <div>
-                      <h5 className="text-lg font-semibold text-white mb-3">{t('analytics.profitByModification')}</h5>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {reportData.mostProfitableModel.byModification.map((mod, index) => (
-                          <div key={index} className="bg-gray-800/30 p-4 rounded-lg">
-                            <p className="text-white font-medium">{mod.name}</p>
-                            <p className="text-2xl font-bold text-green-400">{formatCurrency(mod.profit)}</p>
-                            <p className="text-sm text-gray-400">{mod.percentage}%</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Разбивка по цветам */}
-                    <div>
-                      <h5 className="text-lg font-semibold text-white mb-3">{t('analytics.profitByColor')}</h5>
-                      <div className="space-y-2">
-                        {reportData.mostProfitableModel.byColor.map((color, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <div 
-                                className="w-8 h-8 rounded-full border-2 border-gray-600"
-                                style={{ backgroundColor: color.hex }}
-                              />
-                              <span className="text-white">{color.name}</span>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-white font-medium">{formatCurrency(color.profit)}</p>
-                              <p className="text-sm text-gray-400">{color.percentage}%</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-]                  </motion.div>
+                {expandedCard === 'mostProfitable' && (
+                  <ExpandedContent data={reportData.mostProfitableModel} type="mostProfitable" />
                 )}
               </AnimatePresence>
               
-              <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                <p className="text-sm text-green-300">
-                  {t('reports.mostProfitable.result', {
-                    year: selectedYear,
-                    model: reportData.mostProfitableModel.model,
-                    modification: reportData.mostProfitableModel.modification,
-                    color: reportData.mostProfitableModel.color,
-                    amount: formatCurrency(reportData.mostProfitableModel.profit)
-                  })}
-                </p>
-              </div>
+              {!expandedCard && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg"
+                >
+                  <p className="text-sm text-green-300">
+                    {t('reports.mostProfitable.result', {
+                      year: selectedYear,
+                      model: reportData.mostProfitableModel.model,
+                      modification: reportData.mostProfitableModel.modification,
+                      color: reportData.mostProfitableModel.color,
+                      amount: formatCurrency(reportData.mostProfitableModel.profit)
+                    })}
+                  </p>
+                </motion.div>
+              )}
             </div>
           </ReportCard>
           
@@ -600,7 +842,9 @@ const AnalyticsReports = () => {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
-                  <div 
+                  <motion.div 
+                    whileHover={{ scale: 1.1, rotate: 360 }}
+                    transition={{ rotate: { duration: 0.5 } }}
                     className="w-16 h-16 rounded-xl border-2 border-gray-600 shadow-lg"
                     style={{ backgroundColor: reportData.bestSellingColor.colorHex }}
                   />
@@ -632,122 +876,113 @@ const AnalyticsReports = () => {
               
               <div className="space-y-2">
                 <p className="text-sm text-gray-400 mb-2">{t('reports.byModel')}:</p>
-                {reportData.bestSellingColor.models.slice(0, 4).map((model, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-gray-800/30 rounded-lg">
+                {reportData.bestSellingColor.models.slice(0, expandedCard === 'bestColor' ? reportData.bestSellingColor.models.length : 3).map((model, index) => (
+                  <motion.div 
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ x: 4 }}
+                    className="flex items-center justify-between p-2 bg-gray-800/30 rounded-lg"
+                  >
                     <span className="text-white">{model.model}</span>
                     <div className="text-right">
                       <span className="text-gray-300">{formatNumber(model.count)} {t('units')}</span>
                       <span className="text-gray-500 text-sm ml-2">({model.percentage}%)</span>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
               
               {/* Расширенный контент */}
               <AnimatePresence>
-                {expandedCards.bestColor && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="mt-6 space-y-6"
-                  >
-                    {/* Сравнение всех цветов */}
-                    <div>
-                      <h5 className="text-lg font-semibold text-white mb-3">{t('analytics.colorComparison')}</h5>
-                      <div className="space-y-2">
-                        {reportData.bestSellingColor.colorComparison.map((color, index) => (
-                          <div key={index} className="relative">
-                            <div className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
-                              <div className="flex items-center gap-3">
-                                <div className={`text-lg font-bold ${index === 0 ? 'text-yellow-400' : 'text-gray-400'}`}>
-                                  #{index + 1}
-                                </div>
-                                <div 
-                                  className="w-8 h-8 rounded-full border-2 border-gray-600"
-                                  style={{ backgroundColor: color.hex }}
-                                />
-                                <span className="text-white">{color.name}</span>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-white font-medium">{formatNumber(color.quantity)}</p>
-                                <p className="text-sm text-gray-400">{color.percentage}%</p>
-                              </div>
-                            </div>
-                            <div className="absolute bottom-0 left-0 h-1 bg-purple-500 rounded-b-lg transition-all"
-                              style={{ width: `${color.percentage}%` }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </motion.div>
+                {expandedCard === 'bestColor' && (
+                  <ExpandedContent data={reportData.bestSellingColor} type="bestColor" />
                 )}
               </AnimatePresence>
               
-              <div className="mt-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-                <p className="text-sm text-purple-300">
-                  {t('reports.bestSellingColor.result', {
-                    year: selectedYear,
-                    color: reportData.bestSellingColor.color,
-                    quantity: formatNumber(reportData.bestSellingColor.quantity)
-                  })}
-                </p>
-              </div>
+              {!expandedCard && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="mt-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg"
+                >
+                  <p className="text-sm text-purple-300">
+                    {t('reports.bestSellingColor.result', {
+                      year: selectedYear,
+                      color: reportData.bestSellingColor.color,
+                      quantity: formatNumber(reportData.bestSellingColor.quantity)
+                    })}
+                  </p>
+                </motion.div>
+              )}
             </div>
           </ReportCard>
         </div>
         
-        {/* Сравнительная таблица всех моделей */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6"
-        >
-          <h3 className="text-xl font-bold text-white mb-4">{t('analytics.allModelsComparison')}</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-gray-400 border-b border-gray-700">
-                  <th className="pb-3 pr-4">{t('table.model')}</th>
-                  <th className="pb-3 pr-4 text-right">{t('table.sales')}</th>
-                  <th className="pb-3 pr-4 text-right">{t('table.revenue')}</th>
-                  <th className="pb-3 text-center">{t('table.performance')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportData.allModelsComparison.map((model, index) => (
-                  <tr key={index} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors">
-                    <td className="py-3 pr-4">
-                      <span className="text-white font-medium">{model.model}</span>
-                    </td>
-                    <td className="py-3 pr-4 text-right">
-                      <span className="text-gray-300">{formatNumber(model.sales)}</span>
-                    </td>
-                    <td className="py-3 pr-4 text-right">
-                      <span className="text-gray-300">{formatCurrency(model.revenue)}</span>
-                    </td>
-                    <td className="py-3">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-24 bg-gray-700 rounded-full h-2">
-                          <div 
-                            className="h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"
-                            style={{ width: `${(model.sales / Math.max(...reportData.allModelsComparison.map(m => m.sales))) * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-gray-400">
-                          {Math.round((model.sales / Math.max(...reportData.allModelsComparison.map(m => m.sales))) * 100)}%
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
+        {/* Сравнительная таблица всех моделей - показываем только если нет развернутых карточек */}
+        <AnimatePresence>
+          {!expandedCard && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6"
+            >
+              <h3 className="text-xl font-bold text-white mb-4">{t('analytics.allModelsComparison')}</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left text-gray-400 border-b border-gray-700">
+                      <th className="pb-3 pr-4">{t('table.model')}</th>
+                      <th className="pb-3 pr-4 text-right">{t('table.sales')}</th>
+                      <th className="pb-3 pr-4 text-right">{t('table.revenue')}</th>
+                      <th className="pb-3 text-center">{t('table.performance')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.allModelsComparison.map((model, index) => (
+                      <motion.tr 
+                        key={index}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 + index * 0.05 }}
+                        className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
+                      >
+                        <td className="py-3 pr-4">
+                          <span className="text-white font-medium">{model.model}</span>
+                        </td>
+                        <td className="py-3 pr-4 text-right">
+                          <span className="text-gray-300">{formatNumber(model.sales)}</span>
+                        </td>
+                        <td className="py-3 pr-4 text-right">
+                          <span className="text-gray-300">{formatCurrency(model.revenue)}</span>
+                        </td>
+                        <td className="py-3">
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-24 bg-gray-700 rounded-full h-2">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${(model.sales / Math.max(...reportData.allModelsComparison.map(m => m.sales))) * 100}%` }}
+                                transition={{ delay: 0.3 + index * 0.05, duration: 0.5 }}
+                                className="h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"
+                              />
+                            </div>
+                            <span className="text-xs text-gray-400">
+                              {Math.round((model.sales / Math.max(...reportData.allModelsComparison.map(m => m.sales))) * 100)}%
+                            </span>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
