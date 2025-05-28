@@ -483,7 +483,6 @@ const CarWarehouseAnalytics = () => {
     }
   };
 
-  // Функция для определения категории модели
 function getCategoryForModel(modelName) {
     const suvModels = ['TRACKER-2', 'EQUINOX', 'TRAVERSE', 'TAHOE', 'TAHOE-2'];
     const sedanModels = ['COBALT', 'MALIBU-2', 'ONIX', 'LACETTI', 'NEXIA-3'];
@@ -495,7 +494,7 @@ function getCategoryForModel(modelName) {
     if (minivanModels.includes(modelName)) return 'minivan';
     if (otherModels.includes(modelName)) return 'suv';
     
-    return 'other'; // По умолчанию
+    return 'other';
 }
 
   function getColorHex(colorName) {
@@ -653,6 +652,7 @@ function getCategoryForModel(modelName) {
   }, [loading, enhancedWarehouses, selectedCarModel, selectedWarehouse, t]);
 
   // Рендер диаграммы распределения по складам
+// Рендер диаграммы распределения по складам
 const renderWarehouseDistribution = () => {
   if (!warehouseDistributionRef.current) return;
   
@@ -664,12 +664,12 @@ const renderWarehouseDistribution = () => {
     .domain(['available', 'reserved', 'defectiveOk', 'defective', 'tradeIn'])
     .range(['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6']);
   
-  // Увеличиваем нижний отступ для легенды
+  // Увеличиваем левый отступ для размещения названий складов
   const margin = { 
     top: 30, 
     right: 20, 
-    bottom: isMobile ? 0 : 0,
-    left: isMobile ? 0 : 0 
+    bottom: isMobile ? 60 : 60,
+    left: isMobile ? 120 : 140  // Увеличиваем левый отступ для названий
   };
   const width = container.clientWidth - margin.left - margin.right;
   const height = container.clientHeight - margin.top - margin.bottom;
@@ -709,6 +709,7 @@ const renderWarehouseDistribution = () => {
     .range([0, height])
     .padding(0.3);
     
+  // Добавляем горизонтальную ось
   svg.append('g')
     .attr('transform', `translate(0,${height})`)
     .call(d3.axisBottom(x))
@@ -716,6 +717,7 @@ const renderWarehouseDistribution = () => {
     .style('font-size', '12px')
     .style('fill', '#d1d5db');
     
+  // Добавляем вертикальную ось с названиями складов
   svg.append('g')
     .call(d3.axisLeft(y))
     .selectAll('text')
@@ -725,8 +727,19 @@ const renderWarehouseDistribution = () => {
     .on('click', (event, d) => {
       const warehouse = enhancedWarehouses.find(w => w.name === d);
       handleWarehouseClick(warehouse);
+    })
+    .on('mouseover', function() {
+      d3.select(this)
+        .style('fill', '#60a5fa')
+        .style('font-weight', 'bold');
+    })
+    .on('mouseout', function() {
+      d3.select(this)
+        .style('fill', '#d1d5db')
+        .style('font-weight', 'normal');
     });
     
+  // Добавляем сетку
   svg.append('g')
     .attr('class', 'grid')
     .call(d3.axisBottom(x)
@@ -766,6 +779,7 @@ const renderWarehouseDistribution = () => {
       .attr('stop-opacity', 1);
   });
   
+  // Группы для баров
   svg.append('g')
     .selectAll('g')
     .data(stackedData)
@@ -785,11 +799,26 @@ const renderWarehouseDistribution = () => {
       const warehouse = enhancedWarehouses.find(w => w.name === d.data.name);
       handleWarehouseClick(warehouse);
     })
+    .on('mouseover', function(event, d) {
+      // Подсвечиваем соответствующее название склада
+      svg.selectAll('.y.axis text')
+        .filter(text => text === d.data.name)
+        .style('fill', '#60a5fa')
+        .style('font-weight', 'bold');
+    })
+    .on('mouseout', function(event, d) {
+      // Возвращаем обычный стиль
+      svg.selectAll('.y.axis text')
+        .filter(text => text === d.data.name)
+        .style('fill', '#d1d5db')
+        .style('font-weight', 'normal');
+    })
     .transition()
     .duration(800)
     .delay((d, i) => i * 100)
     .attr('width', d => x(d[1]) - x(d[0]));
     
+  // Линии максимальной вместимости
   svg.selectAll('.capacity-line')
     .data(enhancedWarehouses)
     .join('line')
@@ -802,6 +831,24 @@ const renderWarehouseDistribution = () => {
     .attr('stroke-width', 2)
     .attr('stroke-dasharray', '5,3')
     .style('opacity', 0)
+    .transition()
+    .duration(500)
+    .delay(1000)
+    .style('opacity', 1);
+    
+  // Добавляем текстовые метки с количеством автомобилей на каждом складе
+  svg.selectAll('.warehouse-total')
+    .data(enhancedWarehouses)
+    .join('text')
+    .attr('class', 'warehouse-total')
+    .attr('x', d => x(d.totalCount) + 5)
+    .attr('y', d => y(d.name) + y.bandwidth() / 2)
+    .attr('dy', '0.35em')
+    .style('font-size', isMobile ? '10px' : '12px')
+    .style('fill', '#ffffff')
+    .style('font-weight', 'bold')
+    .style('opacity', 0)
+    .text(d => d.totalCount)
     .transition()
     .duration(500)
     .delay(1000)
