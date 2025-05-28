@@ -1,4 +1,3 @@
-// src/shared/components/locales/AnalyticsReports.ts
 import { LocaleMessages } from "@/src/types/locale";
 
 export const analyticsReportsTranslations: LocaleMessages = {

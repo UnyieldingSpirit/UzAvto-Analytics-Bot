@@ -1,4 +1,3 @@
-// src/shared/components/AuthForm.jsx
 "use client";
 
 import { useState } from 'react';
