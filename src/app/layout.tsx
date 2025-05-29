@@ -1,13 +1,8 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import Script from 'next/script';
 import EnhancedMainWrapper from "../shared/layout/EnhancedMainWrapper";
-
-const inter = Inter({
-  subsets: ['latin', 'cyrillic'],
-  variable: '--font-inter',
-});
 
 export const metadata: Metadata = {
   title: "UzAvtoAnalytics",
@@ -70,6 +65,7 @@ export default function RootLayout({
               --safe-area-inset-top: env(safe-area-inset-top, 0px);
               --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
               --tg-viewport-stable-height: 100vh;
+              --font-inter: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
             }
             
             /* Жестко отключаем скролл на html и body */
@@ -103,8 +99,11 @@ export default function RootLayout({
         </style>
       </head>
       <body
-        className={`${inter.variable} antialiased touch-manipulation`}
-        style={{ fontFamily: 'Inter, sans-serif', overflow: 'hidden' }}
+        className="antialiased touch-manipulation"
+        style={{ 
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif', 
+          overflow: 'hidden' 
+        }}
       >
         <EnhancedMainWrapper>
           {children}

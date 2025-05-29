@@ -11,14 +11,15 @@ import * as d3 from 'd3';
 import { 
   Sparkles, TrendingUp, Award, Palette, BarChart3, 
   PieChart, Activity, Zap, Brain, Rocket, Star,
-  Car, DollarSign, Package, Layers, Download, RefreshCw
+  Car, DollarSign, Package, Layers, Download, RefreshCw,
+  Calendar, ArrowUp, ArrowDown, Minus
 } from 'lucide-react';
 import CountUp from 'react-countup';
 import { 
   ResponsiveContainer, LineChart, Line, AreaChart, Area, 
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, 
   Radar, Tooltip, CartesianGrid, XAxis, YAxis, PieChart as RechartsPie, 
-  Pie, Cell, BarChart, Bar, Treemap
+  Pie, Cell, BarChart, Bar, Treemap, Legend, ComposedChart
 } from 'recharts';
 import { useSpring, animated } from '@react-spring/web';
 
@@ -85,7 +86,7 @@ const D3CarVisualization = ({ data, selectedModel }) => {
         avgPrice: stats.revenue / stats.total || 0
       }))
       .sort((a, b) => b.total - a.total)
-      .slice(0, 10); // Ограничиваем 10 моделями для читаемости
+      .slice(0, 10);
     
     // Масштабы
     const xScale = d3.scaleLinear()
@@ -166,6 +167,391 @@ const D3CarVisualization = ({ data, selectedModel }) => {
   );
 };
 
+// Улучшенный компонент для распределения по цветам
+const ColorDistributionChart = ({ colorStats, totalSales }) => {
+  // Подготовка данных с реальными цветами
+  const getColorCode = (colorName) => {
+    const lowerName = colorName.toLowerCase();
+    if (lowerName.includes('white') || lowerName.includes('белый')) return '#FFFFFF';
+    if (lowerName.includes('black') || lowerName.includes('черный')) return '#1a1a1a';
+    if (lowerName.includes('gray') || lowerName.includes('grey') || lowerName.includes('серый')) return '#6b7280';
+    if (lowerName.includes('silver') || lowerName.includes('серебр')) return '#c0c0c0';
+    if (lowerName.includes('blue') || lowerName.includes('синий')) return '#3b82f6';
+    if (lowerName.includes('red') || lowerName.includes('красный')) return '#ef4444';
+    if (lowerName.includes('green') || lowerName.includes('зеленый')) return '#10b981';
+    if (lowerName.includes('brown') || lowerName.includes('коричневый')) return '#92400e';
+    if (lowerName.includes('beige') || lowerName.includes('бежевый')) return '#d4b5a0';
+    if (lowerName.includes('gold') || lowerName.includes('золот')) return '#fbbf24';
+    if (lowerName.includes('orange') || lowerName.includes('оранж')) return '#f97316';
+    if (lowerName.includes('purple') || lowerName.includes('фиолет')) return '#8b5cf6';
+    return '#9ca3af'; // default gray
+  };
+  
+  const colorData = Object.entries(colorStats)
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 8)
+    .map(([name, stats]) => ({
+      name: name.length > 20 ? name.substring(0, 20) + '...' : name,
+      fullName: name,
+      value: stats.count,
+      percent: ((stats.count / totalSales) * 100).toFixed(1),
+      color: getColorCode(name),
+      revenue: stats.revenue
+    }));
+  
+  return (
+    <div className="h-full">
+      <div className="grid grid-cols-2 gap-4 h-full">
+        {/* Круговая диаграмма */}
+        <div className="h-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsPie>
+              <Pie
+                data={colorData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                outerRadius="80%"
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {colorData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} stroke="#1f2937" strokeWidth={2} />
+                ))}
+              </Pie>
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: '#1f2937', 
+                  border: 'none', 
+                  borderRadius: '8px',
+                  padding: '12px'
+                }}
+                formatter={(value, name, props) => [
+                  <div key="value" className="space-y-1">
+                    <div className="text-white font-semibold">{value.toLocaleString()} шт</div>
+                    <div className="text-gray-400 text-xs">{props.payload.percent}% от общего</div>
+                  </div>,
+                  <div key="name" className="flex items-center gap-2">
+                    <div 
+                      className="w-4 h-4 rounded border border-gray-600"
+                      style={{ backgroundColor: props.payload.color }}
+                    />
+                    <span className="text-gray-300">{props.payload.fullName}</span>
+                  </div>
+                ]}
+              />
+            </RechartsPie>
+          </ResponsiveContainer>
+        </div>
+        
+        {/* Список цветов с визуализацией */}
+        <div className="space-y-3 overflow-y-auto max-h-[300px] pr-2">
+          {colorData.map((item, index) => (
+            <motion.div
+              key={item.fullName}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className="bg-gray-800/50 rounded-lg p-3 hover:bg-gray-700/50 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="text-gray-500 font-bold w-6">#{index + 1}</div>
+                  <div 
+                    className="w-10 h-10 rounded-lg border-2 border-gray-600 shadow-inner"
+                    style={{ 
+                      backgroundColor: item.color,
+                      background: item.color === '#FFFFFF' ? 
+                        'linear-gradient(135deg, #FFFFFF 0%, #f3f4f6 100%)' : 
+                        item.color
+                    }}
+                  />
+                  <div>
+                    <div className="text-white font-medium text-sm">{item.fullName}</div>
+                    <div className="text-gray-400 text-xs">{item.value.toLocaleString()} шт</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-blue-400 font-bold">{item.percent}%</div>
+                </div>
+              </div>
+              <div className="mt-2 bg-gray-700/30 rounded-full h-2 overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${item.percent}%` }}
+                  transition={{ duration: 1, delay: index * 0.1 }}
+                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
+                />
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Компонент сравнения по годам
+const YearComparison = ({ currentData, onYearSelect }) => {
+  const [selectedYears, setSelectedYears] = useState(['2024', '2025']);
+  const [yearData, setYearData] = useState({});
+  const [loading, setLoading] = useState(false);
+  const { t } = useTranslation(analyticsReportsTranslations);
+  
+  // Загрузка данных за разные годы
+  useEffect(() => {
+    const fetchYearData = async () => {
+      setLoading(true);
+      const dataPromises = selectedYears.map(async (year) => {
+        try {
+          const response = await axios.post('https://uzavtosalon.uz/b/dashboard/infos&get_modif_color', {
+            begin_date: `01.01.${year}`,
+            end_date: `31.12.${year}`
+          });
+          return { year, data: response.data };
+        } catch (error) {
+          console.error(`Error fetching data for ${year}:`, error);
+          return { year, data: null };
+        }
+      });
+      
+      const results = await Promise.all(dataPromises);
+      const newYearData = {};
+      results.forEach(({ year, data }) => {
+        if (data) {
+          newYearData[year] = processYearData(data);
+        }
+      });
+      setYearData(newYearData);
+      setLoading(false);
+    };
+    
+    fetchYearData();
+  }, [selectedYears]);
+  
+  // Обработка данных года
+  const processYearData = (apiData) => {
+    let totalSales = 0;
+    let totalRevenue = 0;
+    const monthlyData = {};
+    
+    apiData.forEach(model => {
+      model.filter_by_region.forEach(month => {
+        const monthNum = month.month.split('-')[1];
+        if (!monthlyData[monthNum]) {
+          monthlyData[monthNum] = { sales: 0, revenue: 0 };
+        }
+        
+        month.modifications.forEach(mod => {
+          const count = parseInt(mod.all_count) || 0;
+          const amount = parseFloat(mod.amount) || 0;
+          
+          totalSales += count;
+          totalRevenue += amount;
+          monthlyData[monthNum].sales += count;
+          monthlyData[monthNum].revenue += amount;
+        });
+      });
+    });
+    
+    return { totalSales, totalRevenue, monthlyData };
+  };
+  
+  // Подготовка данных для графика
+  const chartData = useMemo(() => {
+    const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+    const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+    
+    return months.map((month, index) => {
+      const data = { month: monthNames[index] };
+      selectedYears.forEach(year => {
+        if (yearData[year] && yearData[year].monthlyData[month]) {
+          data[`sales${year}`] = yearData[year].monthlyData[month].sales;
+          data[`revenue${year}`] = Math.round(yearData[year].monthlyData[month].revenue);
+        } else {
+          data[`sales${year}`] = 0;
+          data[`revenue${year}`] = 0;
+        }
+      });
+      return data;
+    });
+  }, [yearData, selectedYears]);
+  
+  // Расчет изменений
+  const calculateChange = (current, previous) => {
+    if (!previous || previous === 0) return { value: 0, percent: 0 };
+    const change = current - previous;
+    const percent = ((change / previous) * 100).toFixed(1);
+    return { value: change, percent: parseFloat(percent) };
+  };
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"
+        />
+      </div>
+    );
+  }
+  
+  return (
+    <div className="space-y-6">
+      {/* Селектор годов */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <span className="text-gray-400">Выберите годы для сравнения:</span>
+        {['2023', '2024', '2025'].map(year => (
+          <motion.button
+            key={year}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              if (selectedYears.includes(year)) {
+                if (selectedYears.length > 1) {
+                  setSelectedYears(selectedYears.filter(y => y !== year));
+                }
+              } else {
+                if (selectedYears.length < 3) {
+                  setSelectedYears([...selectedYears, year].sort());
+                }
+              }
+            }}
+            className={`px-4 py-2 rounded-lg font-medium transition-all ${
+              selectedYears.includes(year)
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+            }`}
+          >
+            {year}
+          </motion.button>
+        ))}
+      </div>
+      
+      {/* Карточки сравнения */}
+      {selectedYears.length >= 2 && yearData[selectedYears[0]] && yearData[selectedYears[1]] && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {selectedYears.map((year, index) => {
+            const data = yearData[year];
+            const prevYear = index > 0 ? selectedYears[index - 1] : null;
+            const prevData = prevYear ? yearData[prevYear] : null;
+            const salesChange = prevData ? calculateChange(data.totalSales, prevData.totalSales) : null;
+            const revenueChange = prevData ? calculateChange(data.totalRevenue, prevData.totalRevenue) : null;
+            
+            return (
+              <motion.div
+                key={year}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-xl font-bold text-white">{year} год</h4>
+                  <Calendar className="w-6 h-6 text-gray-400" />
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-gray-400 text-sm mb-1">Всего продаж</p>
+                    <div className="flex items-end gap-2">
+                      <p className="text-2xl font-bold text-white">
+                        {data.totalSales.toLocaleString()} шт
+                      </p>
+                      {salesChange && (
+                        <div className={`flex items-center gap-1 text-sm ${
+                          salesChange.value > 0 ? 'text-green-400' : 
+                          salesChange.value < 0 ? 'text-red-400' : 'text-gray-400'
+                        }`}>
+                          {salesChange.value > 0 ? <ArrowUp className="w-4 h-4" /> : 
+                           salesChange.value < 0 ? <ArrowDown className="w-4 h-4" /> : 
+                           <Minus className="w-4 h-4" />}
+                          <span>{Math.abs(salesChange.percent)}%</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <p className="text-gray-400 text-sm mb-1">Общая выручка</p>
+                    <div className="flex items-end gap-2">
+                      <p className="text-2xl font-bold text-green-400">
+                        {Math.round(data.totalRevenue).toLocaleString()} сум
+                      </p>
+                      {revenueChange && (
+                        <div className={`flex items-center gap-1 text-sm ${
+                          revenueChange.value > 0 ? 'text-green-400' : 
+                          revenueChange.value < 0 ? 'text-red-400' : 'text-gray-400'
+                        }`}>
+                          {revenueChange.value > 0 ? <ArrowUp className="w-4 h-4" /> : 
+                           revenueChange.value < 0 ? <ArrowDown className="w-4 h-4" /> : 
+                           <Minus className="w-4 h-4" />}
+                          <span>{Math.abs(revenueChange.percent)}%</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+      
+      {/* График сравнения */}
+      {selectedYears.length >= 2 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6"
+        >
+          <h4 className="text-xl font-bold text-white mb-4">Динамика продаж по месяцам</h4>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="month" stroke="#9ca3af" />
+                <YAxis stroke="#9ca3af" />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#1f2937', 
+                    border: 'none', 
+                    borderRadius: '8px',
+                    padding: '12px'
+                  }}
+                  formatter={(value, name) => {
+                    const year = name.replace('sales', '');
+                    return [`${value.toLocaleString()} шт`, `${year} год`];
+                  }}
+                />
+                <Legend 
+                  wrapperStyle={{ paddingTop: '20px' }}
+                  formatter={(value) => {
+                    const year = value.replace('sales', '');
+                    return `${year} год`;
+                  }}
+                />
+                {selectedYears.map((year, index) => (
+                  <Line
+                    key={year}
+                    type="monotone"
+                    dataKey={`sales${year}`}
+                    stroke={['#3b82f6', '#8b5cf6', '#ec4899'][index]}
+                    strokeWidth={3}
+                    dot={{ fill: ['#3b82f6', '#8b5cf6', '#ec4899'][index], r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                ))}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
 // Компонент анимированной статистики
 const AnimatedStat = ({ value, label, icon, color, delay = 0, prefix = '', suffix = '' }) => {
   const [isVisible, setIsVisible] = useState(false);
@@ -237,12 +623,10 @@ const ReportCard = ({ title, subtitle, gradient, icon, children, className = "" 
       onMouseLeave={() => setIsHovered(false)}
       className={`relative overflow-hidden rounded-2xl ${gradient} p-6 lg:p-8 h-full ${className}`}
     >
-      {/* Анимированный фон */}
       <div className="absolute inset-0 opacity-30">
         <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/10 to-transparent animate-shimmer" />
       </div>
       
-      {/* Контент */}
       <div className="relative z-10 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4 lg:mb-6">
           <div>
@@ -286,7 +670,6 @@ const AnalyticsReports = () => {
         });
         setApiData(response.data);
         
-        // Триггерим конфетти при успешной загрузке
         setTimeout(() => {
           confetti({
             particleCount: 100,
@@ -334,7 +717,6 @@ const AnalyticsReports = () => {
           modelTotal += count;
           modelRevenue += amount;
           
-          // Статистика по модификациям
           if (!modelModifications[mod.modification_name]) {
             modelModifications[mod.modification_name] = {
               total: 0,
@@ -354,7 +736,6 @@ const AnalyticsReports = () => {
           modelModifications[mod.modification_name].colors[mod.color_name].count += count;
           modelModifications[mod.modification_name].colors[mod.color_name].revenue += amount;
           
-          // Статистика по цветам
           if (!colorStats[mod.color_name]) {
             colorStats[mod.color_name] = { 
               count: 0, 
@@ -365,7 +746,6 @@ const AnalyticsReports = () => {
           colorStats[mod.color_name].count += count;
           colorStats[mod.color_name].revenue += amount;
           
-          // Месячные тренды
           monthlyTrends[month.month].total += count;
           monthlyTrends[month.month].revenue += amount;
         });
@@ -380,7 +760,6 @@ const AnalyticsReports = () => {
       };
     });
     
-    // Определяем лидеров
     const bestSellingModel = Object.entries(modelStats).reduce((a, b) => 
       b[1].total > a[1].total ? b : a, ['', { total: 0 }]
     );
@@ -393,7 +772,6 @@ const AnalyticsReports = () => {
       b[1].count > a[1].count ? b : a, ['', { count: 0 }]
     );
     
-    // Находим лучшую комбинацию
     let bestCombination = { model: '', modification: '', color: '', count: 0 };
     Object.entries(modelStats).forEach(([modelName, modelData]) => {
       Object.entries(modelData.modifications).forEach(([modName, modData]) => {
@@ -441,15 +819,12 @@ const AnalyticsReports = () => {
   
   return (
     <div ref={containerRef} className="min-h-screen bg-gray-900">
-      {/* Анимированный фон */}
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-pink-900/20" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-transparent to-transparent" />
       </div>
       
-      {/* Основной контент */}
       <div className="relative z-10 min-h-screen flex flex-col">
-        {/* Шапка */}
         <motion.div
           initial={{ opacity: 0, y: -50 }}
           animate={{ opacity: 1, y: 0 }}
@@ -474,11 +849,11 @@ const AnalyticsReports = () => {
               </div>
             </div>
             
-            {/* Навигация */}
             <div className="flex gap-2 lg:gap-4 flex-wrap">
               {[
                 { id: 'overview', label: '📊 Обзор', icon: <BarChart3 className="w-4 h-4" /> },
                 { id: 'visualization', label: '📈 Визуализация', icon: <Activity className="w-4 h-4" /> },
+                { id: 'comparison', label: '📅 Сравнение по годам', icon: <Calendar className="w-4 h-4" /> },
                 { id: 'details', label: '🔍 Детали', icon: <Layers className="w-4 h-4" /> }
               ].map((view) => (
                 <motion.button
@@ -501,7 +876,6 @@ const AnalyticsReports = () => {
           </div>
         </motion.div>
         
-        {/* Контент в зависимости от режима */}
         <div className="flex-1 overflow-auto">
           <AnimatePresence mode="wait">
             {activeView === 'overview' && processedData && (
@@ -513,7 +887,6 @@ const AnalyticsReports = () => {
                 className="p-4 lg:p-8"
               >
                 <div className="max-w-[1920px] mx-auto">
-                  {/* Основные метрики */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 mb-6 lg:mb-12">
                     <AnimatedStat
                       value={processedData.totalSales}
@@ -523,14 +896,14 @@ const AnalyticsReports = () => {
                       delay={0}
                       suffix=" шт"
                     />
-                  <AnimatedStat
-  value={Math.round(processedData.totalRevenue)}
-  label="Общая выручка"
-  icon={<DollarSign className="w-5 h-5 lg:w-6 lg:h-6 text-white" />}
-  color="from-green-500 to-emerald-500"
-  delay={0.1}
-  suffix=" сум"
-/>
+                    <AnimatedStat
+                      value={Math.round(processedData.totalRevenue)}
+                      label="Общая выручка"
+                      icon={<DollarSign className="w-5 h-5 lg:w-6 lg:h-6 text-white" />}
+                      color="from-green-500 to-emerald-500"
+                      delay={0.1}
+                      suffix=" сум"
+                    />
                     <AnimatedStat
                       value={Object.keys(processedData.modelStats).length}
                       label="Моделей"
@@ -547,9 +920,7 @@ const AnalyticsReports = () => {
                     />
                   </div>
                   
-                  {/* Главные отчеты согласно ТЗ */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8 mb-6 lg:mb-12">
-                    {/* A. Самая продаваемая модель */}
                     <ReportCard
                       title={t('reports.bestSelling.title')}
                       subtitle={t('reports.bestSelling.subtitle')}
@@ -582,7 +953,6 @@ const AnalyticsReports = () => {
                       </div>
                     </ReportCard>
                     
-                    {/* B. Самая прибыльная модель */}
                     <ReportCard
                       title={t('reports.mostProfitable.title')}
                       subtitle={t('reports.mostProfitable.subtitle')}
@@ -595,23 +965,22 @@ const AnalyticsReports = () => {
                           <p className="text-xl lg:text-3xl font-bold text-white mb-1 lg:mb-2">
                             {processedData.mostProfitableModel[0]}
                           </p>
-                        <p className="text-lg lg:text-2xl text-green-400 font-bold">
-  {Math.round(processedData.mostProfitableModel[1].revenue).toLocaleString()} сум
-</p>
+                          <p className="text-lg lg:text-2xl text-green-400 font-bold">
+                            {Math.round(processedData.mostProfitableModel[1].revenue).toLocaleString()} сум
+                          </p>
                         </div>
                         
                         <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 lg:p-4">
-                       <p className="text-green-300 text-xs lg:text-sm">
-  Самая прибыльная модель за 2025 год {processedData.mostProfitableModel[0]} - 
-  <span className="font-bold text-white">
-    {Math.round(processedData.mostProfitableModel[1].revenue).toLocaleString()} сум
-  </span>
-</p>
+                          <p className="text-green-300 text-xs lg:text-sm">
+                            Самая прибыльная модель за 2025 год {processedData.mostProfitableModel[0]} - 
+                            <span className="font-bold text-white">
+                              {Math.round(processedData.mostProfitableModel[1].revenue).toLocaleString()} сум
+                            </span>
+                          </p>
                         </div>
                       </div>
                     </ReportCard>
                     
-                    {/* C. Самый продаваемый цвет */}
                     <ReportCard
                       title={t('reports.bestSellingColor.title')}
                       subtitle={t('reports.bestSellingColor.subtitle')}
@@ -648,9 +1017,7 @@ const AnalyticsReports = () => {
                     </ReportCard>
                   </div>
                   
-                  {/* Дополнительная визуализация */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
-                    {/* Топ 5 моделей */}
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -663,10 +1030,10 @@ const AnalyticsReports = () => {
                             .sort((a, b) => b[1].total - a[1].total)
                             .slice(0, 5)
                             .map(([name, stats]) => ({
-  name,
-  sales: stats.total,
-  revenue: Math.round(stats.revenue)
-}))}>
+                              name,
+                              sales: stats.total,
+                              revenue: Math.round(stats.revenue)
+                            }))}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                             <XAxis dataKey="name" stroke="#9ca3af" />
                             <YAxis stroke="#9ca3af" />
@@ -687,7 +1054,6 @@ const AnalyticsReports = () => {
                       </div>
                     </motion.div>
                     
-                    {/* Распределение по цветам */}
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -696,41 +1062,10 @@ const AnalyticsReports = () => {
                     >
                       <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Распределение по цветам</h3>
                       <div className="h-48 lg:h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RechartsPie>
-                            <Pie
-                              data={Object.entries(processedData.colorStats)
-                                .sort((a, b) => b[1].count - a[1].count)
-                                .slice(0, 6)
-                                .map(([name, stats]) => ({
-                                  name: name.length > 15 ? name.substring(0, 15) + '...' : name,
-                                  value: stats.count
-                                }))}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                              outerRadius={80}
-                              fill="#8884d8"
-                              dataKey="value"
-                            >
-                              {Object.entries(processedData.colorStats)
-                                .sort((a, b) => b[1].count - a[1].count)
-                                .slice(0, 6)
-                                .map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={
-                                    entry[0].includes('White') ? '#FFFFFF' :
-                                    entry[0].includes('Black') ? '#000000' :
-                                    entry[0].includes('Gray') || entry[0].includes('Grey') ? '#808080' :
-                                    entry[0].includes('Blue') ? '#3b82f6' :
-                                    entry[0].includes('Red') ? '#ef4444' :
-                                    ['#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'][index % 5]
-                                  } />
-                                ))}
-                            </Pie>
-                            <Tooltip />
-                          </RechartsPie>
-                        </ResponsiveContainer>
+                        <ColorDistributionChart 
+                          colorStats={processedData.colorStats} 
+                          totalSales={processedData.totalSales}
+                        />
                       </div>
                     </motion.div>
                   </div>
@@ -748,7 +1083,6 @@ const AnalyticsReports = () => {
               >
                 <div className="max-w-[1920px] mx-auto h-full">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8 h-full">
-                    {/* D3 визуализация машинок */}
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -760,7 +1094,6 @@ const AnalyticsReports = () => {
                       </div>
                     </motion.div>
                     
-                    {/* Тренды по месяцам */}
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -770,11 +1103,11 @@ const AnalyticsReports = () => {
                       <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Динамика продаж по месяцам</h3>
                       <div className="h-[400px] lg:h-[500px]">
                         <ResponsiveContainer width="100%" height="100%">
-                       <AreaChart data={Object.entries(processedData.monthlyTrends).map(([month, data]) => ({
-  month: month.split('-')[1],
-  total: data.total,
-  revenue: Math.round(data.revenue)
-}))}>
+                          <AreaChart data={Object.entries(processedData.monthlyTrends).map(([month, data]) => ({
+                            month: month.split('-')[1],
+                            total: data.total,
+                            revenue: Math.round(data.revenue)
+                          }))}>
                             <defs>
                               <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
@@ -805,130 +1138,27 @@ const AnalyticsReports = () => {
               </motion.div>
             )}
             
-            {activeView === 'insights' && processedData && (
+            {activeView === 'comparison' && processedData && (
               <motion.div
-                key="insights"
+                key="comparison"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="p-4 lg:p-8"
               >
                 <div className="max-w-[1920px] mx-auto">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                    {/* AI инсайты */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-gradient-to-br from-indigo-600/20 to-purple-600/20 p-4 lg:p-6 rounded-2xl border border-indigo-500/20"
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <Zap className="w-5 h-5 lg:w-6 lg:h-6 text-yellow-400" />
-                        <h3 className="text-lg lg:text-xl font-bold text-white">Ключевые инсайты</h3>
-                      </div>
-                      <ul className="space-y-3">
-                        <motion.li
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.1 }}
-                          className="flex items-start gap-2"
-                        >
-                          <Star className="w-4 h-4 lg:w-5 lg:h-5 text-green-400 mt-0.5 flex-shrink-0" />
-                          <span className="text-gray-300 text-sm lg:text-base">
-                            Модель <span className="font-bold text-white">{processedData.bestSellingModel[0]}</span> демонстрирует стабильный спрос с общим объемом продаж {processedData.bestSellingModel[1].total.toLocaleString()} единиц
-                          </span>
-                        </motion.li>
-                        <motion.li
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.2 }}
-                          className="flex items-start gap-2"
-                        >
-                          <Star className="w-4 h-4 lg:w-5 lg:h-5 text-blue-400 mt-0.5 flex-shrink-0" />
-                          <span className="text-gray-300 text-sm lg:text-base">
-                            {processedData.bestSellingColor[0]} остается самым популярным цветом, составляя {((processedData.bestSellingColor[1].count / processedData.totalSales) * 100).toFixed(1)}% от всех продаж
-                          </span>
-                        </motion.li>
-                        <motion.li
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.3 }}
-                          className="flex items-start gap-2"
-                        >
-                          <Star className="w-4 h-4 lg:w-5 lg:h-5 text-purple-400 mt-0.5 flex-shrink-0" />
-                      <span className="text-gray-300 text-sm lg:text-base">
-  Средняя стоимость автомобиля составляет {Math.round(processedData.totalRevenue / processedData.totalSales).toLocaleString()} сум, 
-  что указывает на фокус на доступном сегменте
-</span>
-                        </motion.li>
-                      </ul>
-                    </motion.div>
-                    
-                    {/* Рекомендации */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="bg-gradient-to-br from-emerald-600/20 to-teal-600/20 p-4 lg:p-6 rounded-2xl border border-emerald-500/20"
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <Rocket className="w-5 h-5 lg:w-6 lg:h-6 text-emerald-400" />
-                        <h3 className="text-lg lg:text-xl font-bold text-white">Рекомендации</h3>
-                      </div>
-                      <ul className="space-y-3">
-                        <li className="flex items-start gap-2">
-                          <div className="w-2 h-2 bg-emerald-400 rounded-full mt-1.5 flex-shrink-0" />
-                          <span className="text-gray-300 text-sm lg:text-base">
-                            Увеличить производство модели {processedData.bestSellingModel[0]} в популярных цветах
-                          </span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <div className="w-2 h-2 bg-emerald-400 rounded-full mt-1.5 flex-shrink-0" />
-                          <span className="text-gray-300 text-sm lg:text-base">
-                            Рассмотреть премиум комплектации для модели {processedData.mostProfitableModel[0]}
-                          </span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <div className="w-2 h-2 bg-emerald-400 rounded-full mt-1.5 flex-shrink-0" />
-                          <span className="text-gray-300 text-sm lg:text-base">
-                            Оптимизировать цветовую палитру с фокусом на топ-3 популярных цвета
-                          </span>
-                        </li>
-                      </ul>
-                    </motion.div>
-                  </div>
-                  
-                  {/* Сравнительный анализ */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="mt-4 lg:mt-8 bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 lg:p-6"
+                    className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 lg:p-6"
                   >
-                    <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Сравнительный анализ топ-3 моделей</h3>
-                    <div className="h-64 lg:h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart data={[
-                          { metric: 'Продажи', value: 100 },
-                          { metric: 'Прибыль', value: 85 },
-                          { metric: 'Популярность', value: 95 },
-                          { metric: 'Рост', value: 78 },
-                          { metric: 'Маржа', value: 65 },
-                          { metric: 'Доля рынка', value: 88 }
-                        ]}>
-                          <PolarGrid stroke="#374151" />
-                          <PolarAngleAxis dataKey="metric" stroke="#9ca3af" />
-                          <PolarRadiusAxis angle={90} domain={[0, 100]} stroke="#374151" />
-                          <Radar 
-                            name={processedData.bestSellingModel[0]} 
-                            dataKey="value" 
-                            stroke="#3b82f6" 
-                            fill="#3b82f6" 
-                            fillOpacity={0.6} 
-                          />
-                          <Tooltip />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    </div>
+                    <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Сравнение показателей по годам</h3>
+                    <YearComparison 
+                      currentData={processedData} 
+                      onYearSelect={(year) => {
+                        // Можно добавить логику выбора года
+                      }}
+                    />
                   </motion.div>
                 </div>
               </motion.div>
@@ -943,7 +1173,6 @@ const AnalyticsReports = () => {
                 className="p-4 lg:p-8"
               >
                 <div className="max-w-[1920px] mx-auto">
-                  {/* Детальная таблица */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -989,12 +1218,12 @@ const AnalyticsReports = () => {
                                 <td className="py-3 pr-4 text-right">
                                   <span className="text-gray-300">{stats.total.toLocaleString()}</span>
                                 </td>
-                             <td className="py-3 pr-4 text-right">
-  <span className="text-green-400">{Math.round(stats.revenue).toLocaleString()} сум</span>
-</td>
-                            <td className="py-3 pr-4 text-right">
-  <span className="text-gray-300">{Math.round(stats.avgPrice).toLocaleString()} сум</span>
-</td>
+                                <td className="py-3 pr-4 text-right">
+                                  <span className="text-green-400">{Math.round(stats.revenue).toLocaleString()} сум</span>
+                                </td>
+                                <td className="py-3 pr-4 text-right">
+                                  <span className="text-gray-300">{Math.round(stats.avgPrice).toLocaleString()} сум</span>
+                                </td>
                                 <td className="py-3">
                                   <div className="flex items-center justify-center gap-2">
                                     <div className="w-24 bg-gray-700 rounded-full h-2">
@@ -1023,126 +1252,117 @@ const AnalyticsReports = () => {
         </div>
       </div>
       
-      {/* Плавающие кнопки действий */}
       <div className="fixed bottom-4 right-4 lg:bottom-8 lg:right-8 z-20 flex flex-col gap-3 lg:gap-4">
-        {/* Кнопка экспорта */}
-        <motion.button
+        {/* <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={() => {
-            // Генерируем CSV отчет
             const csvContent = generateCSVReport(processedData);
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", `analytics_report_${new Date().toISOString().split('T')[0]}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            // Показываем уведомление
-            confetti({
-              particleCount: 50,
-              spread: 60,
-              origin: { x: 0.9, y: 0.9 }
-            });
-          }}
-          className="w-12 h-12 lg:w-14 lg:h-14 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center shadow-2xl"
-          title="Экспортировать отчет"
-        >
-          <Download className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
-        </motion.button>
-        
-        {/* Кнопка обновления */}
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => {
-            window.location.reload();
-          }}
-          className="w-12 h-12 lg:w-14 lg:h-14 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-2xl"
-          title="Обновить данные"
-        >
-          <RefreshCw className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
-        </motion.button>
-        
-        {/* Кнопка празднования */}
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => {
-            // Запускаем серию конфетти
-            const count = 200;
-            const defaults = {
-              origin: { y: 0.7 }
-            };
+           const url = URL.createObjectURL(blob);
+           link.setAttribute("href", url);
+           link.setAttribute("download", `analytics_report_${new Date().toISOString().split('T')[0]}.csv`);
+           link.style.visibility = 'hidden';
+           document.body.appendChild(link);
+           link.click();
+           document.body.removeChild(link);
+           
+           confetti({
+             particleCount: 50,
+             spread: 60,
+             origin: { x: 0.9, y: 0.9 }
+           });
+         }}
+         className="w-12 h-12 lg:w-14 lg:h-14 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center shadow-2xl"
+         title="Экспортировать отчет"
+       >
+         <Download className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+       </motion.button> */}
+       
+       {/* <motion.button
+         whileHover={{ scale: 1.1 }}
+         whileTap={{ scale: 0.9 }}
+         onClick={() => {
+           window.location.reload();
+         }}
+         className="w-12 h-12 lg:w-14 lg:h-14 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-2xl"
+         title="Обновить данные"
+       >
+         <RefreshCw className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+       </motion.button> */}
+       
+       <motion.button
+         whileHover={{ scale: 1.1 }}
+         whileTap={{ scale: 0.9 }}
+         onClick={() => {
+           const count = 200;
+           const defaults = {
+             origin: { y: 0.7 }
+           };
 
-            function fire(particleRatio, opts) {
-              confetti({
-                ...defaults,
-                ...opts,
-                particleCount: Math.floor(count * particleRatio),
-                spread: 90,
-                startVelocity: 30,
-                decay: 0.9,
-                scalar: 1.2
-              });
-            }
+           function fire(particleRatio, opts) {
+             confetti({
+               ...defaults,
+               ...opts,
+               particleCount: Math.floor(count * particleRatio),
+               spread: 90,
+               startVelocity: 30,
+               decay: 0.9,
+               scalar: 1.2
+             });
+           }
 
-            fire(0.25, {
-              spread: 26,
-              startVelocity: 55,
-              colors: ['#3b82f6', '#8b5cf6']
-            });
-            fire(0.2, {
-              spread: 60,
-              colors: ['#ec4899', '#f59e0b']
-            });
-            fire(0.35, {
-              spread: 100,
-              decay: 0.91,
-              scalar: 0.8,
-              colors: ['#10b981', '#06b6d4']
-            });
-          }}
-          className="w-14 h-14 lg:w-16 lg:h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-2xl animate-pulse"
-          title="Отпраздновать успех!"
-        >
-          <Rocket className="w-7 h-7 lg:w-8 lg:h-8 text-white" />
-        </motion.button>
-      </div>
-    </div>
-  );
+           fire(0.25, {
+             spread: 26,
+             startVelocity: 55,
+             colors: ['#3b82f6', '#8b5cf6']
+           });
+           fire(0.2, {
+             spread: 60,
+             colors: ['#ec4899', '#f59e0b']
+           });
+           fire(0.35, {
+             spread: 100,
+             decay: 0.91,
+             scalar: 0.8,
+             colors: ['#10b981', '#06b6d4']
+           });
+         }}
+         className="w-14 h-14 lg:w-16 lg:h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-2xl animate-pulse"
+         title="Отпраздновать успех!"
+       >
+         <Rocket className="w-7 h-7 lg:w-8 lg:h-8 text-white" />
+       </motion.button>
+     </div>
+   </div>
+ );
 };
 
 // Функция генерации CSV отчета
 const generateCSVReport = (data) => {
-  if (!data) return '';
-  
-  let csv = 'Аналитический отчет\n\n';
-  
-  // Основные показатели
-  csv += 'Основные показатели\n';
-  csv += `Всего продано автомобилей,${data.totalSales}\n`;
-  csv += `Общая выручка,${Math.round(data.totalRevenue).toLocaleString()} сум\n`;
-  csv += `Лучшая модель по продажам,${data.bestSellingModel[0]},${data.bestSellingModel[1].total} шт\n`;
-  csv += `Самая прибыльная модель,${data.mostProfitableModel[0]},${Math.round(data.mostProfitableModel[1].revenue).toLocaleString()} сум\n`;
-  csv += `Самый популярный цвет,${data.bestSellingColor[0]},${data.bestSellingColor[1].count} шт\n\n`;
-  
-  // Детали по моделям
-  csv += 'Детальная статистика по моделям\n';
-  csv += 'Модель,Продажи (шт),Выручка (сум),Средняя цена (сум)\n';
-  Object.entries(data.modelStats)
-    .sort((a, b) => b[1].total - a[1].total)
-    .forEach(([model, stats]) => {
-      csv += `${model},${stats.total},${Math.round(stats.revenue).toLocaleString()},${Math.round(stats.avgPrice).toLocaleString()}\n`;
-    });
-  
-  return csv;
+ if (!data) return '';
+ 
+ let csv = 'Аналитический отчет\n\n';
+ 
+ // Основные показатели
+ csv += 'Основные показатели\n';
+ csv += `Всего продано автомобилей,${data.totalSales}\n`;
+ csv += `Общая выручка,${Math.round(data.totalRevenue).toLocaleString()} сум\n`;
+ csv += `Лучшая модель по продажам,${data.bestSellingModel[0]},${data.bestSellingModel[1].total} шт\n`;
+ csv += `Самая прибыльная модель,${data.mostProfitableModel[0]},${Math.round(data.mostProfitableModel[1].revenue).toLocaleString()} сум\n`;
+ csv += `Самый популярный цвет,${data.bestSellingColor[0]},${data.bestSellingColor[1].count} шт\n\n`;
+ 
+ // Детали по моделям
+ csv += 'Детальная статистика по моделям\n';
+ csv += 'Модель,Продажи (шт),Выручка (сум),Средняя цена (сум)\n';
+ Object.entries(data.modelStats)
+   .sort((a, b) => b[1].total - a[1].total)
+   .forEach(([model, stats]) => {
+     csv += `${model},${stats.total},${Math.round(stats.revenue).toLocaleString()},${Math.round(stats.avgPrice).toLocaleString()}\n`;
+   });
+ 
+ return csv;
 };
-
-
 
 export default AnalyticsReports;
