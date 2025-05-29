@@ -29,6 +29,7 @@ const CarContractsAnalytics = () => {
   const timelineSalesRef = useRef(null);
   const regionStockRef = useRef(null);
   const modelStockRef = useRef(null);
+  
   const stockTrendRef = useRef(null);
   const moneyReturnChartRef = useRef(null);
   const [yearlyChartData, setYearlyChartData] = useState([]);
