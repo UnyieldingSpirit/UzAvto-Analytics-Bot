@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useAuth } from '@/src/hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function AuthForm() {
   const [username, setUsername] = useState('');
