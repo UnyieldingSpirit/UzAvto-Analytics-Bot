@@ -1,4 +1,4 @@
-import { LocaleMessages } from "@/src/types/locale";
+import { LocaleMessages } from "../../../types/locale";
 
 export const contractsAnalyticsTranslations: LocaleMessages = {
     'ru': {
@@ -147,6 +147,80 @@ export const contractsAnalyticsTranslations: LocaleMessages = {
             noData: 'Ko\'rsatish uchun ma\'lumot yo\'q. Iltimos, boshqa davr yoki filtrlarni tanlang.',
             noDataPeriod: 'Tanlangan davr uchun ma\'lumot yo\'q: {startDate} - {endDate}',
             applyToUpdate: 'Tanlangan davr uchun ma\'lumotlarni yangilash uchun "Qo\'llash" tugmasini bosing.'
+        }
+    },
+    'en': {
+        title: 'Contract Analysis',
+        subtitle: '{period} for contracts, sales and cancellations for all models',
+        subtitleSpecific: 'Detailed statistics {period} for model {model}',
+        period: {
+            year: 'annual',
+            quarter: 'semi-annual',
+            month: 'monthly',
+            week: 'weekly',
+            custom: 'for selected period'
+        },
+        periodDescription: {
+            year: 'annual report',
+            quarter: 'semi-annual report',
+            month: 'last month report',
+            week: 'last week report',
+            custom: 'report for period {startDate} — {endDate}'
+        },
+        filters: {
+            title: 'Analytics Parameters',
+            resetFilters: 'Reset filters',
+            period: 'Period',
+            region: 'Region',
+            model: 'Model',
+            allRegions: 'All regions',
+            allModels: 'All models',
+            reset: 'Reset',
+            apply: 'Apply',
+            ok: 'OK'
+        },
+        stats: {
+            title: '{period} statistics',
+            contracts: 'Contracts',
+            realization: 'Sales',
+            cancellation: 'Cancellation',
+            pieces: 'pcs'
+        },
+        details: {
+            title: 'Detailed info: {model} {period}',
+            regionDistribution: 'Distribution by regions',
+            noRegionData: 'No data on regional distribution',
+            carCategories: {
+                sedan: 'Sedan',
+                suv: 'SUV',
+                minivan: 'Minivan',
+                other: 'Other'
+            }
+        },
+        charts: {
+            dynamics: 'Indicators dynamics {period}',
+            monthlyDetail: 'Daily breakdown',
+            heatmap: {
+                title: 'Heatmap for {month}',
+                week: 'Week {number}',
+                monday: 'Mon',
+                tuesday: 'Tue',
+                wednesday: 'Wed',
+                thursday: 'Thu',
+                friday: 'Fri',
+                saturday: 'Sat',
+                sunday: 'Sun',
+                low: 'Low',
+                medium: 'Medium',
+                high: 'High',
+                veryHigh: 'Very high'
+            },
+            comparison: {
+                title: 'Comparative analysis of models {period} {date}'
+            },
+            noData: 'No data to display. Please select another period or filters.',
+            noDataPeriod: 'No data for selected period: {startDate} - {endDate}',
+            applyToUpdate: 'Click "Apply" to update data for selected period.'
         }
     }
 };

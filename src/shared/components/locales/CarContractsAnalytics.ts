@@ -1,5 +1,4 @@
-// src/shared/components/locales/CarContractsAnalytics.ts
-import { LocaleMessages } from "@/src/types/locale";
+import { LocaleMessages } from "../../../types/locale";
 
 export const carContractsAnalyticsTranslations: LocaleMessages = {
     'ru': {
@@ -380,6 +379,196 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
             tryAgain: 'Qaytadan urinib ko\'ring',
             incorrectFormat: 'Noto\'g\'ri ma\'lumotlar formati',
             continueWithTestData: 'Test ma\'lumotlari bilan davom etamiz'
+        }
+    },
+    'en': {
+        // Заголовки
+        title: 'Car Analytics',
+        subtitle: 'Comprehensive analysis of contracts, sales and inventory data',
+
+        // Фильтры
+        filters: {
+            region: 'Region',
+            allRegions: 'All regions',
+            model: 'Model',
+            allModels: 'All models',
+            dateFrom: 'From',
+            dateTo: 'To',
+            apply: 'Apply',
+            reset: 'Reset',
+            activeFilters: 'Active filters',
+            resetFilters: 'Reset filters',
+            selectDate: 'Please select date period'
+        },
+
+        // Вкладки
+        tabs: {
+            contracts: 'Contracts',
+            sales: 'Sales',
+            stock: 'Stock',
+            retail: 'Retail',
+            wholesale: 'Wholesale',
+            promotions: 'Promotions'
+        },
+
+        // Статистические карточки
+        stats: {
+            totalContracts: 'Total contracts',
+            totalSales: 'Total sales volume',
+            totalStock: 'Total stock',
+            totalRetail: 'Total retail sales',
+            totalWholesale: 'Total wholesale sales',
+            totalPromotions: 'Total promotional sales',
+            totalAmount: 'Total amount',
+            periodData: 'For period from {{startDate}} to {{endDate}}',
+            loading: 'Loading',
+            noData: 'No data',
+            inRegion: 'in {{regionName}}',
+            forModel: 'for {{modelName}}'
+        },
+
+        // Модельный ряд
+        modelRange: {
+            title: 'Model Range',
+            viewModes: {
+                cards: 'Cards',
+                list: 'List'
+            },
+            sorting: {
+                label: 'Sort',
+                default: 'Default',
+                priceHigh: 'By amount (high to low)',
+                priceLow: 'By amount (low to high)',
+                contractsHigh: 'By quantity (high to low)',
+                contractsLow: 'By quantity (low to high)'
+            },
+            backToModels: 'Back to model range',
+            noModelsAvailable: 'No models available',
+            selectPeriodMessage: 'Select period and click "Apply"',
+            contracts: 'Contracts',
+            sales: 'Sales',
+            inStock: 'In stock',
+            retail: 'Retail',
+            wholesale: 'Wholesale',
+            promotions: 'Promotional',
+            totalAmount: 'Total amount',
+            auto: 'Car'
+        },
+
+        // Графики
+        charts: {
+            regionTitle: '{{metric}} by regions',
+            modelTitle: '{{metric}} by models',
+            timelineTitle: '{{metric}} timeline',
+            modelRegionTitle: '{{metric}} {{modelName}} by regions',
+            regionModelTitle: '{{metric}} in {{regionName}} by models',
+            modelDetailsTitle: '{{metric}} {{modelName}} by modifications and colors',
+            noData: 'No data to display',
+            noDataAfterFilter: 'No data to display after filtering',
+            loading: 'Loading data...',
+            yearComparison: 'Year comparison',
+            selectYear: 'Select year',
+            currentMonth: 'Current month',
+            futureMonth: 'Future period',
+            dataNotAvailable: 'Data not yet available',
+            retryLoad: 'Load data',
+            monthData: {
+                january: 'Jan',
+                february: 'Feb',
+                march: 'Mar',
+                april: 'Apr',
+                may: 'May',
+                june: 'Jun',
+                july: 'Jul',
+                august: 'Aug',
+                september: 'Sep',
+                october: 'Oct',
+                november: 'Nov',
+                december: 'Dec'
+            },
+            tooltips: {
+                contracts: 'Contracts',
+                sales: 'Sales',
+                stock: 'Stock',
+                retail: 'Retail',
+                wholesale: 'Wholesale',
+                promotions: 'Promotions',
+                amount: 'Amount',
+                selected: 'Selected'
+            }
+        },
+
+        // Возврат денежных средств
+        moneyReturn: {
+            title: 'Money Returns',
+            subtitle: 'Tracking actual and expected returns',
+            financialAnalytics: 'Financial Analytics',
+            analysisReturns: 'Returns Analysis',
+            regionLabel: 'Region',
+            modelLabel: 'Model',
+            dynamicsTitle: 'Money returns dynamics {{year}}',
+            noDataPeriod: 'No return data for selected period',
+            loadError: 'Error loading return data',
+            retryLoad: 'Try again',
+            reloadData: 'Retry request',
+            currentMonthOnly: '* Data available only up to current month',
+            returnAmount: 'Return amount'
+        },
+
+        // Акции и промо
+        promotions: {
+            typesTitle: 'Promotion Types',
+            installmentOnixTracker: 'Onix & Tracker Installment',
+            employeeBenefits: 'Employee Benefits',
+            corporateProgram: 'Corporate Program',
+            modelYear: 'Model Year',
+            downPayment: 'Down Payment',
+            installmentPeriod: 'Installment Period',
+            organization: 'Organization',
+            model: 'Model',
+            months: 'months',
+            effectiveness: 'Promotions Effectiveness',
+            viewsConversion: 'Views to Sales Conversion',
+            averageDiscount: 'Average Discount',
+            promotionsROI: 'Promotions ROI'
+        },
+
+        // Сравнение по годам
+        yearComparison: {
+            title: 'Comparative analysis of {{metric}} by years',
+            subtitle: 'Visualization of changes dynamics over several years',
+            totalForYear: 'Total {{metric}} for {{year}}',
+            growth: 'Growth',
+            decline: 'Decline',
+            comparedTo: 'compared to {{year}}',
+            noChange: 'No change',
+            selectYears: 'Select years to compare',
+            year2023: '2023',
+            year2024: '2024',
+            year2025: '2025'
+        },
+
+        // Информационная панель
+        info: {
+            title: 'About Analytics Dashboard',
+            description: 'This dashboard shows complete analytics on contracts, sales, inventory and car sales types. Use the tabs at the top to switch between different data types. You can filter data by regions and models using the appropriate selectors. When selecting a specific model, detailed statistics by modifications and colors are displayed.'
+        },
+
+        // Единицы измерения
+        units: {
+            pieces: 'pcs',
+            currency: 'UZS',
+            million: 'M',
+            thousand: 'K'
+        },
+
+        // Сообщения об ошибках
+        errors: {
+            loadingError: 'Error loading data',
+            noDataFound: 'Data not found',
+            tryAgain: 'Try again',
+            incorrectFormat: 'Incorrect data format',
+            continueWithTestData: 'Continuing with test data'
         }
     }
 };

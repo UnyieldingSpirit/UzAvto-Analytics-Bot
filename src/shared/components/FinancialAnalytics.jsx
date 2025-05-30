@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as d3 from 'd3';
-import { D3Visualizer } from '@/src/utils/dataVisualizer';
+import { D3Visualizer } from '../../utils/dataVisualizer';
 
 // Массив месяцев для отображения
 const MONTHS = [

@@ -1,4 +1,4 @@
-import { LocaleMessages } from "@/src/types/locale";
+import { LocaleMessages } from "../../../types/locale";
 
 export const statisticsTranslations: LocaleMessages = {
     'ru': {
@@ -149,7 +149,8 @@ export const statisticsTranslations: LocaleMessages = {
             categories: {
                 suv: 'Yo\'l tanlamas',
                 sedan: 'Sedan',
-                minivan: 'Miniven'
+                minivan: 'Miniven',
+                other: 'Boshqa'
             }
         },
         dealers: {
@@ -229,5 +230,120 @@ export const statisticsTranslations: LocaleMessages = {
             online: 'Onlayn'
         },
         loading: 'Ma\'lumotlar yuklanmoqda...'
+    },
+    'en': {
+        title: 'Interactive Car Sales Dashboard',
+        subtitle: 'Explore sales data from models to individual salespeople',
+        periodData: 'Data for period: {{period}}',
+        chartTypes: {
+            bar: 'Bar',
+            pie: 'Pie'
+        },
+        datePeriods: {
+            last7Days: '7 days',
+            last30Days: '30 days',
+            last3Months: '3 months',
+            last6Months: '6 months',
+            last12Months: '12 months',
+            thisYear: 'This year',
+            lastYear: 'Last year',
+            custom: 'Custom period'
+        },
+        dateRangeSelector: {
+            title: 'Select period',
+            startDate: 'Start date',
+            endDate: 'End date',
+            cancel: 'Cancel',
+            apply: 'Apply'
+        },
+        models: {
+            title: 'Car Model Catalog',
+            sales: 'Sales',
+            totalSales: 'Total sales by models',
+            category: 'Category',
+            categories: {
+                sedan: 'Sedan',
+                suv: 'SUV',
+                minivan: 'Minivan',
+                other: 'Other'
+            }
+        },
+        dealers: {
+            title: 'Dealers',
+            count: 'Total dealers: {{count}}',
+            avgSales: 'Average sales per dealer',
+            totalSales: 'Total sales',
+            backToModels: 'Back to models',
+            pagination: {
+                prev: 'Previous',
+                next: 'Next',
+                page: 'Page {{current}} of {{total}}'
+            }
+        },
+        salespeople: {
+            title: 'Salespeople',
+            count: 'Total salespeople: {{count}}',
+            avgSales: 'Average sales per salesperson',
+            topTitle: 'Top {{count}} salespeople at {{dealer}}',
+            bestSalesperson: '🏆 Best salesperson',
+            showAll: 'Show all salespeople ({{count}} more)',
+            showTop: 'Show only top {{count}} salespeople',
+            backToDealer: 'Back to dealers',
+            backToModels: 'Back to models',
+            globalTop: 'Top 10 salespeople across all dealers',
+            moreDealers: '{{count}} more',
+            rank: {
+                first: '🥇 Absolute leader',
+                second: '🥈 #2',
+                third: '🥉 #3',
+                other: '#{{position}}'
+            },
+            salesByRegion: 'Sales by dealers and regions'
+        },
+        payments: {
+            title: 'Payments and Returns',
+            status: {
+                title: 'Payment Status',
+                in: 'in',
+                paid: 'Fully paid',
+                returned: 'Returned',
+                pending: 'Partial payment'
+            },
+            amounts: {
+                title: 'Payment Amounts'
+            },
+            transactions: {
+                title: 'Transaction Details ({{count}})',
+                id: 'ID',
+                car: 'Car',
+                status: 'Status',
+                amount: 'Amount (UZS)',
+                paymentDate: 'Payment Date',
+                returnInfo: 'Return',
+                balance: 'Balance'
+            }
+        },
+        charts: {
+            modelSales: 'Sales by models ({{period}})',
+            modelShare: 'Market share by models ({{period}})',
+            modelTimeline: 'Monthly sales dynamics ({{period}})',
+            dealerSales: 'Top 20 {{model}} dealers by sales ({{period}})',
+            dealerShare: '{{model}} sales share by top 20 dealers ({{period}})',
+            dealerEfficiency: 'Top 10 {{model}} dealers efficiency (sales per salesperson)',
+            salesPersonSales: 'Top 15 {{model}} salespeople at {{dealer}} ({{period}})',
+            salesPersonShare: '{{model}} sales share at {{dealer}} ({{period}})',
+            salesTimeline: 'Top 5 salespeople sales dynamics for period: {{period}}',
+            instructions: 'Click on element to view sales by dealers',
+            salesTrend: 'Sales trend for period: {{period}}',
+            month: 'Month',
+            sales: 'Sales amount',
+            clickDot: 'Click on dot for detailed information',
+            noMonthlyData: 'Insufficient data to display sales dynamics',
+            changeDateRange: 'Use different date range or update data'
+        },
+        status: {
+            online: 'Online'
+        },
+        loading: 'Loading data...'
     }
 };

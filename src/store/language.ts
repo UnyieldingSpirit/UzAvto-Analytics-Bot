@@ -7,19 +7,17 @@ interface LanguageState {
     currentLocale: Locale
     availableLocales: Record<Locale, string>
     setLocale: (locale: Locale) => void
-    // Добавляем функцию для определения языка браузера
     detectBrowserLocale: () => Locale
 }
 
 // Функция для определения языка браузера
 const detectBrowserLocale = (): Locale => {
-    if (typeof navigator === 'undefined') return 'ru'; // Возвращаем русский по умолчанию на сервере
+    if (typeof navigator === 'undefined') return 'ru';
 
-    // Получаем язык браузера
     const browserLocale = navigator.language.split('-')[0].toLowerCase();
 
-    // Проверяем, поддерживается ли язык
-    if (['ru', 'uz'].includes(browserLocale)) {
+    // Проверяем поддерживаемые языки
+    if (['ru', 'uz', 'en'].includes(browserLocale)) {
         return browserLocale as Locale;
     }
 
@@ -30,10 +28,11 @@ const detectBrowserLocale = (): Locale => {
 export const useLanguageStore = create<LanguageState>()(
     persist(
         (set) => ({
-            currentLocale: 'ru', // Значение по умолчанию, будет перезаписано при гидратации
+            currentLocale: 'ru',
             availableLocales: {
                 'ru': 'Русский',
-                'uz': 'O\'zbekcha'
+                'uz': 'O\'zbekcha',
+                'en': 'English'
             },
             setLocale: (locale: Locale) => set({
                 currentLocale: locale
@@ -42,11 +41,9 @@ export const useLanguageStore = create<LanguageState>()(
         }),
         {
             name: 'language-store',
-            // Функция onRehydrateStorage вызывается после восстановления из localStorage
             onRehydrateStorage: () => (state) => {
                 if (!state) return;
 
-                // Если язык не был установлен ранее, определяем язык браузера
                 if (!state.currentLocale || state.currentLocale === 'ru') {
                     const detectedLocale = state.detectBrowserLocale();
                     if (detectedLocale !== state.currentLocale) {
@@ -60,12 +57,10 @@ export const useLanguageStore = create<LanguageState>()(
 
 // Инициализация языка на клиенте
 if (typeof window !== 'undefined') {
-    // Небольшая задержка, чтобы гарантировать, что гидратация состояния произошла
     setTimeout(() => {
         const langStore = useLanguageStore.getState();
         const storedLocale = localStorage.getItem('language-store');
 
-        // Если язык не был установлен в localStorage, определяем язык браузера
         if (!storedLocale || storedLocale.indexOf('"currentLocale":"ru"') > -1) {
             const detectedLocale = langStore.detectBrowserLocale();
             if (detectedLocale !== langStore.currentLocale) {

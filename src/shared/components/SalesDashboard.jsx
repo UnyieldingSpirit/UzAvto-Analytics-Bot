@@ -3,12 +3,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Clock, Check, AlertTriangle, ChevronDown, Truck, MapPin, 
   Archive, ChevronLeft, BarChart3, Users, Activity, ChevronRight, Zap, Calendar, Car, X } from 'lucide-react';
-import { carModels, regions } from '@/src/shared/mocks/mock-data';
-import { useTelegram } from '@/src/hooks/useTelegram';
-import ContentReadyLoader from '@/src/shared/layout/ContentReadyLoader';
+import { carModels, regions } from '../../shared/mocks/mock-data';
+import { useTelegram } from '../../hooks/useTelegram';
+import ContentReadyLoader from '../../shared/layout/ContentReadyLoader';
 import DashboardAnalytics from './DashboardAnalytics';
-import { useTranslation } from '@/src/hooks/useTranslation';
-import { dashboardTranslations } from '@/src/shared/components/locales/SalesDashboard';
+import { useTranslation } from '../../hooks/useTranslation';
+import { dashboardTranslations } from '../../shared/components/locales/SalesDashboard';
 
 const SalesDashboard = () => {
   // Инициализация переводов

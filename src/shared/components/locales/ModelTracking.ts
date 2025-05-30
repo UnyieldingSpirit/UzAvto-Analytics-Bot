@@ -1,4 +1,4 @@
-import { LocaleMessages } from "@/src/types/locale";
+import { LocaleMessages } from "../../../types/locale";
 
 export const modelTrackingTranslations: LocaleMessages = {
     'ru': {
@@ -104,5 +104,57 @@ export const modelTrackingTranslations: LocaleMessages = {
             quantityTable: 'MIQDOR'
         },
         noData: 'Ko\'rsatish uchun ma\'lumot yo\'q'
+    },
+    'en': {
+        title: 'Car Sales Monitoring',
+        titleWithModel: 'Sales Monitoring: {{modelName}}',
+        wholesale: 'WHOLESALE ORDERS',
+        retail: 'RETAIL ORDERS',
+        statusAndDistribution: 'STATUS AND DISTRIBUTION',
+        viewModes: {
+            grid: 'Grid',
+            list: 'List'
+        },
+        filters: {
+            reset: 'Reset',
+            region: 'Region',
+            model: 'Model',
+            allRegions: 'All regions',
+            allModels: 'All models',
+            currentView: 'View'
+        },
+        views: {
+            general: 'General overview',
+            region: 'Region: {{regionName}}',
+            model: 'Model: {{modelName}}',
+            regionModel: '{{regionName}} > {{modelName}}'
+        },
+        statuses: {
+            title: 'ORDER STATUS',
+            totalOrders: 'Total orders',
+            chart: 'Chart',
+            table: 'Table',
+            paid: 'PAID',
+            unpaid: 'UNPAID',
+            partiallyPaid: 'PARTIALLY PAID',
+            inDistribution: 'IN DISTRIBUTION',
+            distributed: 'DISTRIBUTED',
+            inTransit: 'IN TRANSIT',
+            atDealer: 'AT DEALER',
+            reserved: 'RESERVED',
+            total: 'TOTAL'
+        },
+        modelDetails: {
+            title: 'MODELS BREAKDOWN',
+            titleWholesale: 'WHOLESALE MODELS BREAKDOWN',
+            titleRetail: 'RETAIL MODELS BREAKDOWN',
+            titleRegion: 'MODELS IN REGION: {{regionName}}',
+            titleModelRegion: 'DETAILED INFO: {{modelName}} IN {{regionName}}',
+            titleModel: 'DETAILED INFO: {{modelName}}',
+            image: 'IMAGE',
+            statusesTable: 'STATUS',
+            quantityTable: 'QUANTITY'
+        },
+        noData: 'No data to display'
     }
 };

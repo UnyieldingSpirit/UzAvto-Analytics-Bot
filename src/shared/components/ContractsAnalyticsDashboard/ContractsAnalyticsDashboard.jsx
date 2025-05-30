@@ -14,7 +14,7 @@ import { fetchContractData, fetchContractDataByDate, processContractData } from 
 import { regions } from './models/regions';
 import ContentReadyLoader from '../../layout/ContentReadyLoader';
 // Импорт хука для переводов
-import { useTranslation } from '@/src/hooks/useTranslation';
+import { useTranslation } from '../../../hooks/useTranslation';
 import { contractsAnalyticsTranslations } from '../locales/ContractsAnalyticsDashboard';
 
 function ContractsAnalyticsDashboard() {

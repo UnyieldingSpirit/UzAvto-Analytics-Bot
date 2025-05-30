@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import AnalyticsReports from "@/src/shared/components/AnalyticsReports";
+import AnalyticsReports from "../shared/components/AnalyticsReports";
 
 
 export default function StatisticsPage() {

@@ -1,4 +1,4 @@
-import { LocaleMessages } from "@/src/types/locale";
+import { LocaleMessages } from "../../../types/locale";
 
 export const warehouseAnalyticsTranslations: LocaleMessages = {
     'ru': {
@@ -231,6 +231,122 @@ export const warehouseAnalyticsTranslations: LocaleMessages = {
             'suv': 'Yo\'l tanlamas',
             'minivan': 'Miniven',
             'other': 'Boshqa'
+        }
+    },
+    'en': {
+        'title': 'Warehouse Analytics',
+        'subtitle': 'Real-time monitoring',
+        'units': 'pcs',
+        'car': 'car',
+        'metrics': {
+            'total': 'Total',
+            'totalCars': 'Total cars',
+            'totalInWarehouses': 'Total in warehouses',
+            'available': 'Available',
+            'reserved': 'Reserved',
+            'defective': 'Defective',
+            'defectiveOk': 'Defect-OK',
+            'totalCarModels': 'Total car models: {{count}}',
+            'updatedAt': 'Updated:'
+        },
+        'status': {
+            'available': 'Available',
+            'availableShort': 'Avail',
+            'reserved': 'Reserved',
+            'reservedShort': 'Resv',
+            'defective': 'Defective',
+            'defectiveShort': 'Def',
+            'defectiveOk': 'Defect-OK',
+            'defectiveOkShort': 'D-OK',
+            'free': 'Free',
+            'maxCapacity': 'Max capacity'
+        },
+        'occupancyStatus': {
+            'critical': 'critical',
+            'high': 'high',
+            'medium': 'medium',
+            'low': 'low'
+        },
+        'charts': {
+            'distribution': 'Distribution',
+            'byWarehouse': 'By warehouse',
+            'warehouseDistribution': 'Warehouse distribution',
+            'carsByWarehouse': 'Cars distribution by warehouses',
+            'carStatusInWarehouses': 'Car status in warehouses',
+            'colorDistribution': 'Color distribution',
+            'occupancy': 'Occupancy',
+            'currentOccupancy': 'Shows current occupancy',
+            'status': 'Status',
+            'inventoryShare': 'Inventory share',
+            'interactive': 'Interactive',
+            'percentageRatio': 'Percentage ratio'
+        },
+        'sections': {
+            'carModels': 'Car models',
+            'selectModelHint': 'Select model to view details'
+        },
+        'table': {
+            'warehouseName': 'Warehouse name',
+            'capacity': 'Capacity',
+            'occupied': 'Occupied',
+            'available': 'Available',
+            'reserved': 'Reserved',
+            'defectiveOk': 'Defect-OK',
+            'defective': 'Defective',
+            'actions': 'Actions'
+        },
+        'details': {
+            'carModelDetails': 'Car model details',
+            'modelStatistics': 'Model statistics',
+            'statusDistribution': 'Status distribution',
+            'colorDistribution': 'Color distribution',
+            'availableColors': '{{count}} available colors',
+            'modifications': '{{model}} modifications',
+            'modificationsCount': '{{count}} modifications',
+            'modificationDetails': 'Modification details',
+            'warehouseDistribution': 'Warehouse distribution',
+            'warehouseDetails': 'Warehouse details',
+            'occupancy': 'Occupancy',
+            'warehouseInfo': 'Warehouse information',
+            'warehouseOccupancy': 'Warehouse occupancy',
+            'modelDistribution': 'Model distribution',
+            'inWarehouse': 'in warehouse',
+            'allModifications': 'All {{model}} modifications'
+        },
+        'tabs': {
+            'modifications': 'Modifications',
+            'colors': 'Colors'
+        },
+        'buttons': {
+            'exportWarehouses': 'Export warehouses',
+            'exportModels': 'Export models'
+        },
+        'export': {
+            'warehouse': 'Warehouse',
+            'model': 'Model',
+            'category': 'Category',
+            'total': 'Total',
+            'available': 'Available',
+            'reserved': 'Reserved',
+            'defectiveOk': 'Defect-OK',
+            'defective': 'Defective',
+            'occupancy': 'Occupancy'
+        },
+        'notifications': {
+            'exportSuccessWarehouse': 'Data successfully exported to CSV',
+            'exportSuccessModels': 'Model data exported to CSV'
+        },
+        'errors': {
+            'loadingData': 'Error loading data',
+            'loadingDataTitle': 'Data loading error',
+            'failedToLoad': 'Failed to load data. Please try again later.',
+            'dataNotFound': 'Data not found'
+        },
+        'categories': {
+            'sedan': 'Sedan',
+            'suv': 'SUV',
+            'minivan': 'Minivan',
+            'other': 'Other'
         }
     }
 };

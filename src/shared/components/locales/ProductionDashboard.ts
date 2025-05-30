@@ -1,4 +1,4 @@
-import { LocaleMessages } from "@/src/types/locale";
+import { LocaleMessages } from "../../../types/locale";
 
 export const productionDashboardTranslations: LocaleMessages = {
     'ru': {
@@ -149,6 +149,81 @@ export const productionDashboardTranslations: LocaleMessages = {
         error: {
             title: 'Ma\'lumotlarni yuklashda xatolik',
             noDataToDisplay: 'Tanlangan davr uchun ko\'rsatish uchun ma\'lumot yo\'q'
+        }
+    },
+    'en': {
+        // Заголовки
+        title: 'Production (event #700)',
+        subtitle: 'Explore car production data',
+
+        // Фильтры и параметры
+        filters: {
+            title: 'Analysis Parameters',
+            expand: 'Expand',
+            collapse: 'Collapse',
+        },
+        periodAnalysis: {
+            title: 'Analysis Period',
+            year: 'year'
+        },
+        marketType: {
+            title: 'Market Type',
+            all: 'All markets',
+            domestic: 'Domestic',
+            export: 'Export'
+        },
+
+        // Ключевые показатели
+        metrics: {
+            totalProduction: 'Total Production',
+            forYear: 'for {{year}}',
+            domesticMarket: 'Domestic Market',
+            exportMarket: 'Export Market',
+            ofTotal: '% of total',
+        },
+
+        // График
+        chart: {
+            title: 'Production Dynamics',
+            hint: 'Click on month column to view detailed information by models',
+            noData: 'No data to display for {{year}}',
+            productionForYear: 'Car Production - {{year}}'
+        },
+
+        // Детализация по месяцу
+        monthDetails: {
+            title: 'Production for {{month}} {{year}}',
+            totalCars: 'cars',
+            model: 'Model',
+            domesticMarket: 'Domestic Market',
+            exportMarket: 'Export Market',
+            total: 'Total',
+            ofTotal: '% of total',
+            noModelsData: 'No model data for selected month',
+            totalRow: 'Total:'
+        },
+
+        // Месяцы
+        months: {
+            '01': 'January',
+            '02': 'February',
+            '03': 'March',
+            '04': 'April',
+            '05': 'May',
+            '06': 'June',
+            '07': 'July',
+            '08': 'August',
+            '09': 'September',
+            '10': 'October',
+            '11': 'November',
+            '12': 'December'
+        },
+
+        // Состояния
+        loading: 'Loading data...',
+        error: {
+            title: 'Error loading data',
+            noDataToDisplay: 'No data to display for selected period'
         }
     }
 };

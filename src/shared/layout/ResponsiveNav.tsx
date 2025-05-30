@@ -72,7 +72,36 @@ const navTranslations = {
       activeSession: 'Faol sessiya',
       language: 'Tizim tili'
     }
-  }
+  },
+      'en': {
+        dashboard: 'Analytics Reports',
+        salesAnalytics: 'Sales Analytics',
+        salesMonitoring: 'Sales Monitoring',
+        modelTracking: 'Model Tracking',
+        businessAnalytics: 'Business Analytics',
+        production: 'Production',
+        financialAnalytics: 'Financial Analytics',
+        contracts: 'Contracts',
+        installments: 'Installments',
+        carWarehouse: 'Car Warehouse',
+        systemSettings: 'System Settings',
+        documentation: 'Documentation & Support',
+        selectLanguage: 'Select Language',
+        appTitle: 'UzAvtoAnalytics',
+        appSubtitle: 'Management System',
+        categories: {
+            main: 'Main',
+            analytics: 'Analytics',
+            finance: 'Finance',
+            warehouse: 'Warehouse',
+            utility: 'Settings'
+        },
+        profile: {
+            admin: 'Administrator',
+            activeSession: 'Active Session',
+            language: 'System Language'
+        }
+    }
 };
 
 interface NavItem {
@@ -95,10 +124,11 @@ export default function ResponsiveNav() {
   const langMenuRef = useRef<HTMLDivElement>(null);
   
   // Модифицируем языковой хук для поддержки только русского и узбекского
-  const customAvailableLocales = {
+const customAvailableLocales = {
     'ru': 'Русский',
-    'uz': 'O\'zbekcha'
-  };
+    'uz': 'O\'zbekcha',
+    'en': 'English'
+};
   
   const { currentLocale, setLocale } = useLanguageStore();
   const { t } = useTranslation(navTranslations);
@@ -322,16 +352,18 @@ export default function ResponsiveNav() {
     </div>
   );
 
-  // Компонент переключателя языка (только русский и узбекский)
+// Обновляем LanguageSwitcher компонент
 const LanguageSwitcher = () => {
   const langFlags = {
     ru: '🇷🇺',
-    uz: '🇺🇿'
+    uz: '🇺🇿',
+    en: '🇬🇧'
   };
   
   const languageNames = {
     ru: 'Русский',
-    uz: 'O\'zbekcha'
+    uz: 'O\'zbekcha',
+    en: 'English'
   };
   
   return (
@@ -360,9 +392,8 @@ const LanguageSwitcher = () => {
               key={locale}
               className={`language-option touch-manipulation ${locale === currentLocale ? 'active' : ''}`}
               onClick={(e) => {
-                e.stopPropagation(); // Предотвращаем всплытие события
+                e.stopPropagation();
                 changeLanguage(locale);
-                // Явно закрываем меню после выбора
                 setTimeout(() => {
                   setIsLanguageMenuOpen(false);
                 }, 100);

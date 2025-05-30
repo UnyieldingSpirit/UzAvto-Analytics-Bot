@@ -2,9 +2,9 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import ContentReadyLoader from '@/src/shared/layout/ContentReadyLoader';
-import { useTranslation } from '@/src/hooks/useTranslation';
-import { installmentDashboardTranslations } from '@/src/shared/components/locales/InstallmentDashboard';
+import ContentReadyLoader from '../../shared/layout/ContentReadyLoader';
+import { useTranslation } from '../../hooks/useTranslation';
+import { installmentDashboardTranslations } from '../../shared/components/locales/InstallmentDashboard';
 
 const InstallmentDashboard = () => {
   // Refs для графиков

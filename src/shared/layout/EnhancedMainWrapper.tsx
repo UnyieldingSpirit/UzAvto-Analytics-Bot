@@ -6,8 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import TelegramWebAppInitializer from './TelegramWebAppInitializer';
 import ResponsiveNav from './ResponsiveNav';
 import ContentReadyLoader from './ContentReadyLoader';
-import { setupAxiosInterceptors } from '@/src/utils/axiosConfig';
-import { useAuth } from '@/src/hooks/useAuth';
+import { setupAxiosInterceptors } from '../../utils/axiosConfig';
+import { useAuth } from '../../hooks/useAuth';
 
 interface EnhancedMainWrapperProps {
   children: ReactNode;

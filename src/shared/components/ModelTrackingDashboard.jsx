@@ -1,9 +1,9 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import ContentReadyLoader from '@/src/shared/layout/ContentReadyLoader';
-import { useTranslation } from '@/src/hooks/useTranslation';
-import { modelTrackingTranslations } from '@/src/shared/components/locales/ModelTracking';
+import ContentReadyLoader from '../../shared/layout/ContentReadyLoader';
+import { useTranslation } from '../../hooks/useTranslation';
+import { modelTrackingTranslations } from '../../shared/components/locales/ModelTracking';
 
 const ModelTrackingDashboard = () => {
   const { t, currentLocale } = useTranslation(modelTrackingTranslations);

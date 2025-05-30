@@ -1,5 +1,4 @@
-// src/shared/components/locales/ContractsYearlyComparison.ts
-import { LocaleMessages } from "@/src/types/locale";
+import { LocaleMessages } from "../../../types/locale";
 
 export const contractsYearlyComparisonTranslations: LocaleMessages = {
     'ru': {
@@ -96,6 +95,54 @@ export const contractsYearlyComparisonTranslations: LocaleMessages = {
             requestData: '{{year}} yil uchun taqqoslash ma\'lumotlari so\'rovi:',
             errorLoadingYear: '{{year}} yil ma\'lumotlarini so\'rashda xatolik:',
             dateFormatError: 'Sanani formatlashda xatolik:'
+        }
+    },
+    'en': {
+        // Месяцы
+        months: {
+            january: 'Jan',
+            february: 'Feb',
+            march: 'Mar',
+            april: 'Apr',
+            may: 'May',
+            june: 'Jun',
+            july: 'Jul',
+            august: 'Aug',
+            september: 'Sep',
+            october: 'Oct',
+            november: 'Nov',
+            december: 'Dec'
+        },
+
+        // Ошибки
+        errors: {
+            loadDataError: 'Failed to load comparison data',
+            generalError: 'Error loading data',
+            loadingDataError: 'Error loading comparison data:'
+        },
+
+        // Метрики
+        metrics: {
+            contracts: 'Contracts',
+            sales: 'Sales',
+            stock: 'Stock',
+            retail: 'Retail sales',
+            wholesale: 'Wholesale sales',
+            promotions: 'Promotional sales'
+        },
+
+        // UI элементы
+        ui: {
+            currentMonth: 'Current month',
+            year: 'year',
+            retryButton: 'Load data'
+        },
+
+        // Консольные сообщения
+        console: {
+            requestData: 'Requesting comparison data for {{year}}:',
+            errorLoadingYear: 'Error requesting data for {{year}}:',
+            dateFormatError: 'Date formatting error:'
         }
     }
 };

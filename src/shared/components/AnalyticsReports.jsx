@@ -28,6 +28,7 @@ const D3CarVisualization = ({ data, selectedModel }) => {
   const svgRef = useRef();
   const containerRef = useRef();
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const { t } = useTranslation(analyticsReportsTranslations);
   
   useEffect(() => {
     const updateDimensions = () => {
@@ -147,14 +148,14 @@ const D3CarVisualization = ({ data, selectedModel }) => {
       .attr("dy", ".35em")
       .attr("fill", "#ffffff")
       .attr("font-size", "12px")
-      .text(d => `${d.total.toLocaleString()} шт`)
+      .text(d => `${d.total.toLocaleString()} ${t('metrics.units')}`)
       .attr("opacity", 0)
       .transition()
       .duration(500)
       .delay((d, i) => i * 100 + 1200)
       .attr("opacity", 1);
     
-  }, [data, selectedModel, dimensions]);
+  }, [data, selectedModel, dimensions, t]);
   
   return (
     <div ref={containerRef} className="w-full h-full">
@@ -167,9 +168,11 @@ const D3CarVisualization = ({ data, selectedModel }) => {
   );
 };
 
-// Улучшенный компонент для распределения по цветам
+// Улучшенный компонент для распределения по цветам (Treemap)
 const ColorDistributionChart = ({ colorStats, totalSales }) => {
-  // Подготовка данных с реальными цветами
+  const { t } = useTranslation(analyticsReportsTranslations);
+  
+  // Функция для определения цвета по названию
   const getColorCode = (colorName) => {
     const lowerName = colorName.toLowerCase();
     if (lowerName.includes('white') || lowerName.includes('белый')) return '#FFFFFF';
@@ -184,109 +187,124 @@ const ColorDistributionChart = ({ colorStats, totalSales }) => {
     if (lowerName.includes('gold') || lowerName.includes('золот')) return '#fbbf24';
     if (lowerName.includes('orange') || lowerName.includes('оранж')) return '#f97316';
     if (lowerName.includes('purple') || lowerName.includes('фиолет')) return '#8b5cf6';
-    return '#9ca3af'; // default gray
+    return '#9ca3af';
   };
   
+  // Подготовка данных
   const colorData = Object.entries(colorStats)
     .sort((a, b) => b[1].count - a[1].count)
-    .slice(0, 8)
+    .slice(0, 12)
     .map(([name, stats]) => ({
-      name: name.length > 20 ? name.substring(0, 20) + '...' : name,
-      fullName: name,
+      name,
       value: stats.count,
-      percent: ((stats.count / totalSales) * 100).toFixed(1),
       color: getColorCode(name),
-      revenue: stats.revenue
+      percent: ((stats.count / totalSales) * 100).toFixed(1)
     }));
   
-  return (
-    <div className="h-full">
-      <div className="grid grid-cols-2 gap-4 h-full">
-        {/* Круговая диаграмма */}
-        <div className="h-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <RechartsPie>
-              <Pie
-                data={colorData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                outerRadius="80%"
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {colorData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} stroke="#1f2937" strokeWidth={2} />
-                ))}
-              </Pie>
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#1f2937', 
-                  border: 'none', 
-                  borderRadius: '8px',
-                  padding: '12px'
-                }}
-                formatter={(value, name, props) => [
-                  <div key="value" className="space-y-1">
-                    <div className="text-white font-semibold">{value.toLocaleString()} шт</div>
-                    <div className="text-gray-400 text-xs">{props.payload.percent}% от общего</div>
-                  </div>,
-                  <div key="name" className="flex items-center gap-2">
-                    <div 
-                      className="w-4 h-4 rounded border border-gray-600"
-                      style={{ backgroundColor: props.payload.color }}
-                    />
-                    <span className="text-gray-300">{props.payload.fullName}</span>
-                  </div>
-                ]}
-              />
-            </RechartsPie>
-          </ResponsiveContainer>
-        </div>
-        
-        {/* Список цветов с визуализацией */}
-        <div className="space-y-3 overflow-y-auto max-h-[300px] pr-2">
-          {colorData.map((item, index) => (
-            <motion.div
-              key={item.fullName}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="bg-gray-800/50 rounded-lg p-3 hover:bg-gray-700/50 transition-colors"
+  // Кастомный контент для Treemap
+  const CustomTreemapContent = ({ x, y, width, height, name, value, color, percent }) => {
+    const fontSize = width > 100 ? 14 : width > 60 ? 12 : 10;
+    const showDetails = width > 60 && height > 40;
+    
+    return (
+      <g>
+        <rect
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          style={{
+            fill: color,
+            stroke: '#1f2937',
+            strokeWidth: 2,
+            opacity: 0.9
+          }}
+        />
+        {color === '#FFFFFF' && (
+          <rect
+            x={x}
+            y={y}
+            width={width}
+            height={height}
+            style={{
+              fill: 'url(#whiteGradient)',
+              stroke: '#1f2937',
+              strokeWidth: 2
+            }}
+          />
+        )}
+        {showDetails && (
+          <>
+            <text
+              x={x + width / 2}
+              y={y + height / 2 - 10}
+              textAnchor="middle"
+              fill={color === '#FFFFFF' || color === '#fbbf24' || color === '#d4b5a0' ? '#000' : '#fff'}
+              fontSize={fontSize}
+              fontWeight="600"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="text-gray-500 font-bold w-6">#{index + 1}</div>
-                  <div 
-                    className="w-10 h-10 rounded-lg border-2 border-gray-600 shadow-inner"
-                    style={{ 
-                      backgroundColor: item.color,
-                      background: item.color === '#FFFFFF' ? 
-                        'linear-gradient(135deg, #FFFFFF 0%, #f3f4f6 100%)' : 
-                        item.color
-                    }}
-                  />
-                  <div>
-                    <div className="text-white font-medium text-sm">{item.fullName}</div>
-                    <div className="text-gray-400 text-xs">{item.value.toLocaleString()} шт</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-blue-400 font-bold">{item.percent}%</div>
-                </div>
-              </div>
-              <div className="mt-2 bg-gray-700/30 rounded-full h-2 overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${item.percent}%` }}
-                  transition={{ duration: 1, delay: index * 0.1 }}
-                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
-                />
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
+              {name}
+            </text>
+            <text
+              x={x + width / 2}
+              y={y + height / 2 + 10}
+              textAnchor="middle"
+              fill={color === '#FFFFFF' || color === '#fbbf24' || color === '#d4b5a0' ? '#000' : '#fff'}
+              fontSize={fontSize - 2}
+              opacity="0.8"
+            >
+              {percent}%
+            </text>
+            <text
+              x={x + width / 2}
+              y={y + height / 2 + 25}
+              textAnchor="middle"
+              fill={color === '#FFFFFF' || color === '#fbbf24' || color === '#d4b5a0' ? '#000' : '#fff'}
+              fontSize={fontSize - 4}
+              opacity="0.6"
+            >
+              {value.toLocaleString()} {t('metrics.units')}
+            </text>
+          </>
+        )}
+      </g>
+    );
+  };
+  
+  return (
+    <div className="h-full w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <Treemap
+          data={colorData}
+          dataKey="value"
+          aspectRatio={4/3}
+          stroke="#1f2937"
+          content={<CustomTreemapContent />}
+        >
+          <defs>
+            <linearGradient id="whiteGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#f8f8f8" />
+              <stop offset="50%" stopColor="#ffffff" />
+              <stop offset="100%" stopColor="#e0e0e0" />
+            </linearGradient>
+          </defs>
+          <Tooltip
+            contentStyle={{
+              backgroundColor: '#1f2937',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '12px'
+            }}
+            formatter={(value, name) => [
+              <div key="tooltip">
+                <div className="font-semibold">{value.toLocaleString()} {t('metrics.units')}</div>
+                <div className="text-gray-400 text-xs">{t('reports.marketShare')}</div>
+              </div>,
+              name
+            ]}
+          />
+        </Treemap>
+      </ResponsiveContainer>
     </div>
   );
 };
@@ -360,10 +378,18 @@ const YearComparison = ({ currentData, onYearSelect }) => {
   // Подготовка данных для графика
   const chartData = useMemo(() => {
     const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
-    const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+    const monthNames = {
+      'ru': ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'],
+      'uz': ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'],
+      'en': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    };
+    
+    const currentLocale = localStorage.getItem('language-store') 
+      ? JSON.parse(localStorage.getItem('language-store')).state.currentLocale 
+      : 'ru';
     
     return months.map((month, index) => {
-      const data = { month: monthNames[index] };
+      const data = { month: monthNames[currentLocale][index] };
       selectedYears.forEach(year => {
         if (yearData[year] && yearData[year].monthlyData[month]) {
           data[`sales${year}`] = yearData[year].monthlyData[month].sales;
@@ -401,7 +427,7 @@ const YearComparison = ({ currentData, onYearSelect }) => {
     <div className="space-y-6">
       {/* Селектор годов */}
       <div className="flex items-center gap-4 flex-wrap">
-        <span className="text-gray-400">Выберите годы для сравнения:</span>
+        <span className="text-gray-400">{t('charts.selectYears')}:</span>
         {['2023', '2024', '2025'].map(year => (
           <motion.button
             key={year}
@@ -448,16 +474,16 @@ const YearComparison = ({ currentData, onYearSelect }) => {
                 className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-xl font-bold text-white">{year} год</h4>
+                  <h4 className="text-xl font-bold text-white">{year} {t('charts.year')}</h4>
                   <Calendar className="w-6 h-6 text-gray-400" />
                 </div>
                 
                 <div className="space-y-4">
                   <div>
-                    <p className="text-gray-400 text-sm mb-1">Всего продаж</p>
+                    <p className="text-gray-400 text-sm mb-1">{t('charts.totalSales')}</p>
                     <div className="flex items-end gap-2">
                       <p className="text-2xl font-bold text-white">
-                        {data.totalSales.toLocaleString()} шт
+                        {data.totalSales.toLocaleString()} {t('metrics.units')}
                       </p>
                       {salesChange && (
                         <div className={`flex items-center gap-1 text-sm ${
@@ -474,10 +500,10 @@ const YearComparison = ({ currentData, onYearSelect }) => {
                   </div>
                   
                   <div>
-                    <p className="text-gray-400 text-sm mb-1">Общая выручка</p>
+                    <p className="text-gray-400 text-sm mb-1">{t('charts.totalRevenue')}</p>
                     <div className="flex items-end gap-2">
                       <p className="text-2xl font-bold text-green-400">
-                        {Math.round(data.totalRevenue).toLocaleString()} сум
+                        {Math.round(data.totalRevenue).toLocaleString()} {t('metrics.currency')}
                       </p>
                       {revenueChange && (
                         <div className={`flex items-center gap-1 text-sm ${
@@ -506,7 +532,7 @@ const YearComparison = ({ currentData, onYearSelect }) => {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6"
         >
-          <h4 className="text-xl font-bold text-white mb-4">Динамика продаж по месяцам</h4>
+          <h4 className="text-xl font-bold text-white mb-4">{t('charts.salesDynamics')}</h4>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData}>
@@ -522,14 +548,14 @@ const YearComparison = ({ currentData, onYearSelect }) => {
                   }}
                   formatter={(value, name) => {
                     const year = name.replace('sales', '');
-                    return [`${value.toLocaleString()} шт`, `${year} год`];
+                    return [`${value.toLocaleString()} ${t('metrics.units')}`, `${year} ${t('charts.year')}`];
                   }}
                 />
                 <Legend 
                   wrapperStyle={{ paddingTop: '20px' }}
                   formatter={(value) => {
                     const year = value.replace('sales', '');
-                    return `${year} год`;
+                    return `${year} ${t('charts.year')}`;
                   }}
                 />
                 {selectedYears.map((year, index) => (
@@ -811,7 +837,7 @@ const AnalyticsReports = () => {
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             className="w-20 h-20 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"
           />
-          <p className="text-gray-400">Загружаем аналитику...</p>
+          <p className="text-gray-400">{t('states.loading')}</p>
         </motion.div>
       </div>
     );
@@ -819,11 +845,6 @@ const AnalyticsReports = () => {
   
   return (
     <div ref={containerRef} className="min-h-screen bg-gray-900">
-      <div className="fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-pink-900/20" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-transparent to-transparent" />
-      </div>
-      
       <div className="relative z-10 min-h-screen flex flex-col">
         <motion.div
           initial={{ opacity: 0, y: -50 }}
@@ -851,10 +872,10 @@ const AnalyticsReports = () => {
             
             <div className="flex gap-2 lg:gap-4 flex-wrap">
               {[
-                { id: 'overview', label: '📊 Обзор', icon: <BarChart3 className="w-4 h-4" /> },
-                { id: 'visualization', label: '📈 Визуализация', icon: <Activity className="w-4 h-4" /> },
-                { id: 'comparison', label: '📅 Сравнение по годам', icon: <Calendar className="w-4 h-4" /> },
-                { id: 'details', label: '🔍 Детали', icon: <Layers className="w-4 h-4" /> }
+                { id: 'overview', label: t('tabs.overview'), icon: <BarChart3 className="w-4 h-4" /> },
+                { id: 'visualization', label: t('tabs.visualization'), icon: <Activity className="w-4 h-4" /> },
+                { id: 'comparison', label: t('tabs.comparison'), icon: <Calendar className="w-4 h-4" /> },
+                { id: 'details', label: t('tabs.details'), icon: <Layers className="w-4 h-4" /> }
               ].map((view) => (
                 <motion.button
                   key={view.id}
@@ -890,30 +911,30 @@ const AnalyticsReports = () => {
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 mb-6 lg:mb-12">
                     <AnimatedStat
                       value={processedData.totalSales}
-                      label="Всего продано"
+                      label={t('metrics.totalSold')}
                       icon={<Car className="w-5 h-5 lg:w-6 lg:h-6 text-white" />}
                       color="from-blue-500 to-cyan-500"
                       delay={0}
-                      suffix=" шт"
+                      suffix={` ${t('metrics.units')}`}
                     />
                     <AnimatedStat
                       value={Math.round(processedData.totalRevenue)}
-                      label="Общая выручка"
+                      label={t('metrics.totalRevenue')}
                       icon={<DollarSign className="w-5 h-5 lg:w-6 lg:h-6 text-white" />}
                       color="from-green-500 to-emerald-500"
                       delay={0.1}
-                      suffix=" сум"
+                      suffix={` ${t('metrics.currency')}`}
                     />
                     <AnimatedStat
                       value={Object.keys(processedData.modelStats).length}
-                      label="Моделей"
+                      label={t('metrics.models')}
                       icon={<Package className="w-5 h-5 lg:w-6 lg:h-6 text-white" />}
                       color="from-purple-500 to-pink-500"
                       delay={0.2}
                     />
                     <AnimatedStat
                       value={Object.keys(processedData.colorStats).length}
-                      label="Цветов"
+                      label={t('metrics.colors')}
                       icon={<Palette className="w-5 h-5 lg:w-6 lg:h-6 text-white" />}
                       color="from-orange-500 to-red-500"
                       delay={0.3}
@@ -929,7 +950,7 @@ const AnalyticsReports = () => {
                     >
                       <div className="space-y-3 lg:space-y-4">
                         <div className="bg-gray-800/50 rounded-xl p-3 lg:p-4">
-                          <p className="text-gray-400 text-xs lg:text-sm mb-2">Модель-лидер:</p>
+                          <p className="text-gray-400 text-xs lg:text-sm mb-2">{t('reports.bestSelling.modelLeader')}</p>
                           <p className="text-xl lg:text-3xl font-bold text-white mb-1 lg:mb-2">
                             {processedData.bestCombination.model}
                           </p>
@@ -947,7 +968,13 @@ const AnalyticsReports = () => {
                         
                         <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 lg:p-4">
                           <p className="text-blue-300 text-xs lg:text-sm">
-                            Самая продаваемая модель за 2025 год {processedData.bestCombination.model} {processedData.bestCombination.modification} {processedData.bestCombination.color} - <span className="font-bold text-white">{processedData.bestCombination.count.toLocaleString()} штук</span>
+                            {t('reports.bestSelling.result', {
+                              year: '2025',
+                              model: processedData.bestCombination.model,
+                              modification: processedData.bestCombination.modification,
+                              color: processedData.bestCombination.color,
+                              quantity: processedData.bestCombination.count.toLocaleString()
+                            })}
                           </p>
                         </div>
                       </div>
@@ -961,21 +988,24 @@ const AnalyticsReports = () => {
                     >
                       <div className="space-y-3 lg:space-y-4">
                         <div className="bg-gray-800/50 rounded-xl p-3 lg:p-4">
-                          <p className="text-gray-400 text-xs lg:text-sm mb-2">Лидер по прибыли:</p>
+                          <p className="text-gray-400 text-xs lg:text-sm mb-2">{t('reports.mostProfitable.profitLeader')}</p>
                           <p className="text-xl lg:text-3xl font-bold text-white mb-1 lg:mb-2">
                             {processedData.mostProfitableModel[0]}
                           </p>
                           <p className="text-lg lg:text-2xl text-green-400 font-bold">
-                            {Math.round(processedData.mostProfitableModel[1].revenue).toLocaleString()} сум
+                            {Math.round(processedData.mostProfitableModel[1].revenue).toLocaleString()} {t('metrics.currency')}
                           </p>
                         </div>
                         
                         <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 lg:p-4">
                           <p className="text-green-300 text-xs lg:text-sm">
-                            Самая прибыльная модель за 2025 год {processedData.mostProfitableModel[0]} - 
-                            <span className="font-bold text-white">
-                              {Math.round(processedData.mostProfitableModel[1].revenue).toLocaleString()} сум
-                            </span>
+                            {t('reports.mostProfitable.result', {
+                              year: '2025',
+                              model: processedData.mostProfitableModel[0],
+                              modification: '',
+                              color: '',
+                              amount: `${Math.round(processedData.mostProfitableModel[1].revenue).toLocaleString()} ${t('metrics.currency')}`
+                            })}
                           </p>
                         </div>
                       </div>
@@ -989,7 +1019,7 @@ const AnalyticsReports = () => {
                     >
                       <div className="space-y-3 lg:space-y-4">
                         <div className="bg-gray-800/50 rounded-xl p-3 lg:p-4">
-                          <p className="text-gray-400 text-xs lg:text-sm mb-2">Популярный цвет:</p>
+                          <p className="text-gray-400 text-xs lg:text-sm mb-2">{t('reports.bestSellingColor.popularColor')}</p>
                           <div className="flex items-center gap-3 mb-2">
                             <div 
                               className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg border-2 border-gray-600 shadow-lg"
@@ -1004,13 +1034,17 @@ const AnalyticsReports = () => {
                             </p>
                           </div>
                           <p className="text-lg lg:text-xl text-purple-400 font-bold">
-                            {processedData.bestSellingColor[1].count.toLocaleString()} шт
+                            {processedData.bestSellingColor[1].count.toLocaleString()} {t('metrics.units')}
                           </p>
                         </div>
                         
                         <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 lg:p-4">
                           <p className="text-purple-300 text-xs lg:text-sm">
-                            В 2025 году больше всего автомобилей продано {processedData.bestSellingColor[0]} цвета - <span className="font-bold text-white">{processedData.bestSellingColor[1].count.toLocaleString()} штук</span>
+                            {t('reports.bestSellingColor.result', {
+                              year: '2025',
+                              color: processedData.bestSellingColor[0],
+                              quantity: processedData.bestSellingColor[1].count.toLocaleString()
+                            })}
                           </p>
                         </div>
                       </div>
@@ -1023,7 +1057,7 @@ const AnalyticsReports = () => {
                       animate={{ opacity: 1, y: 0 }}
                       className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 lg:p-6"
                     >
-                      <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Топ-5 моделей по продажам</h3>
+                      <h3 className="text-lg lg:text-xl font-bold text-white mb-4">{t('charts.topModels')}</h3>
                       <div className="h-48 lg:h-64">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={Object.entries(processedData.modelStats)
@@ -1060,7 +1094,7 @@ const AnalyticsReports = () => {
                       transition={{ delay: 0.1 }}
                       className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 lg:p-6"
                     >
-                      <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Распределение по цветам</h3>
+                      <h3 className="text-lg lg:text-xl font-bold text-white mb-4">{t('charts.colorDistribution')}</h3>
                       <div className="h-48 lg:h-64">
                         <ColorDistributionChart 
                           colorStats={processedData.colorStats} 
@@ -1088,7 +1122,7 @@ const AnalyticsReports = () => {
                       animate={{ opacity: 1, scale: 1 }}
                       className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 lg:p-6"
                     >
-                      <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Рейтинг моделей</h3>
+                      <h3 className="text-lg lg:text-xl font-bold text-white mb-4">{t('charts.modelRating')}</h3>
                       <div className="h-[400px] lg:h-[500px]">
                         <D3CarVisualization data={processedData} selectedModel={selectedModel} />
                       </div>
@@ -1100,7 +1134,7 @@ const AnalyticsReports = () => {
                       transition={{ delay: 0.1 }}
                       className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 lg:p-6"
                     >
-                      <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Динамика продаж по месяцам</h3>
+                      <h3 className="text-lg lg:text-xl font-bold text-white mb-4">{t('charts.monthlySalesDynamics')}</h3>
                       <div className="h-[400px] lg:h-[500px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart data={Object.entries(processedData.monthlyTrends).map(([month, data]) => ({
@@ -1152,7 +1186,7 @@ const AnalyticsReports = () => {
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 lg:p-6"
                   >
-                    <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Сравнение показателей по годам</h3>
+                    <h3 className="text-lg lg:text-xl font-bold text-white mb-4">{t('charts.yearComparison')}</h3>
                     <YearComparison 
                       currentData={processedData} 
                       onYearSelect={(year) => {
@@ -1178,16 +1212,16 @@ const AnalyticsReports = () => {
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 lg:p-6 overflow-x-auto"
                   >
-                    <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Детальная статистика по моделям</h3>
+                    <h3 className="text-lg lg:text-xl font-bold text-white mb-4">{t('table.model')}</h3>
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[600px]">
                         <thead>
                           <tr className="text-left text-gray-400 border-b border-gray-700">
-                            <th className="pb-3 pr-4">Модель</th>
-                            <th className="pb-3 pr-4 text-right">Продажи</th>
-                            <th className="pb-3 pr-4 text-right">Выручка</th>
-                            <th className="pb-3 pr-4 text-right">Средняя цена</th>
-                            <th className="pb-3 text-center">Доля рынка</th>
+                            <th className="pb-3 pr-4">{t('table.model')}</th>
+                            <th className="pb-3 pr-4 text-right">{t('table.sales')}</th>
+                            <th className="pb-3 pr-4 text-right">{t('table.revenue')}</th>
+                            <th className="pb-3 pr-4 text-right">{t('table.avgPrice')}</th>
+                            <th className="pb-3 text-center">{t('table.marketShare')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1219,10 +1253,10 @@ const AnalyticsReports = () => {
                                   <span className="text-gray-300">{stats.total.toLocaleString()}</span>
                                 </td>
                                 <td className="py-3 pr-4 text-right">
-                                  <span className="text-green-400">{Math.round(stats.revenue).toLocaleString()} сум</span>
+                                  <span className="text-green-400">{Math.round(stats.revenue).toLocaleString()} {t('metrics.currency')}</span>
                                 </td>
                                 <td className="py-3 pr-4 text-right">
-                                  <span className="text-gray-300">{Math.round(stats.avgPrice).toLocaleString()} сум</span>
+                                  <span className="text-gray-300">{Math.round(stats.avgPrice).toLocaleString()} {t('metrics.currency')}</span>
                                 </td>
                                 <td className="py-3">
                                   <div className="flex items-center justify-center gap-2">
@@ -1244,54 +1278,15 @@ const AnalyticsReports = () => {
                         </tbody>
                       </table>
                     </div>
-                  </motion.div>
-                </div>
               </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-      
-      <div className="fixed bottom-4 right-4 lg:bottom-8 lg:right-8 z-20 flex flex-col gap-3 lg:gap-4">
-        {/* <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => {
-            const csvContent = generateCSVReport(processedData);
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-           const url = URL.createObjectURL(blob);
-           link.setAttribute("href", url);
-           link.setAttribute("download", `analytics_report_${new Date().toISOString().split('T')[0]}.csv`);
-           link.style.visibility = 'hidden';
-           document.body.appendChild(link);
-           link.click();
-           document.body.removeChild(link);
-           
-           confetti({
-             particleCount: 50,
-             spread: 60,
-             origin: { x: 0.9, y: 0.9 }
-           });
-         }}
-         className="w-12 h-12 lg:w-14 lg:h-14 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center shadow-2xl"
-         title="Экспортировать отчет"
-       >
-         <Download className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
-       </motion.button> */}
-       
-       {/* <motion.button
-         whileHover={{ scale: 1.1 }}
-         whileTap={{ scale: 0.9 }}
-         onClick={() => {
-           window.location.reload();
-         }}
-         className="w-12 h-12 lg:w-14 lg:h-14 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-2xl"
-         title="Обновить данные"
-       >
-         <RefreshCw className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
-       </motion.button> */}
-       
+               </div>
+             </motion.div>
+           )}
+         </AnimatePresence>
+       </div>
+     </div>
+     
+     <div className="fixed bottom-4 right-4 lg:bottom-8 lg:right-8 z-20 flex flex-col gap-3 lg:gap-4">
        <motion.button
          whileHover={{ scale: 1.1 }}
          whileTap={{ scale: 0.9 }}
@@ -1330,7 +1325,7 @@ const AnalyticsReports = () => {
            });
          }}
          className="w-14 h-14 lg:w-16 lg:h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-2xl animate-pulse"
-         title="Отпраздновать успех!"
+         title={t('actions.celebrate')}
        >
          <Rocket className="w-7 h-7 lg:w-8 lg:h-8 text-white" />
        </motion.button>
@@ -1339,23 +1334,82 @@ const AnalyticsReports = () => {
  );
 };
 
-// Функция генерации CSV отчета
+// Функция генерации CSV отчета с переводами
 const generateCSVReport = (data) => {
  if (!data) return '';
  
- let csv = 'Аналитический отчет\n\n';
+ // Получаем текущий язык
+ const currentLocale = localStorage.getItem('language-store') 
+   ? JSON.parse(localStorage.getItem('language-store')).state.currentLocale 
+   : 'ru';
+ 
+ // Тексты для CSV на разных языках
+ const csvTexts = {
+   ru: {
+     title: 'Аналитический отчет',
+     mainMetrics: 'Основные показатели',
+     totalSold: 'Всего продано автомобилей',
+     totalRevenue: 'Общая выручка',
+     bestSellingModel: 'Лучшая модель по продажам',
+     mostProfitableModel: 'Самая прибыльная модель',
+     mostPopularColor: 'Самый популярный цвет',
+     modelDetails: 'Детальная статистика по моделям',
+     model: 'Модель',
+     sales: 'Продажи (шт)',
+     revenue: 'Выручка (сум)',
+     avgPrice: 'Средняя цена (сум)',
+     units: 'шт',
+     currency: 'сум'
+   },
+   uz: {
+     title: 'Analitik hisobot',
+     mainMetrics: 'Asosiy ko\'rsatkichlar',
+     totalSold: 'Jami sotilgan avtomobillar',
+     totalRevenue: 'Umumiy daromad',
+     bestSellingModel: 'Eng ko\'p sotilgan model',
+     mostProfitableModel: 'Eng foydali model',
+     mostPopularColor: 'Eng mashhur rang',
+     modelDetails: 'Modellar bo\'yicha batafsil statistika',
+     model: 'Model',
+     sales: 'Savdo (dona)',
+     revenue: 'Daromad (so\'m)',
+     avgPrice: 'O\'rtacha narx (so\'m)',
+     units: 'dona',
+     currency: 'so\'m'
+   },
+   en: {
+     title: 'Analytics Report',
+     mainMetrics: 'Key Metrics',
+     totalSold: 'Total cars sold',
+     totalRevenue: 'Total revenue',
+     bestSellingModel: 'Best selling model',
+     mostProfitableModel: 'Most profitable model',
+     mostPopularColor: 'Most popular color',
+     modelDetails: 'Detailed statistics by models',
+     model: 'Model',
+     sales: 'Sales (pcs)',
+     revenue: 'Revenue (UZS)',
+     avgPrice: 'Average price (UZS)',
+     units: 'pcs',
+     currency: 'UZS'
+   }
+ };
+ 
+ const texts = csvTexts[currentLocale] || csvTexts.ru;
+ 
+ let csv = `${texts.title}\n\n`;
  
  // Основные показатели
- csv += 'Основные показатели\n';
- csv += `Всего продано автомобилей,${data.totalSales}\n`;
- csv += `Общая выручка,${Math.round(data.totalRevenue).toLocaleString()} сум\n`;
- csv += `Лучшая модель по продажам,${data.bestSellingModel[0]},${data.bestSellingModel[1].total} шт\n`;
- csv += `Самая прибыльная модель,${data.mostProfitableModel[0]},${Math.round(data.mostProfitableModel[1].revenue).toLocaleString()} сум\n`;
- csv += `Самый популярный цвет,${data.bestSellingColor[0]},${data.bestSellingColor[1].count} шт\n\n`;
+ csv += `${texts.mainMetrics}\n`;
+ csv += `${texts.totalSold},${data.totalSales}\n`;
+ csv += `${texts.totalRevenue},${Math.round(data.totalRevenue).toLocaleString()} ${texts.currency}\n`;
+ csv += `${texts.bestSellingModel},${data.bestSellingModel[0]},${data.bestSellingModel[1].total} ${texts.units}\n`;
+ csv += `${texts.mostProfitableModel},${data.mostProfitableModel[0]},${Math.round(data.mostProfitableModel[1].revenue).toLocaleString()} ${texts.currency}\n`;
+ csv += `${texts.mostPopularColor},${data.bestSellingColor[0]},${data.bestSellingColor[1].count} ${texts.units}\n\n`;
  
  // Детали по моделям
- csv += 'Детальная статистика по моделям\n';
- csv += 'Модель,Продажи (шт),Выручка (сум),Средняя цена (сум)\n';
+ csv += `${texts.modelDetails}\n`;
+ csv += `${texts.model},${texts.sales},${texts.revenue},${texts.avgPrice}\n`;
  Object.entries(data.modelStats)
    .sort((a, b) => b[1].total - a[1].total)
    .forEach(([model, stats]) => {

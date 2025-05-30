@@ -6,8 +6,9 @@ import { carModels as mockCarModels, regions } from '../mocks/mock-data';
 import ContentReadyLoader from "../layout/ContentReadyLoader";
 import axios from 'axios'
 import ContractsYearlyComparison from './ContractsYearlyComparison';
-import { useLanguageStore } from '@/src/store/language';
+import { useLanguageStore } from '../../store/language';
 import { carContractsAnalyticsTranslations } from './locales/CarContractsAnalytics';
+
 const CarContractsAnalytics = () => {
   const [activeTab, setActiveTab] = useState('contracts');
   const [selectedRegion, setSelectedRegion] = useState('all');

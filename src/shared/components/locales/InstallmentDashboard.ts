@@ -1,4 +1,4 @@
-import { LocaleMessages } from "@/src/types/locale";
+import { LocaleMessages } from "../../../types/locale";
 
 export const installmentDashboardTranslations: LocaleMessages = {
     'ru': {
@@ -106,7 +106,8 @@ export const installmentDashboardTranslations: LocaleMessages = {
             categories: {
                 suv: 'Yo\'l tanlamas',
                 sedan: 'Sedan',
-                minivan: 'Miniven'
+                minivan: 'Miniven',
+                other: 'Boshqa'
             },
             data: 'Viloyat bo\'yicha ma\'lumotlar',
             totalInInstallment: 'Jami bo\'lib to\'lashda',
@@ -133,5 +134,72 @@ export const installmentDashboardTranslations: LocaleMessages = {
         },
         noData: 'Ko\'rsatish uchun ma\'lumot yo\'q',
         clickToViewDetails: 'Batafsil ma\'lumot uchun modelni bosing'
+    },
+    'en': {
+        title: 'Installment Table',
+        metrics: {
+            contracts: 'Number of installments',
+            activeContracts: 'Active contracts',
+            paymentStatus: 'Payment percentage',
+            overdue: 'Overdue payments',
+            fullPrice: 'Full price',
+            remainder: 'Remainder',
+            paid: 'Paid',
+            overduePay: 'Overdue',
+            remaining: 'Remaining',
+            totalContracts: 'Total orders',
+            avgPrice: 'Average price',
+            outOf: 'out of',
+            total: 'Total'
+        },
+        views: {
+            byRegion: 'By regions',
+            byModel: 'By models',
+            region: 'Region',
+            model: 'Model',
+            allRegions: 'All regions',
+            unknownRegion: 'Unknown region'
+        },
+        charts: {
+            paymentDistribution: 'Payment distribution',
+            paymentsProgress: 'Payment progress',
+            topModels: 'Top models by installment count',
+            topRegions: 'Top regions by installment count',
+            paymentDynamics: 'Payment dynamics'
+        },
+        modelDetails: {
+            detailedInfo: 'Detailed information',
+            category: 'Category',
+            categories: {
+                sedan: 'Sedan',
+                suv: 'SUV',
+                minivan: 'Minivan',
+                other: 'Other'
+            },
+            data: 'Regional data',
+            totalInInstallment: 'Total in installment',
+            fullPrice: 'Full price',
+            compareByRegions: 'Compare by regions',
+            hideRegionComparison: 'Hide regional comparison',
+            backToList: 'Back to model list',
+            carCatalog: 'Car models in installment'
+        },
+        table: {
+            region: 'Region',
+            count: 'Count',
+            paidPercent: 'Paid (%)',
+            overduePercent: 'Overdue (%)',
+            remainingAmount: 'Remaining amount'
+        },
+        units: {
+            pieces: 'pcs',
+            currency: 'UZS',
+            trillion: 'T',
+            billion: 'B',
+            million: 'M',
+            thousand: 'K'
+        },
+        noData: 'No data to display',
+        clickToViewDetails: 'Click on model for detailed information'
     }
 };

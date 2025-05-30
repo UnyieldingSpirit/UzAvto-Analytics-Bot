@@ -2,12 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { D3Visualizer } from '@/src/utils/dataVisualizer';
+import { D3Visualizer } from '../../utils/dataVisualizer';
 import * as d3 from 'd3';
-import { carModels } from '@/src/shared/mocks/mock-data';
-import ContentReadyLoader from '@/src/shared/layout/ContentReadyLoader';
-import { useTranslation } from "@/src/hooks/useTranslation";
-import { statisticsTranslations } from '@/src/shared/components/locales/Statistics';
+import { carModels } from '../../shared/mocks/mock-data';
+import ContentReadyLoader from '../../shared/layout/ContentReadyLoader';
+import { useTranslation } from "../../hooks/useTranslation";
+import { statisticsTranslations } from '../../shared/components/locales/Statistics';
 export default function Statistics() {
   // State variables
   const [isLoading, setIsLoading] = useState(true); // Добавляем состояние загрузки

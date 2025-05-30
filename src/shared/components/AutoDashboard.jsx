@@ -8,9 +8,9 @@ import axios from 'axios';
 import { BarChart3, Calendar, CarFront, TrendingUp, ExternalLink, Home, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 
 // Импортируем локализацию и хук для переводов
-import { productionDashboardTranslations } from '@/src/shared/components/locales/ProductionDashboard';
-import { useTranslation } from '@/src/hooks/useTranslation';
-import ContentReadyLoader from '@/src/shared/layout/ContentReadyLoader';
+import { productionDashboardTranslations } from '../../shared/components/locales/ProductionDashboard';
+import { useTranslation } from '../../hooks/useTranslation';
+import ContentReadyLoader from '../../shared/layout/ContentReadyLoader';
 
 const ProductionDashboard = () => {
   // Инициализация переводов
