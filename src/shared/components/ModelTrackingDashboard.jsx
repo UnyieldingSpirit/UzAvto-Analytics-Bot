@@ -4,9 +4,12 @@ import * as d3 from 'd3';
 import ContentReadyLoader from '../../shared/layout/ContentReadyLoader';
 import { useTranslation } from '../../hooks/useTranslation';
 import { modelTrackingTranslations } from '../../shared/components/locales/ModelTracking';
+import { useThemeStore } from '../../store/theme';
 
 const ModelTrackingDashboard = () => {
   const { t, currentLocale } = useTranslation(modelTrackingTranslations);
+  const { mode } = useThemeStore();
+  const isDark = mode === 'dark';
   
   const donutChartRef = useRef(null);
   const modelsChartRef = useRef(null);
@@ -375,7 +378,7 @@ const ModelTrackingDashboard = () => {
     }
     
     renderModelsChart();
-  }, [currentView, selectedRegion, selectedModel, viewMode, filterModel, filterRegion, data, statusView, currentLocale]);
+  }, [currentView, selectedRegion, selectedModel, viewMode, filterModel, filterRegion, data, statusView, currentLocale, isDark]);
 
   // Функция форматирования чисел
   const formatNumber = (num) => {
@@ -446,12 +449,12 @@ const ModelTrackingDashboard = () => {
       
     remainingGradient.append('stop')
       .attr('offset', '0%')
-      .attr('stop-color', '#1e293b')
+      .attr('stop-color', isDark ? '#1e293b' : '#e5e7eb')
       .attr('stop-opacity', 0.3);
       
     remainingGradient.append('stop')
       .attr('offset', '100%')
-      .attr('stop-color', '#1e293b')
+      .attr('stop-color', isDark ? '#1e293b' : '#e5e7eb')
       .attr('stop-opacity', 0.1);
 
     // Адаптивное скругление углов
@@ -511,7 +514,7 @@ const ModelTrackingDashboard = () => {
       .attr('class', 'background-arc')
       .attr('d', arc)
       .attr('fill', (d, i) => i === 0 ? 'url(#progress-gradient)' : 'url(#remaining-gradient)')
-      .attr('stroke', '#0f172a')
+      .attr('stroke', isDark ? '#0f172a' : '#e5e7eb')
       .attr('stroke-width', 1)
       .style('opacity', (d, i) => i === 0 ? 0 : 0.8) // Показываем только неактивную часть
       .style('filter', (d, i) => i === 0 ? 'url(#drop-shadow)' : 'none');
@@ -525,7 +528,7 @@ const ModelTrackingDashboard = () => {
       })
       .attr('d', arc)
       .attr('fill', 'url(#progress-gradient)')
-      .attr('stroke', '#0f172a')
+      .attr('stroke', isDark ? '#0f172a' : '#e5e7eb')
       .attr('stroke-width', 1)
       .style('filter', 'url(#drop-shadow)');
 
@@ -559,7 +562,7 @@ const ModelTrackingDashboard = () => {
       .attr('dy', '-0.1em')
       .attr('font-size', `${textSizeLarge}px`)
       .attr('font-weight', 'bold')
-      .attr('fill', '#f8fafc')
+      .attr('fill', isDark ? '#f8fafc' : '#1f2937')
       .text('0%') // Начинаем с 0%
       .transition()
       .duration(1500)
@@ -575,7 +578,7 @@ const ModelTrackingDashboard = () => {
       .attr('text-anchor', 'middle')
       .attr('dy', `${textSizeLarge * 0.8}px`)
       .attr('font-size', `${textSizeMedium}px`)
-      .attr('fill', '#94a3b8')
+      .attr('fill', isDark ? '#94a3b8' : '#6b7280')
       .text(currentLocale === 'ru' ? 'Прибыль' : 'Foyda')
       .style('opacity', 0)
       .transition()
@@ -589,7 +592,7 @@ const ModelTrackingDashboard = () => {
       .attr('y', radius * 0.5) // Размещаем ниже центра, но внутри диаграммы
       .attr('font-size', `${textSizeSmall}px`)
       .attr('font-weight', 'medium')
-      .attr('fill', '#94a3b8')
+      .attr('fill', isDark ? '#94a3b8' : '#6b7280')
       .text(`UZS${revenueData.total.toLocaleString(currentLocale === 'ru' ? 'ru-RU' : 'uz-UZ')}`)
       .style('opacity', 0)
       .transition()
@@ -614,7 +617,7 @@ const ModelTrackingDashboard = () => {
       container.append('div')
         .style('text-align', 'center')
         .style('padding', '30px')
-        .style('color', '#94a3b8')
+        .style('color', isDark ? '#94a3b8' : '#6b7280')
         .style('font-size', '16px')
         .text(t('noData'));
       return;
@@ -634,16 +637,16 @@ const ModelTrackingDashboard = () => {
       
       // КОЛОНКА 1: Информация и статусы
       const infoColumn = detailContainer.append('div')
-        .style('background', 'linear-gradient(145deg, #1e293b, #1a2234)')
+        .style('background', isDark ? 'linear-gradient(145deg, #1e293b, #1a2234)' : 'linear-gradient(145deg, #ffffff, #f9fafb)')
         .style('border-radius', '16px')
         .style('padding', '20px')
-        .style('border', '1px solid rgba(30, 41, 59, 0.8)')
-        .style('box-shadow', '0 10px 15px -3px rgba(0, 0, 0, 0.3)');
+        .style('border', isDark ? '1px solid rgba(30, 41, 59, 0.8)' : '1px solid #e5e7eb')
+        .style('box-shadow', isDark ? '0 10px 15px -3px rgba(0, 0, 0, 0.3)' : '0 10px 15px -3px rgba(0, 0, 0, 0.1)');
       
       // Добавляем название модели вверху
       infoColumn.append('div')
         .style('font-weight', 'bold')
-        .style('color', '#f1f5f9')
+        .style('color', isDark ? '#f1f5f9' : '#1f2937')
         .style('font-size', '22px')
         .style('margin-bottom', '15px')
         .style('text-align', 'center')
@@ -659,12 +662,12 @@ const ModelTrackingDashboard = () => {
       // ВСЕГО
       const totalStats = statsHeader.append('div')
         .style('padding', '10px')
-        .style('background', 'rgba(15, 23, 42, 0.3)')
+        .style('background', isDark ? 'rgba(15, 23, 42, 0.3)' : 'rgba(243, 244, 246, 0.8)')
         .style('border-radius', '8px')
         .style('text-align', 'center');
       
       totalStats.append('div')
-        .style('color', '#94a3b8')
+        .style('color', isDark ? '#94a3b8' : '#6b7280')
         .style('font-size', '12px')
         .style('margin-bottom', '5px')
         .text(t('statuses.total'));
@@ -672,18 +675,18 @@ const ModelTrackingDashboard = () => {
       totalStats.append('div')
         .style('font-size', '22px')
         .style('font-weight', 'bold')
-        .style('color', '#f1f5f9')
+        .style('color', isDark ? '#f1f5f9' : '#1f2937')
         .text(selectedModel.totalCount || 0);
       
       // ОПЛАЧЕНО
       const paidStats = statsHeader.append('div')
         .style('padding', '10px')
-        .style('background', 'rgba(15, 23, 42, 0.3)')
+        .style('background', isDark ? 'rgba(15, 23, 42, 0.3)' : 'rgba(243, 244, 246, 0.8)')
         .style('border-radius', '8px')
         .style('text-align', 'center');
       
       paidStats.append('div')
-        .style('color', '#94a3b8')
+        .style('color', isDark ? '#94a3b8' : '#6b7280')
         .style('font-size', '12px')
         .style('margin-bottom', '5px')
         .text(t('statuses.paid'));
@@ -697,12 +700,12 @@ const ModelTrackingDashboard = () => {
       // НЕ ОПЛАЧЕНО/ЧАСТИЧНО ОПЛАЧЕНО - ИЗМЕНЕНО НАЗВАНИЕ с учетом формата через слеш
       const unpaidStats = statsHeader.append('div')
         .style('padding', '10px')
-        .style('background', 'rgba(15, 23, 42, 0.3)')
+        .style('background', isDark ? 'rgba(15, 23, 42, 0.3)' : 'rgba(243, 244, 246, 0.8)')
         .style('border-radius', '8px')
         .style('text-align', 'center');
       
       unpaidStats.append('div')
-        .style('color', '#94a3b8')
+        .style('color', isDark ? '#94a3b8' : '#6b7280')
         .style('font-size', '11px') // Уменьшил размер, чтобы вместить текст
         .style('margin-bottom', '5px')
         .text(t('statuses.partiallyPaid'));
@@ -716,7 +719,7 @@ const ModelTrackingDashboard = () => {
       // Заголовок секции статусов
       infoColumn.append('div')
         .style('margin', '20px 0 15px 0')
-        .style('color', '#94a3b8')
+        .style('color', isDark ? '#94a3b8' : '#6b7280')
         .style('font-size', '14px')
         .style('font-weight', 'medium')
         .text(t('statuses.title'));
@@ -742,7 +745,7 @@ const ModelTrackingDashboard = () => {
       const progressBarContainer = progressSection.append('div')
         .style('width', '100%')
         .style('height', '8px')
-        .style('background', '#334155')
+        .style('background', isDark ? '#334155' : '#e5e7eb')
         .style('border-radius', '4px')
         .style('overflow', 'hidden')
         .style('margin-bottom', '10px')
@@ -787,7 +790,7 @@ const ModelTrackingDashboard = () => {
           const displayName = item.name;
           
           legendItem.append('div')
-            .style('color', '#94a3b8')
+            .style('color', isDark ? '#94a3b8' : '#6b7280')
             .style('font-size', '11px')
             .text(`${displayName}: ${item.value}`);
         }
@@ -801,17 +804,17 @@ const ModelTrackingDashboard = () => {
         .style('display', 'flex')
         .style('justify-content', 'space-between')
         .style('padding', '10px 5px')
-        .style('border-bottom', '1px solid rgba(30, 41, 59, 0.8)')
+        .style('border-bottom', isDark ? '1px solid rgba(30, 41, 59, 0.8)' : '1px solid #e5e7eb')
         .style('margin-bottom', '10px');
       
       tableHeader.append('div')
-        .style('color', '#94a3b8')
+        .style('color', isDark ? '#94a3b8' : '#6b7280')
         .style('font-size', '12px')
         .style('font-weight', 'medium')
         .text(t('modelDetails.statusesTable'));
       
       tableHeader.append('div')
-        .style('color', '#94a3b8')
+        .style('color', isDark ? '#94a3b8' : '#6b7280')
         .style('font-size', '12px')
         .style('font-weight', 'medium')
         .text(t('modelDetails.quantityTable'));
@@ -822,7 +825,9 @@ const ModelTrackingDashboard = () => {
           .style('display', 'flex')
           .style('justify-content', 'space-between')
           .style('padding', '8px 5px')
-          .style('border-bottom', index < progressData.length - 1 ? '1px solid rgba(30, 41, 59, 0.4)' : 'none');
+          .style('border-bottom', index < progressData.length - 1 ? 
+            (isDark ? '1px solid rgba(30, 41, 59, 0.4)' : '1px solid #f3f4f6') : 
+            'none');
         
         const statusLabel = row.append('div')
           .style('display', 'flex')
@@ -836,7 +841,7 @@ const ModelTrackingDashboard = () => {
           .style('margin-right', '8px');
         
         statusLabel.append('div')
-          .style('color', '#f1f5f9')
+          .style('color', isDark ? '#f1f5f9' : '#1f2937')
           .style('font-size', '13px')
           .text(status.name);
         
@@ -849,20 +854,20 @@ const ModelTrackingDashboard = () => {
       
       // КОЛОНКА 2: Только изображение
       const imageColumn = detailContainer.append('div')
-        .style('background', 'linear-gradient(145deg, #1e293b, #1a2234)')
+        .style('background', isDark ? 'linear-gradient(145deg, #1e293b, #1a2234)' : 'linear-gradient(145deg, #ffffff, #f9fafb)')
         .style('border-radius', '16px')
-        .style('border', '1px solid rgba(30, 41, 59, 0.8)')
+        .style('border', isDark ? '1px solid rgba(30, 41, 59, 0.8)' : '1px solid #e5e7eb')
         .style('overflow', 'hidden')
-        .style('box-shadow', '0 10px 15px -3px rgba(0, 0, 0, 0.3)')
+        .style('box-shadow', isDark ? '0 10px 15px -3px rgba(0, 0, 0, 0.3)' : '0 10px 15px -3px rgba(0, 0, 0, 0.1)')
         .style('display', 'flex')
         .style('flex-direction', 'column');
 
       // Заголовок с названием "Изображение"
       imageColumn.append('div')
         .style('padding', '15px 20px')
-        .style('border-bottom', '1px solid rgba(30, 41, 59, 0.8)')
+        .style('border-bottom', isDark ? '1px solid rgba(30, 41, 59, 0.8)' : '1px solid #e5e7eb')
         .style('font-weight', 'medium')
-        .style('color', '#f1f5f9')
+        .style('color', isDark ? '#f1f5f9' : '#1f2937')
         .style('font-size', '16px')
         .text(t('modelDetails.image'));
       
@@ -900,7 +905,7 @@ const ModelTrackingDashboard = () => {
       imageContainer.append('div')
         .style('margin-top', '20px')
         .style('font-weight', 'bold')
-        .style('color', '#f1f5f9')
+        .style('color', isDark ? '#f1f5f9' : '#1f2937')
         .style('font-size', '20px')
         .style('text-align', 'center')
         .style('z-index', '1')
@@ -923,17 +928,17 @@ const ModelTrackingDashboard = () => {
         const isHovered = hoveredCard === model.id;
         
         const card = grid.append('div')
-          .style('background', 'linear-gradient(145deg, #1e293b, #1a2234)')
+          .style('background', isDark ? 'linear-gradient(145deg, #1e293b, #1a2234)' : 'linear-gradient(145deg, #ffffff, #f9fafb)')
           .style('border-radius', '16px')
           .style('padding', '16px')
           .style('box-shadow', isHovered ? 
             `0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 0 10px 2px ${model.color}40` : 
-            '0 10px 15px -3px rgba(0, 0, 0, 0.3)')
+            isDark ? '0 10px 15px -3px rgba(0, 0, 0, 0.3)' : '0 10px 15px -3px rgba(0, 0, 0, 0.1)')
           .style('position', 'relative')
           .style('overflow', 'hidden')
           .style('border', isHovered ? 
             `1px solid ${model.color}80` : 
-            '1px solid rgba(30, 41, 59, 0.8)')
+            isDark ? '1px solid rgba(30, 41, 59, 0.8)' : '1px solid #e5e7eb')
           .style('transform', isHovered ? 'translateY(-5px)' : 'none')
           .style('transition', 'all 0.3s ease-in-out')
           .style('cursor', 'pointer')
@@ -999,7 +1004,7 @@ const ModelTrackingDashboard = () => {
         
         nameInfo.append('div')
           .style('font-weight', 'bold')
-          .style('color', '#f1f5f9')
+          .style('color', isDark ? '#f1f5f9' : '#1f2937')
           .style('font-size', '16px')
           .style('margin-bottom', '2px')
           .text(model.name);
@@ -1010,7 +1015,7 @@ const ModelTrackingDashboard = () => {
         
         valueBlock.append('div')
           .style('font-weight', 'bold')
-          .style('color', '#f1f5f9')
+          .style('color', isDark ? '#f1f5f9' : '#1f2937')
           .style('font-size', '18px')
           .text(model.totalCount || 0);
 
@@ -1020,7 +1025,7 @@ const ModelTrackingDashboard = () => {
           .style('margin-bottom', '12px')
           .style('display', 'flex')
           .style('justify-content', 'space-between')
-          .style('background', 'rgba(15, 23, 42, 0.3)')
+          .style('background', isDark ? 'rgba(15, 23, 42, 0.3)' : 'rgba(243, 244, 246, 0.8)')
           .style('border-radius', '8px')
           .style('padding', '8px 12px');
         
@@ -1031,7 +1036,7 @@ const ModelTrackingDashboard = () => {
           .style('align-items', 'center');
         
         paidBlock.append('div')
-          .style('color', '#94a3b8')
+          .style('color', isDark ? '#94a3b8' : '#6b7280')
           .style('font-size', '11px')
           .style('margin-bottom', '2px')
           .text(t('statuses.paid'));
@@ -1049,7 +1054,7 @@ const ModelTrackingDashboard = () => {
           .style('align-items', 'center');
         
         unpaidBlock.append('div')
-          .style('color', '#94a3b8')
+          .style('color', isDark ? '#94a3b8' : '#6b7280')
           .style('font-size', '11px')
           .style('margin-bottom', '2px')
           .text(t('statuses.partiallyPaid'));
@@ -1073,7 +1078,7 @@ const ModelTrackingDashboard = () => {
           .style('align-items', 'center');
           
         newStatus.append('div')
-          .style('color', '#94a3b8')
+          .style('color', isDark ? '#94a3b8' : '#6b7280')
           .style('font-size', '12px')
           .text(`${t('statuses.partiallyPaid')}:`);
           
@@ -1090,7 +1095,7 @@ const ModelTrackingDashboard = () => {
           .style('align-items', 'center');
           
         waitingStatus.append('div')
-          .style('color', '#94a3b8')
+          .style('color', isDark ? '#94a3b8' : '#6b7280')
           .style('font-size', '12px')
           .text(`${t('statuses.paid')}:`);
           
@@ -1107,7 +1112,7 @@ const ModelTrackingDashboard = () => {
           .style('align-items', 'center');
           
         bindingStatus.append('div')
-          .style('color', '#94a3b8')
+          .style('color', isDark ? '#94a3b8' : '#6b7280')
           .style('font-size', '12px')
           .text(`${t('statuses.inDistribution')}:`);
           
@@ -1124,7 +1129,7 @@ const ModelTrackingDashboard = () => {
           .style('align-items', 'center');
           
         reservedStatus.append('div')
-          .style('color', '#94a3b8')
+          .style('color', isDark ? '#94a3b8' : '#6b7280')
           .style('font-size', '12px')
           .text(`${t('statuses.distributed')}:`);
           
@@ -1141,7 +1146,7 @@ const ModelTrackingDashboard = () => {
           .style('align-items', 'center');
           
         movingStatus.append('div')
-          .style('color', '#94a3b8')
+          .style('color', isDark ? '#94a3b8' : '#6b7280')
           .style('font-size', '12px')
           .text(`${t('statuses.inTransit')}:`);
           
@@ -1158,7 +1163,7 @@ const ModelTrackingDashboard = () => {
           .style('align-items', 'center');
           
         completeStatus.append('div')
-          .style('color', '#94a3b8')
+          .style('color', isDark ? '#94a3b8' : '#6b7280')
           .style('font-size', '12px')
           .text(`${t('statuses.atDealer')}:`);
           
@@ -1175,7 +1180,7 @@ const ModelTrackingDashboard = () => {
           .style('align-items', 'center');
           
         bookedStatus.append('div')
-          .style('color', '#94a3b8')
+          .style('color', isDark ? '#94a3b8' : '#6b7280')
           .style('font-size', '12px')
           .text(`${t('statuses.reserved')}:`);
           
@@ -1190,7 +1195,7 @@ const ModelTrackingDashboard = () => {
           .style('margin-top', '16px')
           .style('width', '100%')
           .style('height', '6px')
-          .style('background', '#334155')
+          .style('background', isDark ? '#334155' : '#e5e7eb')
           .style('border-radius', '3px')
           .style('overflow', 'hidden')
           .style('display', 'flex');
@@ -1266,18 +1271,22 @@ const ModelTrackingDashboard = () => {
    // Отображение списком (исправленный код)
 const list = container.append('div')
   .style('width', '100%')
-  .style('background', 'linear-gradient(145deg, #1e293b, #1a2234)')
+  .style('background', isDark ? 'linear-gradient(145deg, #1e293b, #1a2234)' : 'linear-gradient(145deg, #ffffff, #f9fafb)')
   .style('border-radius', '16px')
   .style('overflow', 'hidden')
-  .style('border', '1px solid rgba(30, 41, 59, 0.8)');
+  .style('border', isDark ? '1px solid rgba(30, 41, 59, 0.8)' : '1px solid #e5e7eb');
 
 data.forEach((model, index) => {
   const isHovered = hoveredCard === model.id;
   
   const listItem = list.append('div')
     .style('padding', '16px')
-    .style('border-bottom', index < data.length - 1 ? '1px solid rgba(30, 41, 59, 0.8)' : 'none')
-    .style('background', isHovered ? `linear-gradient(145deg, #1e293b, ${model.color}10)` : 'transparent')
+    .style('border-bottom', index < data.length - 1 ? 
+      (isDark ? '1px solid rgba(30, 41, 59, 0.8)' : '1px solid #e5e7eb') : 
+      'none')
+    .style('background', isHovered ? 
+      (isDark ? `linear-gradient(145deg, #1e293b, ${model.color}10)` : `linear-gradient(145deg, #ffffff, ${model.color}10)`) : 
+      'transparent')
     .style('transition', 'all 0.3s ease-in-out')
     .style('cursor', 'pointer')
     .style('animation', `fadeInUp 0.6s ${index * 0.05}s both`)
@@ -1295,879 +1304,871 @@ data.forEach((model, index) => {
   const rowContainer = listItem.append('div')
     .style('overflow-x', 'auto') // Добавляем горизонтальную прокрутку
     .style('scrollbar-width', 'thin') // Тонкий скроллбар для Firefox
-    .style('scrollbar-color', 'rgba(30, 41, 59, 0.5) transparent') // Цвет скроллбара для Firefox
+    .style('scrollbar-color', isDark ? 'rgba(30, 41, 59, 0.5) transparent' : 'rgba(229, 231, 235, 0.5) transparent') // Цвет скроллбара для Firefox
     .style('margin-bottom', '5px') // Немного места для скроллбара
     .style('-webkit-overflow-scrolling', 'touch') // Плавный скролл на iOS
     .style('padding-bottom', '5px'); // Пространство для скроллбара
-  
-  // Добавляем стили скроллбара для webkit браузеров
-  const style = document.createElement('style');
-  if (!document.head.querySelector('[data-custom-scrollbar]')) {
-    style.setAttribute('data-custom-scrollbar', 'true');
-    style.textContent = `
-      ::-webkit-scrollbar {
-        height: 4px;
-        width: 4px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: rgba(30, 41, 59, 0.5);
-        border-radius: 4px;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-  
-  // Основное содержимое теперь внутри контейнера с прокруткой
-  const rowContent = rowContainer.append('div')
-    .style('display', 'flex')
-    .style('min-width', 'max-content') // Важно! Гарантирует, что содержимое не будет сжиматься
-    .style('align-items', 'center')
-    .style('gap', '20px');
-  
-  // Левая часть с изображением и названием (фиксированная слева)
-  const leftPart = listItem.append('div') // Важно: добавляем к listItem напрямую
-    .style('display', 'flex')
-    .style('align-items', 'center')
-    .style('margin-bottom', '10px'); // Добавляем отступ от прокручиваемой части
-  
-  leftPart.append('div')
-    .style('width', '48px')
-    .style('height', '48px')
-    .style('min-width', '48px')
-    .style('background', `linear-gradient(145deg, ${model.color}40, ${model.color}20)`)
-    .style('border-radius', '12px')
-    .style('margin-right', '16px')
-    .style('display', 'flex')
-    .style('align-items', 'center')
-    .style('justify-content', 'center')
-    .style('overflow', 'hidden')
-    .append('img')
-    .attr('src', `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.image}&width=400&height=400`)
-    .style('width', '100%')
-    .style('height', '100%')
-    .style('object-fit', 'contain');
-  
-  const nameContainer = leftPart.append('div');
-  
-  nameContainer.append('div')
-    .style('font-weight', 'bold')
-    .style('color', '#f1f5f9')
-    .style('font-size', '16px')
-    .text(model.name);
-  
-  // Добавляем подпись "Всего" для модели рядом с названием
-  nameContainer.append('div')
-    .style('display', 'flex')
-    .style('align-items', 'center')
-    .style('margin-top', '4px');
-  
-  nameContainer.select('div:last-child')
-    .append('span')
-    .style('color', '#94a3b8')
-    .style('font-size', '12px')
-    .style('margin-right', '4px')
-    .text(`${t('statuses.total')}:`);
-  
-  nameContainer.select('div:last-child')
-    .append('span')
-    .style('color', '#f1f5f9')
-    .style('font-size', '14px')
-    .style('font-weight', 'bold')
-    .text(model.totalCount || 0);
-  
-  // Все статусы теперь в прокручиваемом контейнере
-  
-  // 1. Оплачено
-  const paidBlock = rowContent.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .style('min-width', '80px'); // Минимальная ширина для блока
-  
-  paidBlock.append('div')
-    .style('color', '#94a3b8')
-    .style('font-size', '12px')
-    .style('white-space', 'nowrap') // Предотвращаем перенос текста
-    .text(t('statuses.paid'));
-  
-  paidBlock.append('div')
-    .style('color', '#10b981')
-    .style('font-size', '14px')
-    .style('font-weight', 'bold')
-    .text(model.paid_count || 0);
-  
-  // 2. Не оплачено/частично
-  const unpaidBlock = rowContent.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .style('min-width', '80px');
-  
-  unpaidBlock.append('div')
-    .style('color', '#94a3b8')
-    .style('font-size', '12px')
-    .style('white-space', 'nowrap')
-    .text(t('statuses.partiallyPaid'));
-  
-  unpaidBlock.append('div')
-    .style('color', '#ef4444')
-    .style('font-size', '14px')
-    .style('font-weight', 'bold')
-    .text(model.no_paid_count || 0);
-  
-  // 3. Не/част. оплачено
-  const newBlock = rowContent.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .style('min-width', '80px');
-  
-  newBlock.append('div')
-    .style('color', '#94a3b8')
-    .style('font-size', '12px')
-    .style('white-space', 'nowrap')
-    .text(t('statuses.partiallyPaid'));
-  
-  newBlock.append('div')
-    .style('color', '#ef4444')
-    .style('font-size', '14px')
-    .style('font-weight', 'bold')
-    .text(model.state_new || 0);
-  
-  // 4. Оплачено (статус)
-  const waitingBlock = rowContent.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .style('min-width', '80px');
-  
-  waitingBlock.append('div')
-    .style('color', '#94a3b8')
-    .style('font-size', '12px')
-    .style('white-space', 'nowrap')
-    .text(t('statuses.paid'));
-  
-  waitingBlock.append('div')
-    .style('color', '#f59e0b')
-    .style('font-size', '14px')
-    .style('font-weight', 'bold')
-    .text(model.state_waiting || 0);
-  
-  // 5. На распределении
-  const bindingBlock = rowContent.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .style('min-width', '80px');
-  
-  bindingBlock.append('div')
-    .style('color', '#94a3b8')
-    .style('font-size', '12px')
-    .style('white-space', 'nowrap')
-    .text(t('statuses.inDistribution'));
-  
-  bindingBlock.append('div')
-    .style('color', '#60a5fa')
-    .style('font-size', '14px')
-    .style('font-weight', 'bold')
-    .text(model.state_binding || 0);
-  
-  // 6. Распределён
-  const reservedBlock = rowContent.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .style('min-width', '80px');
-  
-  reservedBlock.append('div')
-    .style('color', '#94a3b8')
-    .style('font-size', '12px')
-    .style('white-space', 'nowrap')
-    .text(t('statuses.distributed'));
-  
-  reservedBlock.append('div')
-    .style('color', '#3b82f6')
-    .style('font-size', '14px')
-    .style('font-weight', 'bold')
-    .text(model.state_reserved || 0);
-  
-  // 7. В пути
-  const movingBlock = rowContent.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .style('min-width', '80px');
-  
-  movingBlock.append('div')
-    .style('color', '#94a3b8')
-    .style('font-size', '12px')
-    .style('white-space', 'nowrap')
-    .text(t('statuses.inTransit'));
-  
-  movingBlock.append('div')
-    .style('color', '#8b5cf6')
-    .style('font-size', '14px')
-    .style('font-weight', 'bold')
-    .text(model.state_moving || 0);
-  
-  // 8. У дилера
-  const completeBlock = rowContent.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .style('min-width', '80px');
-  
-  completeBlock.append('div')
-    .style('color', '#94a3b8')
-    .style('font-size', '12px')
-    .style('white-space', 'nowrap')
-    .text(t('statuses.atDealer'));
-  
-  completeBlock.append('div')
-    .style('color', '#10b981')
-    .style('font-size', '14px')
-    .style('font-weight', 'bold')
-    .text(model.state_complete || 0);
-  
-  // 9. Бронь
-  const bookedBlock = rowContent.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .style('min-width', '80px');
-  
-  bookedBlock.append('div')
-    .style('color', '#94a3b8')
-    .style('font-size', '12px')
-    .style('white-space', 'nowrap')
-    .text(t('statuses.reserved'));
-  
-  bookedBlock.append('div')
-    .style('color', '#6366f1')
-    .style('font-size', '14px')
-    .style('font-weight', 'bold')
-    .text(model.state_booked || 0);
-  
-  // Добавляем индикатор скролла для ясности UI
-  const scrollIndicator = listItem.append('div')
-    .style('display', 'flex')
-    .style('justify-content', 'center')
-    .style('align-items', 'center')
-    .style('margin-top', '6px')
-    .style('color', '#94a3b8')
-    .style('font-size', '10px');
-  
-  scrollIndicator.append('svg')
-    .attr('xmlns', 'http://www.w3.org/2000/svg')
-    .attr('width', '16')
-    .attr('height', '16')
-    .attr('viewBox', '0 0 24 24')
-    .attr('fill', 'none')
-    .attr('stroke', 'currentColor')
-    .attr('stroke-width', '2')
-    .attr('stroke-linecap', 'round')
-    .attr('stroke-linejoin', 'round')
-    .html('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline>');
-  
-  scrollIndicator.append('span')
-    .style('margin-left', '4px')
-    .text(currentLocale === 'ru' ? 'Прокрутите для просмотра всех статусов' : 'Barcha holatlarni ko\'rish uchun aylantiring');
-  
-  // Показываем индикатор скролла только если контент выходит за пределы видимой области
-  setTimeout(() => {
-    const rowContentWidth = rowContent.node().getBoundingClientRect().width;
-    const containerWidth = rowContainer.node().getBoundingClientRect().width;
-    
-    if (rowContentWidth <= containerWidth) {
-      scrollIndicator.style('display', 'none');
-    }
-  }, 100);
+ 
+ // Добавляем стили скроллбара для webkit браузеров
+ const style = document.createElement('style');
+ if (!document.head.querySelector('[data-custom-scrollbar]')) {
+   style.setAttribute('data-custom-scrollbar', 'true');
+   style.textContent = `
+     ::-webkit-scrollbar {
+       height: 4px;
+       width: 4px;
+     }
+     ::-webkit-scrollbar-track {
+       background: transparent;
+     }
+     ::-webkit-scrollbar-thumb {
+       background: ${isDark ? 'rgba(30, 41, 59, 0.5)' : 'rgba(229, 231, 235, 0.5)'};
+       border-radius: 4px;
+     }
+   `;
+   document.head.appendChild(style);
+ }
+ 
+ // Основное содержимое теперь внутри контейнера с прокруткой
+ const rowContent = rowContainer.append('div')
+   .style('display', 'flex')
+   .style('min-width', 'max-content') // Важно! Гарантирует, что содержимое не будет сжиматься
+   .style('align-items', 'center')
+   .style('gap', '20px');
+ 
+ // Левая часть с изображением и названием (фиксированная слева)
+ const leftPart = listItem.append('div') // Важно: добавляем к listItem напрямую
+   .style('display', 'flex')
+   .style('align-items', 'center')
+   .style('margin-bottom', '10px'); // Добавляем отступ от прокручиваемой части
+ 
+ leftPart.append('div')
+   .style('width', '48px')
+   .style('height', '48px')
+   .style('min-width', '48px')
+   .style('background', `linear-gradient(145deg, ${model.color}40, ${model.color}20)`)
+   .style('border-radius', '12px')
+   .style('margin-right', '16px')
+   .style('display', 'flex')
+   .style('align-items', 'center')
+   .style('justify-content', 'center')
+   .style('overflow', 'hidden')
+   .append('img')
+   .attr('src', `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.image}&width=400&height=400`)
+   .style('width', '100%')
+   .style('height', '100%')
+   .style('object-fit', 'contain');
+ 
+ const nameContainer = leftPart.append('div');
+ 
+ nameContainer.append('div')
+   .style('font-weight', 'bold')
+   .style('color', isDark ? '#f1f5f9' : '#1f2937')
+   .style('font-size', '16px')
+   .text(model.name);
+ 
+ // Добавляем подпись "Всего" для модели рядом с названием
+ nameContainer.append('div')
+   .style('display', 'flex')
+   .style('align-items', 'center')
+   .style('margin-top', '4px');
+ 
+ nameContainer.select('div:last-child')
+   .append('span')
+   .style('color', isDark ? '#94a3b8' : '#6b7280')
+   .style('font-size', '12px')
+   .style('margin-right', '4px')
+   .text(`${t('statuses.total')}:`);
+ 
+ nameContainer.select('div:last-child')
+   .append('span')
+   .style('color', isDark ? '#f1f5f9' : '#1f2937')
+   .style('font-size', '14px')
+   .style('font-weight', 'bold')
+   .text(model.totalCount || 0);
+ 
+ // Все статусы теперь в прокручиваемом контейнере
+ 
+ // 1. Оплачено
+ const paidBlock = rowContent.append('div')
+   .style('display', 'flex')
+   .style('flex-direction', 'column')
+   .style('align-items', 'center')
+   .style('min-width', '80px'); // Минимальная ширина для блока
+ 
+ paidBlock.append('div')
+   .style('color', isDark ? '#94a3b8' : '#6b7280')
+   .style('font-size', '12px')
+   .style('white-space', 'nowrap') // Предотвращаем перенос текста
+   .text(t('statuses.paid'));
+ 
+ paidBlock.append('div')
+   .style('color', '#10b981')
+   .style('font-size', '14px')
+   .style('font-weight', 'bold')
+   .text(model.paid_count || 0);
+ 
+ // 2. Не оплачено/частично
+ const unpaidBlock = rowContent.append('div')
+   .style('display', 'flex')
+   .style('flex-direction', 'column')
+   .style('align-items', 'center')
+   .style('min-width', '80px');
+ 
+ unpaidBlock.append('div')
+   .style('color', isDark ? '#94a3b8' : '#6b7280')
+   .style('font-size', '12px')
+   .style('white-space', 'nowrap')
+   .text(t('statuses.partiallyPaid'));
+ 
+ unpaidBlock.append('div')
+   .style('color', '#ef4444')
+   .style('font-size', '14px')
+   .style('font-weight', 'bold')
+   .text(model.no_paid_count || 0);
+ 
+ // 3. Не/част. оплачено
+ const newBlock = rowContent.append('div')
+   .style('display', 'flex')
+   .style('flex-direction', 'column')
+   .style('align-items', 'center')
+   .style('min-width', '80px');
+ 
+ newBlock.append('div')
+   .style('color', isDark ? '#94a3b8' : '#6b7280')
+   .style('font-size', '12px')
+   .style('white-space', 'nowrap')
+   .text(t('statuses.partiallyPaid'));
+ 
+ newBlock.append('div')
+   .style('color', '#ef4444')
+   .style('font-size', '14px')
+   .style('font-weight', 'bold')
+   .text(model.state_new || 0);
+ 
+ // 4. Оплачено (статус)
+ const waitingBlock = rowContent.append('div')
+   .style('display', 'flex')
+   .style('flex-direction', 'column')
+   .style('align-items', 'center')
+   .style('min-width', '80px');
+ 
+ waitingBlock.append('div')
+   .style('color', isDark ? '#94a3b8' : '#6b7280')
+   .style('font-size', '12px')
+   .style('white-space', 'nowrap')
+   .text(t('statuses.paid'));
+ 
+ waitingBlock.append('div')
+   .style('color', '#f59e0b')
+   .style('font-size', '14px')
+   .style('font-weight', 'bold')
+   .text(model.state_waiting || 0);
+ 
+ // 5. На распределении
+ const bindingBlock = rowContent.append('div')
+   .style('display', 'flex')
+   .style('flex-direction', 'column')
+   .style('align-items', 'center')
+   .style('min-width', '80px');
+ 
+ bindingBlock.append('div')
+   .style('color', isDark ? '#94a3b8' : '#6b7280')
+   .style('font-size', '12px')
+   .style('white-space', 'nowrap')
+   .text(t('statuses.inDistribution'));
+ 
+ bindingBlock.append('div')
+   .style('color', '#60a5fa')
+   .style('font-size', '14px')
+   .style('font-weight', 'bold')
+   .text(model.state_binding || 0);
+ 
+ // 6. Распределён
+ const reservedBlock = rowContent.append('div')
+   .style('display', 'flex')
+   .style('flex-direction', 'column')
+   .style('align-items', 'center')
+   .style('min-width', '80px');
+ 
+ reservedBlock.append('div')
+   .style('color', isDark ? '#94a3b8' : '#6b7280')
+   .style('font-size', '12px')
+   .style('white-space', 'nowrap')
+   .text(t('statuses.distributed'));
+ 
+ reservedBlock.append('div')
+   .style('color', '#3b82f6')
+   .style('font-size', '14px')
+   .style('font-weight', 'bold')
+   .text(model.state_reserved || 0);
+ 
+ // 7. В пути
+ const movingBlock = rowContent.append('div')
+   .style('display', 'flex')
+   .style('flex-direction', 'column')
+   .style('align-items', 'center')
+   .style('min-width', '80px');
+ 
+ movingBlock.append('div')
+   .style('color', isDark ? '#94a3b8' : '#6b7280')
+   .style('font-size', '12px')
+   .style('white-space', 'nowrap')
+   .text(t('statuses.inTransit'));
+ 
+ movingBlock.append('div')
+   .style('color', '#8b5cf6')
+   .style('font-size', '14px')
+   .style('font-weight', 'bold')
+   .text(model.state_moving || 0);
+ 
+ // 8. У дилера
+ const completeBlock = rowContent.append('div')
+   .style('display', 'flex')
+   .style('flex-direction', 'column')
+   .style('align-items', 'center')
+   .style('min-width', '80px');
+ 
+ completeBlock.append('div')
+   .style('color', isDark ? '#94a3b8' : '#6b7280')
+   .style('font-size', '12px')
+   .style('white-space', 'nowrap')
+   .text(t('statuses.atDealer'));
+ 
+ completeBlock.append('div')
+   .style('color', '#10b981')
+   .style('font-size', '14px')
+   .style('font-weight', 'bold')
+   .text(model.state_complete || 0);
+ 
+ // 9. Бронь
+ const bookedBlock = rowContent.append('div')
+   .style('display', 'flex')
+   .style('flex-direction', 'column')
+   .style('align-items', 'center')
+   .style('min-width', '80px');
+ 
+ bookedBlock.append('div')
+   .style('color', isDark ? '#94a3b8' : '#6b7280')
+   .style('font-size', '12px')
+   .style('white-space', 'nowrap')
+   .text(t('statuses.reserved'));
+ 
+ bookedBlock.append('div')
+   .style('color', '#6366f1')
+   .style('font-size', '14px')
+   .style('font-weight', 'bold')
+   .text(model.state_booked || 0);
+ 
+ // Добавляем индикатор скролла для ясности UI
+ const scrollIndicator = listItem.append('div')
+   .style('display', 'flex')
+   .style('justify-content', 'center')
+   .style('align-items', 'center')
+   .style('margin-top', '6px')
+   .style('color', isDark ? '#94a3b8' : '#6b7280')
+   .style('font-size', '10px');
+ 
+ scrollIndicator.append('svg')
+   .attr('xmlns', 'http://www.w3.org/2000/svg')
+   .attr('width', '16')
+   .attr('height', '16')
+   .attr('viewBox', '0 0 24 24')
+   .attr('fill', 'none')
+   .attr('stroke', 'currentColor')
+   .attr('stroke-width', '2')
+   .attr('stroke-linecap', 'round')
+   .attr('stroke-linejoin', 'round')
+   .html('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline>');
+ 
+ scrollIndicator.append('span')
+   .style('margin-left', '4px')
+   .text(currentLocale === 'ru' ? 'Прокрутите для просмотра всех статусов' : 'Barcha holatlarni ko\'rish uchun aylantiring');
+ 
+ // Показываем индикатор скролла только если контент выходит за пределы видимой области
+ setTimeout(() => {
+   const rowContentWidth = rowContent.node().getBoundingClientRect().width;
+   const containerWidth = rowContainer.node().getBoundingClientRect().width;
+   
+   if (rowContentWidth <= containerWidth) {
+     scrollIndicator.style('display', 'none');
+   }
+ }, 100);
 });
-    }
+   }
 
-    // Добавляем стили анимации
-    if (!document.querySelector('style[data-animation="fadeInUp"]')) {
-      const style = document.createElement('style');
-      style.setAttribute('data-animation', 'fadeInUp');
-      style.textContent = `
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translate3d(0, 20px, 0);
-          }
-          to {
-            opacity: 1;
-            transform: translate3d(0, 0, 0);
-          }
-        }
-      `;
-      document.head.appendChild(style);
-    }
-  };
+   // Добавляем стили анимации
+   if (!document.querySelector('style[data-animation="fadeInUp"]')) {
+     const style = document.createElement('style');
+     style.setAttribute('data-animation', 'fadeInUp');
+     style.textContent = `
+       @keyframes fadeInUp {
+         from {
+           opacity: 0;
+           transform: translate3d(0, 20px, 0);
+         }
+         to {
+           opacity: 1;
+           transform: translate3d(0, 0, 0);
+         }
+       }
+     `;
+     document.head.appendChild(style);
+   }
+ };
 
-  // Функция для отрисовки графика статусов
-  const renderStatusChart = () => {
-    if (!statusChartRef.current) return;
-    d3.select(statusChartRef.current).selectAll('*').remove();
+ // Функция для отрисовки графика статусов
+ const renderStatusChart = () => {
+   if (!statusChartRef.current) return;
+   d3.select(statusChartRef.current).selectAll('*').remove();
 
-    const width = statusChartRef.current.clientWidth;
-    // Проверяем ширину экрана для адаптивной высоты графика
-    const isMobile = window.innerWidth < 768;
-    const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
-    
-    // Адаптируем высоту и отступы в зависимости от размера экрана
-    const height = isMobile ? 300 : (isTablet ? 350 : 400);
-    const margin = { 
-      top: 40, 
-      right: isMobile ? 10 : 20,
-      bottom: isMobile ? 120 : 100,
-      left: isMobile ? 40 : 50
-    };
+   const width = statusChartRef.current.clientWidth;
+   // Проверяем ширину экрана для адаптивной высоты графика
+   const isMobile = window.innerWidth < 768;
+   const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
+   
+   // Адаптируем высоту и отступы в зависимости от размера экрана
+   const height = isMobile ? 300 : (isTablet ? 350 : 400);
+   const margin = { 
+     top: 40, 
+     right: isMobile ? 10 : 20,
+     bottom: isMobile ? 120 : 100,
+     left: isMobile ? 40 : 50
+   };
 
-    // Создаем SVG
-    const svg = d3.select(statusChartRef.current)
-      .append('svg')
-      .attr('width', width)
-      .attr('height', height + 60) // Увеличиваем высоту для подписей
-      .style('overflow', 'visible');
+   // Создаем SVG
+   const svg = d3.select(statusChartRef.current)
+     .append('svg')
+     .attr('width', width)
+     .attr('height', height + 60) // Увеличиваем высоту для подписей
+     .style('overflow', 'visible');
 
-    // Создаем фильтр для эффекта свечения
-    const defs = svg.append('defs');
-    const filter = defs.append('filter')
-      .attr('id', 'glow');
-    filter.append('feGaussianBlur')
-      .attr('stdDeviation', '3.5')
-      .attr('result', 'coloredBlur');
+   // Создаем фильтр для эффекта свечения
+   const defs = svg.append('defs');
+   const filter = defs.append('filter')
+     .attr('id', 'glow');
+   filter.append('feGaussianBlur')
+     .attr('stdDeviation', '3.5')
+     .attr('result', 'coloredBlur');
 
-    const feMerge = filter.append('feMerge');
-    feMerge.append('feMergeNode')
-      .attr('in', 'coloredBlur');
-    feMerge.append('feMergeNode')
-      .attr('in', 'SourceGraphic');
+   const feMerge = filter.append('feMerge');
+   feMerge.append('feMergeNode')
+     .attr('in', 'coloredBlur');
+   feMerge.append('feMergeNode')
+     .attr('in', 'SourceGraphic');
 
-    // Создаем градиенты для столбцов
-    statusData.forEach((d, i) => {
-      const gradientId = `status-gradient-${i}`;
-      const gradient = defs.append('linearGradient')
-        .attr('id', gradientId)
-        .attr('x1', '0%')
-        .attr('y1', '0%')
-        .attr('x2', '0%')
-        .attr('y2', '100%');
-        
-      gradient.append('stop')
-        .attr('offset', '0%')
-        .attr('stop-color', d3.color(d.color).brighter(0.5));
-        
-      gradient.append('stop')
-        .attr('offset', '100%')
-        .attr('stop-color', d.color);
-    });
+   // Создаем градиенты для столбцов
+   statusData.forEach((d, i) => {
+     const gradientId = `status-gradient-${i}`;
+     const gradient = defs.append('linearGradient')
+       .attr('id', gradientId)
+       .attr('x1', '0%')
+       .attr('y1', '0%')
+       .attr('x2', '0%')
+       .attr('y2', '100%');
+       
+     gradient.append('stop')
+       .attr('offset', '0%')
+       .attr('stop-color', d3.color(d.color).brighter(0.5));
+       
+     gradient.append('stop')
+       .attr('offset', '100%')
+       .attr('stop-color', d.color);
+   });
 
-    // Создаем всплывающую подсказку
-    const tooltip = d3.select('body')
-      .append('div')
-      .attr('class', 'tooltip')
-      .style('position', 'absolute')
-      .style('visibility', 'hidden')
-      .style('background', 'rgba(15, 23, 42, 0.9)')
-      .style('color', '#f1f5f9')
-      .style('padding', '10px')
-      .style('border-radius', '6px')
-      .style('font-size', '12px')
-      .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.3)')
-      .style('z-index', '1000')
-      .style('max-width', '220px')
-      .style('border', '1px solid rgba(59, 130, 246, 0.2)');
+   // Создаем всплывающую подсказку
+   const tooltip = d3.select('body')
+     .append('div')
+     .attr('class', 'tooltip')
+     .style('position', 'absolute')
+     .style('visibility', 'hidden')
+     .style('background', isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.9)')
+     .style('color', isDark ? '#f1f5f9' : '#1f2937')
+     .style('padding', '10px')
+     .style('border-radius', '6px')
+     .style('font-size', '12px')
+     .style('box-shadow', isDark ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.1)')
+     .style('z-index', '1000')
+     .style('max-width', '220px')
+     .style('border', isDark ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid #e5e7eb');
 
-    // Создаем шкалы
-    const x = d3.scaleBand()
-      .domain(statusData.map(d => d.name))
-      .range([margin.left, width - margin.right])
-      .padding(isMobile ? 0.3 : 0.5); // Уменьшаем отступы для мобильных устройств
+   // Создаем шкалы
+   const x = d3.scaleBand()
+     .domain(statusData.map(d => d.name))
+     .range([margin.left, width - margin.right])
+     .padding(isMobile ? 0.3 : 0.5); // Уменьшаем отступы для мобильных устройств
 
-    const y = d3.scaleLinear()
-      .domain([0, d3.max(statusData, d => d.value) * 1.1])
-      .nice()
-      .range([height - margin.bottom, margin.top]);
+   const y = d3.scaleLinear()
+     .domain([0, d3.max(statusData, d => d.value) * 1.1])
+     .nice()
+     .range([height - margin.bottom, margin.top]);
 
-    // Добавляем оси
-    svg.append('g')
-      .attr('transform', `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).tickSize(0))
-      .call(g => g.select('.domain').remove())
-      .selectAll('text')
-      .attr('transform', `rotate(${isMobile ? -35 : -25})`) // Больший угол наклона для мобильных
-      .style('text-anchor', 'end')
-      .style('font-size', isMobile ? '10px' : '12px') // Меньший размер шрифта для мобильных
-      .style('fill', '#94a3b8');
+   // Добавляем оси
+   svg.append('g')
+     .attr('transform', `translate(0,${height - margin.bottom})`)
+     .call(d3.axisBottom(x).tickSize(0))
+     .call(g => g.select('.domain').remove())
+     .selectAll('text')
+     .attr('transform', `rotate(${isMobile ? -35 : -25})`) // Больший угол наклона для мобильных
+     .style('text-anchor', 'end')
+     .style('font-size', isMobile ? '10px' : '12px') // Меньший размер шрифта для мобильных
+     .style('fill', isDark ? '#94a3b8' : '#6b7280');
 
-    svg.append('g')
-      .attr('transform', `translate(${margin.left},0)`)
-      .call(d3.axisLeft(y).ticks(isMobile ? 3 : 5).tickFormat(d => d)) // Меньше делений для мобильных
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('.tick line')
-        .attr('x2', width - margin.left - margin.right)
-        .attr('stroke', '#334155')
-        .attr('stroke-opacity', 0.2))
-      .selectAll('text')
-      .style('font-size', isMobile ? '10px' : '12px')
-      .style('fill', '#94a3b8');
+   svg.append('g')
+     .attr('transform', `translate(${margin.left},0)`)
+     .call(d3.axisLeft(y).ticks(isMobile ? 3 : 5).tickFormat(d => d)) // Меньше делений для мобильных
+     .call(g => g.select('.domain').remove())
+     .call(g => g.selectAll('.tick line')
+       .attr('x2', width - margin.left - margin.right)
+       .attr('stroke', isDark ? '#334155' : '#e5e7eb')
+       .attr('stroke-opacity', 0.2))
+     .selectAll('text')
+     .style('font-size', isMobile ? '10px' : '12px')
+     .style('fill', isDark ? '#94a3b8' : '#6b7280');
 
-    // Добавляем сетку (меньше линий для мобильных)
-    svg.selectAll('.grid-line')
-      .data(y.ticks(isMobile ? 3 : 5))
-      .enter()
-      .append('line')
-      .attr('class', 'grid-line')
-      .attr('x1', margin.left)
-      .attr('x2', width - margin.right)
-      .attr('y1', d => y(d))
-      .attr('y2', d => y(d))
-      .attr('stroke', '#334155')
-      .attr('stroke-opacity', 0.2)
-      .attr('stroke-dasharray', '4,4');
+   // Добавляем сетку (меньше линий для мобильных)
+   svg.selectAll('.grid-line')
+     .data(y.ticks(isMobile ? 3 : 5))
+     .enter()
+     .append('line')
+     .attr('class', 'grid-line')
+     .attr('x1', margin.left)
+     .attr('x2', width - margin.right)
+     .attr('y1', d => y(d))
+     .attr('y2', d => y(d))
+     .attr('stroke', isDark ? '#334155' : '#e5e7eb')
+     .attr('stroke-opacity', 0.2)
+     .attr('stroke-dasharray', '4,4');
 
-    // Добавляем столбцы с анимацией
-    const bars = svg.selectAll('.bar')
-      .data(statusData)
-      .enter()
-      .append('rect')
-      .attr('class', 'bar')
-      .attr('x', d => x(d.name))
-      .attr('width', x.bandwidth())
-      .attr('y', height - margin.bottom)
-      .attr('height', 0)
-      .attr('rx', isMobile ? 4 : 8) // Уменьшаем скругление для мобильных
-      .attr('fill', (d, i) => `url(#status-gradient-${i})`)
-      .attr('stroke', '#0f172a')
-      .attr('stroke-width', 1);
-    
-    // Добавляем обработчики событий без изменения цвета
-    bars.on('mouseover', function(event, d) {
-        tooltip
-          .style('visibility', 'visible')
-          .html(`
-            <div>
-              <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${d.color}; margin-right: 5px;"></div>
-                <strong>${d.name}</strong>
-              </div>
-              <div style="margin-top: 8px; font-weight: bold;">${t('modelDetails.quantityTable')}: ${d.value}</div>
-            </div>
-          `)
-          .style('left', (event.pageX + 15) + 'px')
-          .style('top', (event.pageY - 20) + 'px');
-      })
-      .on('mousemove', function(event) {
-        tooltip
-          .style('left', (event.pageX + 15) + 'px')
-          .style('top', (event.pageY - 20) + 'px');
-      })
-      .on('mouseout', function() {
-        tooltip.style('visibility', 'hidden');
-      });
-    
-    // Анимируем столбцы
-    bars.transition()
-      .duration(800)
-      .delay((d, i) => i * 100)
-      .attr('y', d => y(d.value))
-      .attr('height', d => height - margin.bottom - y(d.value));
+   // Добавляем столбцы с анимацией
+   const bars = svg.selectAll('.bar')
+     .data(statusData)
+     .enter()
+     .append('rect')
+     .attr('class', 'bar')
+     .attr('x', d => x(d.name))
+     .attr('width', x.bandwidth())
+     .attr('y', height - margin.bottom)
+     .attr('height', 0)
+     .attr('rx', isMobile ? 4 : 8) // Уменьшаем скругление для мобильных
+     .attr('fill', (d, i) => `url(#status-gradient-${i})`)
+     .attr('stroke', isDark ? '#0f172a' : '#e5e7eb')
+     .attr('stroke-width', 1);
+   
+   // Добавляем обработчики событий без изменения цвета
+   bars.on('mouseover', function(event, d) {
+       tooltip
+         .style('visibility', 'visible')
+         .html(`
+           <div>
+             <div style="display: flex; align-items: center; margin-bottom: 5px;">
+               <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${d.color}; margin-right: 5px;"></div>
+               <strong>${d.name}</strong>
+             </div>
+             <div style="margin-top: 8px; font-weight: bold;">${t('modelDetails.quantityTable')}: ${d.value}</div>
+           </div>
+         `)
+         .style('left', (event.pageX + 15) + 'px')
+         .style('top', (event.pageY - 20) + 'px');
+     })
+     .on('mousemove', function(event) {
+       tooltip
+         .style('left', (event.pageX + 15) + 'px')
+         .style('top', (event.pageY - 20) + 'px');
+     })
+     .on('mouseout', function() {
+       tooltip.style('visibility', 'hidden');
+     });
+   
+   // Анимируем столбцы
+   bars.transition()
+     .duration(800)
+     .delay((d, i) => i * 100)
+     .attr('y', d => y(d.value))
+     .attr('height', d => height - margin.bottom - y(d.value));
 
-    // Добавляем подписи над столбцами (скрываем на мобильных, если слишком много или значения маленькие)
-    svg.selectAll('.bar-label')
-      .data(statusData)
-      .enter()
-      .filter(d => !isMobile || d.value > 5) // Фильтруем метки для мобильных
-      .append('text')
-      .attr('class', 'bar-label')
-      .attr('x', d => x(d.name) + x.bandwidth() / 2)
-      .attr('y', d => y(d.value) - (isMobile ? 5 : 10))
-      .attr('text-anchor', 'middle')
-      .style('font-size', isMobile ? '12px' : '14px')
-      .style('font-weight', 'bold')
-      .style('fill', d => d3.color(d.color).brighter(0.3))
-      .style('filter', 'url(#glow)')
-      .text(d => d.value)
-      .style('opacity', 0)
-      .transition()
-      .duration(500)
-      .delay((d, i) => i * 100 + 800)
-      .style('opacity', 1);
+   // Добавляем подписи над столбцами (скрываем на мобильных, если слишком много или значения маленькие)
+   svg.selectAll('.bar-label')
+     .data(statusData)
+     .enter()
+     .filter(d => !isMobile || d.value > 5) // Фильтруем метки для мобильных
+     .append('text')
+     .attr('class', 'bar-label')
+     .attr('x', d => x(d.name) + x.bandwidth() / 2)
+     .attr('y', d => y(d.value) - (isMobile ? 5 : 10))
+     .attr('text-anchor', 'middle')
+     .style('font-size', isMobile ? '12px' : '14px')
+     .style('font-weight', 'bold')
+     .style('fill', d => d3.color(d.color).brighter(0.3))
+     .style('filter', 'url(#glow)')
+     .text(d => d.value)
+     .style('opacity', 0)
+     .transition()
+     .duration(500)
+     .delay((d, i) => i * 100 + 800)
+     .style('opacity', 1);
 
-    // Добавляем линию тренда (убираем для очень узких экранов)
-    if (!isMobile) {
-      const line = d3.line()
-        .x(d => x(d.name) + x.bandwidth() / 2)
-        .y(d => y(d.value))
-        .curve(d3.curveMonotoneX);
+   // Добавляем линию тренда (убираем для очень узких экранов)
+   if (!isMobile) {
+     const line = d3.line()
+       .x(d => x(d.name) + x.bandwidth() / 2)
+       .y(d => y(d.value))
+       .curve(d3.curveMonotoneX);
 
-      svg.append('path')
-        .datum(statusData)
-        .attr('fill', 'none')
-        .attr('stroke', '#94a3b8')
-        .attr('stroke-width', 2)
-        .attr('stroke-dasharray', '6,4')
-        .attr('d', line)
-        .style('opacity', 0)
-        .transition()
-        .duration(800)
-        .delay(1000)
-        .style('opacity', 0.6);
+     svg.append('path')
+       .datum(statusData)
+       .attr('fill', 'none')
+       .attr('stroke', isDark ? '#94a3b8' : '#6b7280')
+       .attr('stroke-width', 2)
+       .attr('stroke-dasharray', '6,4')
+       .attr('d', line)
+       .style('opacity', 0)
+       .transition()
+       .duration(800)
+       .delay(1000)
+       .style('opacity', 0.6);
 
-      // Добавляем точки пересечения
-      svg.selectAll('.dot')
-        .data(statusData)
-        .enter()
-        .append('circle')
-        .attr('class', 'dot')
-        .attr('cx', d => x(d.name) + x.bandwidth() / 2)
-        .attr('cy', d => y(d.value))
-        .attr('r', isTablet ? 4 : 5) // Меньший размер для планшетов
-        .attr('fill', '#f8fafc')
-        .attr('stroke', d => d.color)
-        .attr('stroke-width', 2)
-        .style('filter', 'url(#glow)')
-        .style('opacity', 0)
-        .transition()
-        .duration(300)
-        .delay((d, i) => i * 100 + 1100)
-        .style('opacity', 1);
-    }
-  };
+     // Добавляем точки пересечения
+     svg.selectAll('.dot')
+       .data(statusData)
+       .enter()
+       .append('circle')
+       .attr('class', 'dot')
+       .attr('cx', d => x(d.name) + x.bandwidth() / 2)
+       .attr('cy', d => y(d.value))
+       .attr('r', isTablet ? 4 : 5) // Меньший размер для планшетов
+       .attr('fill', isDark ? '#f8fafc' : '#1f2937')
+       .attr('stroke', d => d.color)
+       .attr('stroke-width', 2)
+       .style('filter', 'url(#glow)')
+       .style('opacity', 0)
+       .transition()
+       .duration(300)
+       .delay((d, i) => i * 100 + 1100)
+       .style('opacity', 1);
+   }
+ };
 
-  // Функция для отображения таблицы статусов
-  const renderStatusTable = () => {
-    return (
-      <div className="overflow-x-auto">
-        <div className="flex mb-2 pb-2 border-b border-slate-700/50">
-          <div className="text-xs font-medium text-slate-400 uppercase tracking-wider pl-3 w-1/2">{t('modelDetails.statusesTable')}</div>
-          <div className="text-xs font-medium text-slate-400 uppercase tracking-wider w-1/2">{t('modelDetails.quantityTable')}</div>
-        </div>
-        
-        {statusData.map((status, index) => (
-          <div 
-            key={index} 
-            className="flex py-2 hover:bg-slate-700/30 transition-colors"
-          >
-            <div className="flex items-center pl-3 w-1/2">
-              <div 
-                className="h-3 w-3 rounded-full mr-2" 
-                style={{ 
-                  backgroundColor: status.color,
-                  boxShadow: `0 0 10px ${status.color}70`
-                }}
-              ></div>
-              <div className="text-sm text-slate-300">
-                {status.name}
-              </div>
-            </div>
-            <div className="text-sm text-slate-400 w-1/2">{status.value}</div>
-          </div>
-        ))}
-        
-        <div className="flex pt-2 mt-2 border-t border-slate-700/50 font-medium">
-          <div className="text-sm text-slate-300 pl-3 w-1/2">{t('statuses.total').toUpperCase()}</div>
-          <div className="text-sm text-slate-300 w-1/2">
-            {statusData.reduce((acc, curr) => acc + curr.value, 0)}
-          </div>
-        </div>
-      </div>
-    );
-  };
+ // Функция для отображения таблицы статусов
+ const renderStatusTable = () => {
+   return (
+     <div className="overflow-x-auto">
+       <div className="flex mb-2 pb-2 border-b border-slate-700/50">
+         <div className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-gray-600'} uppercase tracking-wider pl-3 w-1/2`}>{t('modelDetails.statusesTable')}</div>
+         <div className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-gray-600'} uppercase tracking-wider w-1/2`}>{t('modelDetails.quantityTable')}</div>
+       </div>
+       
+       {statusData.map((status, index) => (
+         <div 
+           key={index} 
+           className={`flex py-2 ${isDark ? 'hover:bg-slate-700/30' : 'hover:bg-gray-50'} transition-colors`}
+         >
+           <div className="flex items-center pl-3 w-1/2">
+             <div 
+               className="h-3 w-3 rounded-full mr-2" 
+               style={{ 
+                 backgroundColor: status.color,
+                 boxShadow: `0 0 10px ${status.color}70`
+               }}
+             ></div>
+             <div className={`text-sm ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
+               {status.name}
+             </div>
+           </div>
+           <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-gray-600'} w-1/2`}>{status.value}</div>
+         </div>
+       ))}
+       
+       <div className={`flex pt-2 mt-2 border-t ${isDark ? 'border-slate-700/50' : 'border-gray-200'} font-medium`}>
+         <div className={`text-sm ${isDark ? 'text-slate-300' : 'text-gray-700'} pl-3 w-1/2`}>{t('statuses.total').toUpperCase()}</div>
+         <div className={`text-sm ${isDark ? 'text-slate-300' : 'text-gray-700'} w-1/2`}>
+           {statusData.reduce((acc, curr) => acc + curr.value, 0)}
+         </div>
+       </div>
+     </div>
+   );
+ };
 
-  // Компонент для отображения UI
-  return (
-    <>
-      {isLoading && <ContentReadyLoader timeout={2000} />}
-      
-      <div className="bg-dark text-white p-3 md:p-6 rounded-xl shadow-2xl border border-slate-800">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 text-transparent bg-clip-text">
-            {isWholesale ? t('wholesale') : t('retail')}: {t('statusAndDistribution')}
-          </h1>
-          
-          <div className="flex flex-wrap gap-3">
-            {/* Переключатель между режимами опт/розница */}
-            <div className="flex space-x-2 bg-slate-800 p-1 rounded-lg">
-              <button
-                onClick={() => toggleWholesale(false)}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  !isWholesale
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
-                    : 'bg-transparent text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                {currentLocale === 'ru' ? 'Розница' : 'Chakana'}
-              </button>
-              <button
-                onClick={() => toggleWholesale(true)}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  isWholesale
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
-                    : 'bg-transparent text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                {currentLocale === 'ru' ? 'Опт' : 'Ulgurji'}
-              </button>
-            </div>
-            
-            {/* Переключатель режима отображения */}
-            {/* <div className="flex space-x-2">
-              <button 
-                onClick={() => setViewMode('grid')}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  viewMode === 'grid' 
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' 
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                {t('viewModes.grid')}
-              </button>
-              <button 
-                onClick={() => setViewMode('list')}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  viewMode === 'list' 
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' 
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                {t('viewModes.list')}
-              </button>
-            </div> */}
-          </div>
-        </div>
-        
-        {/* Навигационная панель и фильтры */}
-        <div className="bg-slate-800 p-3 md:p-4 rounded-xl mb-6 border border-slate-700/50 shadow-md">
-          <div className="flex flex-wrap items-center gap-4">
-            {/* Сброс всех фильтров */}
-            <button 
-              onClick={resetFilters}
-              className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm font-medium transition-all flex items-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-              {t('filters.reset')}
-            </button>
-            
-            {/* Выбор региона */}
-            <div className="flex items-center">
-              <span className="text-slate-400 mr-2 text-sm">{t('filters.region')}:</span>
-              <select 
-                value={filterRegion}
-                onChange={handleRegionSelect}
-                className="bg-slate-700 text-slate-200 px-3 py-2 rounded-lg border-0 focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">{t('filters.allRegions')}</option>
-                {data.map((region, index) => (
-                  <option key={`region-${index}`} value={`region-${index}`}>{region.region}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="flex items-center">
-              <span className="text-slate-400 mr-2 text-sm">{t('filters.model')}:</span>
-              <select 
-                value={filterModel}
-                onChange={handleModelSelect}
-                className="bg-slate-700 text-slate-200 px-3 py-2 rounded-lg border-0 focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">{t('filters.allModels')}</option>
-                {Array.from(new Set(data.flatMap(region => region.models.map(model => model.model))))
-                  .sort()
-                  .map((modelName, index) => (
-                    <option key={index} value={modelName}>{modelName}</option>
-                  ))
-                }
-              </select>
-            </div>
-            
-            {/* Отображение текущего пути */}
-            <div className="flex items-center ml-auto mt-2 md:mt-0">
-              <span className="text-slate-400 text-sm">{t('filters.currentView')}:</span>
-              <div className="flex items-center ml-2">
-                <span className="text-blue-400 font-medium text-sm">
-                  {currentView === 'general' 
-                    ? t('views.general')
-                    : currentView === 'region' 
-                      ? t('views.region', { regionName: selectedRegion?.name }) 
-                      : currentView === 'model' && selectedRegion 
-                        ? t('views.regionModel', { regionName: selectedRegion.name, modelName: selectedModel?.name }) 
-                        : t('views.model', { modelName: selectedModel?.name })
-                  }
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <p className="text-slate-400 mb-6 font-medium text-sm md:text-base">
-          {currentView === 'general' 
-            ? `${t('statuses.title')} ${isWholesale ? `(${t('wholesale')})` : `(${t('retail')})`}`
-            : currentView === 'region'
-              ? t('modelDetails.titleRegion', { regionName: selectedRegion?.name })
-              : t('modelDetails.titleModel', { modelName: selectedModel?.name })}
-        </p>
-        
-        <div className="mb-6">
-          {currentView !== 'model' && (
-            <div className="lg:col-span-8 bg-gradient-to-br from-slate-800 to-slate-900 p-4 md:p-6 rounded-2xl shadow-xl border border-slate-700/50 relative overflow-hidden mb-6">
-              <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-purple-500/5 to-pink-500/5 z-0 pointer-events-none"></div>
-              <div className="relative z-10">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
-                  <h2 className="text-lg font-bold text-slate-200">{t('statuses.title')}</h2>
-                  <div className="text-base md:text-[18px] font-medium text-purple-400">
-                    {t('statuses.totalOrders')}: {statusData.reduce((acc, curr) => acc + curr.value, 0)}
-                  </div>
-                </div>
-                
-                {/* Табы для переключения между графиком и таблицей */}
-                <div className="flex space-x-2 mb-6">
-                  <button
-                    onClick={() => setStatusView('chart')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      statusView === 'chart' 
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' 
-                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                    }`}
-                  >
-                    {t('statuses.chart')}
-                  </button>
-                  <button
-                    onClick={() => setStatusView('table')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      statusView === 'table' 
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' 
-                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                    }`}
-                  >
-                    {t('statuses.table')}
-                  </button>
-                </div>
-                
-                <div className="flex flex-wrap justify-center gap-6 mb-6">
-                  {/* Используем напрямую поля paid_count и no_paid_count */}
-                  <div className="flex flex-col items-center">
-                    <div 
-                      className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center mb-2 shadow-lg relative"
-                      style={{ 
-                        background: `radial-gradient(circle, #10b98130 0%, #10b98110 70%)`
-                      }}
-                    >
-                      <div 
-                        className="absolute inset-0 rounded-full z-0"
-                        style={{ boxShadow: `0 0 20px #10b98130` }}
-                      ></div>
-                      <span className="text-xl md:text-2xl font-bold relative z-10" style={{ color: '#10b981' }}>
-                        {selectedRegion
-                          ? modelsByRegion[selectedRegion.id]?.reduce((sum, model) => sum + (model.paid_count || 0), 0)
-                          : models.reduce((sum, model) => sum + (model.paid_count || 0), 0)}
-                      </span>
-                    </div>
-                    <span className="text-xs md:text-sm font-medium text-slate-300">{t('statuses.paid')}</span>
-                  </div>
-                  
-                  <div className="flex flex-col items-center">
-                    <div 
-                      className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center mb-2 shadow-lg relative"
-                      style={{ 
-                        background: `radial-gradient(circle, #ef444430 0%, #ef444410 70%)`
-                      }}
-                    >
-                      <div 
-                        className="absolute inset-0 rounded-full z-0"
-                        style={{ boxShadow: `0 0 20px #ef444430` }}
-                      ></div>
-                      <span className="text-xl md:text-2xl font-bold relative z-10" style={{ color: '#ef4444' }}>
-                        {selectedRegion
-                          ? modelsByRegion[selectedRegion.id]?.reduce((sum, model) => sum + (model.no_paid_count || 0), 0)
-                          : models.reduce((sum, model) => sum + (model.no_paid_count || 0), 0)}
-                      </span>
-                    </div>
-                    <span className="text-xs md:text-sm font-medium text-slate-300">{t('statuses.unpaid')}</span>
-                  </div>
-                </div>
-                
-                {/* Отображаем график или таблицу в зависимости от выбранной вкладки */}
-                {statusView === 'chart' ? (
-                  <div ref={statusChartRef} className="w-full" ></div>
-                ) : (
-                  renderStatusTable()
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-        
-        {/* Карточка с моделями или регионами */}
-        <div className="bg-gradient-to-br h-full from-slate-800 to-slate-900 p-4 md:p-6 rounded-2xl shadow-xl border border-slate-700/50 mb-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-indigo-500/5 to-blue-500/5 z-0"></div>
-          <div className="relative z-10">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-base md:text-lg font-bold text-slate-200">
-                {currentView === 'general' 
-                  ? (isWholesale ? t('modelDetails.titleWholesale') : t('modelDetails.titleRetail'))
-                  : currentView === 'region'
-                    ? t('modelDetails.titleRegion', { regionName: selectedRegion?.name })
-                    : currentView === 'model' && selectedRegion
-                      ? t('modelDetails.titleModelRegion', { modelName: selectedModel?.name, regionName: selectedRegion?.name })
-                      : t('modelDetails.titleModel', { modelName: selectedModel?.name })}
-              </h2>
-            </div>
-            <div ref={modelsChartRef} className="w-full" style={{ 
-              maxHeight: currentView === 'model' ? 'none' : '650px', 
-              overflowY: currentView === 'model' ? 'visible' : 'auto' 
-            }}></div>
-          </div>
-        </div>
+ // Компонент для отображения UI
+ return (
+   <>
+     {isLoading && <ContentReadyLoader timeout={2000} />}
+     
+     <div className={`${isDark ? 'bg-dark text-white' : 'bg-white text-gray-900'} p-3 md:p-6 shadow-2xl border ${isDark ? 'border-slate-800' : 'border-gray-200'}`}>
+       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+         <h1 className={`text-xl md:text-2xl font-bold bg-gradient-to-r ${isDark ? 'from-blue-500 to-purple-500' : 'from-blue-600 to-purple-600'} text-transparent bg-clip-text`}>
+           {isWholesale ? t('wholesale') : t('retail')}: {t('statusAndDistribution')}
+         </h1>
+         
+         <div className="flex flex-wrap gap-3">
+           {/* Переключатель между режимами опт/розница */}
+           <div className={`flex space-x-2 ${isDark ? 'bg-slate-800' : 'bg-gray-100'} p-1 rounded-lg`}>
+             <button
+               onClick={() => toggleWholesale(false)}
+               className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                 !isWholesale
+                   ? isDark 
+                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
+                     : 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                   : isDark
+                     ? 'bg-transparent text-slate-300 hover:bg-slate-700'
+                     : 'bg-transparent text-gray-700 hover:bg-gray-200'
+               }`}
+             >
+               {currentLocale === 'ru' ? 'Розница' : 'Chakana'}
+             </button>
+             <button
+               onClick={() => toggleWholesale(true)}
+               className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                 isWholesale
+                   ? isDark 
+                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
+                     : 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                   : isDark
+                     ? 'bg-transparent text-slate-300 hover:bg-slate-700'
+                     : 'bg-transparent text-gray-700 hover:bg-gray-200'
+               }`}
+             >
+               {currentLocale === 'ru' ? 'Опт' : 'Ulgurji'}
+             </button>
+           </div>
+         </div>
+       </div>
+       
+       {/* Навигационная панель и фильтры */}
+       <div className={`${isDark ? 'bg-slate-800' : 'bg-gray-100'} p-3 md:p-4 rounded-xl mb-6 border ${isDark ? 'border-slate-700/50' : 'border-gray-200'} shadow-md`}>
+         <div className="flex flex-wrap items-center gap-4">
+           {/* Сброс всех фильтров */}
+           <button 
+             onClick={resetFilters}
+             className={`px-3 py-2 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-200'} rounded-lg text-sm font-medium transition-all flex items-center`}
+           >
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+               <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+             </svg>
+             {t('filters.reset')}
+           </button>
+           
+           {/* Выбор региона */}
+           <div className="flex items-center">
+             <span className={`${isDark ? 'text-slate-400' : 'text-gray-600'} mr-2 text-sm`}>{t('filters.region')}:</span>
+             <select 
+               value={filterRegion}
+               onChange={handleRegionSelect}
+               className={`${isDark ? 'bg-slate-700 text-slate-200' : 'bg-white text-gray-700 border border-gray-200'} px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500`}
+             >
+               <option value="all">{t('filters.allRegions')}</option>
+               {data.map((region, index) => (
+                 <option key={`region-${index}`} value={`region-${index}`}>{region.region}</option>
+               ))}
+             </select>
+           </div>
+           
+           <div className="flex items-center">
+             <span className={`${isDark ? 'text-slate-400' : 'text-gray-600'} mr-2 text-sm`}>{t('filters.model')}:</span>
+             <select 
+               value={filterModel}
+               onChange={handleModelSelect}
+               className={`${isDark ? 'bg-slate-700 text-slate-200' : 'bg-white text-gray-700 border border-gray-200'} px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500`}
+             >
+               <option value="all">{t('filters.allModels')}</option>
+               {Array.from(new Set(data.flatMap(region => region.models.map(model => model.model))))
+                 .sort()
+                 .map((modelName, index) => (
+                   <option key={index} value={modelName}>{modelName}</option>
+                 ))
+               }
+             </select>
+           </div>
+           
+           {/* Отображение текущего пути */}
+           <div className="flex items-center ml-auto mt-2 md:mt-0">
+             <span className={`${isDark ? 'text-slate-400' : 'text-gray-600'} text-sm`}>{t('filters.currentView')}:</span>
+             <div className="flex items-center ml-2">
+               <span className="text-blue-400 font-medium text-sm">
+                 {currentView === 'general' 
+                   ? t('views.general')
+                   : currentView === 'region' 
+                     ? t('views.region', { regionName: selectedRegion?.name }) 
+                     : currentView === 'model' && selectedRegion 
+                       ? t('views.regionModel', { regionName: selectedRegion.name, modelName: selectedModel?.name }) 
+                       : t('views.model', { modelName: selectedModel?.name })
+                 }
+               </span>
+             </div>
+           </div>
+         </div>
+       </div>
+       
+       <p className={`${isDark ? 'text-slate-400' : 'text-gray-600'} mb-6 font-medium text-sm md:text-base`}>
+         {currentView === 'general' 
+           ? `${t('statuses.title')} ${isWholesale ? `(${t('wholesale')})` : `(${t('retail')})`}`
+           : currentView === 'region'
+             ? t('modelDetails.titleRegion', { regionName: selectedRegion?.name })
+             : t('modelDetails.titleModel', { modelName: selectedModel?.name })}
+       </p>
+       
+       <div className="mb-6">
+         {currentView !== 'model' && (
+           <div className={`lg:col-span-8 ${isDark ? 'bg-gradient-to-br from-slate-800 to-slate-900' : 'bg-gradient-to-br from-gray-50 to-gray-100'} p-4 md:p-6 rounded-2xl shadow-xl border ${isDark ? 'border-slate-700/50' : 'border-gray-200'} relative overflow-hidden mb-6`}>
+             <div className={`absolute top-0 right-0 w-full h-full bg-gradient-to-br ${isDark ? 'from-purple-500/5 to-pink-500/5' : 'from-purple-500/10 to-pink-500/10'} z-0 pointer-events-none`}></div>
+             <div className="relative z-10">
+               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
+                 <h2 className={`text-lg font-bold ${isDark ? 'text-slate-200' : 'text-gray-800'}`}>{t('statuses.title')}</h2>
+                 <div className={`text-base md:text-[18px] font-medium ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
+                   {t('statuses.totalOrders')}: {statusData.reduce((acc, curr) => acc + curr.value, 0)}
+                 </div>
+               </div>
+               
+               {/* Табы для переключения между графиком и таблицей */}
+               <div className="flex space-x-2 mb-6">
+                 <button
+                   onClick={() => setStatusView('chart')}
+                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                     statusView === 'chart' 
+                       ? isDark 
+                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
+                         : 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                       : isDark
+                         ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                         : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                   }`}
+                 >
+                   {t('statuses.chart')}
+                 </button>
+                 <button
+                   onClick={() => setStatusView('table')}
+                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                     statusView === 'table' 
+                       ? isDark 
+                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
+                         : 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                       : isDark
+                         ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                         : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                   }`}
+                 >
+                   {t('statuses.table')}
+                 </button>
+               </div>
+               
+               <div className="flex flex-wrap justify-center gap-6 mb-6">
+                 {/* Используем напрямую поля paid_count и no_paid_count */}
+                 <div className="flex flex-col items-center">
+                   <div 
+                     className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center mb-2 shadow-lg relative"
+                     style={{ 
+                       background: `radial-gradient(circle, #10b98130 0%, #10b98110 70%)`
+                     }}
+                   >
+                     <div 
+                       className="absolute inset-0 rounded-full z-0"
+                       style={{ boxShadow: `0 0 20px #10b98130` }}
+                     ></div>
+                     <span className="text-xl md:text-2xl font-bold relative z-10" style={{ color: '#10b981' }}>
+                       {selectedRegion
+                         ? modelsByRegion[selectedRegion.id]?.reduce((sum, model) => sum + (model.paid_count || 0), 0)
+                         : models.reduce((sum, model) => sum + (model.paid_count || 0), 0)}
+                     </span>
+                   </div>
+                   <span className={`text-xs md:text-sm font-medium ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>{t('statuses.paid')}</span>
+                 </div>
+                 
+                 <div className="flex flex-col items-center">
+                   <div 
+                     className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center mb-2 shadow-lg relative"
+                     style={{ 
+                       background: `radial-gradient(circle, #ef444430 0%, #ef444410 70%)`
+                     }}
+                   >
+                     <div 
+                       className="absolute inset-0 rounded-full z-0"
+                       style={{ boxShadow: `0 0 20px #ef444430` }}
+                     ></div>
+                     <span className="text-xl md:text-2xl font-bold relative z-10" style={{ color: '#ef4444' }}>
+                       {selectedRegion
+                         ? modelsByRegion[selectedRegion.id]?.reduce((sum, model) => sum + (model.no_paid_count || 0), 0)
+                         : models.reduce((sum, model) => sum + (model.no_paid_count || 0), 0)}
+                     </span>
+                   </div>
+                   <span className={`text-xs md:text-sm font-medium ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>{t('statuses.unpaid')}</span>
+                 </div>
+               </div>
+               
+               {/* Отображаем график или таблицу в зависимости от выбранной вкладки */}
+               {statusView === 'chart' ? (
+                 <div ref={statusChartRef} className="w-full" ></div>
+               ) : (
+                 renderStatusTable()
+               )}
+             </div>
+           </div>
+         )}
+       </div>
+       
+       {/* Карточка с моделями или регионами */}
+       <div className={`${isDark ? 'bg-gradient-to-br from-slate-800 to-slate-900' : 'bg-gradient-to-br from-gray-50 to-gray-100'} h-full p-4 md:p-6 rounded-2xl shadow-xl border ${isDark ? 'border-slate-700/50' : 'border-gray-200'} mb-6 relative overflow-hidden`}>
+         <div className={`absolute top-0 right-0 w-full h-full bg-gradient-to-br ${isDark ? 'from-indigo-500/5 to-blue-500/5' : 'from-indigo-500/10 to-blue-500/10'} z-0`}></div>
+         <div className="relative z-10">
+           <div className="flex justify-between items-center mb-6">
+             <h2 className={`text-base md:text-lg font-bold ${isDark ? 'text-slate-200' : 'text-gray-800'}`}>
+               {currentView === 'general' 
+                 ? (isWholesale ? t('modelDetails.titleWholesale') : t('modelDetails.titleRetail'))
+                 : currentView === 'region'
+                   ? t('modelDetails.titleRegion', { regionName: selectedRegion?.name })
+                   : currentView === 'model' && selectedRegion
+                     ? t('modelDetails.titleModelRegion', { modelName: selectedModel?.name, regionName: selectedRegion?.name })
+                     : t('modelDetails.titleModel', { modelName: selectedModel?.name })}
+             </h2>
+           </div>
+           <div ref={modelsChartRef} className="w-full" style={{ 
+             maxHeight: currentView === 'model' ? 'none' : '650px', 
+             overflowY: currentView === 'model' ? 'visible' : 'auto' 
+           }}></div>
+         </div>
+       </div>
 
-        {/* Добавляем стили анимации глобально */}
-        <style jsx global>{`
-          @keyframes fadeInUp {
-            from {
-              opacity: 0;
-              transform: translate3d(0, 20px, 0);
-            }
-            to {
-              opacity: 1;
-              transform: translate3d(0, 0, 0);
-            }
-          }
-          
-          .bg-clip-text {
-            -webkit-background-clip: text;
-            background-clip: text;
-          }
-          
-          .text-transparent {
-            color: transparent;
-          }
-          
-          /* Адаптивные стили для мобильных устройств */
-          @media (max-width: 640px) {
-            .tooltip {
-              max-width: 180px;
-              font-size: 10px;
-              padding: 8px;
-            }
-          }
-          
-          /* Адаптивные стили для планшетов */
-          @media (min-width: 641px) and (max-width: 1024px) {
-            .tooltip {
-              max-width: 200px;
-            }
-          }
-        `}</style>
-      </div>
-    </>
-  );
+       {/* Добавляем стили анимации глобально */}
+       <style jsx global>{`
+         @keyframes fadeInUp {
+           from {
+             opacity: 0;
+             transform: translate3d(0, 20px, 0);
+           }
+           to {
+             opacity: 1;
+             transform: translate3d(0, 0, 0);
+           }
+         }
+         
+         .bg-clip-text {
+           -webkit-background-clip: text;
+           background-clip: text;
+         }
+         
+         .text-transparent {
+           color: transparent;
+         }
+         
+         /* Адаптивные стили для мобильных устройств */
+         @media (max-width: 640px) {
+           .tooltip {
+             max-width: 180px;
+             font-size: 10px;
+             padding: 8px;
+           }
+         }
+         
+         /* Адаптивные стили для планшетов */
+         @media (min-width: 641px) and (max-width: 1024px) {
+           .tooltip {
+             max-width: 200px;
+           }
+         }
+       `}</style>
+     </div>
+   </>
+ );
 };
 
 export default ModelTrackingDashboard;

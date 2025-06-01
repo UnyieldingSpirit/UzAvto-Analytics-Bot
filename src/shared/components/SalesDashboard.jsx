@@ -9,10 +9,13 @@ import ContentReadyLoader from '../../shared/layout/ContentReadyLoader';
 import DashboardAnalytics from './DashboardAnalytics';
 import { useTranslation } from '../../hooks/useTranslation';
 import { dashboardTranslations } from '../../shared/components/locales/SalesDashboard';
+import { useThemeStore } from '../../store/theme';
 
 const SalesDashboard = () => {
-  // Инициализация переводов
+  // Инициализация переводов и темы
   const { t, currentLocale } = useTranslation(dashboardTranslations);
+  const { mode } = useThemeStore();
+  const isDark = mode === 'dark';
   
   const [activeDetailLevel, setActiveDetailLevel] = useState(0);
   const [selectedStatus, setSelectedStatus] = useState(null);
@@ -21,7 +24,7 @@ const SalesDashboard = () => {
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { hapticFeedback } = useTelegram;
+  const { hapticFeedback } = useTelegram();
   
   const dataLoaded = useRef(false);
   
@@ -653,35 +656,35 @@ const SalesDashboard = () => {
       return (
         <div className="h-full flex flex-col">
           {/* Улучшенный заголовок */}
-          <div className="flex items-center gap-3 p-4 border-b border-gray-700 bg-gray-800/90">
+          <div className={`flex items-center gap-3 p-4 border-b ${isDark ? 'border-gray-700 bg-gray-800/90' : 'border-gray-200 bg-white'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-${statusColor}-900/40 text-${statusColor}-400`}>
               {statusIcon}
             </div>
             <div>
-              <h3 className="text-lg font-medium text-white flex items-center">
+              <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} flex items-center`}>
                 {statusTitle}
                 {selectedModel && (
-                  <span className="ml-2 text-sm text-gray-400 flex items-center gap-1">
+                  <span className={`ml-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-1`}>
                     <span>•</span>
                     <span>{carModels.find(m => m.id === selectedModel)?.name}</span>
                   </span>
                 )}
               </h3>
-              <div className="text-sm text-gray-400">
+              <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                 {t('sidebar.totalRegions')}: {regions.length}
               </div>
             </div>
           </div>
           
           <div className="flex-1 overflow-y-auto p-3">
-            <div className="text-sm text-gray-400 mb-3 px-2 flex items-center gap-2">
+            <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-3 px-2 flex items-center gap-2`}>
               <MapPin size={14} />
               <span>{t('sidebar.selectRegion')}:</span>
             </div>
             
             {regions.length === 0 ? (
-              <div className="p-6 text-center text-gray-400 bg-gray-800/40 rounded-lg border border-gray-700/50">
-                <AlertTriangle size={24} className="mx-auto mb-2 text-gray-500" />
+              <div className={`p-6 text-center ${isDark ? 'text-gray-400 bg-gray-800/40 border-gray-700/50' : 'text-gray-600 bg-gray-50 border-gray-200'} rounded-lg border`}>
+                <AlertTriangle size={24} className={`mx-auto mb-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                 <p>{t('table.noData')}</p>
               </div>
             ) : (
@@ -689,17 +692,19 @@ const SalesDashboard = () => {
                 {regions.map((region, index) => (
                   <div 
                     key={index} 
-                    className={`p-3.5 rounded-lg border transition-all duration-200 ${
+                    className={`p-3.5 rounded-lg border transition-all duration-200 cursor-pointer ${
                       selectedRegion === region.name 
                         ? `bg-${statusColor}-900/30 border-${statusColor}-700` 
-                        : 'bg-gray-800/60 border-gray-700 hover:bg-gray-700/70'
-                    } cursor-pointer`}
+                        : isDark 
+                          ? 'bg-gray-800/60 border-gray-700 hover:bg-gray-700/70'
+                          : 'bg-white border-gray-200 hover:bg-gray-50'
+                    }`}
                     onClick={() => handleRegionSelect(region.name)}
                   >
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
                         <MapPin size={18} className={`text-${statusColor}-400`} />
-                        <span className="text-white font-medium text-base">{region.name}</span>
+                        <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium text-base`}>{region.name}</span>
                       </div>
                       <div className={`px-2.5 py-1 rounded-full bg-${statusColor}-900/40 text-${statusColor}-300 flex items-center gap-1.5 border border-${statusColor}-800/30`}>
                         {statusIcon}
@@ -800,19 +805,23 @@ const SalesDashboard = () => {
       return (
         <div className="h-full flex flex-col">
           {/* Улучшенный заголовок с навигацией */}
-          <div className="flex items-center gap-3 p-4 border-b border-gray-700 bg-gray-800/90">
+          <div className={`flex items-center gap-3 p-4 border-b ${isDark ? 'border-gray-700 bg-gray-800/90' : 'border-gray-200 bg-white'}`}>
             <button 
               onClick={handleBack}
-              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition-colors text-gray-400 hover:text-white"
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                isDark 
+                  ? 'hover:bg-gray-700/80 text-gray-400 hover:text-white' 
+                  : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+              }`}
             >
               <ChevronLeft size={20} />
             </button>
             <div>
-              <h3 className="text-lg font-medium text-white flex items-center gap-1.5">
+              <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} flex items-center gap-1.5`}>
                 <MapPin size={16} className={`text-${statusColor}-400`} />
                 <span>{selectedRegion}</span>
               </h3>
-              <div className="text-sm text-gray-400 flex items-center gap-1">
+              <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-1`}>
                 <span className={`text-${statusColor}-400`}>{statusTitle}</span>
                 {selectedModel && (
                   <>
@@ -822,21 +831,25 @@ const SalesDashboard = () => {
                 )}
               </div>
             </div>
-            <div className="ml-auto bg-gray-800/80 px-2.5 py-1 rounded-md border border-gray-700 text-sm">
-              <span className="text-gray-400">{t('sidebar.dealers')}:</span>
-              <span className="text-white font-semibold ml-1">{dealers.length}</span>
+            <div className={`ml-auto px-2.5 py-1 rounded-md text-sm ${
+              isDark 
+                ? 'bg-gray-800/80 border-gray-700' 
+                : 'bg-gray-100 border-gray-200'
+            } border`}>
+              <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>{t('sidebar.dealers')}:</span>
+              <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-semibold ml-1`}>{dealers.length}</span>
             </div>
           </div>
           
           <div className="flex-1 overflow-y-auto p-3">
-            <div className="text-sm text-gray-400 mb-3 px-2 flex items-center gap-2">
+            <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-3 px-2 flex items-center gap-2`}>
               <Users size={14} />
               <span>{t('sidebar.dealersList')}:</span>
             </div>
             
             {dealers.length === 0 ? (
-              <div className="p-6 text-center text-gray-400 bg-gray-800/40 rounded-lg border border-gray-700/50">
-                <AlertTriangle size={24} className="mx-auto mb-2 text-gray-500" />
+              <div className={`p-6 text-center ${isDark ? 'text-gray-400 bg-gray-800/40 border-gray-700/50' : 'text-gray-600 bg-gray-50 border-gray-200'} rounded-lg border`}>
+                <AlertTriangle size={24} className={`mx-auto mb-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                 <p>{t('table.noData')}</p>
               </div>
             ) : (
@@ -844,20 +857,22 @@ const SalesDashboard = () => {
                 {dealers.map((dealer, index) => (
                   <div 
                     key={index} 
-                    className={`p-3.5 rounded-lg border transition-all duration-200 ${
+                    className={`p-3.5 rounded-lg border transition-all duration-200 cursor-pointer ${
                       selectedDealer === dealer.name 
                         ? `bg-${statusColor}-900/30 border-${statusColor}-700` 
-                        : 'bg-gray-800/60 border-gray-700 hover:bg-gray-700/70'
-                    } cursor-pointer`}
+                        : isDark 
+                          ? 'bg-gray-800/60 border-gray-700 hover:bg-gray-700/70'
+                          : 'bg-white border-gray-200 hover:bg-gray-50'
+                    }`}
                     onClick={() => handleDealerSelect(dealer.name)}
                   >
                     <div className="flex justify-between items-center">
                       <div className="w-3/4 min-w-0"> {/* Ограничение ширины для предотвращения перекрытия */}
                         <div className="flex items-center gap-2 mb-1">
-                          <Users size={16} className="text-gray-400 flex-shrink-0" />
-                          <span className="text-white font-medium text-base truncate">{dealer.name}</span>
+                          <Users size={16} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                          <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium text-base truncate`}>{dealer.name}</span>
                         </div>
-                        <div className="text-xs text-gray-400">
+                        <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                           {dealer.models.length} {getModelWord(dealer.models.length)}
                         </div>
                       </div>
@@ -959,21 +974,25 @@ const SalesDashboard = () => {
       return (
         <div className="h-full flex flex-col">
           {/* Улучшенный заголовок с навигацией */}
-          <div className="p-4 border-b border-gray-700 bg-gray-800/90">
+          <div className={`p-4 border-b ${isDark ? 'border-gray-700 bg-gray-800/90' : 'border-gray-200 bg-white'}`}>
             <div className="flex items-center gap-3 mb-2">
               <button 
                 onClick={handleBack}
-                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-700/80 transition-colors text-gray-400 hover:text-white"
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                  isDark 
+                    ? 'hover:bg-gray-700/80 text-gray-400 hover:text-white' 
+                    : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+                }`}
               >
                 <ChevronLeft size={20} />
               </button>
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-medium text-white truncate">{selectedDealer}</h3>
+                <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} truncate`}>{selectedDealer}</h3>
               </div>
             </div>
-            <div className="flex items-center text-sm text-gray-400 pl-10">
+            <div className={`flex items-center text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} pl-10`}>
               <div className="flex items-center gap-1">
-                <MapPin size={14} className="text-gray-500" />
+                <MapPin size={14} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
                 <span>{selectedRegion}</span>
               </div>
               <span className="mx-1.5">•</span>
@@ -984,7 +1003,7 @@ const SalesDashboard = () => {
                 <>
                   <span className="mx-1.5">•</span>
                   <div className="flex items-center gap-1">
-                    <Car size={14} className="text-gray-500" />
+                    <Car size={14} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
                     <span>{carModels.find(m => m.id === selectedModel)?.name}</span>
                   </div>
                 </>
@@ -994,39 +1013,61 @@ const SalesDashboard = () => {
           
           <div className="flex-1 overflow-y-auto p-3">
             {/* Карточка с общей информацией */}
-            <div className="bg-gray-800/70 rounded-lg p-4 mb-4 border border-gray-700 shadow-md">
+            <div className={`rounded-lg p-4 mb-4 border shadow-md ${
+              isDark 
+                ? 'bg-gray-800/70 border-gray-700' 
+                : 'bg-white border-gray-200'
+            }`}>
               <div className="flex items-center gap-3 mb-3">
                 <div className="flex-1">
-                  <div className="text-sm text-gray-400 mb-1">{t('dealer.totalCars')}:</div>
+                  <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>{t('dealer.totalCars')}:</div>
                   <div className="flex items-baseline gap-1.5">
-                    <div className="text-2xl font-bold text-white">{dealer.value}</div>
-                    <div className="text-xs text-gray-400">{t('dealer.units')}</div>
+                    <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{dealer.value}</div>
+                    <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('dealer.units')}</div>
                   </div>
                 </div>
-                <div className="w-16 h-16 rounded-full bg-gray-750 border border-gray-700 flex items-center justify-center">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                  isDark 
+                    ? 'bg-gray-750 border-gray-700' 
+                    : 'bg-gray-100 border-gray-200'
+                } border`}>
                   {statusIcon}
                 </div>
               </div>
               
               <div className="mb-3 flex items-center gap-2">
-                <div className="text-sm text-gray-400">{t('dealer.modelDistribution')}:</div>
-                <div className="text-xs px-2 py-0.5 bg-gray-700 rounded-full text-gray-300 border border-gray-600">
+                <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('dealer.modelDistribution')}:</div>
+                <div className={`text-xs px-2 py-0.5 rounded-full ${
+                  isDark 
+                    ? 'bg-gray-700 text-gray-300 border-gray-600' 
+                    : 'bg-gray-100 text-gray-700 border-gray-200'
+                } border`}>
                   {dealer.models.length} {getModelWord(dealer.models.length)}
                 </div>
               </div>
               
               {dealer.models.length === 0 ? (
-                <div className="p-4 text-center text-gray-400 bg-gray-800/40 rounded-lg border border-gray-700/50">
-                  <AlertTriangle size={24} className="mx-auto mb-2 text-gray-500" />
+                <div className={`p-4 text-center rounded-lg border ${
+                  isDark 
+                    ? 'text-gray-400 bg-gray-800/40 border-gray-700/50' 
+                    : 'text-gray-600 bg-gray-50 border-gray-200'
+                }`}>
+                  <AlertTriangle size={24} className={`mx-auto mb-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                   <p>{t('table.noData')}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                  {dealer.models.map((model, idx) => (
-                  <div key={idx} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600/50 hover:bg-gray-700/80 transition-colors">
+                  <div key={idx} className={`rounded-lg p-3 border transition-colors ${
+                    isDark 
+                      ? 'bg-gray-700/50 border-gray-600/50 hover:bg-gray-700/80' 
+                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                  }`}>
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-3 min-w-0 w-3/4">
-                        <div className="w-10 h-10 rounded-md overflow-hidden bg-gray-600/30 flex-shrink-0 flex items-center justify-center">
+                        <div className={`w-10 h-10 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center ${
+                          isDark ? 'bg-gray-600/30' : 'bg-gray-200'
+                        }`}>
                           <img 
                             src={model.img}
                             alt={model.name} 
@@ -1038,12 +1079,12 @@ const SalesDashboard = () => {
                           />
                         </div>
                         <div className="flex flex-col min-w-0">
-                          <span className="text-white font-medium truncate">{model.name}</span>
-                          <span className="text-xs text-gray-400">{carModelMap[model.id]?.category || t('car')}</span>
+                          <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium truncate`}>{model.name}</span>
+                          <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{carModelMap[model.id]?.category || t('car')}</span>
                         </div>
                       </div>
                       <div className={`px-2.5 py-1 rounded-md bg-${statusColor}-900/40 text-${statusColor}-300 flex items-center gap-1.5 border border-${statusColor}-800/30 whitespace-nowrap`}>
-                        <Car size={14} className="text-gray-400" />
+                        <Car size={14} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
                         <span className="text-sm font-semibold">{model.count}</span>
                       </div>
                     </div>
@@ -1062,23 +1103,22 @@ const SalesDashboard = () => {
 
   // Общий шаблон с интерактивной боковой панелью
   return (
-    <div className="bg-gradient-to-br from-gray-900 to-gray-950 p-4 font-sans text-gray-300 min-h-screen relative">
+    <div className={`${isDark ? 'bg-gradient-to-br from-gray-900 to-gray-950' : 'bg-gray-50'} p-4 font-sans ${isDark ? 'text-gray-300' : 'text-gray-700'} min-h-screen relative`}>
       {/* Индикатор загрузки */}
       {loading && <ContentReadyLoader isLoading={loading} timeout={3000} />}
 
       {/* Плавающая боковая панель */}
       <div 
-        className={`fixed top-0 right-0 h-full bg-gray-850 backdrop-blur-sm border-l border-gray-700 shadow-xl transform transition-transform duration-300 z-50 
-        ${showSidebar ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed top-0 right-0 h-full ${isDark ? 'bg-gray-850' : 'bg-white'} backdrop-blur-sm border-l ${isDark ? 'border-gray-700' : 'border-gray-200'} shadow-xl transform transition-transform duration-300 z-50 ${showSidebar ? 'translate-x-0' : 'translate-x-full'}`}
         style={{ 
-          backgroundColor: 'rgba(17, 24, 39, 0.95)',
+          backgroundColor: isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)',
           width: '400px' // Задаем точную ширину
         }}
       >
         {renderSidebarContent()}
         {showSidebar && activeDetailLevel > 0 && (
           <button 
-            className="absolute top-1/2 -left-10 transform -translate-y-1/2 bg-gray-800 text-gray-400 p-2 rounded-l-lg border border-r-0 border-gray-700"
+            className={`absolute top-1/2 -left-10 transform -translate-y-1/2 ${isDark ? 'bg-gray-800 text-gray-400 border-gray-700' : 'bg-white text-gray-600 border-gray-200'} p-2 rounded-l-lg border border-r-0`}
             onClick={() => setShowSidebar(false)}
           >
             <ChevronRight size={18} />
@@ -1089,7 +1129,7 @@ const SalesDashboard = () => {
       {/* Плавающая кнопка для возврата к сайдбару */}
       {!showSidebar && activeDetailLevel > 0 && (
         <button 
-          className="fixed top-1/2 right-0 transform -translate-y-1/2 bg-gray-800 text-gray-400 p-2 rounded-l-lg border border-r-0 border-gray-700 z-50"
+          className={`fixed top-1/2 right-0 transform -translate-y-1/2 ${isDark ? 'bg-gray-800 text-gray-400 border-gray-700' : 'bg-white text-gray-600 border-gray-200'} p-2 rounded-l-lg border border-r-0 z-50`}
           onClick={() => setShowSidebar(true)}
         >
           <ChevronLeft size={18} />
@@ -1099,18 +1139,18 @@ const SalesDashboard = () => {
       {/* Главная панель - обновленный дизайн */}
       <div className="">
         {/* Шапка с индикатором пути */}
-        <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg p-3 mb-5 border border-gray-700/50 shadow-md flex justify-between items-center">
+        <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} backdrop-blur-sm rounded-lg p-3 mb-5 border ${isDark ? 'border-gray-700/50' : 'border-gray-200'} shadow-md flex justify-between items-center`}>
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
               <BarChart3 size={20} className="text-white" />
             </div>
             <div>
-              <h1 id="dashboard-title" className="text-xl font-bold text-white">
+              <h1 id="dashboard-title" className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 {selectedModel 
                   ? t('titleWithModel', { modelName: carModels.find(m => m.id === selectedModel)?.name }) 
                   : t('title')}
               </h1>
-              <div className="text-sm text-gray-400 flex items-center gap-1">
+              <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-1`}>
                 <span>{t('dealerCenter')}</span>
                 <span>•</span>
                 <span>Ташкент</span>
@@ -1119,7 +1159,7 @@ const SalesDashboard = () => {
           </div>
           
           <div className="flex items-center gap-2">
-            <div className="px-3 py-1.5 bg-gray-700/70 rounded-lg text-sm text-white flex items-center gap-1.5">
+            <div className={`px-3 py-1.5 ${isDark ? 'bg-gray-700/70' : 'bg-gray-100'} rounded-lg text-sm ${isDark ? 'text-white' : 'text-gray-900'} flex items-center gap-1.5`}>
               <Calendar size={14} />
               <span>{new Date().toLocaleDateString(
                 currentLocale === 'ru' ? 'ru-RU' : 
@@ -1132,13 +1172,13 @@ const SalesDashboard = () => {
         </div>
         
         {/* Информационная панель - переименовано в "Задолженность по общим контрактам" */}
-        <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg mb-5 border border-gray-700/50 shadow-md overflow-hidden">
-          <div className="flex justify-between items-center p-3 border-b border-gray-700">
-            <h2 className="text-base font-medium text-white flex items-center gap-2">
+        <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} backdrop-blur-sm rounded-lg mb-5 border ${isDark ? 'border-gray-700/50' : 'border-gray-200'} shadow-md overflow-hidden`}>
+          <div className={`flex justify-between items-center p-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+            <h2 className={`text-base font-medium ${isDark ? 'text-white' : 'text-gray-900'} flex items-center gap-2`}>
               <Activity size={18} className="text-blue-400" />
               {t('carsStatus')}
               {selectedModel && (
-                <span className="ml-2 text-sm text-gray-400">
+                <span className={`ml-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   • {carModels.find(m => m.id === selectedModel)?.name}
                 </span>
               )}
@@ -1148,18 +1188,18 @@ const SalesDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
             <div 
               onClick={() => handleStatusSelect('notShipped')}
-              className="relative p-4 border-r border-gray-700 cursor-pointer hover:bg-gray-700/30 transition-colors group"
+              className={`relative p-4 border-r ${isDark ? 'border-gray-700' : 'border-gray-200'} cursor-pointer ${isDark ? 'hover:bg-gray-700/30' : 'hover:bg-gray-50'} transition-colors group`}
             >
-              <div className="absolute bottom-0 left-0 w-full h-1 bg-blue-900/30"></div>
+              <div className={`absolute bottom-0 left-0 w-full h-1 ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}></div>
               <div className="absolute bottom-0 left-0 h-1 bg-blue-600" 
                    style={{ width: `${(contractDebtData.notShipped / (contractDebtData.notShipped + contractDebtData.inTransit + contractDebtData.delivered)) * 100}%` }}></div>
               
               <div className="flex items-start gap-3">
-                <div className="w-12 h-12 rounded-full bg-blue-900/40 flex items-center justify-center">
+                <div className={`w-12 h-12 rounded-full ${isDark ? 'bg-blue-900/40' : 'bg-blue-100'} flex items-center justify-center`}>
                   <Archive size={22} className="text-blue-400" />
                 </div>
                 <div className="flex-1">
-                  <div className="text-2xl font-bold text-white mb-1">{contractDebtData.notShipped}</div>
+                  <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>{contractDebtData.notShipped}</div>
                   <div className="text-sm text-blue-300 flex items-center justify-between">
                     <span>{t('notShipped.title')}</span>
                     <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1170,130 +1210,138 @@ const SalesDashboard = () => {
             
             <div 
               onClick={() => handleStatusSelect('inTransit')}
-              className="relative p-4 border-r border-gray-700 cursor-pointer hover:bg-gray-700/30 transition-colors group"
-            >
-              <div className="absolute bottom-0 left-0 w-full h-1 bg-yellow-900/30"></div>
-              <div className="absolute bottom-0 left-0 h-1 bg-yellow-600" 
-                   style={{ width: `${(contractDebtData.inTransit / (contractDebtData.notShipped + contractDebtData.inTransit + contractDebtData.delivered)) * 100}%` }}></div>
-              
-              <div className="flex items-start gap-3">
-                <div className="w-12 h-12 rounded-full bg-yellow-900/40 flex items-center justify-center">
-                  <Truck size={22} className="text-yellow-400" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-2xl font-bold text-white mb-1">{contractDebtData.inTransit}</div>
-                  <div className="text-sm text-yellow-300 flex items-center justify-between">
-                    <span>{t('inTransit.title')}</span>
-                    <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="relative p-4 border-l-0 border-gray-700">
-              <div className="absolute bottom-0 left-0 w-full h-1 bg-green-900/30"></div>
-              <div className="absolute bottom-0 left-0 h-1 bg-green-600" 
-                   style={{ width: `${(contractDebtData.delivered / (contractDebtData.notShipped + contractDebtData.inTransit + contractDebtData.delivered)) * 100}%` }}></div>
-              
-              <div className="flex items-start gap-3">
-                <div className="w-12 h-12 rounded-full bg-green-900/40 flex items-center justify-center">
-                  <Check size={22} className="text-green-400" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-white mb-1">{contractDebtData.delivered}</div>
-                  <div className="text-sm text-green-300">{t('delivered')}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-1 gap-5 mb-5">
-          {/* Компонент аналитики */}
-          {/* {renderAnalyticsDashboard()} */}
-          
-          {/* ТАБЛИЦА ЗАДОЛЖЕННОСТИ ПО КОНТРАКТАМ */}
-          <div className="bg-gray-800/70 backdrop-blur-sm rounded-lg border border-gray-700/50 shadow-md overflow-hidden">
-            <div className="flex justify-between items-center p-3 border-b border-gray-700">
-              <h3 className="text-base font-medium text-white flex items-center gap-2">
-                <AlertTriangle size={18} className="text-yellow-400" />
-                {t('frozenContracts')} 
-                {selectedModel && (
-                  <span className="ml-2 text-sm text-gray-400">
-                    • {carModels.find(m => m.id === selectedModel)?.name}
-                  </span>
-                )}
-              </h3>
-              <div className="text-[16px] text-yellow-300">
-                {t('total')}: <span className="font-bold">{totalFrozenCount}</span>
-              </div>
-            </div>
-            
-            <div className="p-3">
-              <div className="rounded-lg overflow-hidden border border-gray-700">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-900/80">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-gray-400 font-medium">{t('table.modelName')}</th>
-                      <th className="px-3 py-2 text-center text-gray-400 font-medium">{t('table.image')}</th>
-                      <th className="px-3 py-2 text-right text-gray-400 font-medium">{t('table.quantity')}</th>
-                      <th className="px-3 py-2 text-center text-gray-400 font-medium">{t('table.status')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    {debtData.length === 0 ? (
-                      <tr>
-                        <td colSpan="4" className="px-3 py-4 text-center text-gray-400">
-                          <AlertTriangle size={20} className="mx-auto mb-2 text-yellow-500" />
-                          {t('table.noData')}
-                        </td>
-                      </tr>
-                    ) : (
-                      debtData.map((item, index) => (
-                        <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-800/60' : 'bg-gray-850/70'} hover:bg-gray-700/70`}>
-                          <td className="px-3 py-2 font-medium text-white">{item.modelName}</td>
-                          <td className="px-3 py-2 text-center">
-                        <div className="w-12 h-12 mx-auto rounded-md overflow-hidden bg-gray-700/70 flex items-center justify-center">
-                              <img 
-                                src={item.modelImg} 
-                                alt={item.modelName} 
-                                className="h-full w-auto object-contain"
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.src = carModelMap[item.modelId]?.img || '';
-                                }}
-                              />
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 text-right text-gray-300 font-medium">{item.total_count}</td>
-                          <td className="px-3 py-2 text-center">
-                            <span className="inline-block px-2 py-1 rounded-full text-xs bg-red-900/30 text-red-400 border border-red-800/50">
-                              &gt; {item.days || 5} {getDayWord(item.days || 5)}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                  <tfoot className="bg-gray-900/80">
-                    <tr>
-                      <td className="px-3 py-2 font-medium text-white" colSpan="2">{t('table.total')}</td>
-                      <td className="px-3 py-2 text-right font-medium text-white">
-                        {totalFrozenCount}
-                      </td>
-                      <td className="px-3 py-2 text-center text-red-400 text-xs font-medium">
-                        {t('table.allDays')}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+              className={`relative p-4 border-r ${isDark ? 'border-gray-700' : 'border-gray-200'} cursor-pointer ${isDark ? 'hover:bg-gray-700/30' : 'hover:bg-gray-50'} transition-colors group`}
+           >
+             <div className={`absolute bottom-0 left-0 w-full h-1 ${isDark ? 'bg-yellow-900/30' : 'bg-yellow-100'}`}></div>
+             <div className="absolute bottom-0 left-0 h-1 bg-yellow-600" 
+                  style={{ width: `${(contractDebtData.inTransit / (contractDebtData.notShipped + contractDebtData.inTransit + contractDebtData.delivered)) * 100}%` }}></div>
+             
+             <div className="flex items-start gap-3">
+               <div className={`w-12 h-12 rounded-full ${isDark ? 'bg-yellow-900/40' : 'bg-yellow-100'} flex items-center justify-center`}>
+                 <Truck size={22} className="text-yellow-400" />
+               </div>
+               <div className="flex-1">
+                 <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>{contractDebtData.inTransit}</div>
+                 <div className="text-sm text-yellow-300 flex items-center justify-between">
+                   <span>{t('inTransit.title')}</span>
+                   <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                 </div>
+               </div>
+             </div>
+           </div>
+           
+           <div className={`relative p-4 ${isDark ? 'border-l-0 border-gray-700' : 'border-l-0 border-gray-200'}`}>
+             <div className={`absolute bottom-0 left-0 w-full h-1 ${isDark ? 'bg-green-900/30' : 'bg-green-100'}`}></div>
+             <div className="absolute bottom-0 left-0 h-1 bg-green-600" 
+                  style={{ width: `${(contractDebtData.delivered / (contractDebtData.notShipped + contractDebtData.inTransit + contractDebtData.delivered)) * 100}%` }}></div>
+             
+             <div className="flex items-start gap-3">
+               <div className={`w-12 h-12 rounded-full ${isDark ? 'bg-green-900/40' : 'bg-green-100'} flex items-center justify-center`}>
+                 <Check size={22} className="text-green-400" />
+               </div>
+               <div>
+                 <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>{contractDebtData.delivered}</div>
+                 <div className="text-sm text-green-300">{t('delivered')}</div>
+               </div>
+             </div>
+           </div>
+         </div>
+       </div>
+       
+       <div className="grid grid-cols-1 lg:grid-cols-1 gap-5 mb-5">
+         {/* Компонент аналитики */}
+         {/* {renderAnalyticsDashboard()} */}
+         
+         {/* ТАБЛИЦА ЗАДОЛЖЕННОСТИ ПО КОНТРАКТАМ */}
+         <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} backdrop-blur-sm rounded-lg border ${isDark ? 'border-gray-700/50' : 'border-gray-200'} shadow-md overflow-hidden`}>
+           <div className={`flex justify-between items-center p-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+             <h3 className={`text-base font-medium ${isDark ? 'text-white' : 'text-gray-900'} flex items-center gap-2`}>
+               <AlertTriangle size={18} className="text-yellow-400" />
+               {t('frozenContracts')} 
+               {selectedModel && (
+                 <span className={`ml-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                   • {carModels.find(m => m.id === selectedModel)?.name}
+                 </span>
+               )}
+             </h3>
+             <div className="text-[16px] text-yellow-300">
+               {t('total')}: <span className="font-bold">{totalFrozenCount}</span>
+             </div>
+           </div>
+           
+           <div className="p-3">
+             <div className={`rounded-lg overflow-hidden border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+               <table className="w-full text-sm">
+                 <thead className={isDark ? 'bg-gray-900/80' : 'bg-gray-50'}>
+                   <tr>
+                     <th className={`px-3 py-2 text-left ${isDark ? 'text-gray-400' : 'text-gray-600'} font-medium`}>{t('table.modelName')}</th>
+                     <th className={`px-3 py-2 text-center ${isDark ? 'text-gray-400' : 'text-gray-600'} font-medium`}>{t('table.image')}</th>
+                     <th className={`px-3 py-2 text-right ${isDark ? 'text-gray-400' : 'text-gray-600'} font-medium`}>{t('table.quantity')}</th>
+                     <th className={`px-3 py-2 text-center ${isDark ? 'text-gray-400' : 'text-gray-600'} font-medium`}>{t('table.status')}</th>
+                   </tr>
+                 </thead>
+                 <tbody className={`divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                   {debtData.length === 0 ? (
+                     <tr>
+                       <td colSpan="4" className={`px-3 py-4 text-center ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                         <AlertTriangle size={20} className="mx-auto mb-2 text-yellow-500" />
+                         {t('table.noData')}
+                       </td>
+                     </tr>
+                   ) : (
+                     debtData.map((item, index) => (
+                       <tr key={index} className={`${
+                         index % 2 === 0 
+                           ? isDark ? 'bg-gray-800/60' : 'bg-gray-50' 
+                           : isDark ? 'bg-gray-850/70' : 'bg-white'
+                       } ${isDark ? 'hover:bg-gray-700/70' : 'hover:bg-gray-100'}`}>
+                         <td className={`px-3 py-2 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{item.modelName}</td>
+                         <td className="px-3 py-2 text-center">
+                           <div className={`w-12 h-12 mx-auto rounded-md overflow-hidden ${isDark ? 'bg-gray-700/70' : 'bg-gray-200'} flex items-center justify-center`}>
+                             <img 
+                               src={item.modelImg} 
+                               alt={item.modelName} 
+                               className="h-full w-auto object-contain"
+                               onError={(e) => {
+                                 e.target.onerror = null;
+                                 e.target.src = carModelMap[item.modelId]?.img || '';
+                               }}
+                             />
+                           </div>
+                         </td>
+                         <td className={`px-3 py-2 text-right ${isDark ? 'text-gray-300' : 'text-gray-700'} font-medium`}>{item.total_count}</td>
+                         <td className="px-3 py-2 text-center">
+                           <span className={`inline-block px-2 py-1 rounded-full text-xs ${
+                             isDark 
+                               ? 'bg-red-900/30 text-red-400 border-red-800/50' 
+                               : 'bg-red-100 text-red-700 border-red-200'
+                           } border`}>
+                             &gt; {item.days || 5} {getDayWord(item.days || 5)}
+                           </span>
+                         </td>
+                       </tr>
+                     ))
+                   )}
+                 </tbody>
+                 <tfoot className={isDark ? 'bg-gray-900/80' : 'bg-gray-50'}>
+                   <tr>
+                     <td className={`px-3 py-2 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`} colSpan="2">{t('table.total')}</td>
+                     <td className={`px-3 py-2 text-right font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                       {totalFrozenCount}
+                     </td>
+                     <td className="px-3 py-2 text-center text-red-400 text-xs font-medium">
+                       {t('table.allDays')}
+                     </td>
+                   </tr>
+                 </tfoot>
+               </table>
+             </div>
+           </div>
+         </div>
+       </div>
+     </div>
+   </div>
+ );
 };
 
 export default SalesDashboard;

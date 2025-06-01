@@ -16,10 +16,13 @@ import ContentReadyLoader from '../../layout/ContentReadyLoader';
 // Импорт хука для переводов
 import { useTranslation } from '../../../hooks/useTranslation';
 import { contractsAnalyticsTranslations } from '../locales/ContractsAnalyticsDashboard';
+import { useThemeStore } from '../../../store/theme';
 
 function ContractsAnalyticsDashboard() {
-  // Инициализация переводов
+  // Инициализация переводов и темы
   const { t, currentLocale } = useTranslation(contractsAnalyticsTranslations);
+  const { mode } = useThemeStore();
+  const isDark = mode === 'dark';
   
   // Основные состояния
   const [selectedPeriod, setSelectedPeriod] = useState('year');
@@ -262,8 +265,8 @@ function ContractsAnalyticsDashboard() {
   const renderCustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-gray-800/95 p-3 md:p-4 rounded-lg shadow-xl border border-gray-700/60 backdrop-blur-sm">
-          <p className="text-gray-200 font-medium text-sm md:text-base mb-2">{payload[0]?.payload.name || payload[0]?.payload.day}</p>
+        <div className={`${isDark ? 'bg-gray-800/95 border-gray-700/60' : 'bg-white/95 border-gray-200'} p-3 md:p-4 rounded-lg shadow-xl border backdrop-blur-sm`}>
+          <p className={`${isDark ? 'text-gray-200' : 'text-gray-800'} font-medium text-sm md:text-base mb-2`}>{payload[0]?.payload.name || payload[0]?.payload.day}</p>
           <p className="text-indigo-400 font-medium flex items-center gap-2 mb-1.5 text-xs md:text-sm">
             <span className="text-base md:text-lg">📝</span> {t('stats.contracts')}: {formatNumber(payload[0]?.payload.contracts)}
           </p>
@@ -367,7 +370,7 @@ function ContractsAnalyticsDashboard() {
     if (!isDataReady) {
       return (
         <div className="flex items-center justify-center h-full">
-          <p className="text-gray-400 text-sm md:text-base text-center px-4">
+          <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm md:text-base text-center px-4`}>
             {t('charts.applyToUpdate')}
           </p>
         </div>
@@ -378,7 +381,7 @@ function ContractsAnalyticsDashboard() {
     if (!periodData || periodData.length === 0) {
       return (
         <div className="flex items-center justify-center h-full">
-          <p className="text-gray-400 text-sm md:text-base text-center px-4">
+          <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm md:text-base text-center px-4`}>
             {t('charts.noData')}
           </p>
         </div>
@@ -392,7 +395,7 @@ function ContractsAnalyticsDashboard() {
     if (chartData.length === 0) {
       return (
         <div className="flex items-center justify-center h-full">
-          <p className="text-gray-400 text-sm md:text-base text-center px-4">
+          <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm md:text-base text-center px-4`}>
             {t('charts.noDataPeriod', { 
               startDate: new Date(startDate).toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU'), 
               endDate: new Date(endDate).toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU') 
@@ -426,12 +429,12 @@ function ContractsAnalyticsDashboard() {
     // Настраиваем отображение оси X в зависимости от количества точек данных
     const xAxisConfig = {
       dataKey: "name",
-      stroke: "#9ca3af",
+      stroke: isDark ? "#9ca3af" : "#4b5563",
       // Корректировка угла и высоты для лучшей читаемости
       angle: chartData.length > 12 ? -45 : 0,
       textAnchor: chartData.length > 12 ? 'end' : 'middle',
       height: chartData.length > 12 ? 60 : 30,
-      tick: { fontSize: 10, fill: '#d1d5db' },
+      tick: { fontSize: 10, fill: isDark ? '#d1d5db' : '#374151' },
       // Показываем все точки данных, если их немного, иначе выборочно
       interval: chartData.length > 12 ? 'preserveStartEnd' : 0
     };
@@ -465,18 +468,18 @@ function ContractsAnalyticsDashboard() {
             </defs>
             <XAxis {...xAxisConfig} />
             <YAxis
-              stroke="#9ca3af"
+              stroke={isDark ? "#9ca3af" : "#4b5563"}
               tickFormatter={formatNumber}
               width={50}
-              tick={{ fontSize: 10, fill: '#d1d5db' }}
+              tick={{ fontSize: 10, fill: isDark ? '#d1d5db' : '#374151' }}
             />
-            <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+            <CartesianGrid stroke={isDark ? "#374151" : "#e5e7eb"} strokeDasharray="3 3" />
             <Tooltip content={renderCustomTooltip} />
             <Legend
               verticalAlign="top"
               height={36}
               formatter={(value) => {
-                return <span style={{ color: '#d1d5db', fontSize: '0.85rem' }}>{legendLabels[value]}</span>
+                return <span style={{ color: isDark ? '#d1d5db' : '#374151', fontSize: '0.85rem' }}>{legendLabels[value]}</span>
               }}
               wrapperStyle={{ paddingBottom: '10px' }}
             />
@@ -485,24 +488,24 @@ function ContractsAnalyticsDashboard() {
               dataKey="contracts"
               stroke="#4f46e5"
               strokeWidth={2}
-              dot={{ stroke: '#4f46e5', fill: '#1f2937', strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
+              dot={{ stroke: '#4f46e5', fill: isDark ? '#1f2937' : '#ffffff', strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, stroke: isDark ? 'white' : '#1f2937', strokeWidth: 2 }}
             />
             <Line
               type="monotone"
               dataKey="realization"
               stroke="#10b981"
               strokeWidth={2}
-              dot={{ stroke: '#10b981', fill: '#1f2937', strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
+              dot={{ stroke: '#10b981', fill: isDark ? '#1f2937' : '#ffffff', strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, stroke: isDark ? 'white' : '#1f2937', strokeWidth: 2 }}
             />
             <Line
               type="monotone"
               dataKey="cancellation"
               stroke="#ef4444"
               strokeWidth={2}
-              dot={{ stroke: '#ef4444', fill: '#1f2937', strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
+              dot={{ stroke: '#ef4444', fill: isDark ? '#1f2937' : '#ffffff', strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, stroke: isDark ? 'white' : '#1f2937', strokeWidth: 2 }}
             />
           </LineChart>
         );
@@ -527,18 +530,18 @@ function ContractsAnalyticsDashboard() {
             </defs>
             <XAxis {...xAxisConfig} />
             <YAxis
-              stroke="#9ca3af"
+              stroke={isDark ? "#9ca3af" : "#4b5563"}
               tickFormatter={formatNumber}
               width={50}
-              tick={{ fontSize: 10, fill: '#d1d5db' }}
+              tick={{ fontSize: 10, fill: isDark ? '#d1d5db' : '#374151' }}
             />
-            <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+            <CartesianGrid stroke={isDark ? "#374151" : "#e5e7eb"} strokeDasharray="3 3" />
             <Tooltip content={renderCustomTooltip} />
             <Legend
               verticalAlign="top"
               height={36}
               formatter={(value) => {
-                return <span style={{ color: '#d1d5db', fontSize: '0.85rem' }}>{legendLabels[value]}</span>
+                return <span style={{ color: isDark ? '#d1d5db' : '#374151', fontSize: '0.85rem' }}>{legendLabels[value]}</span>
               }}
               wrapperStyle={{ paddingBottom: '10px' }}
             />
@@ -575,18 +578,18 @@ function ContractsAnalyticsDashboard() {
           <BarChart data={chartData}>
             <XAxis {...xAxisConfig} />
             <YAxis
-              stroke="#9ca3af"
+              stroke={isDark ? "#9ca3af" : "#4b5563"}
               tickFormatter={formatNumber}
               width={50}
-              tick={{ fontSize: 10, fill: '#d1d5db' }}
+              tick={{ fontSize: 10, fill: isDark ? '#d1d5db' : '#374151' }}
             />
-            <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+            <CartesianGrid stroke={isDark ? "#374151" : "#e5e7eb"} strokeDasharray="3 3" />
             <Tooltip content={renderCustomTooltip} />
             <Legend
               verticalAlign="top"
               height={36}
               formatter={(value) => {
-                return <span style={{ color: '#d1d5db', fontSize: '0.85rem' }}>{legendLabels[value]}</span>
+                return <span style={{ color: isDark ? '#d1d5db' : '#374151', fontSize: '0.85rem' }}>{legendLabels[value]}</span>
               }}
               wrapperStyle={{ paddingBottom: '10px' }}
             />
@@ -629,8 +632,8 @@ function ContractsAnalyticsDashboard() {
       default:
         renderedChart = (
           <LineChart data={chartData}>
-            <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#d1d5db' }} />
-            <YAxis tick={{ fontSize: 10, fill: '#d1d5db' }} />
+            <XAxis dataKey="name" tick={{ fontSize: 10, fill: isDark ? '#d1d5db' : '#374151' }} />
+            <YAxis tick={{ fontSize: 10, fill: isDark ? '#d1d5db' : '#374151' }} />
             <Tooltip />
             <Line
               type="monotone"
@@ -662,7 +665,7 @@ function ContractsAnalyticsDashboard() {
     if (!dailyContractData || !Array.isArray(dailyContractData)) {
       return (
         <div className="flex items-center justify-center h-64">
-          <p className="text-gray-400 text-sm md:text-base text-center">
+          <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm md:text-base text-center`}>
             {t('charts.noData')}
           </p>
         </div>
@@ -699,7 +702,7 @@ function ContractsAnalyticsDashboard() {
     )) {
       return (
         <div className="flex items-center justify-center h-64">
-          <p className="text-gray-400 text-sm md:text-base text-center">
+          <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm md:text-base text-center`}>
             {t('charts.noData')}
           </p>
         </div>
@@ -799,7 +802,7 @@ function ContractsAnalyticsDashboard() {
     if (chartData.length === 0) {
       return (
         <div className="flex items-center justify-center h-64">
-          <p className="text-gray-400 text-sm md:text-base text-center">
+          <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm md:text-base text-center`}>
             {t('charts.noData')}
           </p>
         </div>
@@ -825,20 +828,20 @@ function ContractsAnalyticsDashboard() {
         });
         
         return (
-          <div className="bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-700 text-xs md:text-sm">
-            <p className="font-semibold text-gray-300 mb-1">{formattedDate}</p>
+          <div className={`${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} p-3 rounded-lg shadow-lg border text-xs md:text-sm`}>
+            <p className={`font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1`}>{formattedDate}</p>
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-                <p className="text-white">{t('stats.contracts')}: <span className="font-bold">{formatNumber(data.contracts)}</span></p>
+                <p className={isDark ? 'text-white' : 'text-gray-800'}>{t('stats.contracts')}: <span className="font-bold">{formatNumber(data.contracts)}</span></p>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <p className="text-white">{t('stats.realization')}: <span className="font-bold">{formatNumber(data.realization)}</span></p>
+                <p className={isDark ? 'text-white' : 'text-gray-800'}>{t('stats.realization')}: <span className="font-bold">{formatNumber(data.realization)}</span></p>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <p className="text-white">{t('stats.cancellation')}: <span className="font-bold">{formatNumber(data.cancellation)}</span></p>
+                <p className={isDark ? 'text-white' : 'text-gray-800'}>{t('stats.cancellation')}: <span className="font-bold">{formatNumber(data.cancellation)}</span></p>
               </div>
             </div>
           </div>
@@ -896,32 +899,32 @@ function ContractsAnalyticsDashboard() {
               </feMerge>
             </filter>
           </defs>
-          <CartesianGrid stroke="#374151" strokeDasharray="3 3" vertical={false} />
+          <CartesianGrid stroke={isDark ? "#374151" : "#e5e7eb"} strokeDasharray="3 3" vertical={false} />
           <XAxis 
             dataKey="day" 
-            stroke="#9ca3af"
+            stroke={isDark ? "#9ca3af" : "#4b5563"}
             tickFormatter={(day) => `${day}`}
             // Выборочно показываем дни для экономии места на мобильных
             ticks={chartData.length <= 10 
               ? chartData.map(d => d.day) 
               : chartData.filter((_, i) => i % Math.ceil(chartData.length / 10) === 0).map(d => d.day)}
-            tick={{ fontSize: 10, fill: '#d1d5db' }}
+            tick={{ fontSize: 10, fill: isDark ? '#d1d5db' : '#374151' }}
           />
           <YAxis 
-            stroke="#9ca3af" 
+            stroke={isDark ? "#9ca3af" : "#4b5563"} 
             tickFormatter={formatNumber}
             width={45}
-            tick={{ fontSize: 10, fill: '#d1d5db' }}
+            tick={{ fontSize: 10, fill: isDark ? '#d1d5db' : '#374151' }}
           />
           <Tooltip 
             content={renderCustomTooltip} 
-            cursor={{ fill: 'rgba(107, 114, 128, 0.2)' }}
+            cursor={{ fill: isDark ? 'rgba(107, 114, 128, 0.2)' : 'rgba(209, 213, 219, 0.2)' }}
           />
           <Legend
             verticalAlign="top"
             height={36}
             formatter={(value) => {
-              return <span style={{ color: '#d1d5db', fontSize: '0.85rem' }}>{legendLabels[value]}</span>
+              return <span style={{ color: isDark ? '#d1d5db' : '#374151', fontSize: '0.85rem' }}>{legendLabels[value]}</span>
             }}
             wrapperStyle={{ paddingBottom: '10px' }}
           />
@@ -972,7 +975,7 @@ const renderHeatmap = () => {
   if (!dailyContractData || !Array.isArray(dailyContractData)) {
     return (
       <div className="flex items-center justify-center h-36">
-        <p className="text-gray-400 text-sm md:text-base text-center">
+        <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm md:text-base text-center`}>
           {t('charts.noData')}
         </p>
       </div>
@@ -983,7 +986,7 @@ const renderHeatmap = () => {
   const colorScale = (value) => {
     // Если нет значения, возвращаем серый цвет
     if (value === null || value === undefined || value === 0) {
-      return "rgba(75, 85, 99, 0.2)"; // серый цвет для дней без данных
+      return isDark ? "rgba(75, 85, 99, 0.2)" : "rgba(229, 231, 235, 0.5)"; // серый цвет для дней без данных
     }
   
     // Фиксированные пороговые значения
@@ -1032,7 +1035,7 @@ const renderHeatmap = () => {
   )) {
     return (
       <div className="flex items-center justify-center h-36">
-        <p className="text-gray-400 text-sm md:text-base text-center">
+        <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm md:text-base text-center`}>
           {t('charts.noData')}
         </p>
       </div>
@@ -1059,7 +1062,7 @@ const renderHeatmap = () => {
   if (allDates.length === 0) {
     return (
       <div className="flex items-center justify-center h-36">
-        <p className="text-gray-400 text-sm md:text-base text-center">
+        <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm md:text-base text-center`}>
           {t('charts.noData')}
         </p>
       </div>
@@ -1177,14 +1180,14 @@ const renderHeatmap = () => {
         <div className="grid grid-cols-8 gap-1 w-full">
           <div className="col-span-1"></div>
           {weekdays.map((day, index) => (
-            <div key={`weekday-${index}`} className="font-medium text-gray-400 text-center text-xs">
+            <div key={`weekday-${index}`} className={`font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'} text-center text-xs`}>
               {day}
             </div>
           ))}
         
           {weeks.map((week, weekIndex) => (
             <React.Fragment key={`week-row-${weekIndex}`}>
-              <div className="font-medium text-gray-400 text-xs flex items-center">
+              <div className={`font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs flex items-center`}>
                 {week.week}
               </div>
               {[1, 2, 3, 4, 5, 6, 7].map(day => {
@@ -1195,14 +1198,14 @@ const renderHeatmap = () => {
                   return (
                     <div
                       key={`cell-${weekIndex}-${day}`}
-                      className="aspect-square w-9 h-9 md:w-12 md:h-12 rounded-md bg-gray-800/30"
+                      className={`aspect-square w-9 h-9 md:w-12 md:h-12 rounded-md ${isDark ? 'bg-gray-800/30' : 'bg-gray-200/30'}`}
                     ></div>
                   );
                 }
               
                 // Определяем, является ли день будущим
                 const isFuture = dayData.isFuture;
-                const cellColor = isFuture ? "rgba(75, 85, 99, 0.2)" : colorScale(dayData.value);
+                const cellColor = isFuture ? (isDark ? "rgba(75, 85, 99, 0.2)" : "rgba(229, 231, 235, 0.5)") : colorScale(dayData.value);
               
                 return (
                   <div
@@ -1210,10 +1213,10 @@ const renderHeatmap = () => {
                     className={`aspect-square w-9 h-9 md:w-12 md:h-12 rounded-md flex flex-col items-center justify-center text-xs font-medium relative overflow-hidden transition-all duration-300 ${!isFuture ? 'hover:scale-105 hover:shadow-lg cursor-pointer' : ''} group`}
                     style={{ backgroundColor: cellColor }}
                   >
-                    <span className={`text-[9px] md:text-xs mb-0.5 ${isFuture ? 'text-gray-500' : 'text-gray-300'}`}>
+                    <span className={`text-[9px] md:text-xs mb-0.5 ${isFuture ? (isDark ? 'text-gray-500' : 'text-gray-400') : (isDark ? 'text-gray-300' : 'text-gray-700')}`}>
                       {dayData.day}
                     </span>
-                    <span className={`relative z-10 text-[10px] md:text-sm ${isFuture ? 'text-gray-500' : 'text-white'}`}>
+                    <span className={`relative z-10 text-[10px] md:text-sm ${isFuture ? (isDark ? 'text-gray-500' : 'text-gray-400') : 'text-white'}`}>
                       {!isFuture && dayData.value > 0 ? (dayData.value > 999 ? (dayData.value/1000).toFixed(1) + 'k' : dayData.value) : ''}
                     </span>
                     {!isFuture && <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300"></div>}
@@ -1243,7 +1246,7 @@ const renderHeatmap = () => {
   // });
 
   return (
-    <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6 rounded-xl shadow-2xl border border-gray-700/40 w-full mx-auto overflow-hidden">
+    <div className={`${isDark ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' : 'bg-gradient-to-br from-gray-50 via-white to-gray-100'} p-4 md:p-6 rounded-xl shadow-2xl border ${isDark ? 'border-gray-700/40' : 'border-gray-200'} w-full mx-auto overflow-hidden`}>
       {isLoading ? (
         <ContentReadyLoader
           isLoading={isLoading}
@@ -1252,265 +1255,269 @@ const renderHeatmap = () => {
       ) : (
         <>
           <div className="mb-4 md:mb-6">
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2 bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+            <h2 className={`text-2xl md:text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-2 bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-500 bg-clip-text text-transparent`}>
               {t('title')} {t(`period.${selectedPeriod}`)}
               {selectedModel !== 'all' && (
-                <span className="ml-2 font-medium text-indigo-400 text-xl md:text-2xl">
+                <span className={`ml-2 font-medium text-indigo-400 text-xl md:text-2xl`}>
                   — {enhancedModels.find(m => m.id === selectedModel)?.name}
                 </span>
               )}
             </h2>
-            <p className="text-gray-400 text-sm md:text-base">
+            <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm md:text-base`}>
               {selectedModel === 'all'
                 ? t('subtitle', { period: t(`periodDescription.${selectedPeriod}`, {
                     startDate: customStartDate?.toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU'),
-                    endDate: customEndDate?.toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU')
-                  })})
-                : t('subtitleSpecific', { 
-                    period: t(`period.${selectedPeriod}`), 
-                    model: enhancedModels.find(m => m.id === selectedModel)?.name 
-                  })
-              }
-            </p>
-          </div>
-        
-          <FilterPanel
-            t={t}
-            selectedModel={selectedModel}
-            setSelectedModel={setSelectedModel}
-            selectedRegion={selectedRegion}
-            setSelectedRegion={setSelectedRegion}
-            startDate={startDate}
-            setStartDate={setStartDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-            regionsList={regions}
-            carModels={filteredModels}
-            applyDateFilter={applyDateFilter}
-            handleModelChange={handleModelChange}
-            handleRegionChange={handleRegionChange}
-            currentLocale={currentLocale}
-          />
-        
-          <StatsCards
-            t={t}
-            selectedPeriod={selectedPeriod}
-            selectedDetailLabel={selectedDetailLabel}
-            selectedModel={selectedModel}
-            detailedData={detailedData}
-            activeMetric={activeMetric}
-            setActiveMetric={setActiveMetric}
-            carModels={enhancedModels}
-            modelPerformance={modelPerformance}
-            startDate={startDate}
-            endDate={endDate}
-            currentLocale={currentLocale}
-          />
-        
-          {/* Детали выбранной модели */}
-          <SelectedModelDetails
-            t={t}
-            selectedModel={selectedModel}
-            selectedPeriod={selectedPeriod}
-            carModels={enhancedModels}
-            modelPerformance={modelPerformance}
-            regions={regions}
-            getPeriodLabel={getPeriodLabel}
-            currentLocale={currentLocale}
-          />
-        
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
-            <div className="lg:col-span-2 bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-2 md:gap-4">
-                <h3 className="text-lg md:text-xl font-bold text-white flex items-center">
-                  <span className="text-xl md:text-2xl mr-2">📈</span>
-                  {t('charts.dynamics', { period: t(`period.${selectedPeriod}`) })}
-                  {selectedModel !== 'all' && (
-                    <span className="ml-2 text-indigo-400 text-sm md:text-base">
-                      ({enhancedModels.find(m => m.id === selectedModel)?.name})
-                    </span>
-                  )}
-                </h3>
-                
-                {/* Добавим переключатель типа графика здесь */}
-                <div className="flex space-x-2 bg-gray-700/50 p-1 rounded-lg text-xs md:text-sm">
-                  <button 
-                    className={`px-3 py-1 rounded-md transition-all ${chartType === 'line' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-600/50'}`}
-                    onClick={() => setChartType('line')}
-                  >
-                    Line
-                  </button>
-                  <button 
-                    className={`px-3 py-1 rounded-md transition-all ${chartType === 'area' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-600/50'}`}
-                    onClick={() => setChartType('area')}
-                  >
-                    Area
-                  </button>
-                  <button 
-                    className={`px-3 py-1 rounded-md transition-all ${chartType === 'bar' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-600/50'}`}
-                    onClick={() => setChartType('bar')}
-                  >
-                    Bar
-                  </button>
-                </div>
-              </div>
-            
-              <div className="w-full h-64 md:h-80">
-                {periodData && periodData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    {renderChart()}
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-400 text-sm md:text-base text-center px-4">
-                      {t('charts.noData')}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          
-            {/* Тепловая карта - проверяем наличие данных */}
-            {(() => {
-              // Проверка наличия данных для тепловой карты (код проверки без изменений)
-              const hasHeatmapData = dailyContractData &&
-                Array.isArray(dailyContractData) &&
-                dailyContractData.length > 0 &&
-                dailyContractData.some(model => {
-                  if (selectedModel !== 'all' && model.model_id !== selectedModel) {
-                    return false;
-                  }
-                  if (!model.filter_by_date || !Array.isArray(model.filter_by_date)) {
-                    return false;
-                  }
-                  const filteredRegions = selectedRegion === 'all'
-                    ? model.filter_by_date
-                    : model.filter_by_date.filter(region => region.region_id === selectedRegion);
-                  return filteredRegions.some(region =>
-                    region.data &&
-                    Array.isArray(region.data) &&
-                    region.data.some(item => parseInt(item.order_count || 0) > 0)
-                  );
-                });
-                
-              if (!hasHeatmapData) {
-                return null;
-              }
-              
-              // Получаем название месяца для отображения в заголовке тепловой карты
-              const firstDate = new Date(Array.from(new Set(
-                dailyContractData.flatMap(model => 
-                  model.filter_by_date?.flatMap(region => 
-                    region.data?.map(item => item.order_date) || []
-                  ) || []
-                )
-              ))[0] || new Date());
-              
-              const monthNames = currentLocale === 'uz' 
-                ? ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr']
-                : ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-              
-              const currentMonthName = `${monthNames[firstDate.getMonth()]} ${firstDate.getFullYear()}`;
-            
-              return (
-                <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <h3 className="text-lg md:text-xl font-bold text-white mb-4 md:mb-6 flex items-center">
-                    <span className="text-xl md:text-2xl mr-2">🗓️</span>
-                    {t('charts.heatmap.title', { month: currentMonthName })}
-                  </h3>
-                  {renderHeatmap()}
-                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
-                    <div className="flex items-center justify-center">
-                      <div className="w-3 h-3 rounded-full bg-blue-500/70 mr-1"></div>
-                      <span className="text-xs text-gray-400">{t('charts.heatmap.low')}</span>
-                    </div>
-                    <div className="flex items-center justify-center">
-                      <div className="w-3 h-3 rounded-full bg-purple-500/70 mr-1"></div>
-                      <span className="text-xs text-gray-400">{t('charts.heatmap.medium')}</span>
-                    </div>
-                    <div className="flex items-center justify-center">
-                      <div className="w-3 h-3 rounded-full bg-orange-500/70 mr-1"></div>
-                      <span className="text-xs text-gray-400">{t('charts.heatmap.high')}</span>
-                    </div>
-                    <div className="flex items-center justify-center">
-                      <div className="w-3 h-3 rounded-full bg-red-500/70 mr-1"></div>
-                      <span className="text-xs text-gray-400">{t('charts.heatmap.veryHigh')}</span>
-                    </div>
-                </div>
-               </div>
-             );
-           })()}
+                   endDate: customEndDate?.toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU')
+                 })})
+               : t('subtitleSpecific', { 
+                   period: t(`period.${selectedPeriod}`), 
+                   model: enhancedModels.find(m => m.id === selectedModel)?.name 
+                 })
+             }
+           </p>
          </div>
-
-         {/* График по дням детализации - проверяем наличие данных */}
-         {(() => {
-           // Проверка наличия данных (код проверки без изменений)
-           const hasDetailedData = dailyContractData &&
-             Array.isArray(dailyContractData) &&
-             dailyContractData.length > 0 &&
-             dailyContractData.some(model => {
-               if (selectedModel !== 'all' && model.model_id !== selectedModel) {
-                 return false;
-               }
-               if (!model.filter_by_date || !Array.isArray(model.filter_by_date)) {
-                 return false;
-               }
-               const filteredRegions = selectedRegion === 'all'
-                 ? model.filter_by_date
-                 : model.filter_by_date.filter(region => region.region_id === selectedRegion);
-               return filteredRegions.some(region =>
-                 region.data &&
-                 Array.isArray(region.data) &&
-                 region.data.some(item => parseInt(item.order_count || 0) > 0)
-               );
-             });
-           if (!hasDetailedData) {
-             return null;
-           }
-         
-           return (
-             <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-4 md:mb-6">
-               <h3 className="text-lg md:text-xl font-bold text-white mb-4 flex items-center">
-                 <span className="text-xl md:text-2xl mr-2">📅</span>
-                 {t('charts.monthlyDetail')}
+       
+         <FilterPanel
+           t={t}
+           selectedModel={selectedModel}
+           setSelectedModel={setSelectedModel}
+           selectedRegion={selectedRegion}
+           setSelectedRegion={setSelectedRegion}
+           startDate={startDate}
+           setStartDate={setStartDate}
+           endDate={endDate}
+           setEndDate={setEndDate}
+           regionsList={regions}
+           carModels={filteredModels}
+           applyDateFilter={applyDateFilter}
+           handleModelChange={handleModelChange}
+           handleRegionChange={handleRegionChange}
+           currentLocale={currentLocale}
+           isDark={isDark}
+         />
+       
+         <StatsCards
+           t={t}
+           selectedPeriod={selectedPeriod}
+           selectedDetailLabel={selectedDetailLabel}
+           selectedModel={selectedModel}
+           detailedData={detailedData}
+           activeMetric={activeMetric}
+           setActiveMetric={setActiveMetric}
+           carModels={enhancedModels}
+           modelPerformance={modelPerformance}
+           startDate={startDate}
+           endDate={endDate}
+           currentLocale={currentLocale}
+           isDark={isDark}
+         />
+       
+         {/* Детали выбранной модели */}
+         <SelectedModelDetails
+           t={t}
+           selectedModel={selectedModel}
+           selectedPeriod={selectedPeriod}
+           carModels={enhancedModels}
+           modelPerformance={modelPerformance}
+           regions={regions}
+           getPeriodLabel={getPeriodLabel}
+           currentLocale={currentLocale}
+           isDark={isDark}
+         />
+       
+         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
+           <div className={`lg:col-span-2 ${isDark ? 'bg-gray-800/80' : 'bg-white'} backdrop-blur-sm rounded-xl p-4 md:p-6 border ${isDark ? 'border-gray-700/60' : 'border-gray-200'} shadow-lg hover:shadow-xl transition-all duration-300`}>
+             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-2 md:gap-4">
+               <h3 className={`text-lg md:text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} flex items-center`}>
+                 <span className="text-xl md:text-2xl mr-2">📈</span>
+                 {t('charts.dynamics', { period: t(`period.${selectedPeriod}`) })}
+                 {selectedModel !== 'all' && (
+                   <span className={`ml-2 text-indigo-400 text-sm md:text-base`}>
+                     ({enhancedModels.find(m => m.id === selectedModel)?.name})
+                   </span>
+                 )}
                </h3>
-             
-               <div className="w-full h-64 md:h-80">
-                 <ResponsiveContainer width="100%" height="100%">
-                   {renderDetailedChart()}
-                 </ResponsiveContainer>
+               
+               {/* Добавим переключатель типа графика здесь */}
+               <div className={`flex space-x-2 ${isDark ? 'bg-gray-700/50' : 'bg-gray-100'} p-1 rounded-lg text-xs md:text-sm`}>
+                 <button 
+                   className={`px-3 py-1 rounded-md transition-all ${chartType === 'line' ? 'bg-blue-600 text-white' : (isDark ? 'text-gray-300 hover:bg-gray-600/50' : 'text-gray-700 hover:bg-gray-200')}`}
+                   onClick={() => setChartType('line')}
+                 >
+                   Line
+                 </button>
+                 <button 
+                   className={`px-3 py-1 rounded-md transition-all ${chartType === 'area' ? 'bg-blue-600 text-white' : (isDark ? 'text-gray-300 hover:bg-gray-600/50' : 'text-gray-700 hover:bg-gray-200')}`}
+                   onClick={() => setChartType('area')}
+                 >
+                   Area
+                 </button>
+                 <button 
+                   className={`px-3 py-1 rounded-md transition-all ${chartType === 'bar' ? 'bg-blue-600 text-white' : (isDark ? 'text-gray-300 hover:bg-gray-600/50' : 'text-gray-700 hover:bg-gray-200')}`}
+                   onClick={() => setChartType('bar')}
+                 >
+                   Bar
+                 </button>
                </div>
              </div>
-           );
-         })()}
+           
+             <div className="w-full h-64 md:h-80">
+               {periodData && periodData.length > 0 ? (
+                 <ResponsiveContainer width="100%" height="100%">
+                   {renderChart()}
+                 </ResponsiveContainer>
+               ) : (
+                 <div className="flex items-center justify-center h-full">
+                   <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm md:text-base text-center px-4`}>
+                     {t('charts.noData')}
+                   </p>
+                 </div>
+               )}
+             </div>
+           </div>
+         
+           {/* Тепловая карта - проверяем наличие данных */}
+           {(() => {
+             // Проверка наличия данных для тепловой карты (код проверки без изменений)
+             const hasHeatmapData = dailyContractData &&
+               Array.isArray(dailyContractData) &&
+               dailyContractData.length > 0 &&
+               dailyContractData.some(model => {
+                 if (selectedModel !== 'all' && model.model_id !== selectedModel) {
+                   return false;
+                 }
+                 if (!model.filter_by_date || !Array.isArray(model.filter_by_date)) {
+                   return false;
+                 }
+                 const filteredRegions = selectedRegion === 'all'
+                   ? model.filter_by_date
+                   : model.filter_by_date.filter(region => region.region_id === selectedRegion);
+                 return filteredRegions.some(region =>
+                   region.data &&
+                   Array.isArray(region.data) &&
+                   region.data.some(item => parseInt(item.order_count || 0) > 0)
+                 );
+               });
+               
+             if (!hasHeatmapData) {
+               return null;
+             }
+             
+             // Получаем название месяца для отображения в заголовке тепловой карты
+             const firstDate = new Date(Array.from(new Set(
+               dailyContractData.flatMap(model => 
+                 model.filter_by_date?.flatMap(region => 
+                   region.data?.map(item => item.order_date) || []
+                 ) || []
+               )
+             ))[0] || new Date());
+             
+             const monthNames = currentLocale === 'uz' 
+               ? ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr']
+               : ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+             
+             const currentMonthName = `${monthNames[firstDate.getMonth()]} ${firstDate.getFullYear()}`;
+           
+             return (
+               <div className={`${isDark ? 'bg-gray-800/80' : 'bg-white'} backdrop-blur-sm rounded-xl p-4 md:p-6 border ${isDark ? 'border-gray-700/60' : 'border-gray-200'} shadow-lg hover:shadow-xl transition-all duration-300`}>
+                 <h3 className={`text-lg md:text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4 md:mb-6 flex items-center`}>
+                   <span className="text-xl md:text-2xl mr-2">🗓️</span>
+                   {t('charts.heatmap.title', { month: currentMonthName })}
+                 </h3>
+                 {renderHeatmap()}
+                 <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
+                   <div className="flex items-center justify-center">
+                     <div className="w-3 h-3 rounded-full bg-blue-500/70 mr-1"></div>
+                     <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('charts.heatmap.low')}</span>
+                   </div>
+                   <div className="flex items-center justify-center">
+                     <div className="w-3 h-3 rounded-full bg-purple-500/70 mr-1"></div>
+                     <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('charts.heatmap.medium')}</span>
+                   </div>
+                   <div className="flex items-center justify-center">
+                     <div className="w-3 h-3 rounded-full bg-orange-500/70 mr-1"></div>
+                     <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('charts.heatmap.high')}</span>
+                   </div>
+                   <div className="flex items-center justify-center">
+                     <div className="w-3 h-3 rounded-full bg-red-500/70 mr-1"></div>
+                     <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('charts.heatmap.veryHigh')}</span>
+                   </div>
+               </div>
+              </div>
+            );
+          })()}
+        </div>
 
-         {/* Сравнительный анализ моделей - отображаем только если есть данные и выбраны все модели */}
-         {selectedModel === 'all' && Object.keys(modelPerformance).filter(key => key !== 'totalContracts').length > 0 && (
-           <ModelComparisonChart
-             t={t}
-             modelPerformance={modelPerformance}
-             carModels={enhancedModels}
-             selectedPeriod={selectedPeriod}
-             getPeriodLabel={getPeriodLabel}
-             startDate={startDate}
-             endDate={endDate}
-             currentLocale={currentLocale}
-           />
-         )}
-       </>
-     )}
-   
-     <style jsx>{`
-     .bg-clip-text {
-       -webkit-background-clip: text;
-       background-clip: text;
-     }
-     .text-transparent {
-       color: transparent;
-     }
-   `}</style>
-   </div>
- );
+        {/* График по дням детализации - проверяем наличие данных */}
+        {(() => {
+          // Проверка наличия данных (код проверки без изменений)
+          const hasDetailedData = dailyContractData &&
+            Array.isArray(dailyContractData) &&
+            dailyContractData.length > 0 &&
+            dailyContractData.some(model => {
+              if (selectedModel !== 'all' && model.model_id !== selectedModel) {
+                return false;
+              }
+              if (!model.filter_by_date || !Array.isArray(model.filter_by_date)) {
+                return false;
+              }
+              const filteredRegions = selectedRegion === 'all'
+                ? model.filter_by_date
+                : model.filter_by_date.filter(region => region.region_id === selectedRegion);
+              return filteredRegions.some(region =>
+                region.data &&
+                Array.isArray(region.data) &&
+                region.data.some(item => parseInt(item.order_count || 0) > 0)
+              );
+            });
+          if (!hasDetailedData) {
+            return null;
+          }
+        
+          return (
+            <div className={`${isDark ? 'bg-gray-800/80' : 'bg-white'} backdrop-blur-sm rounded-xl p-4 md:p-6 border ${isDark ? 'border-gray-700/60' : 'border-gray-200'} shadow-lg hover:shadow-xl transition-all duration-300 mb-4 md:mb-6`}>
+              <h3 className={`text-lg md:text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4 flex items-center`}>
+                <span className="text-xl md:text-2xl mr-2">📅</span>
+                {t('charts.monthlyDetail')}
+              </h3>
+            
+              <div className="w-full h-64 md:h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  {renderDetailedChart()}
+                </ResponsiveContainer>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Сравнительный анализ моделей - отображаем только если есть данные и выбраны все модели */}
+        {selectedModel === 'all' && Object.keys(modelPerformance).filter(key => key !== 'totalContracts').length > 0 && (
+          <ModelComparisonChart
+            t={t}
+            modelPerformance={modelPerformance}
+            carModels={enhancedModels}
+            selectedPeriod={selectedPeriod}
+            getPeriodLabel={getPeriodLabel}
+            startDate={startDate}
+            endDate={endDate}
+            currentLocale={currentLocale}
+            isDark={isDark}
+          />
+        )}
+      </>
+    )}
+  
+    <style jsx>{`
+    .bg-clip-text {
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+    .text-transparent {
+      color: transparent;
+    }
+  `}</style>
+  </div>
+);
 }
 
 export default ContractsAnalyticsDashboard;

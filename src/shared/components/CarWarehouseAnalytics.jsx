@@ -7,8 +7,13 @@ import axios from 'axios';
 import { useTranslation } from '../../hooks/useTranslation';
 import { warehouseAnalyticsTranslations } from './locales/WarehouseAnalytics';
 import ContentReadyLoader from '../layout/ContentReadyLoader';
+import { useThemeStore } from '../../store/theme';
 
 const CarWarehouseAnalytics = () => {
+  // Получаем текущую тему
+  const { mode } = useThemeStore();
+  const isDark = mode === 'dark';
+  
   // Инициализация переводов
   const { t } = useTranslation(warehouseAnalyticsTranslations);
   const [lastUpdateDate, setLastUpdateDate] = useState(null);
@@ -649,10 +654,9 @@ function getCategoryForModel(modelName) {
       window.addEventListener('resize', handleResize);
       return () => window.removeEventListener('resize', handleResize);
     }
-  }, [loading, enhancedWarehouses, selectedCarModel, selectedWarehouse, t]);
+  }, [loading, enhancedWarehouses, selectedCarModel, selectedWarehouse, t, isDark]);
 
   // Рендер диаграммы распределения по складам
-// Рендер диаграммы распределения по складам
 const renderWarehouseDistribution = () => {
   if (!warehouseDistributionRef.current) return;
   
@@ -688,7 +692,7 @@ const renderWarehouseDistribution = () => {
     .attr('y', -margin.top / 2)
     .attr('text-anchor', 'middle')
     .style('font-size', isMobile ? '14px' : '16px')
-    .style('fill', '#f9fafb')
+    .style('fill', isDark ? '#f9fafb' : '#111827')
     .text(t('charts.warehouseDistribution'));
     
   const warehouseData = enhancedWarehouses.map(warehouse => ({
@@ -715,14 +719,14 @@ const renderWarehouseDistribution = () => {
     .call(d3.axisBottom(x))
     .selectAll('text')
     .style('font-size', '12px')
-    .style('fill', '#d1d5db');
+    .style('fill', isDark ? '#d1d5db' : '#4b5563');
     
   // Добавляем вертикальную ось с названиями складов
   svg.append('g')
     .call(d3.axisLeft(y))
     .selectAll('text')
     .style('font-size', isMobile ? '10px' : '12px')
-    .style('fill', '#d1d5db')
+    .style('fill', isDark ? '#d1d5db' : '#4b5563')
     .style('cursor', 'pointer')
     .on('click', (event, d) => {
       const warehouse = enhancedWarehouses.find(w => w.name === d);
@@ -735,7 +739,7 @@ const renderWarehouseDistribution = () => {
     })
     .on('mouseout', function() {
       d3.select(this)
-        .style('fill', '#d1d5db')
+        .style('fill', isDark ? '#d1d5db' : '#4b5563')
         .style('font-weight', 'normal');
     });
     
@@ -746,7 +750,7 @@ const renderWarehouseDistribution = () => {
       .tickSize(height)
       .tickFormat(''))
     .selectAll('line')
-    .style('stroke', 'rgba(255, 255, 255, 0.1)');
+    .style('stroke', isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)');
     
   const stack = d3.stack()
     .keys(['available', 'reserved', 'defectiveOk', 'defective', 'tradeIn'])
@@ -810,7 +814,7 @@ const renderWarehouseDistribution = () => {
       // Возвращаем обычный стиль
       svg.selectAll('.y.axis text')
         .filter(text => text === d.data.name)
-        .style('fill', '#d1d5db')
+        .style('fill', isDark ? '#d1d5db' : '#4b5563')
         .style('font-weight', 'normal');
     })
     .transition()
@@ -845,7 +849,7 @@ const renderWarehouseDistribution = () => {
     .attr('y', d => y(d.name) + y.bandwidth() / 2)
     .attr('dy', '0.35em')
     .style('font-size', isMobile ? '10px' : '12px')
-    .style('fill', '#ffffff')
+    .style('fill', isDark ? '#ffffff' : '#111827')
     .style('font-weight', 'bold')
     .style('opacity', 0)
     .text(d => d.totalCount)
@@ -932,7 +936,7 @@ const renderWarehouseDistribution = () => {
       .join('path')
       .attr('d', arc)
       .attr('fill', (d, i) => `url(#pieGradient-${i})`)
-      .attr('stroke', '#1f2937')
+      .attr('stroke', isDark ? '#1f2937' : '#e5e7eb')
       .style('stroke-width', '2px')
       .style('opacity', 0.9)
       .style('cursor', 'pointer')
@@ -992,14 +996,14 @@ const renderWarehouseDistribution = () => {
           return truncated;
         })
         .style('font-size', '10px')
-        .style('fill', '#d1d5db');
+        .style('fill', isDark ? '#d1d5db' : '#4b5563');
     }
       
     const centerLabel = svg.append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '-0.5em')
       .style('font-size', isMobile ? '14px' : '16px')
-      .style('fill', '#d1d5db')
+      .style('fill', isDark ? '#d1d5db' : '#4b5563')
       .text(t('charts.distribution'));
       
     const centerValue = svg.append('text')
@@ -1007,7 +1011,7 @@ const renderWarehouseDistribution = () => {
       .attr('dy', '1em')
       .style('font-size', isMobile ? '20px' : '24px')
       .style('font-weight', 'bold')
-      .style('fill', '#ffffff')
+      .style('fill', isDark ? '#ffffff' : '#111827')
       .text(t('charts.byWarehouse'));
   };
   
@@ -1036,7 +1040,7 @@ const renderModelInventoryChart = () => {
     .attr('y', -margin.top / 2)
     .attr('text-anchor', 'middle')
     .style('font-size', isMobile ? '14px' : '16px')
-    .style('fill', '#f9fafb')
+    .style('fill', isDark ? '#f9fafb' : '#111827')
     .text(t('charts.carStatusInWarehouses'));
     
   const maxModels = isMobile ? 3 : 5;
@@ -1062,7 +1066,7 @@ const renderModelInventoryChart = () => {
     .call(d3.axisLeft(y))
     .selectAll('text')
     .style('font-size', isMobile ? '10px' : '12px')
-    .style('fill', '#d1d5db')
+    .style('fill', isDark ? '#d1d5db' : '#4b5563')
     .style('cursor', 'pointer')
     .on('click', (event, d) => {
       const model = enhancedCarModels.find(m => m.name === d);
@@ -1074,7 +1078,7 @@ const renderModelInventoryChart = () => {
     .call(d3.axisBottom(x).ticks(5).tickFormat(d => `${d}%`))
     .selectAll('text')
     .style('font-size', '12px')
-    .style('fill', '#d1d5db');
+    .style('fill', isDark ? '#d1d5db' : '#4b5563');
     
   svg.append('g')
     .attr('class', 'grid')
@@ -1082,7 +1086,7 @@ const renderModelInventoryChart = () => {
       .tickSize(height)
       .tickFormat(''))
     .selectAll('line')
-    .style('stroke', 'rgba(255, 255, 255, 0.1)');
+    .style('stroke', isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)');
     
   const defs = svg.append('defs');
   
@@ -1211,7 +1215,7 @@ if (!isMobile) {
       .attr('x', xOffset + 20)
       .attr('y', 12)
       .style('font-size', '12px')
-      .style('fill', '#d1d5db')
+      .style('fill', isDark ? '#d1d5db' : '#4b5563')
       .text(item.label);
   });
 } else {
@@ -1245,7 +1249,7 @@ if (!isMobile) {
       .attr('x', xOffset + 15)
       .attr('y', yOffset + 9)
       .style('font-size', '10px')
-      .style('fill', '#d1d5db')
+      .style('fill', isDark ? '#d1d5db' : '#4b5563')
       .text(item.label);
   });
 }
@@ -1286,13 +1290,13 @@ if (!isMobile) {
       .attr('transform', `translate(0,${height})`)
       .call(d3.axisBottom(x).ticks(5))
       .selectAll('text')
-      .style('fill', '#9ca3af');
+      .style('fill', isDark ? '#9ca3af' : '#4b5563');
       
     svg.append('g')
       .call(d3.axisLeft(y))
       .selectAll('text')
       .style('font-size', isMobile ? '10px' : '12px')
-      .style('fill', '#9ca3af');
+      .style('fill', isDark ? '#9ca3af' : '#4b5563');
       
     svg.selectAll('.color-bar')
       .data(colorData)
@@ -1321,7 +1325,7 @@ if (!isMobile) {
           const textX = barWidth > 80 ? x(d.count) - 25 : x(d.count) + 5;
           const textColor = barWidth > 80 ? 
                           (d.name === 'Summit White' || d.name === 'White Frost') ? '#1f2937' : '#ffffff' 
-                          : '#d1d5db';
+                          : isDark ? '#d1d5db' : '#1f2937';
           const textAnchor = barWidth > 80 ? 'end' : 'start';
           
           d3.select(this)
@@ -1345,7 +1349,7 @@ if (!isMobile) {
       .attr('y', -margin.top / 2)
       .attr('text-anchor', 'middle')
       .style('font-size', isMobile ? '12px' : '14px')
-      .style('fill', '#f9fafb')
+      .style('fill', isDark ? '#f9fafb' : '#111827')
       .text(t('charts.colorDistribution'));
   };
 
@@ -1394,1306 +1398,1282 @@ if (!isMobile) {
       .outerRadius(radius * 1.05);
       
     const defs = svg.append('defs');
-    
-    data.forEach((d, i) => {
-      const gradientId = `pieGradient-occupancy-${i}`;
-      
-      const gradient = defs.append('radialGradient')
-        .attr('id', gradientId)
-        .attr('cx', '50%')
-        .attr('cy', '50%')
-        .attr('r', '50%');
-        
-      gradient.append('stop')
-        .attr('offset', '0%')
-        .attr('stop-color', d3.rgb(d.color).brighter(0.5))
-        .attr('stop-opacity', 1);
-        
-      gradient.append('stop')
-        .attr('offset', '100%')
-        .attr('stop-color', d.color)
-        .attr('stop-opacity', 1);
-    });
-    
-    svg.selectAll('path')
-      .data(data_ready)
-      .join('path')
-      .attr('d', arc)
-      .attr('fill', (d, i) => `url(#pieGradient-occupancy-${i})`)
-      .attr('stroke', '#1f2937')
-      .style('stroke-width', '2px')
-      .style('opacity', 0.9)
-      .style('cursor', 'pointer')
-      .on('mouseover', function(event, d) {
-        d3.select(this)
-          .transition()
-          .duration(200)
-          .attr('d', arcHover);
-          
-        const total = d3.sum(data, d => d.value);
-        const percent = Math.round((d.data.value / total) * 100);
-        
-        centerLabel.text(d.data.name);
-        centerValue.text(`${d.data.value} (${percent}%)`);
-      })
-      .on('mouseout', function() {
-        d3.select(this)
-          .transition()
-          .duration(200)
-          .attr('d', arc);
-          
-        centerLabel.text(t('charts.occupancy'));
-        centerValue.text(`${warehouse.occupancyRate}%`);
-      })
-      .transition()
-      .duration(800)
-      .attrTween('d', function(d) {
-        const interpolate = d3.interpolate({startAngle: d.startAngle, endAngle: d.startAngle}, d);
-        return function(t) {
-          return arc(interpolate(t));
-        };
-      });
-      
-    const centerLabel = svg.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', '-0.5em')
-      .style('font-size', isMobile ? '14px' : '16px')
-      .style('fill', '#d1d5db')
-      .text(t('charts.occupancy'));
-      
-    const centerValue = svg.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', '1em')
-      .style('font-size', isMobile ? '20px' : '24px')
-      .style('font-weight', 'bold')
-      .style('fill', '#ffffff')
-      .text(`${warehouse.occupancyRate}%`);
-    svg.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', '2.5em')
-      .style('font-size', isMobile ? '10px' : '12px')
-      .style('fill', '#d1d5db')
-      .text(t('charts.currentOccupancy'));
-      
-    const statusColors = {
-      'critical': '#ef4444',
-      'high': '#f97316',
-      'medium': '#facc15',
-      'low': '#22c55e'
-    };
-    
-    svg.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', '4em')
-      .style('font-size', isMobile ? '10px' : '12px')
-      .style('fill', statusColors[warehouse.status] || '#d1d5db')
-      .text(`${t('charts.status')}: ${t(`occupancyStatus.${warehouse.status}`)}`);
-  };
+   
+   data.forEach((d, i) => {
+     const gradientId = `pieGradient-occupancy-${i}`;
+     
+     const gradient = defs.append('radialGradient')
+       .attr('id', gradientId)
+       .attr('cx', '50%')
+       .attr('cy', '50%')
+       .attr('r', '50%');
+       
+     gradient.append('stop')
+       .attr('offset', '0%')
+       .attr('stop-color', d3.rgb(d.color).brighter(0.5))
+       .attr('stop-opacity', 1);
+       
+     gradient.append('stop')
+       .attr('offset', '100%')
+       .attr('stop-color', d.color)
+       .attr('stop-opacity', 1);
+   });
+   
+   svg.selectAll('path')
+     .data(data_ready)
+     .join('path')
+     .attr('d', arc)
+     .attr('fill', (d, i) => `url(#pieGradient-occupancy-${i})`)
+     .attr('stroke', isDark ? '#1f2937' : '#e5e7eb')
+     .style('stroke-width', '2px')
+     .style('opacity', 0.9)
+     .style('cursor', 'pointer')
+     .on('mouseover', function(event, d) {
+       d3.select(this)
+         .transition()
+         .duration(200)
+         .attr('d', arcHover);
+         
+       const total = d3.sum(data, d => d.value);
+       const percent = Math.round((d.data.value / total) * 100);
+       
+       centerLabel.text(d.data.name);
+       centerValue.text(`${d.data.value} (${percent}%)`);
+     })
+     .on('mouseout', function() {
+       d3.select(this)
+         .transition()
+         .duration(200)
+         .attr('d', arc);
+         
+       centerLabel.text(t('charts.occupancy'));
+       centerValue.text(`${warehouse.occupancyRate}%`);
+     })
+     .transition()
+     .duration(800)
+     .attrTween('d', function(d) {
+       const interpolate = d3.interpolate({startAngle: d.startAngle, endAngle: d.startAngle}, d);
+       return function(t) {
+         return arc(interpolate(t));
+       };
+     });
+     
+   const centerLabel = svg.append('text')
+     .attr('text-anchor', 'middle')
+     .attr('dy', '-0.5em')
+     .style('font-size', isMobile ? '14px' : '16px')
+     .style('fill', isDark ? '#d1d5db' : '#4b5563')
+     .text(t('charts.occupancy'));
+     
+   const centerValue = svg.append('text')
+     .attr('text-anchor', 'middle')
+     .attr('dy', '1em')
+     .style('font-size', isMobile ? '20px' : '24px')
+     .style('font-weight', 'bold')
+     .style('fill', isDark ? '#ffffff' : '#111827')
+     .text(`${warehouse.occupancyRate}%`);
+     
+   svg.append('text')
+     .attr('text-anchor', 'middle')
+     .attr('dy', '2.5em')
+     .style('font-size', isMobile ? '10px' : '12px')
+     .style('fill', isDark ? '#d1d5db' : '#6b7280')
+     .text(t('charts.currentOccupancy'));
+     
+   const statusColors = {
+     'critical': '#ef4444',
+     'high': '#f97316',
+     'medium': '#facc15',
+     'low': '#22c55e'
+   };
+   
+   svg.append('text')
+     .attr('text-anchor', 'middle')
+     .attr('dy', '4em')
+     .style('font-size', isMobile ? '10px' : '12px')
+     .style('fill', statusColors[warehouse.status] || (isDark ? '#d1d5db' : '#6b7280'))
+     .text(`${t('charts.status')}: ${t(`occupancyStatus.${warehouse.status}`)}`);
+ };
 
-  // Компонент всплывающих подсказок
-  const Tooltip = ({ children, content }) => {
-    const [isVisible, setIsVisible] = useState(false);
-    
-    return (
-      <div 
-        className="relative inline-block"
-        onMouseEnter={() => setIsVisible(true)}
-        onMouseLeave={() => setIsVisible(false)}
-      >
-        {children}
-        {isVisible && (
-          <div className="absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap">
-            {content}
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-          </div>
-        )}
-      </div>
-    );
-  };
-  
-  // Компонент уведомлений
-  const NotificationsContainer = () => (
-    <div className="fixed bottom-4 right-4 z-50 space-y-2">
-      <AnimatePresence>
-        {notifications.map(notification => (
-          <motion.div
-            key={notification.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className={`px-4 py-3 rounded-lg shadow-lg ${
-              notification.type === 'success' ? 'bg-green-600' :
-              notification.type === 'error' ? 'bg-red-600' :
-              notification.type === 'warning' ? 'bg-amber-600' : 'bg-blue-600'
-            } text-white max-w-sm`}
-          >
-            {notification.message}
-            <button 
-              className="ml-3 text-white opacity-70 hover:opacity-100"
-              onClick={() => setNotifications(prev => prev.filter(n => n.id !== notification.id))}
-            >
-              ×
-            </button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </div>
-  );
-
-  // Если данные загружаются, показываем индикатор загрузки
-  if (loading) {
-    return <ContentReadyLoader />;
-  }
-  
-  // Если произошла ошибка, показываем сообщение об ошибке
-  if (error) {
-    return (
-      <div className="p-4 md:p-6 bg-gray-900 text-gray-100 min-h-screen">
-        <div className="bg-red-500/20 text-red-400 p-6 rounded-lg text-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <h2 className="text-xl font-bold mb-2">{t('errors.loadingDataTitle')}</h2>
-          <p>{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-4 md:p-6 bg-gray-900 text-gray-100 min-h-screen">
-      {/* Верхняя панель со списком складов */}
-      <div className="mb-6 bg-gray-800 p-4 rounded-lg shadow-md">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
-            <p className="text-gray-400 mt-1">{t('subtitle')}</p>
-          </div>
-        </div>
-      </div>
-      
-      {/* Ключевые метрики с обновленными статусами */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-        <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-          <div className="flex items-center">
-            <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-sm text-gray-400">{t('metrics.total')}</div>
-              <div className="text-xl font-bold">{totalVehicles}</div>
-            </div>
-          </div>
-        </div>
-       
-        <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-          <div className="flex items-center">
-            <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-sm text-gray-400">{t('metrics.available')}</div>
-              <div className="text-xl font-bold">{totalAvailable}</div>
-            </div>
-          </div>
-        </div>
-       
-        <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-          <div className="flex items-center">
-            <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-sm text-gray-400">{t('metrics.reserved')}</div>
-              <div className="text-xl font-bold">{totalReserved}</div>
-            </div>
-          </div>
-        </div>
-       
-        <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-          <div className="flex items-center">
-            <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-sm text-gray-400">{t('metrics.defectiveOk')}</div>
-              <div className="text-xl font-bold">{totalDefectiveOk}</div>
-            </div>
-          </div>
-        </div>
-       
-        <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-          <div className="flex items-center">
-            <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-sm text-gray-400">{t('metrics.defective')}</div>
-              <div className="text-xl font-bold">{totalDefective}</div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Новая метрика для Trade-in */}
-        <div className="bg-gray-800 p-4 rounded-lg shadow-md">
-          <div className="flex items-center">
-            <div className="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center mr-3">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-sm text-gray-400">Trade-in</div>
-              <div className="text-xl font-bold">{totalTradeIn}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-     
-      {/* Обновленная метрика с временем обновления */}
-      <div className="bg-gray-800 p-4 rounded-lg shadow-md mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-sm text-gray-400">{t('metrics.totalCarModels', { count: enhancedCarModels.length })}</span>
-          </div>
-          
-          <div className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm">
-            {t('metrics.updatedAt')} {formatDate(lastUpdateDate)}
-          </div>
-        </div>
-      </div>
-     
-      {/* Основные графики */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-gray-800 rounded-lg p-4 shadow-md">
-          <div className="flex justify-between mb-2">
-            <h2 className="text-lg font-medium">{t('charts.warehouseDistribution')}</h2>
-            <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">{t('charts.inventoryShare')}</span>
-          </div>
-          <div ref={manufacturerChartRef} className="h-[300px]"></div>
-        </div>
-       
-<div className="bg-gray-800 rounded-lg p-4 shadow-md">
-  <div className="flex justify-between mb-2">
-    <h2 className="text-lg font-medium">{t('charts.carsByWarehouse')}</h2>
-    <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
-      {t('charts.interactive')}
-    </span>
-  </div>
-  
-  {/* График */}
-  <div ref={warehouseDistributionRef} className="h-[280px]"></div>
-  
-  {/* HTML легенда */}
-  <div className="mt-3 pt-3 border-t border-gray-700">
-    <div className="flex flex-wrap gap-x-4 gap-y-2 justify-center text-xs">
-      <div className="flex items-center gap-1.5">
-        <div className="w-3 h-3 bg-green-500 rounded"></div>
-        <span className="text-gray-300">{t('status.available')}</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-3 h-3 bg-blue-500 rounded"></div>
-        <span className="text-gray-300">{t('status.reserved')}</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-3 h-3 bg-amber-500 rounded"></div>
-        <span className="text-gray-300">{t('status.defectiveOk')}</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-3 h-3 bg-red-500 rounded"></div>
-        <span className="text-gray-300">{t('status.defective')}</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-3 h-3 bg-purple-500 rounded"></div>
-        <span className="text-gray-300">Trade-in</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-4 h-0 border-t-2 border-dashed border-orange-500"></div>
-        <span className="text-gray-300">{t('status.maxCapacity')}</span>
-      </div>
-    </div>
-  </div>
-</div>
-      </div>
-     
-      {/* График статусов моделей */}
-      <div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
-        <div className="flex justify-between mb-2">
-          <h2 className="text-lg font-medium">{t('charts.carStatusInWarehouses')}</h2>
-          <span className="text-sm bg-green-500/20 text-green-400 px-2 py-1 rounded-full">{t('charts.percentageRatio')}</span>
-        </div>
-        <div ref={modelInventoryChartRef} className="h-[300px]"></div>
-      </div>
-     
-      {/* Выбор модели авто с использованием фото */}
-<div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
-  <div className="flex justify-between mb-4">
-    <div>
-      <h2 className="text-lg font-medium">{t('sections.carModels')}</h2>
-      <p className="text-sm text-gray-400">{t('sections.selectModelHint')}</p>
-    </div>
-  </div>
+ // Компонент всплывающих подсказок
+ const Tooltip = ({ children, content }) => {
+   const [isVisible, setIsVisible] = useState(false);
+   
+   return (
+     <div 
+       className="relative inline-block"
+       onMouseEnter={() => setIsVisible(true)}
+       onMouseLeave={() => setIsVisible(false)}
+     >
+       {children}
+       {isVisible && (
+         <div className={`absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 ${
+           isDark ? 'bg-gray-900' : 'bg-gray-800'
+         } text-white text-xs rounded whitespace-nowrap`}>
+           {content}
+           <div className={`absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent ${
+             isDark ? 'border-t-gray-900' : 'border-t-gray-800'
+           }`}></div>
+         </div>
+       )}
+     </div>
+   );
+ };
  
-  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-    {enhancedCarModels.map(model => (
-      <div 
-        key={model.id}
-        className={`bg-gray-700 rounded-lg overflow-hidden cursor-pointer transition-all ${
-          selectedCarModel?.id === model.id ? 'ring-2 ring-blue-500' : 'hover:bg-gray-600'
-        }`}
-        onClick={() => handleCarModelClick(model)}
-      >
-        <div className="bg-gray-800 relative overflow-hidden rounded-t-lg">
-          <div className="pt-[75%] relative">
-            <img 
-              src={model.img} 
-              alt={model.name}
-              className="absolute inset-0 w-full h-full object-contain p-2" 
-            />
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-gray-900/70 text-xs text-white text-center">
-            {model.category === 'sedan' ? t('categories.sedan') :
-            model.category === 'suv' ? t('categories.suv') :
-            model.category === 'minivan' ? t('categories.minivan') : model.category}
-          </div>
-        </div>
-        <div className="p-3">
-          <div className="font-medium text-white mb-1">{model.name}</div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">{t('metrics.total')}:</span>
-            <span className="text-white">{model.totalCount}</span>
-          </div>
-          <div className="mt-2 flex gap-1 flex-wrap">
-            {/* Показываем все статусы, даже если 0 */}
-            <span className={`text-xs px-1.5 py-0.5 rounded ${
-              model.available > 0 ? 'bg-green-500/20 text-green-400' : 'bg-gray-600/20 text-gray-500'
-            }`}>
-              {model.available} {t('status.availableShort')}
-            </span>
-            <span className={`text-xs px-1.5 py-0.5 rounded ${
-              model.reserved > 0 ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-600/20 text-gray-500'
-            }`}>
-              {model.reserved} {t('status.reservedShort')}
-            </span>
-            <span className={`text-xs px-1.5 py-0.5 rounded ${
-              model.defectiveOk > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-gray-600/20 text-gray-500'
-            }`}>
-              {model.defectiveOk} {t('status.defectiveOkShort')}
-            </span>
-            <span className={`text-xs px-1.5 py-0.5 rounded ${
-              model.defective > 0 ? 'bg-red-500/20 text-red-400' : 'bg-gray-600/20 text-gray-500'
-            }`}>
-              {model.defective} {t('status.defectiveShort')}
-            </span>
-            <span className={`text-xs px-1.5 py-0.5 rounded ${
-              model.tradeIn > 0 ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-600/20 text-gray-500'
-            }`}>
-              {model.tradeIn} Trade-in
-            </span>
-            
-            {/* Добавляем новые статусы если они есть */}
-            {model.atDealer !== undefined && (
-              <span className={`text-xs px-1.5 py-0.5 rounded ${
-                model.atDealer > 0 ? 'bg-cyan-500/20 text-cyan-400' : 'bg-gray-600/20 text-gray-500'
-              }`}>
-                {model.atDealer} У дилера
-              </span>
-            )}
-            {model.inTransit !== undefined && (
-              <span className={`text-xs px-1.5 py-0.5 rounded ${
-                model.inTransit > 0 ? 'bg-orange-500/20 text-orange-400' : 'bg-gray-600/20 text-gray-500'
-              }`}>
-                {model.inTransit} В пути
-              </span>
-            )}
-            
-            {/* Показываем другие статусы если есть */}
-            {model.otherStatuses && Object.entries(model.otherStatuses).map(([status, count]) => (
-              <span key={status} className={`text-xs px-1.5 py-0.5 rounded ${
-                count > 0 ? 'bg-gray-500/20 text-gray-400' : 'bg-gray-600/20 text-gray-500'
-              }`}>
-                {count} {status}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-    ))}
-  </div>
-</div>
+ // Компонент уведомлений
+ const NotificationsContainer = () => (
+   <div className="fixed bottom-4 right-4 z-50 space-y-2">
+     <AnimatePresence>
+       {notifications.map(notification => (
+         <motion.div
+           key={notification.id}
+           initial={{ opacity: 0, y: 20 }}
+           animate={{ opacity: 1, y: 0 }}
+           exit={{ opacity: 0, y: -20 }}
+           className={`px-4 py-3 rounded-lg shadow-lg ${
+             notification.type === 'success' ? 'bg-green-600' :
+             notification.type === 'error' ? 'bg-red-600' :
+             notification.type === 'warning' ? 'bg-amber-600' : 'bg-blue-600'
+           } text-white max-w-sm`}
+         >
+           {notification.message}
+           <button 
+             className="ml-3 text-white opacity-70 hover:opacity-100"
+             onClick={() => setNotifications(prev => prev.filter(n => n.id !== notification.id))}
+           >
+             ×
+           </button>
+         </motion.div>
+       ))}
+     </AnimatePresence>
+   </div>
+ );
+
+ // Если данные загружаются, показываем индикатор загрузки
+ if (loading) {
+   return <ContentReadyLoader />;
+ }
+ 
+ // Если произошла ошибка, показываем сообщение об ошибке
+ if (error) {
+   return (
+     <div className={`p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} text-gray-100 min-h-screen`}>
+       <div className="bg-red-500/20 text-red-400 p-6 rounded-lg text-center">
+         <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+         </svg>
+         <h2 className="text-xl font-bold mb-2">{t('errors.loadingDataTitle')}</h2>
+         <p>{error}</p>
+       </div>
+     </div>
+   );
+ }
+
+ return (
+   <div className={`p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} ${isDark ? 'text-gray-100' : 'text-gray-900'} min-h-screen`}>
+     {/* Верхняя панель со списком складов */}
+     <div className={`mb-6 ${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md`}>
+       <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+         <div>
+           <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{t('title')}</h1>
+           <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>{t('subtitle')}</p>
+         </div>
+       </div>
+     </div>
      
-      {/* Таблица складов с обновленными статусами */}
-<div className="bg-gray-800 rounded-lg p-4 shadow-md mb-6">
-  <div className="overflow-x-auto">
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="bg-gray-900/60 text-gray-400 text-left">
-          <th className="p-3 rounded-l-lg">{t('table.warehouseName')}</th>
-          <th className="p-3">{t('table.capacity')}</th>
-          <th className="p-3">{t('table.occupied')}</th>
-          <th className="p-3">{t('table.available')}</th>
-          <th className="p-3">{t('table.reserved')}</th>
-          <th className="p-3">{t('table.defectiveOk')}</th>
-          <th className="p-3">{t('table.defective')}</th>
-          <th className="p-3">Trade-in</th>
-          {/* Добавляем новые колонки если есть данные */}
-          {enhancedWarehouses.some(w => w.atDealer > 0) && (
-            <th className="p-3">У дилера</th>
-          )}
-          {enhancedWarehouses.some(w => w.inTransit > 0) && (
-            <th className="p-3">В пути</th>
-          )}
-          <th className="p-3 rounded-r-lg">{t('table.actions')}</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-700">
-        {enhancedWarehouses.map(warehouse => (
-          <motion.tr 
-            key={warehouse.id} 
-            className={`hover:bg-gray-700/30 transition-colors cursor-pointer ${
-              selectedWarehouse?.id === warehouse.id ? 'bg-blue-900/20' : ''
-            }`}
-            onClick={() => handleWarehouseClick(warehouse)}
-            whileHover={{ backgroundColor: 'rgba(55, 65, 81, 0.3)' }}
-          >
-            <td className="p-3 font-medium">{warehouse.name}</td>
-            <td className="p-3">{warehouse.capacity}</td>
-            <td className="p-3">
-              <div className="flex items-center">
-                <div className="w-24 bg-gray-700 rounded-full h-2.5 mr-2">
-                  <div 
-                    className={`h-2.5 rounded-full ${
-                      warehouse.occupancyRate > 90 ? 'bg-red-500' : 
-                      warehouse.occupancyRate > 75 ? 'bg-orange-500' : 
-                      warehouse.occupancyRate > 50 ? 'bg-yellow-500' : 'bg-green-500'
-                    }`}
-                    style={{ width: `${warehouse.occupancyRate}%` }}
-                  ></div>
-                </div>
-                <span>{warehouse.occupancyRate}%</span>
-              </div>
-            </td>
-            <td className="p-3">{warehouse.available}</td>
-            <td className="p-3">{warehouse.reserved}</td>
-            <td className="p-3">
-              <span className={`bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full text-xs`}>
-                {warehouse.defectiveOk}
-              </span>
-            </td>
-            <td className="p-3">
-              <span className={`bg-red-500/20 text-red-400 px-2 py-1 rounded-full text-xs`}>
-                {warehouse.defective}
-              </span>
-            </td>
-            <td className="p-3">
-              <span className={`bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full text-xs`}>
-                {warehouse.tradeIn}
-              </span>
-            </td>
-            {enhancedWarehouses.some(w => w.atDealer > 0) && (
-              <td className="p-3">
-                <span className={`bg-cyan-500/20 text-cyan-400 px-2 py-1 rounded-full text-xs`}>
-                  {warehouse.atDealer || 0}
-                </span>
-              </td>
-            )}
-            {enhancedWarehouses.some(w => w.inTransit > 0) && (
-              <td className="p-3">
-                <span className={`bg-orange-500/20 text-orange-400 px-2 py-1 rounded-full text-xs`}>
-                  {warehouse.inTransit || 0}
-                </span>
-              </td>
-            )}
-            <td className="p-3">
-              <button className="text-blue-400 hover:text-blue-300 transition-colors p-1 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                </svg>
-              </button>
-            </td>
-          </motion.tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-</div>
-     
-      {/* Детальная информация о выбранной модели */}
-      <AnimatePresence>
-        {selectedCarModel && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.3 }}
-            className="bg-gray-800 rounded-lg p-5 shadow-md mb-6 border border-blue-900/30"
-          >
-            <div className="flex flex-col md:flex-row justify-between items-start mb-5">
-              <div className="flex flex-col md:flex-row items-start md:items-center">
-                <img 
-                  src={selectedCarModel.img} 
-                  alt={selectedCarModel.name} 
-                  className="h-16 w-24 object-contain bg-gray-700 rounded mb-3 md:mb-0 md:mr-4" 
-                />
-                <div>
-                  <h2 className="text-xl font-bold text-white">{selectedCarModel.name}</h2>
-                  <p className="text-blue-400 text-sm">{t('details.carModelDetails')}</p>
-                  <div className="flex items-center mt-1">
-                    <span className="text-lg font-semibold text-white mr-2">{selectedCarModel.totalCount} {t('units')}</span>
-                    <span className="text-sm capitalize bg-gray-700 px-2 py-0.5 rounded">{
-                      selectedCarModel.category === 'sedan' ? t('categories.sedan') :
-                      selectedCarModel.category === 'suv' ? t('categories.suv') :
-                      selectedCarModel.category === 'minivan' ? t('categories.minivan') : selectedCarModel.category
-                    }</span>
-                  </div>
-                </div>
-              </div>
-              <button 
-                onClick={() => setSelectedCarModel(null)}
-                className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700/50 mt-3 md:mt-0"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-           
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
-              {/* Краткая информация о статусах */}
-              <div className="bg-gray-700/50 p-4 rounded-lg">
-                <h3 className="text-white font-medium mb-3">{t('details.modelStatistics')}</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">{t('metrics.totalInWarehouses')}</div>
-                    <div className="text-white text-lg font-medium">{selectedCarModel.totalCount}</div>
-                  </div>
-                  <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">{t('metrics.available')}</div>
-                    <div className="text-white text-lg font-medium">{selectedCarModel.available}</div>
-                  </div>
-                  <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">{t('metrics.reserved')}</div>
-                    <div className="text-white text-lg font-medium">{selectedCarModel.reserved}</div>
-                  </div>
-                  <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">{t('metrics.defectiveOk')}</div>
-                    <div className="text-white text-lg font-medium">{selectedCarModel.defectiveOk}</div>
-                  </div>
-                  <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">{t('metrics.defective')}</div>
-                    <div className="text-white text-lg font-medium">{selectedCarModel.defective}</div>
-                  </div>
-                  <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">Trade-in</div>
-                    <div className="text-white text-lg font-medium">{selectedCarModel.tradeIn}</div>
-                  </div>
-                </div>
-              </div>
-             
-              {/* Доступность модели - изменено на линейные индикаторы */}
-              <div className="bg-gray-700/50 p-4 rounded-lg md:col-span-2">
-                <h3 className="text-white font-medium">{t('details.statusDistribution')}</h3>
-                <div className="space-y-4 mt-3">
-                  {/* Свободные автомобили */}
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-gray-300">{t('status.available')}</span>
-                      <span className="text-white font-medium">
-                        {selectedCarModel.available} {t('units')} 
-                        ({Math.round((selectedCarModel.available / selectedCarModel.totalCount) * 100)}%)
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-green-500 rounded-full"
-                        style={{ width: `${(selectedCarModel.available / selectedCarModel.totalCount) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                 
-                  {/* Закрепленные автомобили */}
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-gray-300">{t('status.reserved')}</span>
-                      <span className="text-white font-medium">
-                        {selectedCarModel.reserved} {t('units')} 
-                        ({Math.round((selectedCarModel.reserved / selectedCarModel.totalCount) * 100)}%)
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-blue-500 rounded-full"
-                        style={{ width: `${(selectedCarModel.reserved / selectedCarModel.totalCount) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                 
-                  {/* Брак-ОК автомобили */}
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-gray-300">{t('status.defectiveOk')}</span>
-                      <span className="text-white font-medium">
-                        {selectedCarModel.defectiveOk} {t('units')} 
-                        ({Math.round((selectedCarModel.defectiveOk / selectedCarModel.totalCount) * 100)}%)
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-amber-500 rounded-full"
-                        style={{ width: `${(selectedCarModel.defectiveOk / selectedCarModel.totalCount) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                 
-                  {/* Бракованные автомобили */}
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-gray-300">{t('status.defective')}</span>
-                      <span className="text-white font-medium">
-                        {selectedCarModel.defective} {t('units')} 
-                        ({Math.round((selectedCarModel.defective / selectedCarModel.totalCount) * 100)}%)
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-red-500 rounded-full"
-                        style={{ width: `${(selectedCarModel.defective / selectedCarModel.totalCount) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  {/* Trade-in автомобили */}
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-gray-300">Trade-in</span>
-                      <span className="text-white font-medium">
-                        {selectedCarModel.tradeIn} {t('units')} 
-                        ({Math.round((selectedCarModel.tradeIn / selectedCarModel.totalCount) * 100)}%)
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-800 h-3 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-purple-500 rounded-full"
-                        style={{ width: `${(selectedCarModel.tradeIn / selectedCarModel.totalCount) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-           
-            {/* График распределения по цветам - заменяем на улучшенную сетку цветов */}
-            <div className="bg-gray-700/50 p-4 rounded-lg mb-5">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-white font-medium">{t('details.colorDistribution')}</h3>
-                <div className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
-                  {t('details.availableColors', { count: selectedCarModel.colors.length })}
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {filteredColors.map(color => (
-                  <div key={color.name} className="bg-gray-800/70 p-3 rounded-lg overflow-hidden">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center">
-                        <div 
-                          className="w-6 h-6 rounded-full mr-2 border border-gray-600" 
-                          style={{ backgroundColor: color.hex }}
-                        />
-                        <span className="text-white text-sm font-medium">{color.name}</span>
-                      </div>
-                      <span className="text-gray-300 text-xs">{color.count} {t('units')}</span>
-                    </div>
-                    
-                    {/* Индикаторы статусов */}
-                    <div className="space-y-2 mt-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-400">{t('status.available')}:</span>
-                        <div className="flex items-center">
-                          <span className="text-xs text-white mr-1">{color.available}</span>
-                          <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-green-500 rounded-full"
-                              style={{ width: `${(color.available / color.count) * 100}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-400">{t('status.reserved')}:</span>
-                        <div className="flex items-center">
-                          <span className="text-xs text-white mr-1">{color.reserved}</span>
-                          <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-blue-500 rounded-full"
-                              style={{ width: `${(color.reserved / color.count) * 100}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-400">{t('status.defectiveOk')}:</span>
-                        <div className="flex items-center">
-                          <span className="text-xs text-white mr-1">{color.defectiveOk}</span>
-                          <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-amber-500 rounded-full"
-                              style={{ width: `${(color.defectiveOk / color.count) * 100}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-400">{t('status.defective')}:</span>
-                        <div className="flex items-center">
-                          <span className="text-xs text-white mr-1">{color.defective}</span>
-                          <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-red-500 rounded-full"
-                              style={{ width: `${(color.defective / color.count) * 100}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {color.tradeIn > 0 && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-400">Trade-in:</span>
-                          <div className="flex items-center">
-                            <span className="text-xs text-white mr-1">{color.tradeIn}</span>
-                            <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-purple-500 rounded-full"
-                                style={{ width: `${(color.tradeIn / color.count) * 100}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-           
-            {/* Выбор модификации - улучшенное отображение */}
-            <div className="bg-gray-700/50 p-4 rounded-lg mb-5">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-white font-medium">{t('details.modifications', { model: selectedCarModel.name })}</h3>
-                <div className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
-                  {t('details.modificationsCount', { count: selectedCarModel.modifications.length })}
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {filteredModifications.map(modification => (
-                  <div 
-                    key={modification.id} 
-                    className={`bg-gray-800/70 p-3 rounded-lg cursor-pointer transition-all ${
-                      selectedModification?.id === modification.id ? 'ring-2 ring-blue-500' : 'hover:bg-gray-800'
-                    }`}
-                    onClick={() => handleModificationClick(modification)}
-                  >
-                    <div className="flex justify-between mb-2">
-                      <span className="text-white font-medium">{modification.name}</span>
-                      <span className="text-sm text-gray-400">{modification.count} {t('units')}</span>
-                    </div>
-                    
-                    {/* Полоса прогресса для отображения статусов */}
-                    <div className="h-2 w-full bg-gray-700 rounded-full overflow-hidden flex mb-3">
-                      <div 
-                        className="h-full bg-green-500" 
-                        style={{ width: `${(modification.available / modification.count) * 100}%` }}
-                      ></div>
-                      <div 
-                        className="h-full bg-blue-500" 
-                        style={{ width: `${(modification.reserved / modification.count) * 100}%` }}
-                      ></div>
-                      <div 
-                        className="h-full bg-amber-500" 
-                        style={{ width: `${(modification.defectiveOk / modification.count) * 100}%` }}
-                      ></div>
-                      <div 
-                        className="h-full bg-red-500" 
-                        style={{ width: `${(modification.defective / modification.count) * 100}%` }}
-                      ></div>
-                      <div 
-                        className="h-full bg-purple-500" 
-                        style={{ width: `${(modification.tradeIn / modification.count) * 100}%` }}
-                      ></div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="flex justify-between items-center bg-green-500/10 px-2 py-1 rounded">
-                        <span className="text-xs text-green-400">{t('status.available')}</span>
-                        <span className="text-xs text-white">{modification.available}</span>
-                      </div>
-                      <div className="flex justify-between items-center bg-blue-500/10 px-2 py-1 rounded">
-                        <span className="text-xs text-blue-400">{t('status.reserved')}</span>
-                        <span className="text-xs text-white">{modification.reserved}</span>
-                      </div>
-                      <div className="flex justify-between items-center bg-amber-500/10 px-2 py-1 rounded">
-                        <span className="text-xs text-amber-400">{t('status.defectiveOk')}</span>
-                        <span className="text-xs text-white">{modification.defectiveOk}</span>
-                      </div>
-                      <div className="flex justify-between items-center bg-red-500/10 px-2 py-1 rounded">
-                        <span className="text-xs text-red-400">{t('status.defective')}</span>
-                        <span className="text-xs text-white">{modification.defective}</span>
-                      </div>
-                      {modification.tradeIn > 0 && (
-                        <div className="flex justify-between items-center bg-purple-500/10 px-2 py-1 rounded col-span-2">
-                          <span className="text-xs text-purple-400">Trade-in</span>
-                          <span className="text-xs text-white">{modification.tradeIn}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-           
-            {/* Отображение выбранной модификации */}
-            {selectedModification && (
-              <div className="bg-gray-700/50 p-4 rounded-lg mb-5">
-                <div className="flex flex-col md:flex-row gap-5">
-                  <div className="md:w-1/2">
-                    <h3 className="text-white font-medium mb-3">{selectedCarModel.name} - {selectedModification.name}</h3>
-                    <img 
-                      src={selectedCarModel.img} 
-                      alt={`${selectedCarModel.name} ${selectedModification.name}`} 
-                      className="w-full h-64 object-cover rounded-lg"
-                    />
-                  </div>
-                  <div className="md:w-1/2 flex flex-col">
-                    <h3 className="text-white font-medium mb-3">{t('details.modificationDetails')}</h3>
-                    <div className="grid grid-cols-2 gap-3 mb-auto">
-                      <div className="bg-gray-800/70 p-3 rounded-lg">
-                        <div className="text-gray-400 text-xs">{t('metrics.total')}</div>
-                        <div className="text-white text-lg font-medium">{selectedModification.count}</div>
-                      </div>
-                      <div className="bg-gray-800/70 p-3 rounded-lg">
-                        <div className="text-gray-400 text-xs">{t('metrics.available')}</div>
-                        <div className="text-white text-lg font-medium">{selectedModification.available}</div>
-                      </div>
-                      <div className="bg-gray-800/70 p-3 rounded-lg">
-                        <div className="text-gray-400 text-xs">{t('metrics.reserved')}</div>
-                        <div className="text-white text-lg font-medium">{selectedModification.reserved}</div>
-                      </div>
-                      <div className="bg-gray-800/70 p-3 rounded-lg">
-                        <div className="text-gray-400 text-xs">{t('metrics.defectiveOk')}</div>
-                        <div className="text-white text-lg font-medium">{selectedModification.defectiveOk}</div>
-                      </div>
-                      <div className="bg-gray-800/70 p-3 rounded-lg">
-                        <div className="text-gray-400 text-xs">{t('metrics.defective')}</div>
-                        <div className="text-white text-lg font-medium">{selectedModification.defective}</div>
-                      </div>
-                      <div className="bg-gray-800/70 p-3 rounded-lg">
-                        <div className="text-gray-400 text-xs">Trade-in</div>
-                        <div className="text-white text-lg font-medium">{selectedModification.tradeIn}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-     
-      {/* Детальная информация о выбранном складе */}
-      <AnimatePresence>
-        {selectedWarehouse && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.3 }}
-            className="bg-gray-800 rounded-lg p-5 shadow-md mb-6 border border-purple-900/30"
-          >
-            <div className="flex justify-between items-start mb-5">
-              <div>
-                <h2 className="text-xl font-bold text-white">{selectedWarehouse.name}</h2>
-                <p className="text-purple-400 text-sm">{t('details.warehouseDetails')}</p>
-                <div className="flex items-center mt-1">
-                  <span className="text-lg font-semibold text-white mr-2">{selectedWarehouse.totalCount} {t('car')}</span>
-                  <span className={`text-sm px-2 py-0.5 rounded ${
-                    selectedWarehouse.status === 'critical' ? 'bg-red-500/20 text-red-400' :
-                    selectedWarehouse.status === 'high' ? 'bg-orange-500/20 text-orange-400' :
-                    selectedWarehouse.status === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                    'bg-green-500/20 text-green-400'
-                  }`}>
-                    {t('details.occupancy')}: {selectedWarehouse.occupancyRate}%
-                  </span>
-                </div>
-              </div>
-              <button 
-                onClick={() => setSelectedWarehouse(null)}
-                className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700/50"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-           
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
-              {/* Краткая информация с обновленными статусами */}
-              <div className="bg-gray-700/50 p-4 rounded-lg">
-                <h3 className="text-white font-medium mb-3">{t('details.warehouseInfo')}</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">{t('metrics.totalCars')}</div>
-                    <div className="text-white text-lg font-medium">{selectedWarehouse.totalCount}</div>
-                  </div>
-                  <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">{t('metrics.available')}</div>
-                    <div className="text-white text-lg font-medium">{selectedWarehouse.available}</div>
-                  </div>
-                  <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">{t('metrics.reserved')}</div>
-                    <div className="text-white text-lg font-medium">{selectedWarehouse.reserved}</div>
-                  </div>
-                  <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">{t('metrics.defectiveOk')}</div>
-                    <div className="text-white text-lg font-medium">{selectedWarehouse.defectiveOk}</div>
-                  </div>
-                  <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">{t('metrics.defective')}</div>
-                    <div className="text-white text-lg font-medium">{selectedWarehouse.defective}</div>
-                  </div>
-                  <div className="bg-gray-800/70 p-3 rounded-lg">
-                    <div className="text-gray-400 text-xs">Trade-in</div>
-                    <div className="text-white text-lg font-medium">{selectedWarehouse.tradeIn}</div>
-                  </div>
-                </div>
-              </div>
-             
-              {/* График заполненности склада */}
-              <div className="bg-gray-700/50 p-4 rounded-lg md:col-span-2">
-                <h3 className="text-white font-medium mb-3">{t('details.warehouseOccupancy')}</h3>
-                <div ref={warehouseOccupancyRef} className="h-[200px]"></div>
-              </div>
-            </div>
-           
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-5 mb-5">
-              {/* Распределение по моделям */}
-              <div className="bg-gray-700/50 p-4 rounded-lg">
-                <h3 className="text-white font-medium mb-3">{t('details.modelDistribution')}</h3>
-           {/* Распределение по моделям */}
-<div className="bg-gray-700/50 p-4 rounded-lg">
-  <h3 className="text-white font-medium mb-3">{t('details.modelDistribution')}</h3>
-  <div className="space-y-3">
-    {/* Убираем ограничение slice(0, 5) чтобы показать все модели */}
-    {selectedWarehouse.models
-      .filter(model => model.count > 0)
-      .sort((a, b) => b.count - a.count) // Сортируем по количеству
-      .map(model => {
-        // Для отладки выводим все статусы
-        console.log(`Модель ${model.name}:`, {
-          count: model.count,
-          available: model.available,
-          reserved: model.reserved,
-          defective: model.defective,
-          defectiveOk: model.defectiveOk,
-          tradeIn: model.tradeIn,
-          atDealer: model.atDealer,
-          inTransit: model.inTransit,
-          otherStatuses: model.otherStatuses
-        });
-        
-        return (
-          <div key={model.id} className="group cursor-pointer" onClick={() => toggleModelDetailInWarehouse(model.id)}>
-            <div className="flex flex-col">
-              <div className="flex justify-between mb-1">
-                <span className="text-gray-300">{model.name}</span>
-                <span className="font-medium text-white">{model.count} {t('units')}</span>
-              </div>
-              
-              {/* Показываем все статусы в более компактном виде */}
-              <div className="flex flex-wrap gap-2 text-xs">
-                {model.available > 0 && (
-                  <span className="text-green-400">
-                    {model.available} {t('status.availableShort')}
-                  </span>
-                )}
-                {model.reserved > 0 && (
-                  <span className="text-blue-400">
-                    {model.reserved} {t('status.reservedShort')}
-                  </span>
-                )}
-                {model.defectiveOk > 0 && (
-                  <span className="text-amber-400">
-                    {model.defectiveOk} {t('status.defectiveOkShort')}
-                  </span>
-                )}
-                {model.defective > 0 && (
-                  <span className="text-red-400">
-                    {model.defective} {t('status.defectiveShort')}
-                  </span>
-                )}
-                {model.tradeIn > 0 && (
-                  <span className="text-purple-400">
-                    {model.tradeIn} Trade-in
-                  </span>
-                )}
-                {model.atDealer > 0 && (
-                  <span className="text-cyan-400">
-                    {model.atDealer} У дилера
-                  </span>
-                )}
-                {model.inTransit > 0 && (
-                  <span className="text-orange-400">
-                    {model.inTransit} В пути
-                  </span>
-                )}
-                {/* Отображаем другие статусы */}
-                {Object.entries(model.otherStatuses || {}).map(([status, count]) => 
-                  count > 0 && (
-                    <span key={status} className="text-gray-400">
-                      {count} {status}
-                    </span>
-                  )
-                )}
-              </div>
-            </div>
-            
-            <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden mt-2">
-              <div 
-                className="h-full bg-purple-500 group-hover:bg-purple-400 transition-all rounded-full"
-                style={{ width: `${(model.count / selectedWarehouse.totalCount) * 100}%` }}
-              ></div>
-            </div>
-          </div>
-        );
-      })}
-  </div>
-  
-  {/* Добавляем информацию о количестве моделей */}
-  <div className="mt-3 text-xs text-gray-400">
-    Показано моделей: {selectedWarehouse.models.filter(model => model.count > 0).length} из {selectedWarehouse.models.length}
-  </div>
-</div>
-                
-                {/* Расширенное представление для выбранной модели в контексте склада */}
-                <AnimatePresence>
-                  {selectedWarehouseModel && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="bg-gray-800/60 mt-5 p-4 rounded-lg overflow-hidden"
-                    >
-                      {(() => {
-                        const modelData = selectedWarehouse.models.find(m => m.id === selectedWarehouseModel);
-                        const fullModelData = enhancedCarModels.find(m => m.id === selectedWarehouseModel);
-                        
-                        if (!modelData || !fullModelData) return <div>{t('errors.dataNotFound')}</div>;
-                        
-                        return (
-                          <>
-                            <div className="flex justify-between items-center mb-4">
-                              <h4 className="text-lg font-medium text-white">{modelData.name} {t('details.inWarehouse')} {selectedWarehouse.name}</h4>
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedWarehouseModel(null);
-                                }}
-                                className="text-gray-400 hover:text-white"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            </div>
-                            
-                            {/* Статистика по модели на этом складе */}
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-                              <div className="bg-gray-700 p-3 rounded-lg">
-                                <div className="text-gray-400 text-xs">{t('metrics.total')}</div>
-                                <div className="text-white text-lg font-medium">{modelData.count}</div>
-                              </div>
-                              <div className="bg-green-900/30 p-3 rounded-lg">
-                                <div className="text-green-400 text-xs">{t('metrics.available')}</div>
-                                <div className="text-white text-lg font-medium">{modelData.available}</div>
-                              </div>
-                              <div className="bg-blue-900/30 p-3 rounded-lg">
-                                <div className="text-blue-400 text-xs">{t('metrics.reserved')}</div>
-                                <div className="text-white text-lg font-medium">{modelData.reserved}</div>
-                              </div>
-                              <div className="bg-amber-900/30 p-3 rounded-lg">
-                                <div className="text-amber-400 text-xs">{t('metrics.defectiveOk')}</div>
-                                <div className="text-white text-lg font-medium">{modelData.defectiveOk}</div>
-                              </div>
-                              <div className="bg-red-900/30 p-3 rounded-lg">
-                                <div className="text-red-400 text-xs">{t('metrics.defective')}</div>
-                                <div className="text-white text-lg font-medium">{modelData.defective}</div>
-                              </div>
-                              <div className="bg-purple-900/30 p-3 rounded-lg">
-                                <div className="text-purple-400 text-xs">Trade-in</div>
-                                <div className="text-white text-lg font-medium">{modelData.tradeIn}</div>
-                              </div>
-                            </div>
-                            
-                            {/* Табы для выбора между цветами и модификациями */}
-                            <div className="border-b border-gray-700 mb-4">
-                              <nav className="-mb-px flex space-x-6">
-                                <button 
-                                  className={`pb-2 font-medium text-sm ${
-                                    warehouseModelViewTab === 'modifications' 
-                                      ? 'border-b-2 border-blue-500 text-blue-400' 
-                                      : 'text-gray-400 hover:text-gray-300'
-                                  }`}
-                                  onClick={() => setWarehouseModelViewTab('modifications')}
-                                >
-                                  {t('tabs.modifications')}
-                                </button>
-                                <button 
-                                  className={`pb-2 font-medium text-sm ${
-                                    warehouseModelViewTab === 'colors' 
-                                      ? 'border-b-2 border-blue-500 text-blue-400' 
-                                      : 'text-gray-400 hover:text-gray-300'
-                                  }`}
-                                  onClick={() => setWarehouseModelViewTab('colors')}
-                                >
-                                  {t('tabs.colors')}
-                                </button>
-                              </nav>
-                            </div>
-                            
-                            {/* Содержимое таба модификаций */}
-                            {warehouseModelViewTab === 'modifications' && (
-                              <div className="space-y-3">
-                                <h5 className="text-sm font-medium text-gray-300 mb-2">{t('details.allModifications', { model: modelData.name })}</h5>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                  {fullModelData.modifications.map(mod => {
-                                    const warehouseMod = {
-                                      ...mod,
-                                      warehouseCount: Math.floor(mod.count * (modelData.count / fullModelData.totalCount))
-                                    };
-                                    
-                                    if (warehouseMod.warehouseCount <= 0) return null;
-                                    
-                                    return (
-                                      <div key={mod.id} className="bg-gray-700/50 p-3 rounded-lg">
-                                        <div className="flex justify-between mb-1">
-                                          <span className="text-white text-sm">{mod.name}</span>
-                                          <span className="text-gray-400 text-xs">{warehouseMod.warehouseCount} {t('units')}</span>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-1 mt-2">
-                                        <div className="bg-green-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-green-400 text-xs">{t('status.availableShort')}:</span>
-                                            <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.available / modelData.count))}</span>
-                                          </div>
-                                          <div className="bg-blue-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-blue-400 text-xs">{t('status.reservedShort')}:</span>
-                                            <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.reserved / modelData.count))}</span>
-                                          </div>
-                                          <div className="bg-amber-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-amber-400 text-xs">{t('status.defectiveOkShort')}:</span>
-                                            <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.defectiveOk / modelData.count))}</span>
-                                          </div>
-                                          <div className="bg-red-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-red-400 text-xs">{t('status.defectiveShort')}:</span>
-                                            <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.defective / modelData.count))}</span>
-                                          </div>
-                                          {modelData.tradeIn > 0 && (
-                                            <div className="bg-purple-900/20 px-1.5 py-1 rounded flex justify-between col-span-2">
-                                              <span className="text-purple-400 text-xs">Trade-in:</span>
-                                              <span className="text-white text-xs">{Math.floor(warehouseMod.warehouseCount * (modelData.tradeIn / modelData.count))}</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  }).filter(Boolean)}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {/* Содержимое таба цветов */}
-                            {warehouseModelViewTab === 'colors' && (
-                              <div className="space-y-3">
-                                <h5 className="text-sm font-medium text-gray-300 mb-2">{t('details.colorDistribution')}</h5>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                  {fullModelData.colors.map(color => {
-                                    const warehouseColor = {
-                                      ...color,
-                                      warehouseCount: Math.floor(color.count * (modelData.count / fullModelData.totalCount))
-                                    };
-                                    
-                                    if (warehouseColor.warehouseCount <= 0) return null;
-                                    
-                                    return (
-                                      <div key={color.name} className="bg-gray-700/50 p-3 rounded-lg">
-                                        <div className="flex items-center justify-between mb-2">
-                                          <div className="flex items-center">
-                                            <div 
-                                              className="w-4 h-4 rounded-full mr-2 border border-gray-600" 
-                                              style={{ backgroundColor: color.hex }}
-                                            />
-                                            <span className="text-white text-sm">{color.name}</span>
-                                          </div>
-                                          <span className="text-gray-400 text-xs">{warehouseColor.warehouseCount} {t('units')}</span>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-1 mt-2">
-                                          <div className="bg-green-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-green-400 text-xs">{t('status.availableShort')}:</span>
-                                            <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.available / modelData.count))}</span>
-                                          </div>
-                                          <div className="bg-blue-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-blue-400 text-xs">{t('status.reservedShort')}:</span>
-                                            <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.reserved / modelData.count))}</span>
-                                          </div>
-                                          <div className="bg-amber-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-amber-400 text-xs">{t('status.defectiveOkShort')}:</span>
-                                            <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.defectiveOk / modelData.count))}</span>
-                                          </div>
-                                          <div className="bg-red-900/20 px-1.5 py-1 rounded flex justify-between">
-                                            <span className="text-red-400 text-xs">{t('status.defectiveShort')}:</span>
-                                            <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.defective / modelData.count))}</span>
-                                          </div>
-                                          {modelData.tradeIn > 0 && (
-                                            <div className="bg-purple-900/20 px-1.5 py-1 rounded flex justify-between col-span-2">
-                                              <span className="text-purple-400 text-xs">Trade-in:</span>
-                                              <span className="text-white text-xs">{Math.floor(warehouseColor.warehouseCount * (modelData.tradeIn / modelData.count))}</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  }).filter(Boolean)}
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+     {/* Ключевые метрики с обновленными статусами */}
+     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+       <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md`}>
+         <div className="flex items-center">
+           <div className={`w-12 h-12 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'} flex items-center justify-center mr-3`}>
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+             </svg>
+           </div>
+           <div>
+             <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('metrics.total')}</div>
+             <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{totalVehicles}</div>
+           </div>
+         </div>
+       </div>
       
-      {/* Контейнер уведомлений */}
-      <NotificationsContainer />
-    </div>
-  );
+       <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md`}>
+         <div className="flex items-center">
+           <div className={`w-12 h-12 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'} flex items-center justify-center mr-3`}>
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+             </svg>
+           </div>
+           <div>
+             <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('metrics.available')}</div>
+             <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{totalAvailable}</div>
+           </div>
+         </div>
+       </div>
+      
+       <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md`}>
+         <div className="flex items-center">
+           <div className={`w-12 h-12 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'} flex items-center justify-center mr-3`}>
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+             </svg>
+           </div>
+           <div>
+             <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('metrics.reserved')}</div>
+             <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{totalReserved}</div>
+           </div>
+         </div>
+       </div>
+      
+       <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md`}>
+         <div className="flex items-center">
+           <div className={`w-12 h-12 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'} flex items-center justify-center mr-3`}>
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+             </svg>
+           </div>
+           <div>
+             <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('metrics.defectiveOk')}</div>
+             <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{totalDefectiveOk}</div>
+           </div>
+         </div>
+       </div>
+      
+       <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md`}>
+         <div className="flex items-center">
+           <div className={`w-12 h-12 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'} flex items-center justify-center mr-3`}>
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+             </svg>
+           </div>
+           <div>
+             <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('metrics.defective')}</div>
+             <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{totalDefective}</div>
+           </div>
+         </div>
+       </div>
+       
+       {/* Новая метрика для Trade-in */}
+       <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md`}>
+         <div className="flex items-center">
+           <div className={`w-12 h-12 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'} flex items-center justify-center mr-3`}>
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+             </svg>
+           </div>
+           <div>
+             <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Trade-in</div>
+             <div className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{totalTradeIn}</div>
+           </div>
+         </div>
+       </div>
+     </div>
+    
+     {/* Обновленная метрика с временем обновления */}
+     <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md mb-6`}>
+       <div className="flex items-center justify-between">
+         <div>
+           <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('metrics.totalCarModels', { count: enhancedCarModels.length })}</span>
+         </div>
+         
+         <div className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm">
+           {t('metrics.updatedAt')} {formatDate(lastUpdateDate)}
+         </div>
+       </div>
+     </div>
+    
+     {/* Основные графики */}
+     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+       <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-md`}>
+         <div className="flex justify-between mb-2">
+           <h2 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{t('charts.warehouseDistribution')}</h2>
+           <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">{t('charts.inventoryShare')}</span>
+         </div>
+         <div ref={manufacturerChartRef} className="h-[300px]"></div>
+       </div>
+      
+<div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-md`}>
+ <div className="flex justify-between mb-2">
+   <h2 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{t('charts.carsByWarehouse')}</h2>
+   <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+     {t('charts.interactive')}
+   </span>
+ </div>
+ 
+ {/* График */}
+ <div ref={warehouseDistributionRef} className="h-[280px]"></div>
+ 
+ {/* HTML легенда */}
+ <div className={`mt-3 pt-3 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+   <div className="flex flex-wrap gap-x-4 gap-y-2 justify-center text-xs">
+     <div className="flex items-center gap-1.5">
+       <div className="w-3 h-3 bg-green-500 rounded"></div>
+       <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{t('status.available')}</span>
+     </div>
+     <div className="flex items-center gap-1.5">
+       <div className="w-3 h-3 bg-blue-500 rounded"></div>
+       <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{t('status.reserved')}</span>
+     </div>
+     <div className="flex items-center gap-1.5">
+       <div className="w-3 h-3 bg-amber-500 rounded"></div>
+       <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{t('status.defectiveOk')}</span>
+     </div>
+     <div className="flex items-center gap-1.5">
+       <div className="w-3 h-3 bg-red-500 rounded"></div>
+       <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{t('status.defective')}</span>
+     </div>
+     <div className="flex items-center gap-1.5">
+       <div className="w-3 h-3 bg-purple-500 rounded"></div>
+       <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>Trade-in</span>
+     </div>
+     <div className="flex items-center gap-1.5">
+       <div className="w-4 h-0 border-t-2 border-dashed border-orange-500"></div>
+       <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{t('status.maxCapacity')}</span>
+     </div>
+   </div>
+ </div>
+</div>
+     </div>
+    
+     {/* График статусов моделей */}
+     <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-md mb-6`}>
+       <div className="flex justify-between mb-2">
+         <h2 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{t('charts.carStatusInWarehouses')}</h2>
+         <span className="text-sm bg-green-500/20 text-green-400 px-2 py-1 rounded-full">{t('charts.percentageRatio')}</span>
+       </div>
+       <div ref={modelInventoryChartRef} className="h-[300px]"></div>
+     </div>
+    
+     {/* Выбор модели авто с использованием фото */}
+<div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-md mb-6`}>
+ <div className="flex justify-between mb-4">
+   <div>
+     <h2 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{t('sections.carModels')}</h2>
+     <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('sections.selectModelHint')}</p>
+   </div>
+ </div>
+
+ <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+   {enhancedCarModels.map(model => (
+     <div 
+       key={model.id}
+       className={`${isDark ? 'bg-gray-700' : 'bg-gray-100'} rounded-lg overflow-hidden cursor-pointer transition-all ${
+         selectedCarModel?.id === model.id ? 'ring-2 ring-blue-500' : isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-200'
+       }`}
+       onClick={() => handleCarModelClick(model)}
+     >
+       <div className={`${isDark ? 'bg-gray-800' : 'bg-gray-200'} relative overflow-hidden rounded-t-lg`}>
+         <div className="pt-[75%] relative">
+           <img 
+             src={model.img} 
+             alt={model.name}
+             className="absolute inset-0 w-full h-full object-contain p-2" 
+           />
+         </div>
+         <div className={`absolute bottom-0 left-0 right-0 px-2 py-1 ${isDark ? 'bg-gray-900/70' : 'bg-gray-800/70'} text-xs text-white text-center`}>
+           {model.category === 'sedan' ? t('categories.sedan') :
+           model.category === 'suv' ? t('categories.suv') :
+           model.category === 'minivan' ? t('categories.minivan') : model.category}
+         </div>
+       </div>
+       <div className="p-3">
+         <div className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>{model.name}</div>
+         <div className="flex justify-between text-sm">
+           <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>{t('metrics.total')}:</span>
+           <span className={isDark ? 'text-white' : 'text-gray-900'}>{model.totalCount}</span>
+         </div>
+         <div className="mt-2 flex gap-1 flex-wrap">
+           {/* Показываем все статусы, даже если 0 */}
+           <span className={`text-xs px-1.5 py-0.5 rounded ${
+             model.available > 0 ? 'bg-green-500/20 text-green-400' : isDark ? 'bg-gray-600/20 text-gray-500' : 'bg-gray-300/20 text-gray-500'
+           }`}>
+             {model.available} {t('status.availableShort')}
+           </span>
+           <span className={`text-xs px-1.5 py-0.5 rounded ${
+             model.reserved > 0 ? 'bg-blue-500/20 text-blue-400' : isDark ? 'bg-gray-600/20 text-gray-500' : 'bg-gray-300/20 text-gray-500'
+           }`}>
+             {model.reserved} {t('status.reservedShort')}
+           </span>
+           <span className={`text-xs px-1.5 py-0.5 rounded ${
+             model.defectiveOk > 0 ? 'bg-amber-500/20 text-amber-400' : isDark ? 'bg-gray-600/20 text-gray-500' : 'bg-gray-300/20 text-gray-500'
+           }`}>
+             {model.defectiveOk} {t('status.defectiveOkShort')}
+           </span>
+           <span className={`text-xs px-1.5 py-0.5 rounded ${
+             model.defective > 0 ? 'bg-red-500/20 text-red-400' : isDark ? 'bg-gray-600/20 text-gray-500' : 'bg-gray-300/20 text-gray-500'
+           }`}>
+             {model.defective} {t('status.defectiveShort')}
+           </span>
+           <span className={`text-xs px-1.5 py-0.5 rounded ${
+             model.tradeIn > 0 ? 'bg-purple-500/20 text-purple-400' : isDark ? 'bg-gray-600/20 text-gray-500' : 'bg-gray-300/20 text-gray-500'
+           }`}>
+             {model.tradeIn} Trade-in
+           </span>
+         </div>
+       </div>
+     </div>
+   ))}
+ </div>
+</div>
+    
+     {/* Таблица складов с обновленными статусами */}
+<div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-md mb-6`}>
+ <div className="overflow-x-auto">
+   <table className="w-full text-sm">
+     <thead>
+       <tr className={`${isDark ? 'bg-gray-900/60' : 'bg-gray-100'} ${isDark ? 'text-gray-400' : 'text-gray-700'} text-left`}>
+         <th className="p-3 rounded-l-lg">{t('table.warehouseName')}</th>
+         <th className="p-3">{t('table.capacity')}</th>
+         <th className="p-3">{t('table.occupied')}</th>
+         <th className="p-3">{t('table.available')}</th>
+         <th className="p-3">{t('table.reserved')}</th>
+         <th className="p-3">{t('table.defectiveOk')}</th>
+         <th className="p-3">{t('table.defective')}</th>
+         <th className="p-3">Trade-in</th>
+         {/* Добавляем новые колонки если есть данные */}
+         {enhancedWarehouses.some(w => w.atDealer > 0) && (
+           <th className="p-3">У дилера</th>
+         )}
+         {enhancedWarehouses.some(w => w.inTransit > 0) && (
+           <th className="p-3">В пути</th>
+         )}
+         <th className="p-3 rounded-r-lg">{t('table.actions')}</th>
+       </tr>
+     </thead>
+     <tbody className={`divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`}>
+       {enhancedWarehouses.map(warehouse => (
+         <motion.tr 
+           key={warehouse.id} 
+           className={`${isDark ? 'hover:bg-gray-700/30' : 'hover:bg-gray-50'} transition-colors cursor-pointer ${
+             selectedWarehouse?.id === warehouse.id ? isDark ? 'bg-blue-900/20' : 'bg-blue-50' : ''
+           }`}
+           onClick={() => handleWarehouseClick(warehouse)}
+           whileHover={{ backgroundColor: isDark ? 'rgba(55, 65, 81, 0.3)' : 'rgba(249, 250, 251, 1)' }}
+         >
+           <td className={`p-3 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{warehouse.name}</td>
+           <td className={`p-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{warehouse.capacity}</td>
+           <td className="p-3">
+             <div className="flex items-center">
+               <div className={`w-24 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-2.5 mr-2`}>
+                 <div 
+                   className={`h-2.5 rounded-full ${
+                     warehouse.occupancyRate > 90 ? 'bg-red-500' : 
+                     warehouse.occupancyRate > 75 ? 'bg-orange-500' : 
+                     warehouse.occupancyRate > 50 ? 'bg-yellow-500' : 'bg-green-500'
+                   }`}
+                   style={{ width: `${warehouse.occupancyRate}%` }}
+                 ></div>
+               </div>
+               <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{warehouse.occupancyRate}%</span>
+             </div>
+           </td>
+           <td className={`p-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{warehouse.available}</td>
+           <td className={`p-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{warehouse.reserved}</td>
+           <td className="p-3">
+             <span className={`bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full text-xs`}>
+               {warehouse.defectiveOk}
+             </span>
+           </td>
+           <td className="p-3">
+             <span className={`bg-red-500/20 text-red-400 px-2 py-1 rounded-full text-xs`}>
+               {warehouse.defective}
+             </span>
+           </td>
+           <td className="p-3">
+             <span className={`bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full text-xs`}>
+               {warehouse.tradeIn}
+             </span>
+           </td>
+           {enhancedWarehouses.some(w => w.atDealer > 0) && (
+             <td className="p-3">
+               <span className={`bg-cyan-500/20 text-cyan-400 px-2 py-1 rounded-full text-xs`}>
+                 {warehouse.atDealer || 0}
+               </span>
+             </td>
+           )}
+           {enhancedWarehouses.some(w => w.inTransit > 0) && (
+             <td className="p-3">
+               <span className={`bg-orange-500/20 text-orange-400 px-2 py-1 rounded-full text-xs`}>
+                 {warehouse.inTransit || 0}
+               </span>
+             </td>
+           )}
+           <td className="p-3">
+             <button className="text-blue-400 hover:text-blue-300 transition-colors p-1 rounded-full">
+               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                 <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+               </svg>
+             </button>
+           </td>
+         </motion.tr>
+       ))}
+     </tbody>
+   </table>
+ </div>
+</div>
+    
+     {/* Детальная информация о выбранной модели */}
+     <AnimatePresence>
+       {selectedCarModel && (
+         <motion.div
+           initial={{ opacity: 0, y: 20 }}
+           animate={{ opacity: 1, y: 0 }}
+           exit={{ opacity: 0, y: 20 }}
+           transition={{ duration: 0.3 }}
+           className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-5 shadow-md mb-6 border ${isDark ? 'border-blue-900/30' : 'border-blue-200'}`}
+         >
+           <div className="flex flex-col md:flex-row justify-between items-start mb-5">
+             <div className="flex flex-col md:flex-row items-start md:items-center">
+               <img 
+                 src={selectedCarModel.img} 
+                 alt={selectedCarModel.name} 
+                 className={`h-16 w-24 object-contain ${isDark ? 'bg-gray-700' : 'bg-gray-100'} rounded mb-3 md:mb-0 md:mr-4`} 
+               />
+               <div>
+                 <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedCarModel.name}</h2>
+                 <p className="text-blue-400 text-sm">{t('details.carModelDetails')}</p>
+                 <div className="flex items-center mt-1">
+                   <span className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mr-2`}>{selectedCarModel.totalCount} {t('units')}</span>
+                   <span className={`text-sm capitalize ${isDark ? 'bg-gray-700' : 'bg-gray-200'} px-2 py-0.5 rounded`}>{
+                     selectedCarModel.category === 'sedan' ? t('categories.sedan') :
+                     selectedCarModel.category === 'suv' ? t('categories.suv') :
+                     selectedCarModel.category === 'minivan' ? t('categories.minivan') : selectedCarModel.category
+                   }</span>
+                 </div>
+               </div>
+             </div>
+             <button 
+               onClick={() => setSelectedCarModel(null)}
+               className={`${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'} p-1 rounded-full ${isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100'} mt-3 md:mt-0`}
+             >
+               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+               </svg>
+             </button>
+           </div>
+          
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+             {/* Краткая информация о статусах */}
+             <div className={`${isDark ? 'bg-gray-700/50' : 'bg-gray-100'} p-4 rounded-lg`}>
+               <h3 className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium mb-3`}>{t('details.modelStatistics')}</h3>
+               <div className="grid grid-cols-2 gap-3">
+                 <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                   <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.totalInWarehouses')}</div>
+                   <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedCarModel.totalCount}</div>
+                 </div>
+                 <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                   <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.available')}</div>
+                   <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedCarModel.available}</div>
+                 </div>
+                 <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                   <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.reserved')}</div>
+                   <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedCarModel.reserved}</div>
+                 </div>
+                 <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                   <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.defectiveOk')}</div>
+                   <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedCarModel.defectiveOk}</div>
+                 </div>
+                 <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                   <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.defective')}</div>
+                   <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedCarModel.defective}</div>
+                 </div>
+                 <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                   <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>Trade-in</div>
+                   <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedCarModel.tradeIn}</div>
+                 </div>
+               </div>
+             </div>
+            
+             {/* Доступность модели - изменено на линейные индикаторы */}
+             <div className={`${isDark ? 'bg-gray-700/50' : 'bg-gray-100'} p-4 rounded-lg md:col-span-2`}>
+               <h3 className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>{t('details.statusDistribution')}</h3>
+               <div className="space-y-4 mt-3">
+                 {/* Свободные автомобили */}
+                 <div>
+                   <div className="flex justify-between mb-1">
+                     <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{t('status.available')}</span>
+                     <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>
+                       {selectedCarModel.available} {t('units')} 
+                       ({Math.round((selectedCarModel.available / selectedCarModel.totalCount) * 100)}%)
+                     </span>
+                   </div>
+                   <div className={`w-full ${isDark ? 'bg-gray-800' : 'bg-gray-200'} h-3 rounded-full overflow-hidden`}>
+                     <div 
+                       className="h-full bg-green-500 rounded-full"
+                       style={{ width: `${(selectedCarModel.available / selectedCarModel.totalCount) * 100}%` }}
+                     ></div>
+                   </div>
+                 </div>
+                
+                 {/* Закрепленные автомобили */}
+                 <div>
+                   <div className="flex justify-between mb-1">
+                     <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{t('status.reserved')}</span>
+                     <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>
+                       {selectedCarModel.reserved} {t('units')} 
+                       ({Math.round((selectedCarModel.reserved / selectedCarModel.totalCount) * 100)}%)
+                     </span>
+                   </div>
+                   <div className={`w-full ${isDark ? 'bg-gray-800' : 'bg-gray-200'} h-3 rounded-full overflow-hidden`}>
+                     <div 
+                       className="h-full bg-blue-500 rounded-full"
+                       style={{ width: `${(selectedCarModel.reserved / selectedCarModel.totalCount) * 100}%` }}
+                     ></div>
+                   </div>
+                 </div>
+                
+                 {/* Брак-ОК автомобили */}
+                 <div>
+                   <div className="flex justify-between mb-1">
+                     <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{t('status.defectiveOk')}</span>
+                     <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>
+                       {selectedCarModel.defectiveOk} {t('units')} 
+                       ({Math.round((selectedCarModel.defectiveOk / selectedCarModel.totalCount) * 100)}%)
+                     </span>
+                   </div>
+                   <div className={`w-full ${isDark ? 'bg-gray-800' : 'bg-gray-200'} h-3 rounded-full overflow-hidden`}>
+                     <div 
+                       className="h-full bg-amber-500 rounded-full"
+                       style={{ width: `${(selectedCarModel.defectiveOk / selectedCarModel.totalCount) * 100}%` }}
+                     ></div>
+                   </div>
+                 </div>
+                
+                 {/* Бракованные автомобили */}
+                 <div>
+                   <div className="flex justify-between mb-1">
+                     <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{t('status.defective')}</span>
+                     <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>
+                       {selectedCarModel.defective} {t('units')} 
+                       ({Math.round((selectedCarModel.defective / selectedCarModel.totalCount) * 100)}%)
+                     </span>
+                   </div>
+                   <div className={`w-full ${isDark ? 'bg-gray-800' : 'bg-gray-200'} h-3 rounded-full overflow-hidden`}>
+                     <div 
+                       className="h-full bg-red-500 rounded-full"
+                       style={{ width: `${(selectedCarModel.defective / selectedCarModel.totalCount) * 100}%` }}
+                     ></div>
+                   </div>
+                 </div>
+                 
+                 {/* Trade-in автомобили */}
+                 <div>
+                   <div className="flex justify-between mb-1">
+                     <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>Trade-in</span>
+                     <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>
+                       {selectedCarModel.tradeIn} {t('units')} 
+                       ({Math.round((selectedCarModel.tradeIn / selectedCarModel.totalCount) * 100)}%)
+                     </span>
+                   </div>
+                   <div className={`w-full ${isDark ? 'bg-gray-800' : 'bg-gray-200'} h-3 rounded-full overflow-hidden`}>
+                     <div 
+                       className="h-full bg-purple-500 rounded-full"
+                       style={{ width: `${(selectedCarModel.tradeIn / selectedCarModel.totalCount) * 100}%` }}
+                     ></div>
+                   </div>
+                 </div>
+               </div>
+             </div>
+           </div>
+          
+           {/* График распределения по цветам - заменяем на улучшенную сетку цветов */}
+           <div className={`${isDark ? 'bg-gray-700/50' : 'bg-gray-100'} p-4 rounded-lg mb-5`}>
+             <div className="flex justify-between items-center mb-3">
+               <h3 className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>{t('details.colorDistribution')}</h3>
+               <div className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
+                 {t('details.availableColors', { count: selectedCarModel.colors.length })}
+               </div>
+             </div>
+             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+               {filteredColors.map(color => (
+                 <div key={color.name} className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg overflow-hidden`}>
+                   <div className="flex items-center justify-between mb-2">
+                     <div className="flex items-center">
+                       <div 
+                         className={`w-6 h-6 rounded-full mr-2 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`} 
+                         style={{ backgroundColor: color.hex }}
+                       />
+                       <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-sm font-medium`}>{color.name}</span>
+                     </div>
+                     <span className={`${isDark ? 'text-gray-300' : 'text-gray-700'} text-xs`}>{color.count} {t('units')}</span>
+                   </div>
+                   
+                   {/* Индикаторы статусов */}
+                   <div className="space-y-2 mt-3">
+                     <div className="flex justify-between items-center">
+                       <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('status.available')}:</span>
+                       <div className="flex items-center">
+                         <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'} mr-1`}>{color.available}</span>
+                         <div className={`w-16 h-1.5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                           <div 
+                             className="h-full bg-green-500 rounded-full"
+                             style={{ width: `${(color.available / color.count) * 100}%` }}
+                           ></div>
+                         </div>
+                       </div>
+                     </div>
+                     
+                     <div className="flex justify-between items-center">
+                       <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('status.reserved')}:</span>
+                       <div className="flex items-center">
+                         <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'} mr-1`}>{color.reserved}</span>
+                         <div className={`w-16 h-1.5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                           <div 
+                             className="h-full bg-blue-500 rounded-full"
+                             style={{ width: `${(color.reserved / color.count) * 100}%` }}
+                           ></div>
+                         </div>
+                       </div>
+                     </div>
+                     
+                     <div className="flex justify-between items-center">
+                       <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('status.defectiveOk')}:</span>
+                       <div className="flex items-center">
+                         <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'} mr-1`}>{color.defectiveOk}</span>
+                         <div className={`w-16 h-1.5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                           <div 
+                             className="h-full bg-amber-500 rounded-full"
+                             style={{ width: `${(color.defectiveOk / color.count) * 100}%` }}
+                           ></div>
+                         </div>
+                       </div>
+                     </div>
+                     
+                     <div className="flex justify-between items-center">
+                       <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('status.defective')}:</span>
+                       <div className="flex items-center">
+                         <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'} mr-1`}>{color.defective}</span>
+                         <div className={`w-16 h-1.5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                           <div 
+                             className="h-full bg-red-500 rounded-full"
+                             style={{ width: `${(color.defective / color.count) * 100}%` }}
+                           ></div>
+                         </div>
+                       </div>
+                     </div>
+                     
+                     {color.tradeIn > 0 && (
+                       <div className="flex justify-between items-center">
+                         <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Trade-in:</span>
+                         <div className="flex items-center">
+                           <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'} mr-1`}>{color.tradeIn}</span>
+                           <div className={`w-16 h-1.5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+                             <div 
+                               className="h-full bg-purple-500 rounded-full"
+                               style={{ width: `${(color.tradeIn / color.count) * 100}%` }}
+                             ></div>
+                           </div>
+                         </div>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               ))}
+             </div>
+           </div>
+          
+           {/* Выбор модификации - улучшенное отображение */}
+           <div className={`${isDark ? 'bg-gray-700/50' : 'bg-gray-100'} p-4 rounded-lg mb-5`}>
+             <div className="flex justify-between items-center mb-3">
+               <h3 className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>{t('details.modifications', { model: selectedCarModel.name })}</h3>
+               <div className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
+                 {t('details.modificationsCount', { count: selectedCarModel.modifications.length })}
+               </div>
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+               {filteredModifications.map(modification => (
+                 <div 
+                   key={modification.id} 
+                   className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg cursor-pointer transition-all ${
+                     selectedModification?.id === modification.id ? 'ring-2 ring-blue-500' : isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-50'
+                   }`}
+                   onClick={() => handleModificationClick(modification)}
+                 >
+                   <div className="flex justify-between mb-2">
+                     <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>{modification.name}</span>
+                     <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{modification.count} {t('units')}</span>
+                   </div>
+                   
+                   {/* Полоса прогресса для отображения статусов */}
+                   <div className={`h-2 w-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden flex mb-3`}>
+                     <div 
+                       className="h-full bg-green-500" 
+                       style={{ width: `${(modification.available / modification.count) * 100}%` }}
+                     ></div>
+                     <div 
+                       className="h-full bg-blue-500" 
+                       style={{ width: `${(modification.reserved / modification.count) * 100}%` }}
+                     ></div>
+                     <div 
+                       className="h-full bg-amber-500" 
+                       style={{ width: `${(modification.defectiveOk / modification.count) * 100}%` }}
+                     ></div>
+                     <div 
+                       className="h-full bg-red-500" 
+                       style={{ width: `${(modification.defective / modification.count) * 100}%` }}
+                     ></div>
+                     <div 
+                       className="h-full bg-purple-500" 
+                       style={{ width: `${(modification.tradeIn / modification.count) * 100}%` }}
+                     ></div>
+                   </div>
+                   
+                   <div className="grid grid-cols-2 gap-2">
+                     <div className="flex justify-between items-center bg-green-500/10 px-2 py-1 rounded">
+                       <span className="text-xs text-green-400">{t('status.available')}</span>
+                       <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'}`}>{modification.available}</span>
+                     </div>
+                     <div className="flex justify-between items-center bg-blue-500/10 px-2 py-1 rounded">
+                       <span className="text-xs text-blue-400">{t('status.reserved')}</span>
+                       <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'}`}>{modification.reserved}</span>
+                     </div>
+                     <div className="flex justify-between items-center bg-amber-500/10 px-2 py-1 rounded">
+                       <span className="text-xs text-amber-400">{t('status.defectiveOk')}</span>
+                       <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'}`}>{modification.defectiveOk}</span>
+                     </div>
+                     <div className="flex justify-between items-center bg-red-500/10 px-2 py-1 rounded">
+                       <span className="text-xs text-red-400">{t('status.defective')}</span>
+                       <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'}`}>{modification.defective}</span>
+                     </div>
+                     {modification.tradeIn > 0 && (
+                       <div className="flex justify-between items-center bg-purple-500/10 px-2 py-1 rounded col-span-2">
+                         <span className="text-xs text-purple-400">Trade-in</span>
+                         <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'}`}>{modification.tradeIn}</span>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               ))}
+             </div>
+           </div>
+          
+           {/* Отображение выбранной модификации */}
+           {selectedModification && (
+             <div className={`${isDark ? 'bg-gray-700/50' : 'bg-gray-100'} p-4 rounded-lg mb-5`}>
+               <div className="flex flex-col md:flex-row gap-5">
+                 <div className="md:w-1/2">
+                   <h3 className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium mb-3`}>{selectedCarModel.name} - {selectedModification.name}</h3>
+                   <img 
+                     src={selectedCarModel.img} 
+                     alt={`${selectedCarModel.name} ${selectedModification.name}`} 
+                     className="w-full h-64 object-cover rounded-lg"
+                   />
+                 </div>
+                 <div className="md:w-1/2 flex flex-col">
+                   <h3 className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium mb-3`}>{t('details.modificationDetails')}</h3>
+                   <div className="grid grid-cols-2 gap-3 mb-auto">
+                     <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                       <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.total')}</div>
+             <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedModification.count}</div>
+                     </div>
+                     <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                       <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.available')}</div>
+                       <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedModification.available}</div>
+                     </div>
+                     <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                       <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.reserved')}</div>
+                       <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedModification.reserved}</div>
+                     </div>
+                     <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                       <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.defectiveOk')}</div>
+                       <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedModification.defectiveOk}</div>
+                     </div>
+                     <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                       <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.defective')}</div>
+                       <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedModification.defective}</div>
+                     </div>
+                     <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                       <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>Trade-in</div>
+                       <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedModification.tradeIn}</div>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             </div>
+           )}
+         </motion.div>
+       )}
+     </AnimatePresence>
+    
+     {/* Детальная информация о выбранном складе */}
+     <AnimatePresence>
+       {selectedWarehouse && (
+         <motion.div
+           initial={{ opacity: 0, y: 20 }}
+           animate={{ opacity: 1, y: 0 }}
+           exit={{ opacity: 0, y: 20 }}
+           transition={{ duration: 0.3 }}
+           className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-5 shadow-md mb-6 border ${isDark ? 'border-purple-900/30' : 'border-purple-200'}`}
+         >
+           <div className="flex justify-between items-start mb-5">
+             <div>
+               <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedWarehouse.name}</h2>
+               <p className="text-purple-400 text-sm">{t('details.warehouseDetails')}</p>
+               <div className="flex items-center mt-1">
+                 <span className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mr-2`}>{selectedWarehouse.totalCount} {t('car')}</span>
+                 <span className={`text-sm px-2 py-0.5 rounded ${
+                   selectedWarehouse.status === 'critical' ? 'bg-red-500/20 text-red-400' :
+                   selectedWarehouse.status === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                   selectedWarehouse.status === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                   'bg-green-500/20 text-green-400'
+                 }`}>
+                   {t('details.occupancy')}: {selectedWarehouse.occupancyRate}%
+                 </span>
+               </div>
+             </div>
+             <button 
+               onClick={() => setSelectedWarehouse(null)}
+               className={`${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'} p-1 rounded-full ${isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100'}`}
+             >
+               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+               </svg>
+             </button>
+           </div>
+          
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+             {/* Краткая информация с обновленными статусами */}
+             <div className={`${isDark ? 'bg-gray-700/50' : 'bg-gray-100'} p-4 rounded-lg`}>
+               <h3 className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium mb-3`}>{t('details.warehouseInfo')}</h3>
+               <div className="grid grid-cols-2 gap-3">
+                 <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                   <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.totalCars')}</div>
+                   <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedWarehouse.totalCount}</div>
+                 </div>
+                 <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                   <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.available')}</div>
+                   <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedWarehouse.available}</div>
+                 </div>
+                 <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                   <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.reserved')}</div>
+                   <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedWarehouse.reserved}</div>
+                 </div>
+                 <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                   <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.defectiveOk')}</div>
+                   <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedWarehouse.defectiveOk}</div>
+                 </div>
+                 <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                   <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.defective')}</div>
+                   <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedWarehouse.defective}</div>
+                 </div>
+                 <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} p-3 rounded-lg`}>
+                   <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>Trade-in</div>
+                   <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{selectedWarehouse.tradeIn}</div>
+                 </div>
+               </div>
+             </div>
+            
+             {/* График заполненности склада */}
+             <div className={`${isDark ? 'bg-gray-700/50' : 'bg-gray-100'} p-4 rounded-lg md:col-span-2`}>
+               <h3 className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium mb-3`}>{t('details.warehouseOccupancy')}</h3>
+               <div ref={warehouseOccupancyRef} className="h-[200px]"></div>
+             </div>
+           </div>
+          
+           <div className="grid grid-cols-1 md:grid-cols-1 gap-5 mb-5">
+             {/* Распределение по моделям */}
+             <div className={`${isDark ? 'bg-gray-700/50' : 'bg-gray-100'} p-4 rounded-lg`}>
+               <h3 className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium mb-3`}>{t('details.modelDistribution')}</h3>
+               <div className="space-y-3">
+                 {/* Убираем ограничение slice(0, 5) чтобы показать все модели */}
+                 {selectedWarehouse.models
+                   .filter(model => model.count > 0)
+                   .sort((a, b) => b.count - a.count) // Сортируем по количеству
+                   .map(model => {
+                     // Для отладки выводим все статусы
+                     console.log(`Модель ${model.name}:`, {
+                       count: model.count,
+                       available: model.available,
+                       reserved: model.reserved,
+                       defective: model.defective,
+                       defectiveOk: model.defectiveOk,
+                       tradeIn: model.tradeIn,
+                       atDealer: model.atDealer,
+                       inTransit: model.inTransit,
+                       otherStatuses: model.otherStatuses
+                     });
+                     
+                     return (
+                       <div key={model.id} className="group cursor-pointer" onClick={() => toggleModelDetailInWarehouse(model.id)}>
+                         <div className="flex flex-col">
+                           <div className="flex justify-between mb-1">
+                             <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{model.name}</span>
+                             <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{model.count} {t('units')}</span>
+                           </div>
+                           
+                           {/* Показываем все статусы в более компактном виде */}
+                           <div className="flex flex-wrap gap-2 text-xs">
+                             {model.available > 0 && (
+                               <span className="text-green-400">
+                                 {model.available} {t('status.availableShort')}
+                               </span>
+                             )}
+                             {model.reserved > 0 && (
+                               <span className="text-blue-400">
+                                 {model.reserved} {t('status.reservedShort')}
+                               </span>
+                             )}
+                             {model.defectiveOk > 0 && (
+                               <span className="text-amber-400">
+                                 {model.defectiveOk} {t('status.defectiveOkShort')}
+                               </span>
+                             )}
+                             {model.defective > 0 && (
+                               <span className="text-red-400">
+                                 {model.defective} {t('status.defectiveShort')}
+                               </span>
+                             )}
+                             {model.tradeIn > 0 && (
+                               <span className="text-purple-400">
+                                 {model.tradeIn} Trade-in
+                               </span>
+                             )}
+                             {model.atDealer > 0 && (
+                               <span className="text-cyan-400">
+                                 {model.atDealer} У дилера
+                               </span>
+                             )}
+                             {model.inTransit > 0 && (
+                               <span className="text-orange-400">
+                                 {model.inTransit} В пути
+                               </span>
+                             )}
+                             {/* Отображаем другие статусы */}
+                             {Object.entries(model.otherStatuses || {}).map(([status, count]) => 
+                               count > 0 && (
+                                 <span key={status} className={isDark ? 'text-gray-400' : 'text-gray-600'}>
+                                   {count} {status}
+                                 </span>
+                               )
+                             )}
+                           </div>
+                         </div>
+                         
+                         <div className={`w-full ${isDark ? 'bg-gray-800' : 'bg-gray-200'} h-2 rounded-full overflow-hidden mt-2`}>
+                           <div 
+                             className="h-full bg-purple-500 group-hover:bg-purple-400 transition-all rounded-full"
+                             style={{ width: `${(model.count / selectedWarehouse.totalCount) * 100}%` }}
+                           ></div>
+                         </div>
+                       </div>
+                     );
+                   })}
+               </div>
+               
+               {/* Добавляем информацию о количестве моделей */}
+               <div className={`mt-3 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                 Показано моделей: {selectedWarehouse.models.filter(model => model.count > 0).length} из {selectedWarehouse.models.length}
+               </div>
+             </div>
+               
+               {/* Расширенное представление для выбранной модели в контексте склада */}
+               <AnimatePresence>
+                 {selectedWarehouseModel && (
+                   <motion.div
+                     initial={{ opacity: 0, height: 0 }}
+                     animate={{ opacity: 1, height: 'auto' }}
+                     exit={{ opacity: 0, height: 0 }}
+                     transition={{ duration: 0.3 }}
+                     className={`${isDark ? 'bg-gray-800/60' : 'bg-gray-50'} mt-5 p-4 rounded-lg overflow-hidden`}
+                   >
+                     {(() => {
+                       const modelData = selectedWarehouse.models.find(m => m.id === selectedWarehouseModel);
+                       const fullModelData = enhancedCarModels.find(m => m.id === selectedWarehouseModel);
+                       
+                       if (!modelData || !fullModelData) return <div>{t('errors.dataNotFound')}</div>;
+                       
+                       return (
+                         <>
+                           <div className="flex justify-between items-center mb-4">
+                             <h4 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{modelData.name} {t('details.inWarehouse')} {selectedWarehouse.name}</h4>
+                             <button 
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 setSelectedWarehouseModel(null);
+                               }}
+                               className={`${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
+                             >
+                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                               </svg>
+                             </button>
+                           </div>
+                           
+                           {/* Статистика по модели на этом складе */}
+                           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+                             <div className={`${isDark ? 'bg-gray-700' : 'bg-white'} p-3 rounded-lg`}>
+                               <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.total')}</div>
+                               <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{modelData.count}</div>
+                             </div>
+                             <div className="bg-green-900/30 p-3 rounded-lg">
+                               <div className="text-green-400 text-xs">{t('metrics.available')}</div>
+                               <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{modelData.available}</div>
+                             </div>
+                             <div className="bg-blue-900/30 p-3 rounded-lg">
+                               <div className="text-blue-400 text-xs">{t('metrics.reserved')}</div>
+                               <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{modelData.reserved}</div>
+                             </div>
+                             <div className="bg-amber-900/30 p-3 rounded-lg">
+                               <div className="text-amber-400 text-xs">{t('metrics.defectiveOk')}</div>
+                               <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{modelData.defectiveOk}</div>
+                             </div>
+                             <div className="bg-red-900/30 p-3 rounded-lg">
+                               <div className="text-red-400 text-xs">{t('metrics.defective')}</div>
+                               <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{modelData.defective}</div>
+                             </div>
+                             <div className="bg-purple-900/30 p-3 rounded-lg">
+                               <div className="text-purple-400 text-xs">Trade-in</div>
+                               <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{modelData.tradeIn}</div>
+                             </div>
+                           </div>
+                           
+                           {/* Табы для выбора между цветами и модификациями */}
+                           <div className={`border-b ${isDark ? 'border-gray-700' : 'border-gray-300'} mb-4`}>
+                             <nav className="-mb-px flex space-x-6">
+                               <button 
+                                 className={`pb-2 font-medium text-sm ${
+                                   warehouseModelViewTab === 'modifications' 
+                                     ? 'border-b-2 border-blue-500 text-blue-400' 
+                                     : isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-800'
+                                 }`}
+                                 onClick={() => setWarehouseModelViewTab('modifications')}
+                               >
+                                 {t('tabs.modifications')}
+                               </button>
+                               <button 
+                                 className={`pb-2 font-medium text-sm ${
+                                   warehouseModelViewTab === 'colors' 
+                                     ? 'border-b-2 border-blue-500 text-blue-400' 
+                                     : isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-800'
+                                 }`}
+                                 onClick={() => setWarehouseModelViewTab('colors')}
+                               >
+                                 {t('tabs.colors')}
+                               </button>
+                             </nav>
+                           </div>
+                           
+                           {/* Содержимое таба модификаций */}
+                           {warehouseModelViewTab === 'modifications' && (
+                             <div className="space-y-3">
+                               <h5 className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>{t('details.allModifications', { model: modelData.name })}</h5>
+                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                 {fullModelData.modifications.map(mod => {
+                                   const warehouseMod = {
+                                     ...mod,
+                                     warehouseCount: Math.floor(mod.count * (modelData.count / fullModelData.totalCount))
+                                   };
+                                   
+                                   if (warehouseMod.warehouseCount <= 0) return null;
+                                   
+                                   return (
+                                     <div key={mod.id} className={`${isDark ? 'bg-gray-700/50' : 'bg-white'} p-3 rounded-lg`}>
+                                       <div className="flex justify-between mb-1">
+                                         <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-sm`}>{mod.name}</span>
+                                         <span className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{warehouseMod.warehouseCount} {t('units')}</span>
+                                       </div>
+                                       <div className="grid grid-cols-2 gap-1 mt-2">
+                                         <div className="bg-green-900/20 px-1.5 py-1 rounded flex justify-between">
+                                           <span className="text-green-400 text-xs">{t('status.availableShort')}:</span>
+                                           <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseMod.warehouseCount * (modelData.available / modelData.count))}</span>
+                                         </div>
+                                         <div className="bg-blue-900/20 px-1.5 py-1 rounded flex justify-between">
+                                           <span className="text-blue-400 text-xs">{t('status.reservedShort')}:</span>
+                                           <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseMod.warehouseCount * (modelData.reserved / modelData.count))}</span>
+                                         </div>
+                                         <div className="bg-amber-900/20 px-1.5 py-1 rounded flex justify-between">
+                                           <span className="text-amber-400 text-xs">{t('status.defectiveOkShort')}:</span>
+                                           <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseMod.warehouseCount * (modelData.defectiveOk / modelData.count))}</span>
+                                         </div>
+                                         <div className="bg-red-900/20 px-1.5 py-1 rounded flex justify-between">
+                                           <span className="text-red-400 text-xs">{t('status.defectiveShort')}:</span>
+                                           <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseMod.warehouseCount * (modelData.defective / modelData.count))}</span>
+                                         </div>
+                                         {modelData.tradeIn > 0 && (
+                                           <div className="bg-purple-900/20 px-1.5 py-1 rounded flex justify-between col-span-2">
+                                             <span className="text-purple-400 text-xs">Trade-in:</span>
+                                             <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseMod.warehouseCount * (modelData.tradeIn / modelData.count))}</span>
+                                           </div>
+                                         )}
+                                       </div>
+                                     </div>
+                                   );
+                                 }).filter(Boolean)}
+                               </div>
+                             </div>
+                           )}
+                           
+                           {/* Содержимое таба цветов */}
+                           {warehouseModelViewTab === 'colors' && (
+                             <div className="space-y-3">
+                               <h5 className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>{t('details.colorDistribution')}</h5>
+                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                 {fullModelData.colors.map(color => {
+                                   const warehouseColor = {
+                                     ...color,
+                                     warehouseCount: Math.floor(color.count * (modelData.count / fullModelData.totalCount))
+                                   };
+                                   
+                                   if (warehouseColor.warehouseCount <= 0) return null;
+                                   
+                                   return (
+                                     <div key={color.name} className={`${isDark ? 'bg-gray-700/50' : 'bg-white'} p-3 rounded-lg`}>
+                                       <div className="flex items-center justify-between mb-2">
+                                         <div className="flex items-center">
+                                           <div 
+                                             className={`w-4 h-4 rounded-full mr-2 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`} 
+                                             style={{ backgroundColor: color.hex }}
+                                           />
+                                           <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-sm`}>{color.name}</span>
+                                         </div>
+                                         <span className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{warehouseColor.warehouseCount} {t('units')}</span>
+                                       </div>
+                                       <div className="grid grid-cols-2 gap-1 mt-2">
+                                         <div className="bg-green-900/20 px-1.5 py-1 rounded flex justify-between">
+                                           <span className="text-green-400 text-xs">{t('status.availableShort')}:</span>
+                                           <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseColor.warehouseCount * (modelData.available / modelData.count))}</span>
+                                         </div>
+                                         <div className="bg-blue-900/20 px-1.5 py-1 rounded flex justify-between">
+                                           <span className="text-blue-400 text-xs">{t('status.reservedShort')}:</span>
+                                           <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseColor.warehouseCount * (modelData.reserved / modelData.count))}</span>
+                                         </div>
+                                         <div className="bg-amber-900/20 px-1.5 py-1 rounded flex justify-between">
+                                           <span className="text-amber-400 text-xs">{t('status.defectiveOkShort')}:</span>
+                                           <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseColor.warehouseCount * (modelData.defectiveOk / modelData.count))}</span>
+                                         </div>
+                                         <div className="bg-red-900/20 px-1.5 py-1 rounded flex justify-between">
+                                           <span className="text-red-400 text-xs">{t('status.defectiveShort')}:</span>
+                                           <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseColor.warehouseCount * (modelData.defective / modelData.count))}</span>
+                                         </div>
+                                         {modelData.tradeIn > 0 && (
+                                           <div className="bg-purple-900/20 px-1.5 py-1 rounded flex justify-between col-span-2">
+                                             <span className="text-purple-400 text-xs">Trade-in:</span>
+                                             <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseColor.warehouseCount * (modelData.tradeIn / modelData.count))}</span>
+                                           </div>
+                                         )}
+                                       </div>
+                                     </div>
+                                   );
+                                 }).filter(Boolean)}
+                               </div>
+                             </div>
+                           )}
+                         </>
+                       );
+                     })()}
+                   </motion.div>
+                 )}
+               </AnimatePresence>
+           </div>
+         </motion.div>
+       )}
+     </AnimatePresence>
+     
+     {/* Контейнер уведомлений */}
+     <NotificationsContainer />
+   </div>
+ );
 };
 
 export default CarWarehouseAnalytics;

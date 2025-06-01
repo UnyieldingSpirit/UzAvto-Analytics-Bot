@@ -2,7 +2,7 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatNumber } from './utils/formatters';
 
-const ModelComparisonChart = ({ t, currentLocale, modelPerformance, carModels, selectedPeriod, getPeriodLabel, startDate, endDate }) => {
+const ModelComparisonChart = ({ t, currentLocale, isDark, modelPerformance, carModels, selectedPeriod, getPeriodLabel, startDate, endDate }) => {
   if (Object.keys(modelPerformance).length === 0) return null;
   
   // Подготовка данных для сравнительного графика с учетом выбранного периода
@@ -50,8 +50,8 @@ const ModelComparisonChart = ({ t, currentLocale, modelPerformance, carModels, s
   // Если нет данных после фильтрации, показываем сообщение
   if (comparisonData.length === 0) {
     return (
-      <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-4 md:mb-6">
-        <h3 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 flex items-center">
+      <div className={`${isDark ? 'bg-gray-800/80' : 'bg-white'} backdrop-blur-sm rounded-xl p-4 md:p-6 border ${isDark ? 'border-gray-700/60' : 'border-gray-200'} shadow-lg hover:shadow-xl transition-all duration-300 mb-4 md:mb-6`}>
+        <h3 className={`text-lg md:text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-3 md:mb-4 flex items-center`}>
           <span className="text-xl md:text-2xl mr-2">📊</span> 
           {t('charts.comparison.title', {
             period: t(`period.${selectedPeriod}`),
@@ -60,7 +60,7 @@ const ModelComparisonChart = ({ t, currentLocale, modelPerformance, carModels, s
         </h3>
         
         <div className="w-full h-60 md:h-72 flex items-center justify-center">
-          <p className="text-gray-400 text-sm md:text-base text-center">
+          <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm md:text-base text-center`}>
             {t('charts.noDataPeriod', { 
               startDate: new Date(startDate).toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU'), 
               endDate: new Date(endDate).toLocaleDateString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU') 
@@ -84,10 +84,27 @@ const ModelComparisonChart = ({ t, currentLocale, modelPerformance, carModels, s
     realization: t('stats.realization'),
     cancellation: t('stats.cancellation')
   };
+
+  // Кастомный тултип
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className={`${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} p-3 rounded-lg shadow-lg border`}>
+          <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>{label}</p>
+          {payload.map((entry, index) => (
+            <p key={index} className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+              {legendLabels[entry.dataKey]}: <span className="font-semibold" style={{ color: entry.color }}>{formatNumber(entry.value)}</span>
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
   
   return (
-    <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-700/60 shadow-lg hover:shadow-xl transition-all duration-300 mb-4 md:mb-6">
-      <h3 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 flex items-center">
+    <div className={`${isDark ? 'bg-gray-800/80' : 'bg-white'} backdrop-blur-sm rounded-xl p-4 md:p-6 border ${isDark ? 'border-gray-700/60' : 'border-gray-200'} shadow-lg hover:shadow-xl transition-all duration-300 mb-4 md:mb-6`}>
+      <h3 className={`text-lg md:text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-3 md:mb-4 flex items-center`}>
         <span className="text-xl md:text-2xl mr-2">📊</span> 
         {t('charts.comparison.title', {
           period: t(`period.${selectedPeriod}`),
@@ -103,39 +120,29 @@ const ModelComparisonChart = ({ t, currentLocale, modelPerformance, carModels, s
             barGap={4}
             barCategoryGap={16}
           >
-            <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+            <CartesianGrid stroke={isDark ? "#374151" : "#e5e7eb"} strokeDasharray="3 3" />
             <XAxis 
               dataKey="shortName" 
-              stroke="#9ca3af"
-              tick={{ fill: '#e5e7eb', fontSize: 10 }}
+              stroke={isDark ? "#9ca3af" : "#4b5563"}
+              tick={{ fill: isDark ? '#e5e7eb' : '#374151', fontSize: 10 }}
               angle={-45}
               textAnchor="end"
               height={80}
               interval={0}
             />
             <YAxis 
-              stroke="#9ca3af" 
+              stroke={isDark ? "#9ca3af" : "#4b5563"}
               tickFormatter={formatNumber}
               width={45}
-              tick={{ fontSize: 10, fill: '#d1d5db' }}
+              tick={{ fontSize: 10, fill: isDark ? '#d1d5db' : '#374151' }}
             />
             <Tooltip 
-              formatter={(value, name) => {
-                return [formatNumber(value), legendLabels[name] || name];
-              }}
-              labelFormatter={(value, entry) => {
-                // Найти полное название в данных
-                const fullName = entry[0]?.payload?.name || value;
-                return fullName;
-              }}
-              wrapperStyle={{ backgroundColor: '#1f2937', border: '1px solid #4b5563' }}
-              contentStyle={{ backgroundColor: '#1f2937', border: 'none' }}
-              itemStyle={{ color: '#e5e7eb' }}
-              labelStyle={{ color: '#e5e7eb', fontWeight: 'bold' }}
+              content={<CustomTooltip />}
+              cursor={{ fill: isDark ? 'rgba(75, 85, 99, 0.2)' : 'rgba(229, 231, 235, 0.5)' }}
             />
             <Legend 
               formatter={(value) => {
-                return <span style={{color: '#d1d5db', fontSize: '0.85rem'}}>{legendLabels[value]}</span>
+                return <span style={{color: isDark ? '#d1d5db' : '#374151', fontSize: '0.85rem'}}>{legendLabels[value]}</span>
               }}
               wrapperStyle={{ bottom: 0 }}
             />

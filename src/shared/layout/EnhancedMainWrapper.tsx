@@ -8,6 +8,7 @@ import ResponsiveNav from './ResponsiveNav';
 import ContentReadyLoader from './ContentReadyLoader';
 import { setupAxiosInterceptors } from '../../utils/axiosConfig';
 import { useAuth } from '../../hooks/useAuth';
+import { useThemeStore } from '../../store/theme';
 
 interface EnhancedMainWrapperProps {
   children: ReactNode;
@@ -22,6 +23,8 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
   const pathname = usePathname();
   const router = useRouter();
   const { checkAuth } = useAuth();
+  const { initializeTheme, mode } = useThemeStore();
+  const isDark = mode === 'dark';
   
   // Проверяем, находимся ли мы на странице авторизации
   const isAuthPage = pathname === '/auth';
@@ -47,6 +50,11 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
       }
     }
   }, [pathname, router, isAuthPage, isOnboardingPage]);
+
+  // Инициализация темы
+  useEffect(() => {
+    initializeTheme();
+  }, [initializeTheme]);
 
   // Определение типа устройства
   useEffect(() => {
@@ -74,9 +82,6 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
     
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
-    
-    // Принудительное применение темной темы
-    document.documentElement.classList.add('dark');
     
     return () => {
       window.removeEventListener('resize', checkScreenSize);
@@ -136,13 +141,13 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
         <div className="flex h-screen w-screen overflow-hidden">
           <div 
             ref={mainRef}
-            className="flex-grow h-full relative bg-white dark:bg-gray-900"
+            className={`flex-grow h-full relative ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}
           >
             <TelegramWebAppInitializer />
             
             <div 
               ref={contentRef}
-              className="content-scroll-container h-full bg-white dark:bg-gray-900 text-gray-800 dark:text-white overflow-auto"
+              className={`content-scroll-container h-full ${isDark ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-800'} overflow-auto`}
             >
               {children}
             </div>
@@ -164,16 +169,8 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
           }
           
           body {
-            background-color: white;
-            color: #1f2937;
-          }
-          
-          body.dark,
-          .dark body,
-          html.dark,
-          .dark html {
-            background-color: #111827;
-            color: white;
+            background-color: ${isDark ? '#111827' : '#f9fafb'};
+            color: ${isDark ? 'white' : '#1f2937'};
           }
           
           .content-scroll-container {
@@ -207,13 +204,13 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
         <div className="flex h-screen w-screen overflow-hidden">
           <div 
             ref={mainRef}
-            className="flex-grow h-full relative bg-white dark:bg-gray-900"
+            className={`flex-grow h-full relative ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}
           >
             <TelegramWebAppInitializer />
             
             <div 
               ref={contentRef}
-              className="content-scroll-container h-full bg-white dark:bg-gray-900 text-gray-800 dark:text-white overflow-auto"
+              className={`content-scroll-container h-full ${isDark ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-800'} overflow-auto`}
             >
               {children}
             </div>
@@ -235,16 +232,8 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
           }
           
           body {
-            background-color: white;
-            color: #1f2937;
-          }
-          
-          body.dark,
-          .dark body,
-          html.dark,
-          .dark html {
-            background-color: #111827;
-            color: white;
+            background-color: ${isDark ? '#111827' : '#f9fafb'};
+            color: ${isDark ? 'white' : '#1f2937'};
           }
           
           .content-scroll-container {
@@ -281,13 +270,13 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
         </div>
         <div 
           ref={mainRef}
-          className="flex-grow h-full relative bg-white dark:bg-gray-900"
+          className={`flex-grow h-full relative ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}
         >
           <TelegramWebAppInitializer />
           
           <div 
             ref={contentRef}
-            className="content-scroll-container h-full bg-white dark:bg-gray-900 text-gray-800 dark:text-white overflow-auto"
+            className={`content-scroll-container h-full ${isDark ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-800'} overflow-auto`}
           >
             {children}
           </div>
@@ -311,17 +300,9 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
         
         /* Стили для светлой темы */
         body {
-          background-color: white;
-          color: #1f2937;
-        }
-        
-        /* Стили для темной темы */
-        body.dark,
-        .dark body,
-        html.dark,
-        .dark html {
-          background-color: #111827;
-          color: white;
+          background-color: ${isDark ? '#111827' : '#f9fafb'};
+          color: ${isDark ? 'white' : '#1f2937'};
+          transition: background-color 0.3s ease, color 0.3s ease;
         }
         
         /* Скрыть скроллбар, но оставить функциональность */

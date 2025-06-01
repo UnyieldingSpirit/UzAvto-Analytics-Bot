@@ -1,3 +1,4 @@
+// src/shared/components/ProductionDashboard.jsx
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import * as d3 from 'd3';
@@ -8,13 +9,16 @@ import axios from 'axios';
 import { BarChart3, Calendar, CarFront, TrendingUp, ExternalLink, Home, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 
 // Импортируем локализацию и хук для переводов
-import { productionDashboardTranslations } from '../../shared/components/locales/ProductionDashboard';
+import { productionDashboardTranslations } from './locales/ProductionDashboard';
 import { useTranslation } from '../../hooks/useTranslation';
-import ContentReadyLoader from '../../shared/layout/ContentReadyLoader';
+import ContentReadyLoader from '../layout/ContentReadyLoader';
+import { useThemeStore } from '../../store/theme';
 
 const ProductionDashboard = () => {
-  // Инициализация переводов
+  // Инициализация переводов и темы
   const { t, currentLocale } = useTranslation(productionDashboardTranslations);
+  const { mode } = useThemeStore();
+  const isDark = mode === 'dark';
   
   // Состояния для управления фильтрами
   const [period, setPeriod] = useState('year');
@@ -132,7 +136,7 @@ const ProductionDashboard = () => {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [isLoading, apiData, marketType, selectedMonth, currentLocale]);
+  }, [isLoading, apiData, marketType, selectedMonth, currentLocale, isDark]);
   
   // Отрисовка графика при изменении данных
   useEffect(() => {
@@ -140,7 +144,7 @@ const ProductionDashboard = () => {
       console.log('Отрисовка графика с данными:', apiData);
       renderChart();
     }
-  }, [marketType, selectedMonth, apiData, currentLocale]);
+  }, [marketType, selectedMonth, apiData, currentLocale, isDark]);
   
   // Функция для отрисовки графика
   const renderChart = () => {
@@ -174,7 +178,7 @@ const ProductionDashboard = () => {
       console.log('Месяцы не найдены для года:', year);
       d3.select(container)
         .append("div")
-        .attr("class", "flex items-center justify-center h-[400px] text-gray-400")
+        .attr("class", `flex items-center justify-center h-[400px] ${isDark ? 'text-gray-400' : 'text-gray-600'}`)
         .text(t('chart.noData', { year }));
       return;
     }
@@ -327,13 +331,13 @@ const ProductionDashboard = () => {
       .attr("dy", ".15em")
       .attr("transform", `rotate(${window.innerWidth < 600 ? -60 : -45})`) // Более крутой угол для мобильных
       .style("font-size", window.innerWidth < 600 ? "10px" : "12px") // Меньший размер шрифта для мобильных
-      .style("fill", "#e5e7eb");
+      .style("fill", isDark ? "#e5e7eb" : "#374151");
     
     svg.append("g")
       .call(d3.axisLeft(y))
       .selectAll("text")
       .style("font-size", window.innerWidth < 600 ? "10px" : "12px")
-      .style("fill", "#e5e7eb");
+      .style("fill", isDark ? "#e5e7eb" : "#374151");
     
     // Добавляем сетку
     svg.append("g")
@@ -346,7 +350,7 @@ const ProductionDashboard = () => {
       .attr("x2", width)
       .attr("y1", d => y(d))
       .attr("y2", d => y(d))
-      .attr("stroke", "#374151")
+      .attr("stroke", isDark ? "#374151" : "#e5e7eb")
       .attr("stroke-width", 0.5)
       .attr("stroke-dasharray", "3,3");
     
@@ -405,7 +409,7 @@ const ProductionDashboard = () => {
         .attr("x", d => x(d.month) + x.bandwidth() / 2)
         .attr("y", d => y(d.value) - 10)
         .attr("text-anchor", "middle")
-        .attr("fill", "#e5e7eb")
+        .attr("fill", isDark ? "#e5e7eb" : "#374151")
         .style("font-size", window.innerWidth < 600 ? "10px" : "12px")
         .style("font-weight", "500")
         .style("opacity", 0)
@@ -422,7 +426,7 @@ const ProductionDashboard = () => {
       .attr("text-anchor", "middle")
       .style("font-size", window.innerWidth < 600 ? "12px" : "14px")
       .style("font-weight", "bold")
-      .style("fill", "#f1f5f9")
+      .style("fill", isDark ? "#f1f5f9" : "#1f2937")
       .text(t('chart.productionForYear', { year }));
   };
   
@@ -565,12 +569,12 @@ const ProductionDashboard = () => {
   };
   
   return (
-    <div className="bg-gray-900 text-white p-4 md:p-6" ref={containerRef}>
+    <div className={`${isDark ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'} p-4 md:p-6`} ref={containerRef}>
       <ContentReadyLoader isLoading={isLoading} timeout={2000} />
       
       {/* Заголовок */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white flex items-center">
+        <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} flex items-center`}>
           <CarFront className="mr-2 text-orange-500" size={28} />
           <span className="bg-gradient-to-r from-orange-400 to-amber-600 text-transparent bg-clip-text">
             {t('title')}
@@ -579,14 +583,14 @@ const ProductionDashboard = () => {
       </div>
       
       {/* Панель фильтров */}
-      <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 md:p-5 rounded-lg border border-gray-700 shadow-lg mb-6 transition-all duration-300">
+      <div className={`bg-gradient-to-br ${isDark ? 'from-gray-800 to-gray-900' : 'from-white to-gray-50'} p-4 md:p-5 rounded-lg border ${isDark ? 'border-gray-700' : 'border-gray-200'} shadow-lg mb-6 transition-all duration-300`}>
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-medium text-gray-200 flex items-center">
+          <h2 className={`text-lg font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'} flex items-center`}>
             <Filter className="w-5 h-5 mr-2 text-orange-500" />
             {t('filters.title')}
           </h2>
           <button 
-            className="text-gray-400 hover:text-gray-200 flex items-center focus:outline-none"
+            className={`${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-600 hover:text-gray-800'} flex items-center focus:outline-none`}
             onClick={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
           >
             {isFiltersCollapsed ? t('filters.expand') : t('filters.collapse')}
@@ -608,12 +612,12 @@ const ProductionDashboard = () => {
             >
               {/* Выбор периода */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{t('periodAnalysis.title')}</label>
+                <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>{t('periodAnalysis.title')}</label>
                 <div className="mt-3">
                   <select
                     value={year}
                     onChange={handleYearChange}
-                    className="w-full p-2.5 bg-gray-700 text-white border border-gray-600 rounded-md"
+                    className={`w-full p-2.5 ${isDark ? 'bg-gray-700 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'} border rounded-md`}
                   >
                     {availableYears.map((yearOption) => (
                       <option key={yearOption} value={yearOption}>
@@ -626,13 +630,15 @@ const ProductionDashboard = () => {
               
               {/* Выбор типа рынка */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{t('marketType.title')}</label>
+                <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>{t('marketType.title')}</label>
                 <div className="flex flex-wrap gap-2">
                   <button 
                     className={`px-4 py-2 rounded-md flex items-center transition-all duration-200 flex-1 justify-center ${
                       marketType === 'all' 
                         ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white font-medium shadow-md' 
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : isDark 
+                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                     onClick={() => handleMarketTypeChange('all')}
                   >
@@ -643,7 +649,9 @@ const ProductionDashboard = () => {
                     className={`px-4 py-2 rounded-md flex items-center transition-all duration-200 flex-1 justify-center ${
                       marketType === 'domestic' 
                         ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium shadow-md' 
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : isDark 
+                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                     onClick={() => handleMarketTypeChange('domestic')}
                   >
@@ -654,7 +662,9 @@ const ProductionDashboard = () => {
                     className={`px-4 py-2 rounded-md flex items-center transition-all duration-200 flex-1 justify-center ${
                       marketType === 'export' 
                         ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium shadow-md' 
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : isDark 
+                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                     onClick={() => handleMarketTypeChange('export')}
                   >
@@ -670,19 +680,19 @@ const ProductionDashboard = () => {
       
       {/* Индикатор загрузки */}
       {isLoading && (
-        <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-lg border border-gray-700 shadow-lg mb-6 flex items-center justify-center">
+        <div className={`bg-gradient-to-br ${isDark ? 'from-gray-800 to-gray-900' : 'from-white to-gray-50'} p-8 rounded-lg border ${isDark ? 'border-gray-700' : 'border-gray-200'} shadow-lg mb-6 flex items-center justify-center`}>
           <div className="flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500 mb-4"></div>
-            <p className="text-gray-300">{t('loading')}</p>
+            <p className={isDark ? 'text-gray-300' : 'text-gray-700'}>{t('loading')}</p>
           </div>
         </div>
       )}
       
       {/* Сообщение об ошибке */}
       {error && (
-        <div className="bg-gradient-to-br from-gray-800 to-red-900/20 p-6 rounded-lg border border-red-700 shadow-lg mb-6">
+        <div className={`bg-gradient-to-br ${isDark ? 'from-gray-800 to-red-900/20' : 'from-white to-red-50'} p-6 rounded-lg border ${isDark ? 'border-red-700' : 'border-red-200'} shadow-lg mb-6`}>
           <h3 className="text-lg font-medium text-red-400 mb-2">{t('error.title')}</h3>
-          <p className="text-gray-300">{error}</p>
+          <p className={isDark ? 'text-gray-300' : 'text-gray-700'}>{error}</p>
         </div>
       )}
       
@@ -691,25 +701,25 @@ const ProductionDashboard = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {/* Общее производство */}
           <motion.div 
-            whileHover={{ y: -5, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)' }}
-            className={`bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-lg border border-gray-700 shadow-md transition-all duration-300 cursor-pointer ${
+            whileHover={{ y: -5, boxShadow: isDark ? '0 10px 15px -3px rgba(0, 0, 0, 0.3)' : '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+            className={`bg-gradient-to-br ${isDark ? 'from-gray-800 to-gray-900' : 'from-white to-gray-50'} p-5 rounded-lg border ${isDark ? 'border-gray-700' : 'border-gray-200'} shadow-md transition-all duration-300 cursor-pointer ${
               marketType === 'all' ? 'ring-2 ring-orange-500/50' : ''
             }`}
             onClick={() => handleMarketTypeChange('all')}
           >
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-sm text-gray-400 mb-1">{t('metrics.totalProduction')}</p>
-                <h3 className="text-2xl font-bold text-white">{totals.totalProduction}</h3>
-                <p className="text-xs text-gray-300 mt-1">
+                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>{t('metrics.totalProduction')}</p>
+                <h3 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{totals.totalProduction}</h3>
+                <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-500'} mt-1`}>
                   {t('metrics.forYear', { year })}
                 </p>
               </div>
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500/20 to-amber-500/10 flex items-center justify-center text-orange-500 shadow-lg">
+              <div className={`w-14 h-14 rounded-xl ${isDark ? 'bg-gradient-to-br from-orange-500/20 to-amber-500/10' : 'bg-gradient-to-br from-orange-500/10 to-amber-500/5'} flex items-center justify-center text-orange-500 shadow-lg`}>
                 <BarChart3 className="w-7 h-7" />
               </div>
             </div>
-            <div className="mt-4 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+            <div className={`mt-4 h-1.5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: '100%' }}
@@ -721,25 +731,25 @@ const ProductionDashboard = () => {
           
           {/* Внутренний рынок */}
           <motion.div 
-            whileHover={{ y: -5, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)' }}
-            className={`bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-lg border border-gray-700 shadow-md transition-all duration-300 cursor-pointer ${
+            whileHover={{ y: -5, boxShadow: isDark ? '0 10px 15px -3px rgba(0, 0, 0, 0.3)' : '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+            className={`bg-gradient-to-br ${isDark ? 'from-gray-800 to-gray-900' : 'from-white to-gray-50'} p-5 rounded-lg border ${isDark ? 'border-gray-700' : 'border-gray-200'} shadow-md transition-all duration-300 cursor-pointer ${
               marketType === 'domestic' ? 'ring-2 ring-blue-500/50' : ''
             }`}
             onClick={() => handleMarketTypeChange('domestic')}
           >
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-sm text-gray-400 mb-1">{t('metrics.domesticMarket')}</p>
-                <h3 className="text-2xl font-bold text-white">{totals.totalDomestic}</h3>
-                <p className="text-xs text-gray-300 mt-1">
+                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>{t('metrics.domesticMarket')}</p>
+                <h3 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{totals.totalDomestic}</h3>
+                <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-500'} mt-1`}>
                   {totals.totalProduction > 0 ? Math.round((totals.totalDomestic / totals.totalProduction) * 100) : 0}{t('metrics.ofTotal')}
                 </p>
               </div>
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 flex items-center justify-center text-blue-500 shadow-lg">
+              <div className={`w-14 h-14 rounded-xl ${isDark ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10' : 'bg-gradient-to-br from-blue-500/10 to-blue-600/5'} flex items-center justify-center text-blue-500 shadow-lg`}>
                 <Home className="w-7 h-7" />
               </div>
             </div>
-            <div className="mt-4 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+            <div className={`mt-4 h-1.5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: totals.totalProduction > 0 ? `${(totals.totalDomestic / totals.totalProduction) * 100}%` : '0%' }}
@@ -751,25 +761,25 @@ const ProductionDashboard = () => {
           
           {/* Экспортный рынок */}
           <motion.div 
-            whileHover={{ y: -5, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)' }}
-            className={`bg-gradient-to-br from-gray-800 to-gray-900 p-5 rounded-lg border border-gray-700 shadow-md transition-all duration-300 cursor-pointer ${
+            whileHover={{ y: -5, boxShadow: isDark ? '0 10px 15px -3px rgba(0, 0, 0, 0.3)' : '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+            className={`bg-gradient-to-br ${isDark ? 'from-gray-800 to-gray-900' : 'from-white to-gray-50'} p-5 rounded-lg border ${isDark ? 'border-gray-700' : 'border-gray-200'} shadow-md transition-all duration-300 cursor-pointer ${
               marketType === 'export' ? 'ring-2 ring-green-500/50' : ''
             }`}
             onClick={() => handleMarketTypeChange('export')}
           >
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-sm text-gray-400 mb-1">{t('metrics.exportMarket')}</p>
-                <h3 className="text-2xl font-bold text-white">{totals.totalExport}</h3>
-                <p className="text-xs text-gray-300 mt-1">
+                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>{t('metrics.exportMarket')}</p>
+                <h3 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{totals.totalExport}</h3>
+                <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-500'} mt-1`}>
                   {totals.totalProduction > 0 ? Math.round((totals.totalExport / totals.totalProduction) * 100) : 0}{t('metrics.ofTotal')}
                 </p>
               </div>
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/10 flex items-center justify-center text-green-500 shadow-lg">
+              <div className={`w-14 h-14 rounded-xl ${isDark ? 'bg-gradient-to-br from-green-500/20 to-emerald-500/10' : 'bg-gradient-to-br from-green-500/10 to-emerald-500/5'} flex items-center justify-center text-green-500 shadow-lg`}>
                 <ExternalLink className="w-7 h-7" />
               </div>
             </div>
-            <div className="mt-4 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+            <div className={`mt-4 h-1.5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: totals.totalProduction > 0 ? `${(totals.totalExport / totals.totalProduction) * 100}%` : '0%' }}
@@ -787,12 +797,12 @@ const ProductionDashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-5 rounded-lg border border-gray-700 shadow-lg mb-6"
+          className={`bg-gradient-to-br ${isDark ? 'from-gray-800 to-gray-900' : 'from-white to-gray-50'} p-4 sm:p-5 rounded-lg border ${isDark ? 'border-gray-700' : 'border-gray-200'} shadow-lg mb-6`}
         >
-          <h2 className="text-lg font-medium text-gray-200 flex items-center mb-5 flex-wrap">
+          <h2 className={`text-lg font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'} flex items-center mb-5 flex-wrap`}>
             <TrendingUp className="w-5 h-5 mr-2 text-orange-500" />
             {t('chart.title')}
-            <span className="ml-2 text-sm font-normal text-gray-400">
+            <span className={`ml-2 text-sm font-normal ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
               {marketType === 'all' ? t('marketType.all') : 
                marketType === 'domestic' ? t('marketType.domestic') : t('marketType.export')}
             </span>
@@ -800,7 +810,7 @@ const ProductionDashboard = () => {
           
           <div ref={chartRef} className="w-full h-[400px] overflow-x-auto"></div>
           
-          <p className="text-xs text-gray-400 mt-3 text-center px-2">
+          <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-3 text-center px-2`}>
             {t('chart.hint')}
           </p>
         </motion.div>
@@ -808,8 +818,8 @@ const ProductionDashboard = () => {
       
       {/* Информация если нет данных */}
       {!isLoading && apiData.length === 0 && !error && (
-        <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-lg border border-gray-700 shadow-lg mb-6 text-center">
-          <p className="text-gray-300">{t('error.noDataToDisplay')}</p>
+        <div className={`bg-gradient-to-br ${isDark ? 'from-gray-800 to-gray-900' : 'from-white to-gray-50'} p-8 rounded-lg border ${isDark ? 'border-gray-700' : 'border-gray-200'} shadow-lg mb-6 text-center`}>
+          <p className={isDark ? 'text-gray-300' : 'text-gray-700'}>{t('error.noDataToDisplay')}</p>
         </div>
       )}
       
@@ -821,40 +831,39 @@ const ProductionDashboard = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.5 }}
-            className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-5 rounded-lg border border-gray-700 shadow-lg"
+            className={`bg-gradient-to-br ${isDark ? 'from-gray-800 to-gray-900' : 'from-white to-gray-50'} p-4 sm:p-5 rounded-lg border ${isDark ? 'border-gray-700' : 'border-gray-200'} shadow-lg`}
           >
-            <h2 className="text-lg font-medium text-gray-200 flex items-center mb-5 flex-wrap">
+            <h2 className={`text-lg font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'} flex items-center mb-5 flex-wrap`}>
               <Calendar className="w-5 h-5 mr-2 text-green-500" />
               {t('monthDetails.title', { month: formatMonth(selectedMonth.month), year: selectedMonth.month.split('-')[0] })}
-              <span className="ml-auto text-sm bg-gray-700 px-3 py-1 rounded-full text-gray-300 mt-1 sm:mt-0">
+              <span className={`ml-auto text-sm ${isDark ? 'bg-gray-700' : 'bg-gray-100'} px-3 py-1 rounded-full ${isDark ? 'text-gray-300' : 'text-gray-700'} mt-1 sm:mt-0`}>
                 {selectedMonthDetails.total} {t('monthDetails.totalCars')}
               </span>
             </h2>
             
             {selectedMonthDetails.models.length > 0 ? (
-              <div className="overflow-x-auto rounded-lg border border-gray-700 shadow">
-                <table className="min-w-full divide-y divide-gray-700">
-                  <thead className="bg-gray-800/80 sticky top-0">
+              <div className={`overflow-x-auto rounded-lg border ${isDark ? 'border-gray-700' : 'border-gray-200'} shadow`}>
+                <table className={`min-w-full divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                  <thead className={`${isDark ? 'bg-gray-800/80' : 'bg-gray-50'} sticky top-0`}>
                     <tr>
-                      <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{t('monthDetails.model')}</th>
-                      <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{t('monthDetails.domesticMarket')}</th>
-                      <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{t('monthDetails.exportMarket')}</th>
-                      <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{t('monthDetails.total')}</th>
+                      <th className={`px-4 py-3.5 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider`}>{t('monthDetails.model')}</th>
+                      <th className={`px-4 py-3.5 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider`}>{t('monthDetails.domesticMarket')}</th>
+                      <th className={`px-4 py-3.5 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider`}>{t('monthDetails.exportMarket')}</th>
+                      <th className={`px-4 py-3.5 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider`}>{t('monthDetails.total')}</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-gray-800/50 divide-y divide-gray-700">
+                  <tbody className={`${isDark ? 'bg-gray-800/50 divide-y divide-gray-700' : 'bg-white divide-y divide-gray-200'}`}>
                     {selectedMonthDetails.models.map((model, i) => (
                       <motion.tr 
                         key={model.id} 
-                        className="hover:bg-gray-700/50 transition-colors"
+                        className={`${isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'} transition-colors`}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: i * 0.05 }}
-                        whileHover={{ backgroundColor: 'rgba(55, 65, 81, 0.5)' }}
                       >
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="flex-shrink-0 w-12 h-12 bg-gray-700/70 rounded-md overflow-hidden border border-gray-600 transition-transform hover:scale-105 shadow-md">
+                            <div className={`flex-shrink-0 w-12 h-12 ${isDark ? 'bg-gray-700/70' : 'bg-gray-100'} rounded-md overflow-hidden border ${isDark ? 'border-gray-600' : 'border-gray-200'} transition-transform hover:scale-105 shadow-md`}>
                               <img 
                                 src={model.img} 
                                 alt={model.name} 
@@ -867,32 +876,32 @@ const ProductionDashboard = () => {
                               />
                             </div>
                             <div className="ml-3 sm:ml-4">
-                              <div className="text-sm font-medium text-white">{model.name}</div>
-                              <div className="text-xs text-gray-400 mt-1">
+                              <div className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{model.name}</div>
+                              <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
                                 {selectedMonthDetails.total > 0 ? ((model.total / selectedMonthDetails.total) * 100).toFixed(1) : 0}% {t('monthDetails.ofTotal')}
                               </div>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-200">
+                          <div className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                             {model.domestic}
                           </div>
-                          <div className="text-xs text-gray-400 mt-1">
+                          <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
                             {model.total > 0 ? ((model.domestic / model.total) * 100).toFixed(0) : 0}%
                           </div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-200">
+                          <div className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                             {model.export}
                           </div>
-                          <div className="text-xs text-gray-400 mt-1">
+                          <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
                             {model.total > 0 ? ((model.export / model.total) * 100).toFixed(0) : 0}%
                           </div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-200">{model.total}</div>
-                          <div className="w-full bg-gray-700 rounded-full h-1.5 mt-2 overflow-hidden">
+                          <div className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{model.total}</div>
+                          <div className={`w-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-1.5 mt-2 overflow-hidden`}>
                             <div 
                               className={`h-1.5 rounded-full ${i === 0 ? 'bg-gradient-to-r from-orange-500 to-amber-500' : 'bg-gradient-to-r from-gray-500 to-gray-600'}`}
                               style={{
@@ -906,16 +915,16 @@ const ProductionDashboard = () => {
                       </motion.tr>
                     ))}
                   </tbody>
-                  <tfoot className="bg-gray-800/90">
+                  <tfoot className={isDark ? 'bg-gray-800/90' : 'bg-gray-50'}>
                     <tr>
-                      <td className="px-4 py-3.5 text-sm font-medium text-gray-200">{t('monthDetails.totalRow')}</td>
-                      <td className="px-4 py-3.5 text-sm font-medium text-gray-200">
+                      <td className={`px-4 py-3.5 text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{t('monthDetails.totalRow')}</td>
+                      <td className={`px-4 py-3.5 text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                         {selectedMonthDetails.domestic}
                       </td>
-                      <td className="px-4 py-3.5 text-sm font-medium text-gray-200">
+                      <td className={`px-4 py-3.5 text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                         {selectedMonthDetails.export}
                       </td>
-                      <td className="px-4 py-3.5 text-sm font-medium text-gray-200">
+                      <td className={`px-4 py-3.5 text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                         {selectedMonthDetails.total}
                       </td>
                     </tr>
@@ -923,8 +932,8 @@ const ProductionDashboard = () => {
                 </table>
               </div>
             ) : (
-              <div className="bg-gray-800/60 p-6 rounded-lg text-center">
-                <p className="text-gray-300">{t('monthDetails.noModelsData')}</p>
+              <div className={`${isDark ? 'bg-gray-800/60' : 'bg-gray-100'} p-6 rounded-lg text-center`}>
+                <p className={isDark ? 'text-gray-300' : 'text-gray-700'}>{t('monthDetails.noModelsData')}</p>
               </div>
             )}
           </motion.div>

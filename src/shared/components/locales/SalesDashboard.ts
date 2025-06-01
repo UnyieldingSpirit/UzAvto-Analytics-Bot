@@ -44,7 +44,33 @@ export const dashboardTranslations: LocaleMessages = {
             dealer: 'Неизвестный дилер',
             model: 'Неизвестная модель'
         },
-        car: 'Авто'
+        car: 'Авто',
+        dealer: {
+            totalCars: 'Всего автомобилей',
+            units: 'шт.',
+            modelDistribution: 'Распределение по моделям'
+        },
+        dealers: {
+            central: 'Центральный автосалон',
+            premium: 'Премиум Авто',
+            maximum: 'Максимум Моторс',
+            samarkand: 'Самарканд Авто',
+            autoSamarkand: 'АвтоСамарканд',
+            samarkandMotors: 'Самарканд Моторс',
+            bukhara: 'Бухара Авто',
+            bukharaGM: 'Бухара GM'
+        },
+        status: {
+            critical: 'критический',
+            medium: 'средний',
+            online: 'Онлайн'
+        },
+        logs: {
+            dataLoaded: 'Данные успешно загружены',
+            dataLoadError: 'Ошибка при загрузке данных:',
+            modelDataLoaded: 'Данные по модели загружены:',
+            modelDataLoadError: 'Ошибка при загрузке данных по модели:'
+        }
     },
     'uz': {
         title: 'Avtomobil savdosi monitoringi',
@@ -89,7 +115,33 @@ export const dashboardTranslations: LocaleMessages = {
             dealer: 'Noma\'lum diler',
             model: 'Noma\'lum model'
         },
-        car: 'Avto'
+        car: 'Avto',
+        dealer: {
+            totalCars: 'Jami avtomobillar',
+            units: 'dona',
+            modelDistribution: 'Modellar bo\'yicha taqsimot'
+        },
+        dealers: {
+            central: 'Markaziy avtosalon',
+            premium: 'Premium Avto',
+            maximum: 'Maksimum Motors',
+            samarkand: 'Samarqand Avto',
+            autoSamarkand: 'AvtoSamarqand',
+            samarkandMotors: 'Samarqand Motors',
+            bukhara: 'Buxoro Avto',
+            bukharaGM: 'Buxoro GM'
+        },
+        status: {
+            critical: 'kritik',
+            medium: 'o\'rta',
+            online: 'Onlayn'
+        },
+        logs: {
+            dataLoaded: 'Ma\'lumotlar muvaffaqiyatli yuklandi',
+            dataLoadError: 'Ma\'lumotlarni yuklashda xatolik:',
+            modelDataLoaded: 'Model ma\'lumotlari yuklandi:',
+            modelDataLoadError: 'Model ma\'lumotlarini yuklashda xatolik:'
+        }
     },
     'en': {
         title: 'Car Sales Monitoring',
@@ -134,6 +186,32 @@ export const dashboardTranslations: LocaleMessages = {
             dealer: 'Unknown dealer',
             model: 'Unknown model'
         },
-        car: 'Car'
+        car: 'Car',
+        dealer: {
+            totalCars: 'Total cars',
+            units: 'pcs',
+            modelDistribution: 'Model distribution'
+        },
+        dealers: {
+            central: 'Central Dealership',
+            premium: 'Premium Auto',
+            maximum: 'Maximum Motors',
+            samarkand: 'Samarkand Auto',
+            autoSamarkand: 'AutoSamarkand',
+            samarkandMotors: 'Samarkand Motors',
+            bukhara: 'Bukhara Auto',
+            bukharaGM: 'Bukhara GM'
+        },
+        status: {
+            critical: 'critical',
+            medium: 'medium',
+            online: 'Online'
+        },
+        logs: {
+            dataLoaded: 'Data loaded successfully',
+            dataLoadError: 'Error loading data:',
+            modelDataLoaded: 'Model data loaded:',
+            modelDataLoadError: 'Error loading model data:'
+        }
     }
 };

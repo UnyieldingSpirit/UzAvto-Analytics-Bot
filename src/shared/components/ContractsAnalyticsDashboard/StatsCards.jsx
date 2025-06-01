@@ -5,6 +5,7 @@ import { FileText, CheckCircle, XCircle } from 'lucide-react';
 const StatsCards = ({ 
   t, // добавляем перевод
   currentLocale, // добавляем текущую локаль
+  isDark, // добавляем поддержку темы
   selectedPeriod, 
   selectedDetailLabel, 
   selectedModel, 
@@ -128,9 +129,9 @@ const StatsCards = ({
   };
 
   return (
-    <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 md:p-5 border border-gray-700/60 shadow-lg mb-4 md:mb-5 hover:shadow-xl transition-all duration-300">
-      <h3 className="text-base md:text-lg font-bold text-white mb-3 md:mb-4 flex items-center">
-        <div className="flex items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full bg-indigo-500/20 mr-2">
+    <div className={`${isDark ? 'bg-gray-800/80' : 'bg-white'} backdrop-blur-sm rounded-xl p-4 md:p-5 border ${isDark ? 'border-gray-700/60' : 'border-gray-200'} shadow-lg mb-4 md:mb-5 hover:shadow-xl transition-all duration-300`}>
+      <h3 className={`text-base md:text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-3 md:mb-4 flex items-center`}>
+        <div className={`flex items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full ${isDark ? 'bg-indigo-500/20' : 'bg-indigo-500/10'} mr-2`}>
           <span className="text-indigo-400 text-base md:text-lg">📊</span>
         </div>
         <span>{t('stats.title', { period: getFormattedPeriod() })}</span>
@@ -144,20 +145,28 @@ const StatsCards = ({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
         {/* Карточка Контракты */}
         <div 
-          className={`rounded-xl p-3 md:p-4 border ${activeMetric === 'contracts' ? 'border-indigo-500' : 'border-gray-700/60'} ${activeMetric === 'contracts' ? 'bg-indigo-900/30' : 'bg-gray-800/60'} transition-all duration-300 cursor-pointer hover:shadow-md hover:translate-y-[-2px] group`}
+          className={`rounded-xl p-3 md:p-4 border ${
+            activeMetric === 'contracts' 
+              ? 'border-indigo-500' 
+              : isDark ? 'border-gray-700/60' : 'border-gray-200'
+          } ${
+            activeMetric === 'contracts' 
+              ? isDark ? 'bg-indigo-900/30' : 'bg-indigo-50' 
+              : isDark ? 'bg-gray-800/60' : 'bg-gray-50'
+          } transition-all duration-300 cursor-pointer hover:shadow-md hover:translate-y-[-2px] group`}
           onClick={() => setActiveMetric('contracts')}
         >
           <div className="flex items-center">
-            <div className="flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full bg-indigo-500/30 flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
+            <div className={`flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full ${isDark ? 'bg-indigo-500/30' : 'bg-indigo-500/20'} flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300`}>
               <FileText size={16} className="text-indigo-400" />
             </div>
             <div>
               <h3 className="text-sm md:text-base font-bold text-indigo-400 mb-1">{t('stats.contracts')}</h3>
               <div className="flex items-baseline">
-                <span ref={valueRefs.contracts} className="text-xl md:text-2xl font-bold text-white">
+                <span ref={valueRefs.contracts} className={`text-xl md:text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {totalValues.contracts.toLocaleString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU')}
                 </span>
-                <span className="ml-1.5 text-xs font-medium text-gray-400">
+                <span className={`ml-1.5 text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {t('stats.pieces')}
                 </span>
               </div>
@@ -167,20 +176,28 @@ const StatsCards = ({
         
         {/* Карточка Реализация */}
         <div 
-          className={`rounded-xl p-3 md:p-4 border ${activeMetric === 'realization' ? 'border-emerald-500' : 'border-gray-700/60'} ${activeMetric === 'realization' ? 'bg-emerald-900/30' : 'bg-gray-800/60'} transition-all duration-300 cursor-pointer hover:shadow-md hover:translate-y-[-2px] group`}
+          className={`rounded-xl p-3 md:p-4 border ${
+            activeMetric === 'realization' 
+              ? 'border-emerald-500' 
+              : isDark ? 'border-gray-700/60' : 'border-gray-200'
+          } ${
+            activeMetric === 'realization' 
+              ? isDark ? 'bg-emerald-900/30' : 'bg-emerald-50' 
+              : isDark ? 'bg-gray-800/60' : 'bg-gray-50'
+          } transition-all duration-300 cursor-pointer hover:shadow-md hover:translate-y-[-2px] group`}
           onClick={() => setActiveMetric('realization')}
         >
           <div className="flex items-center">
-            <div className="flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full bg-emerald-500/30 flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
+            <div className={`flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full ${isDark ? 'bg-emerald-500/30' : 'bg-emerald-500/20'} flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300`}>
               <CheckCircle size={16} className="text-emerald-400" />
             </div>
             <div>
               <h3 className="text-sm md:text-base font-bold text-emerald-400 mb-1">{t('stats.realization')}</h3>
               <div className="flex items-baseline">
-                <span ref={valueRefs.realization} className="text-xl md:text-2xl font-bold text-white">
+                <span ref={valueRefs.realization} className={`text-xl md:text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {totalValues.realization.toLocaleString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU')}
                 </span>
-                <span className="ml-1.5 text-xs font-medium text-gray-400">
+                <span className={`ml-1.5 text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {t('stats.pieces')}
                 </span>
               </div>
@@ -190,20 +207,28 @@ const StatsCards = ({
         
         {/* Карточка Отмена */}
         <div 
-          className={`rounded-xl p-3 md:p-4 border ${activeMetric === 'cancellation' ? 'border-red-500' : 'border-gray-700/60'} ${activeMetric === 'cancellation' ? 'bg-red-900/30' : 'bg-gray-800/60'} transition-all duration-300 cursor-pointer hover:shadow-md hover:translate-y-[-2px] group`}
+          className={`rounded-xl p-3 md:p-4 border ${
+            activeMetric === 'cancellation' 
+              ? 'border-red-500' 
+              : isDark ? 'border-gray-700/60' : 'border-gray-200'
+          } ${
+            activeMetric === 'cancellation' 
+              ? isDark ? 'bg-red-900/30' : 'bg-red-50' 
+              : isDark ? 'bg-gray-800/60' : 'bg-gray-50'
+          } transition-all duration-300 cursor-pointer hover:shadow-md hover:translate-y-[-2px] group`}
           onClick={() => setActiveMetric('cancellation')}
         >
           <div className="flex items-center">
-            <div className="flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-500/30 flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
+            <div className={`flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full ${isDark ? 'bg-red-500/30' : 'bg-red-500/20'} flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300`}>
               <XCircle size={16} className="text-red-400" />
             </div>
             <div>
               <h3 className="text-sm md:text-base font-bold text-red-400 mb-1">{t('stats.cancellation')}</h3>
               <div className="flex items-baseline">
-                <span ref={valueRefs.cancellation} className="text-xl md:text-2xl font-bold text-white">
+                <span ref={valueRefs.cancellation} className={`text-xl md:text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {totalValues.cancellation.toLocaleString(currentLocale === 'uz' ? 'uz-UZ' : 'ru-RU')}
                 </span>
-                <span className="ml-1.5 text-xs font-medium text-gray-400">
+                <span className={`ml-1.5 text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {t('stats.pieces')}
                 </span>
               </div>
