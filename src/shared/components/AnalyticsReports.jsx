@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { useTranslation } from '../../hooks/useTranslation';
 import { analyticsReportsTranslations } from './locales/AnalyticsReports';
+import { useThemeStore } from '../../store/theme';
 import axios from 'axios';
 import confetti from 'canvas-confetti';
 import * as d3 from 'd3';
@@ -29,6 +30,8 @@ const D3CarVisualization = ({ data, selectedModel }) => {
   const containerRef = useRef();
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const { t } = useTranslation(analyticsReportsTranslations);
+  const { mode } = useThemeStore();
+  const isDark = mode === 'dark';
   
   useEffect(() => {
     const updateDimensions = () => {
@@ -111,7 +114,7 @@ const D3CarVisualization = ({ data, selectedModel }) => {
     cars.append("rect")
       .attr("width", width)
       .attr("height", yScale.bandwidth())
-      .attr("fill", "#1f2937")
+      .attr("fill", isDark ? "#1f2937" : "#f3f4f6")
       .attr("rx", 8)
       .attr("opacity", 0.3);
     
@@ -131,7 +134,7 @@ const D3CarVisualization = ({ data, selectedModel }) => {
       .attr("x", 10)
       .attr("y", yScale.bandwidth() / 2)
       .attr("dy", ".35em")
-      .attr("fill", "#ffffff")
+      .attr("fill", isDark ? "#f1f5f9" : "#1e293b")
       .attr("font-weight", "bold")
       .attr("font-size", "14px")
       .text(d => d.name)
@@ -146,7 +149,7 @@ const D3CarVisualization = ({ data, selectedModel }) => {
       .attr("x", d => Math.min(xScale(d.total) + 10, width - 60))
       .attr("y", yScale.bandwidth() / 2)
       .attr("dy", ".35em")
-      .attr("fill", "#ffffff")
+      .attr("fill", isDark ? "#f1f5f9" : "#1e293b")
       .attr("font-size", "12px")
       .text(d => `${d.total.toLocaleString()} ${t('metrics.units')}`)
       .attr("opacity", 0)
@@ -155,7 +158,7 @@ const D3CarVisualization = ({ data, selectedModel }) => {
       .delay((d, i) => i * 100 + 1200)
       .attr("opacity", 1);
     
-  }, [data, selectedModel, dimensions, t]);
+  }, [data, selectedModel, dimensions, t, isDark]);
   
   return (
     <div ref={containerRef} className="w-full h-full">
@@ -171,6 +174,8 @@ const D3CarVisualization = ({ data, selectedModel }) => {
 // Улучшенный компонент для распределения по цветам (Treemap)
 const ColorDistributionChart = ({ colorStats, totalSales }) => {
   const { t } = useTranslation(analyticsReportsTranslations);
+  const { mode } = useThemeStore();
+  const isDark = mode === 'dark';
   
   // Функция для определения цвета по названию
   const getColorCode = (colorName) => {
@@ -215,7 +220,7 @@ const ColorDistributionChart = ({ colorStats, totalSales }) => {
           height={height}
           style={{
             fill: color,
-            stroke: '#1f2937',
+            stroke: isDark ? '#1f2937' : '#e5e7eb',
             strokeWidth: 2,
             opacity: 0.9
           }}
@@ -228,7 +233,7 @@ const ColorDistributionChart = ({ colorStats, totalSales }) => {
             height={height}
             style={{
               fill: 'url(#whiteGradient)',
-              stroke: '#1f2937',
+              stroke: isDark ? '#1f2937' : '#e5e7eb',
               strokeWidth: 2
             }}
           />
@@ -278,7 +283,7 @@ const ColorDistributionChart = ({ colorStats, totalSales }) => {
           data={colorData}
           dataKey="value"
           aspectRatio={4/3}
-          stroke="#1f2937"
+          stroke={isDark ? "#1f2937" : "#e5e7eb"}
           content={<CustomTreemapContent />}
         >
           <defs>
@@ -290,15 +295,16 @@ const ColorDistributionChart = ({ colorStats, totalSales }) => {
           </defs>
           <Tooltip
             contentStyle={{
-              backgroundColor: '#1f2937',
-              border: 'none',
+              backgroundColor: isDark ? '#1f2937' : '#ffffff',
+              border: isDark ? '1px solid #374151' : '1px solid #e5e7eb',
               borderRadius: '8px',
-              padding: '12px'
+              padding: '12px',
+              color: isDark ? '#f1f5f9' : '#1e293b'
             }}
             formatter={(value, name) => [
               <div key="tooltip">
                 <div className="font-semibold">{value.toLocaleString()} {t('metrics.units')}</div>
-                <div className="text-gray-400 text-xs">{t('reports.marketShare')}</div>
+                <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('reports.marketShare')}</div>
               </div>,
               name
             ]}
@@ -315,6 +321,8 @@ const YearComparison = ({ currentData, onYearSelect }) => {
   const [yearData, setYearData] = useState({});
   const [loading, setLoading] = useState(false);
   const { t } = useTranslation(analyticsReportsTranslations);
+  const { mode } = useThemeStore();
+  const isDark = mode === 'dark';
   
   // Загрузка данных за разные годы
   useEffect(() => {
@@ -427,7 +435,7 @@ const YearComparison = ({ currentData, onYearSelect }) => {
     <div className="space-y-6">
       {/* Селектор годов */}
       <div className="flex items-center gap-4 flex-wrap">
-        <span className="text-gray-400">{t('charts.selectYears')}:</span>
+        <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>{t('charts.selectYears')}:</span>
         {['2023', '2024', '2025'].map(year => (
           <motion.button
             key={year}
@@ -447,7 +455,9 @@ const YearComparison = ({ currentData, onYearSelect }) => {
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               selectedYears.includes(year)
                 ? 'bg-blue-500 text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                : isDark 
+                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
             {year}
@@ -471,18 +481,18 @@ const YearComparison = ({ currentData, onYearSelect }) => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700"
+                className={`${isDark ? 'bg-gray-800/50' : 'bg-white'} backdrop-blur-sm rounded-2xl p-6 border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-xl font-bold text-white">{year} {t('charts.year')}</h4>
-                  <Calendar className="w-6 h-6 text-gray-400" />
+                  <h4 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{year} {t('charts.year')}</h4>
+                  <Calendar className={`w-6 h-6 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
                 </div>
                 
                 <div className="space-y-4">
                   <div>
-                    <p className="text-gray-400 text-sm mb-1">{t('charts.totalSales')}</p>
+                    <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm mb-1`}>{t('charts.totalSales')}</p>
                     <div className="flex items-end gap-2">
-                      <p className="text-2xl font-bold text-white">
+                      <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                         {data.totalSales.toLocaleString()} {t('metrics.units')}
                       </p>
                       {salesChange && (
@@ -500,7 +510,7 @@ const YearComparison = ({ currentData, onYearSelect }) => {
                   </div>
                   
                   <div>
-                    <p className="text-gray-400 text-sm mb-1">{t('charts.totalRevenue')}</p>
+                    <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm mb-1`}>{t('charts.totalRevenue')}</p>
                     <div className="flex items-end gap-2">
                       <p className="text-2xl font-bold text-green-400">
                         {Math.round(data.totalRevenue).toLocaleString()} {t('metrics.currency')}
@@ -530,21 +540,22 @@ const YearComparison = ({ currentData, onYearSelect }) => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6"
+          className={`${isDark ? 'bg-gray-800/50' : 'bg-white'} backdrop-blur-sm rounded-2xl p-6`}
         >
-          <h4 className="text-xl font-bold text-white mb-4">{t('charts.salesDynamics')}</h4>
+          <h4 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>{t('charts.salesDynamics')}</h4>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="month" stroke="#9ca3af" />
-                <YAxis stroke="#9ca3af" />
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#374151" : "#e5e7eb"} />
+                <XAxis dataKey="month" stroke={isDark ? "#9ca3af" : "#6b7280"} />
+                <YAxis stroke={isDark ? "#9ca3af" : "#6b7280"} />
                 <Tooltip 
                   contentStyle={{ 
-                    backgroundColor: '#1f2937', 
-                    border: 'none', 
+                    backgroundColor: isDark ? '#1f2937' : '#ffffff', 
+                    border: isDark ? '1px solid #374151' : '1px solid #e5e7eb', 
                     borderRadius: '8px',
-                    padding: '12px'
+                    padding: '12px',
+                    color: isDark ? '#f1f5f9' : '#1e293b'
                   }}
                   formatter={(value, name) => {
                     const year = name.replace('sales', '');
@@ -582,6 +593,8 @@ const YearComparison = ({ currentData, onYearSelect }) => {
 const AnimatedStat = ({ value, label, icon, color, delay = 0, prefix = '', suffix = '' }) => {
   const [isVisible, setIsVisible] = useState(false);
   const ref = useRef();
+  const { mode } = useThemeStore();
+  const isDark = mode === 'dark';
   
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -610,7 +623,7 @@ const AnimatedStat = ({ value, label, icon, color, delay = 0, prefix = '', suffi
       className="relative group cursor-pointer h-full"
     >
       <div className={`absolute inset-0 bg-gradient-to-r ${color} opacity-20 blur-xl group-hover:opacity-30 transition-opacity rounded-2xl`} />
-      <div className="relative h-full bg-gray-800/80 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-gray-700/50 hover:border-gray-600 transition-all">
+      <div className={`relative h-full ${isDark ? 'bg-gray-800/80' : 'bg-white/90'} backdrop-blur-xl rounded-2xl p-4 lg:p-6 border ${isDark ? 'border-gray-700/50' : 'border-gray-200/50'} hover:border-gray-600 transition-all`}>
         <div className="flex items-center justify-between mb-3">
           <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-r ${color} flex items-center justify-center transform group-hover:scale-110 transition-transform`}>
             {icon}
@@ -618,15 +631,15 @@ const AnimatedStat = ({ value, label, icon, color, delay = 0, prefix = '', suffi
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="w-6 h-6 lg:w-8 lg:h-8 rounded-full border-2 border-dashed border-gray-600"
+            className={`w-6 h-6 lg:w-8 lg:h-8 rounded-full border-2 border-dashed ${isDark ? 'border-gray-600' : 'border-gray-300'}`}
           />
         </div>
-        <div className="text-2xl lg:text-3xl font-bold text-white mb-1">
+        <div className={`text-2xl lg:text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>
           {prefix}
           {isVisible && <CountUp end={value} duration={2.5} separator="," decimals={suffix === '%' ? 1 : 0} />}
           {suffix}
         </div>
-        <p className="text-gray-400 text-xs lg:text-sm">{label}</p>
+        <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs lg:text-sm`}>{label}</p>
       </div>
     </motion.div>
   );
@@ -635,6 +648,9 @@ const AnimatedStat = ({ value, label, icon, color, delay = 0, prefix = '', suffi
 // Компонент карточки отчета
 const ReportCard = ({ title, subtitle, gradient, icon, children, className = "" }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const { mode } = useThemeStore();
+  const isDark = mode === 'dark';
+  
   const springProps = useSpring({
     transform: isHovered ? 'translateY(-5px)' : 'translateY(0px)',
     boxShadow: isHovered 
@@ -678,6 +694,8 @@ const ReportCard = ({ title, subtitle, gradient, icon, children, className = "" 
 // Основной компонент
 const AnalyticsReports = () => {
   const { t } = useTranslation(analyticsReportsTranslations);
+  const { mode } = useThemeStore();
+  const isDark = mode === 'dark';
   const [loading, setLoading] = useState(true);
   const [apiData, setApiData] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState({ start: '01.01.2025', end: '31.05.2025' });
@@ -830,22 +848,21 @@ const AnalyticsReports = () => {
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} flex items-center justify-center`}>
         <motion.div className="text-center">
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             className="w-20 h-20 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"
           />
-          <p className="text-gray-400">{t('states.loading')}</p>
+          <p className={isDark ? 'text-gray-400' : 'text-gray-600'}>{t('states.loading')}</p>
         </motion.div>
       </div>
     );
   }
   
-  
   return (
-    <div ref={containerRef} className="min-h-screen bg-gray-900">
+    <div ref={containerRef} className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <div className="relative z-10 min-h-screen flex flex-col">
         <motion.div
           initial={{ opacity: 0, y: -50 }}
@@ -862,10 +879,10 @@ const AnalyticsReports = () => {
                 <Brain className="w-6 h-6 lg:w-8 lg:h-8 text-white" />
               </motion.div>
               <div>
-                <h1 className="text-2xl lg:text-4xl xl:text-5xl font-bold text-white mb-1">
+                <h1 className={`text-2xl lg:text-4xl xl:text-5xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>
                   {t('title')}
                 </h1>
-                <p className="text-base lg:text-xl text-gray-300">
+                <p className={`text-base lg:text-xl ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                   {t('subtitle', { year: new Date().getFullYear() })}
                 </p>
               </div>
@@ -886,7 +903,9 @@ const AnalyticsReports = () => {
                   className={`px-4 py-2 lg:px-6 lg:py-3 rounded-lg lg:rounded-xl font-medium transition-all flex items-center gap-2 text-sm lg:text-base ${
                     activeView === view.id
                       ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
-                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                      : isDark 
+                        ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                        : 'bg-white text-gray-700 hover:bg-gray-100'
                   }`}
                 >
                   {view.icon}
@@ -950,12 +969,12 @@ const AnalyticsReports = () => {
                       icon={<TrendingUp className="w-6 h-6 lg:w-8 lg:h-8 text-blue-400" />}
                     >
                       <div className="space-y-3 lg:space-y-4">
-                        <div className="bg-gray-800/50 rounded-xl p-3 lg:p-4">
-                          <p className="text-gray-400 text-xs lg:text-sm mb-2">{t('reports.bestSelling.modelLeader')}</p>
-                          <p className="text-xl lg:text-3xl font-bold text-white mb-1 lg:mb-2">
+                        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-100/50'} rounded-xl p-3 lg:p-4`}>
+                          <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs lg:text-sm mb-2`}>{t('reports.bestSelling.modelLeader')}</p>
+                          <p className={`text-xl lg:text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-1 lg:mb-2`}>
                             {processedData.bestCombination.model}
                           </p>
-                          <p className="text-sm lg:text-lg text-gray-300">
+                          <p className={`text-sm lg:text-lg ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                             {processedData.bestCombination.modification}
                           </p>
                           <div className="flex items-center gap-2 mt-2">
@@ -963,7 +982,7 @@ const AnalyticsReports = () => {
                               className="w-5 h-5 lg:w-6 lg:h-6 rounded-full border-2 border-gray-600"
                               style={{ backgroundColor: processedData.bestCombination.color === 'Summit White' ? '#FFFFFF' : '#808080' }}
                             />
-                            <span className="text-gray-300 text-sm lg:text-base">{processedData.bestCombination.color}</span>
+                            <span className={`${isDark ? 'text-gray-300' : 'text-gray-700'} text-sm lg:text-base`}>{processedData.bestCombination.color}</span>
                           </div>
                         </div>
                         
@@ -988,9 +1007,9 @@ const AnalyticsReports = () => {
                       icon={<Award className="w-6 h-6 lg:w-8 lg:h-8 text-green-400" />}
                     >
                       <div className="space-y-3 lg:space-y-4">
-                        <div className="bg-gray-800/50 rounded-xl p-3 lg:p-4">
-                          <p className="text-gray-400 text-xs lg:text-sm mb-2">{t('reports.mostProfitable.profitLeader')}</p>
-                          <p className="text-xl lg:text-3xl font-bold text-white mb-1 lg:mb-2">
+                        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-100/50'} rounded-xl p-3 lg:p-4`}>
+                          <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs lg:text-sm mb-2`}>{t('reports.mostProfitable.profitLeader')}</p>
+                          <p className={`text-xl lg:text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-1 lg:mb-2`}>
                             {processedData.mostProfitableModel[0]}
                           </p>
                           <p className="text-lg lg:text-2xl text-green-400 font-bold">
@@ -1019,8 +1038,8 @@ const AnalyticsReports = () => {
                       icon={<Palette className="w-6 h-6 lg:w-8 lg:h-8 text-purple-400" />}
                     >
                       <div className="space-y-3 lg:space-y-4">
-                        <div className="bg-gray-800/50 rounded-xl p-3 lg:p-4">
-                          <p className="text-gray-400 text-xs lg:text-sm mb-2">{t('reports.bestSellingColor.popularColor')}</p>
+                        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-100/50'} rounded-xl p-3 lg:p-4`}>
+                          <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs lg:text-sm mb-2`}>{t('reports.bestSellingColor.popularColor')}</p>
                           <div className="flex items-center gap-3 mb-2">
                             <div 
                               className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg border-2 border-gray-600 shadow-lg"
@@ -1030,7 +1049,7 @@ const AnalyticsReports = () => {
                                                '#808080'
                               }}
                             />
-                            <p className="text-lg lg:text-2xl font-bold text-white">
+                            <p className={`text-lg lg:text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                               {processedData.bestSellingColor[0]}
                             </p>
                           </div>
@@ -1056,9 +1075,9 @@ const AnalyticsReports = () => {
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 lg:p-6"
+                      className={`${isDark ? 'bg-gray-800/50' : 'bg-white'} backdrop-blur-sm rounded-2xl p-4 lg:p-6`}
                     >
-                      <h3 className="text-lg lg:text-xl font-bold text-white mb-4">{t('charts.topModels')}</h3>
+                      <h3 className={`text-lg lg:text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>{t('charts.topModels')}</h3>
                       <div className="h-48 lg:h-64">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={Object.entries(processedData.modelStats)
@@ -1069,12 +1088,17 @@ const AnalyticsReports = () => {
                               sales: stats.total,
                               revenue: Math.round(stats.revenue)
                             }))}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                            <XAxis dataKey="name" stroke="#9ca3af" />
-                            <YAxis stroke="#9ca3af" />
+                            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#374151" : "#e5e7eb"} />
+                            <XAxis dataKey="name" stroke={isDark ? "#9ca3af" : "#6b7280"} />
+                            <YAxis stroke={isDark ? "#9ca3af" : "#6b7280"} />
                             <Tooltip 
-                              contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                              labelStyle={{ color: '#9ca3af' }}
+                              contentStyle={{ 
+                                backgroundColor: isDark ? '#1f2937' : '#ffffff', 
+                                border: isDark ? '1px solid #374151' : '1px solid #e5e7eb', 
+                                borderRadius: '8px',
+                                color: isDark ? '#f1f5f9' : '#1e293b'
+                              }}
+                              labelStyle={{ color: isDark ? '#9ca3af' : '#6b7280' }}
                             />
                             <Bar dataKey="sales" fill="#3b82f6" radius={[8, 8, 0, 0]}>
                               {Object.entries(processedData.modelStats)
@@ -1093,9 +1117,9 @@ const AnalyticsReports = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 }}
-                      className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 lg:p-6"
+                      className={`${isDark ? 'bg-gray-800/50' : 'bg-white'} backdrop-blur-sm rounded-2xl p-4 lg:p-6`}
                     >
-                      <h3 className="text-lg lg:text-xl font-bold text-white mb-4">{t('charts.colorDistribution')}</h3>
+                      <h3 className={`text-lg lg:text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>{t('charts.colorDistribution')}</h3>
                       <div className="h-48 lg:h-64">
                         <ColorDistributionChart 
                           colorStats={processedData.colorStats} 
@@ -1121,9 +1145,9 @@ const AnalyticsReports = () => {
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 lg:p-6"
+                      className={`${isDark ? 'bg-gray-800/50' : 'bg-white'} backdrop-blur-sm rounded-2xl p-4 lg:p-6`}
                     >
-                      <h3 className="text-lg lg:text-xl font-bold text-white mb-4">{t('charts.modelRating')}</h3>
+                      <h3 className={`text-lg lg:text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>{t('charts.modelRating')}</h3>
                       <div className="h-[400px] lg:h-[500px]">
                         <D3CarVisualization data={processedData} selectedModel={selectedModel} />
                       </div>
@@ -1133,9 +1157,9 @@ const AnalyticsReports = () => {
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.1 }}
-                      className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 lg:p-6"
+                      className={`${isDark ? 'bg-gray-800/50' : 'bg-white'} backdrop-blur-sm rounded-2xl p-4 lg:p-6`}
                     >
-                      <h3 className="text-lg lg:text-xl font-bold text-white mb-4">{t('charts.monthlySalesDynamics')}</h3>
+                      <h3 className={`text-lg lg:text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>{t('charts.monthlySalesDynamics')}</h3>
                       <div className="h-[400px] lg:h-[500px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart data={Object.entries(processedData.monthlyTrends).map(([month, data]) => ({
@@ -1149,12 +1173,17 @@ const AnalyticsReports = () => {
                                 <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                            <XAxis dataKey="month" stroke="#9ca3af" />
-                            <YAxis stroke="#9ca3af" />
+                            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#374151" : "#e5e7eb"} />
+                            <XAxis dataKey="month" stroke={isDark ? "#9ca3af" : "#6b7280"} />
+                            <YAxis stroke={isDark ? "#9ca3af" : "#6b7280"} />
                             <Tooltip 
-                              contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                              labelStyle={{ color: '#9ca3af' }}
+                              contentStyle={{ 
+                                backgroundColor: isDark ? '#1f2937' : '#ffffff', 
+                                border: isDark ? '1px solid #374151' : '1px solid #e5e7eb', 
+                                borderRadius: '8px',
+                                color: isDark ? '#f1f5f9' : '#1e293b'
+                              }}
+                              labelStyle={{ color: isDark ? '#9ca3af' : '#6b7280' }}
                             />
                             <Area 
                               type="monotone" 
@@ -1185,9 +1214,9 @@ const AnalyticsReports = () => {
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 lg:p-6"
+                    className={`${isDark ? 'bg-gray-800/50' : 'bg-white'} backdrop-blur-sm rounded-2xl p-4 lg:p-6`}
                   >
-                    <h3 className="text-lg lg:text-xl font-bold text-white mb-4">{t('charts.yearComparison')}</h3>
+                    <h3 className={`text-lg lg:text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>{t('charts.yearComparison')}</h3>
                     <YearComparison 
                       currentData={processedData} 
                       onYearSelect={(year) => {
@@ -1195,91 +1224,91 @@ const AnalyticsReports = () => {
                       }}
                     />
                   </motion.div>
-                </div>
-              </motion.div>
-            )}
-            
-            {activeView === 'details' && processedData && (
-              <motion.div
-                key="details"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="p-4 lg:p-8"
-              >
-                <div className="max-w-[1920px] mx-auto">
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 lg:p-6 overflow-x-auto"
-                  >
-                    <h3 className="text-lg lg:text-xl font-bold text-white mb-4">{t('table.model')}</h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[600px]">
-                        <thead>
-                          <tr className="text-left text-gray-400 border-b border-gray-700">
-                            <th className="pb-3 pr-4">{t('table.model')}</th>
-                            <th className="pb-3 pr-4 text-right">{t('table.sales')}</th>
-                            <th className="pb-3 pr-4 text-right">{t('table.revenue')}</th>
-                            <th className="pb-3 pr-4 text-right">{t('table.avgPrice')}</th>
-                            <th className="pb-3 text-center">{t('table.marketShare')}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(processedData.modelStats)
-                            .sort((a, b) => b[1].total - a[1].total)
-                            .map(([model, stats], index) => (
-                              <motion.tr
-                                key={model}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                                className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors cursor-pointer"
-                                onClick={() => setSelectedModel(model)}
-                              >
-                                <td className="py-3 pr-4">
-                                  <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-r ${
-                                      index === 0 ? 'from-yellow-400 to-yellow-600' :
-                                      index === 1 ? 'from-gray-300 to-gray-500' :
-                                      index === 2 ? 'from-orange-400 to-orange-600' :
-                                      'from-blue-400 to-blue-600'
-                                    } flex items-center justify-center text-white font-bold text-sm`}>
-                                      {index + 1}
-                                    </div>
-                                    <span className="text-white font-medium">{model}</span>
-                                  </div>
-                                </td>
-                                <td className="py-3 pr-4 text-right">
-                                  <span className="text-gray-300">{stats.total.toLocaleString()}</span>
-                                </td>
-                                <td className="py-3 pr-4 text-right">
-                                  <span className="text-green-400">{Math.round(stats.revenue).toLocaleString()} {t('metrics.currency')}</span>
-                                </td>
-                                <td className="py-3 pr-4 text-right">
-                                  <span className="text-gray-300">{Math.round(stats.avgPrice).toLocaleString()} {t('metrics.currency')}</span>
-                                </td>
-                                <td className="py-3">
-                                  <div className="flex items-center justify-center gap-2">
-                                    <div className="w-24 bg-gray-700 rounded-full h-2">
-                                      <motion.div 
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${(stats.total / processedData.totalSales) * 100}%` }}
-                                        transition={{ duration: 1, delay: index * 0.1 }}
-                                        className="h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"
-                                      />
-                                    </div>
-                                    <span className="text-xs text-gray-400">
-                                      {((stats.total / processedData.totalSales) * 100).toFixed(1)}%
-                                    </span>
-                                  </div>
-                                </td>
-                              </motion.tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-              </motion.div>
+               </div>
+             </motion.div>
+           )}
+           
+           {activeView === 'details' && processedData && (
+             <motion.div
+               key="details"
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               exit={{ opacity: 0 }}
+               className="p-4 lg:p-8"
+             >
+               <div className="max-w-[1920px] mx-auto">
+                 <motion.div
+                   initial={{ opacity: 0, y: 20 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   className={`${isDark ? 'bg-gray-800/50' : 'bg-white'} backdrop-blur-sm rounded-2xl p-4 lg:p-6 overflow-x-auto`}
+                 >
+                   <h3 className={`text-lg lg:text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>{t('table.model')}</h3>
+                   <div className="overflow-x-auto">
+                     <table className="w-full min-w-[600px]">
+                       <thead>
+                         <tr className={`text-left ${isDark ? 'text-gray-400' : 'text-gray-600'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                           <th className="pb-3 pr-4">{t('table.model')}</th>
+                           <th className="pb-3 pr-4 text-right">{t('table.sales')}</th>
+                           <th className="pb-3 pr-4 text-right">{t('table.revenue')}</th>
+                           <th className="pb-3 pr-4 text-right">{t('table.avgPrice')}</th>
+                           <th className="pb-3 text-center">{t('table.marketShare')}</th>
+                         </tr>
+                       </thead>
+                       <tbody>
+                         {Object.entries(processedData.modelStats)
+                           .sort((a, b) => b[1].total - a[1].total)
+                           .map(([model, stats], index) => (
+                             <motion.tr
+                               key={model}
+                               initial={{ opacity: 0, x: -20 }}
+                               animate={{ opacity: 1, x: 0 }}
+                               transition={{ delay: index * 0.05 }}
+                               className={`border-b ${isDark ? 'border-gray-700/50 hover:bg-gray-700/30' : 'border-gray-200/50 hover:bg-gray-100/50'} transition-colors cursor-pointer`}
+                               onClick={() => setSelectedModel(model)}
+                             >
+                               <td className="py-3 pr-4">
+                                 <div className="flex items-center gap-3">
+                                   <div className={`w-8 h-8 rounded-lg bg-gradient-to-r ${
+                                     index === 0 ? 'from-yellow-400 to-yellow-600' :
+                                     index === 1 ? 'from-gray-300 to-gray-500' :
+                                     index === 2 ? 'from-orange-400 to-orange-600' :
+                                     'from-blue-400 to-blue-600'
+                                   } flex items-center justify-center text-white font-bold text-sm`}>
+                                     {index + 1}
+                                   </div>
+                                   <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>{model}</span>
+                                 </div>
+                               </td>
+                               <td className="py-3 pr-4 text-right">
+                                 <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{stats.total.toLocaleString()}</span>
+                               </td>
+                               <td className="py-3 pr-4 text-right">
+                                 <span className="text-green-400">{Math.round(stats.revenue).toLocaleString()} {t('metrics.currency')}</span>
+                               </td>
+                               <td className="py-3 pr-4 text-right">
+                                 <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{Math.round(stats.avgPrice).toLocaleString()} {t('metrics.currency')}</span>
+                               </td>
+                               <td className="py-3">
+                                 <div className="flex items-center justify-center gap-2">
+                                   <div className={`w-24 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-2`}>
+                                     <motion.div 
+                                       initial={{ width: 0 }}
+                                       animate={{ width: `${(stats.total / processedData.totalSales) * 100}%` }}
+                                       transition={{ duration: 1, delay: index * 0.1 }}
+                                       className="h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"
+                                     />
+                                   </div>
+                                   <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                     {((stats.total / processedData.totalSales) * 100).toFixed(1)}%
+                                   </span>
+                                 </div>
+                               </td>
+                             </motion.tr>
+                           ))}
+                       </tbody>
+                     </table>
+                   </div>
+                 </motion.div>
                </div>
              </motion.div>
            )}

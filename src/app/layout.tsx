@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Script from 'next/script';
 import EnhancedMainWrapper from "../shared/layout/EnhancedMainWrapper";
+import ThemeProvider from "../shared/components/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "UzAvtoAnalytics",
@@ -34,12 +35,31 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-touch-fullscreen" content="yes" />
         <meta name="HandheldFriendly" content="true" />
-        <meta name="theme-color" content="#f7f7f7" />
+        <meta name="theme-color" content="#ffffff" />
         
         {/* Загрузка Telegram Web App скрипта */}
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
         
-        {/* Скрипт для предотвращения масштабирования и жестов на мобильных устройствах */}
+        {/* Скрипт для предотвращения мерцания при загрузке */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const savedTheme = localStorage.getItem('theme-store');
+                  if (savedTheme) {
+                    const parsed = JSON.parse(savedTheme);
+                    if (parsed.state && parsed.state.mode === 'dark') {
+                      document.documentElement.classList.add('dark');
+                    }
+                  }
+                } catch (e) {}
+              })();
+            `
+          }}
+        />
+        
+        {/* Скрипт для предотвращения масштабирования */}
         <Script
           id="prevent-zoom"
           strategy="beforeInteractive"
@@ -68,6 +88,15 @@ export default function RootLayout({
               --font-inter: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
             }
             
+            /* Предотвращаем мерцание при загрузке */
+            html {
+              background-color: #ffffff;
+            }
+            
+            html.dark {
+              background-color: #0a0a0a;
+            }
+            
             /* Жестко отключаем скролл на html и body */
             html, body {
               overflow: hidden !important;
@@ -80,14 +109,18 @@ export default function RootLayout({
             /* Базовые стили для main-content */
             .main-content {
               flex: 1;
-              background-color: #f7f7f7;
+              background-color: #ffffff;
               position: relative;
-              /* Отключаем скролл на основном контейнере */
               overflow: hidden !important;
               min-height: 100vh;
               min-height: var(--tg-viewport-stable-height, 100vh);
-              /* Добавляем отступы для полноэкранного режима */
               padding-top: var(--safe-area-inset-top, 0px);
+              transition: background-color 0.3s ease;
+            }
+            
+            /* Темная тема для main-content */
+            .dark .main-content {
+              background-color: #0a0a0a;
             }
             
             /* Стили для режима Telegram expanded */
@@ -105,9 +138,11 @@ export default function RootLayout({
           overflow: 'hidden' 
         }}
       >
-        <EnhancedMainWrapper>
-          {children}
-        </EnhancedMainWrapper>
+        <ThemeProvider>
+          <EnhancedMainWrapper>
+            {children}
+          </EnhancedMainWrapper>
+        </ThemeProvider>
       </body>
     </html>
   );
