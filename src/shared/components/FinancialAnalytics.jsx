@@ -940,9 +940,9 @@ const transformRegionBasedData = (apiData, category) => {
     if (!filteredData.length) return;
     
     renderMainChart();
-    renderProgressChart();
-    renderDetailsChart();
-    renderYearlyTrendChart();
+    // renderProgressChart();
+    // renderDetailsChart();
+    // renderYearlyTrendChart();
     
     if (displayMode === 'compare') {
       renderYearComparisonChart();
@@ -950,8 +950,8 @@ const transformRegionBasedData = (apiData, category) => {
       renderPeriodComparisonTable();
     }
     
-    renderForecastChart();
-    renderCategoryDistribution();
+    // renderForecastChart();
+    // renderCategoryDistribution();
   }, [filteredData, viewType, displayMode, focusCategory]);
   
   // Функция форматирования для денежных значений
@@ -1264,16 +1264,6 @@ const renderMainChart = () => {
     .style('fill', chartColors.labelColor)
     .style('font-size', '12px');
   
-  // Подписи осей
-  g.append('text')
-    .attr('transform', 'rotate(-90)')
-    .attr('y', 0 - margin.left)
-    .attr('x', 0 - (innerHeight / 2))
-    .attr('dy', '1em')
-    .style('text-anchor', 'middle')
-    .style('fill', chartColors.text)
-    .style('font-size', '14px')
-    .text(t('charts.yAxisLabel')); // Добавить в переводы
   
   // Создание групп для баров
   const barGroups = g.selectAll('.bar-group')
@@ -1411,7 +1401,9 @@ const renderPeriodComparisonTable = () => {
     .style('left', '0')
     .style('width', '100%')
     .style('height', '100%')
-    .style('background', 'radial-gradient(circle at 10% 20%, rgba(21, 30, 45, 0.4) 0%, rgba(10, 14, 23, 0.2) 90%)')
+    .style('background', isDarkMode 
+      ? 'radial-gradient(circle at 10% 20%, rgba(21, 30, 45, 0.4) 0%, rgba(10, 14, 23, 0.2) 90%)' 
+      : 'radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.05) 0%, rgba(255, 255, 255, 0.95) 90%)')
     .style('opacity', '0.7')
     .style('z-index', '0');
  
@@ -1425,9 +1417,9 @@ const renderPeriodComparisonTable = () => {
     .style('gap', '10px')
     .style('margin-bottom', '15px')
     .style('padding', '10px 15px')
-    .style('background', 'rgba(30, 41, 59, 0.5)')
+    .style('background', isDarkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(255, 255, 255, 0.9)')
     .style('border-radius', '10px')
-    .style('border', '1px solid rgba(59, 130, 246, 0.15)')
+    .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.2)'}`)
     .style('box-shadow', '0 4px 6px -1px rgba(0, 0, 0, 0.1)');
  
   // Добавляем иконку календаря
@@ -1442,10 +1434,10 @@ const renderPeriodComparisonTable = () => {
     .style('align-items', 'center');
  
   monthSelector.append('span')
-    .style('color', '#9ca3af')
+    .style('color', isDarkMode ? '#9ca3af' : '#64748b')
     .style('font-size', '0.85rem')
     .style('margin-right', '6px')
-    .text('Месяц:');
+    .text(t('filters.month'));
  
   // Создаем уникальный список месяцев из данных
   const availableMonths = [...new Set(filteredData.map(item => {
@@ -1465,9 +1457,9 @@ const renderPeriodComparisonTable = () => {
  
   // Создаем селект месяца с улучшенным стилем
   const monthSelect = monthSelector.append('select')
-    .style('background', 'rgba(17, 24, 39, 0.8)')
-    .style('color', '#f9fafb')
-    .style('border', '1px solid rgba(75, 85, 99, 0.5)')
+    .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.8)' : 'rgba(255, 255, 255, 0.9)')
+    .style('color', isDarkMode ? '#f9fafb' : '#1f2937')
+    .style('border', `1px solid ${isDarkMode ? 'rgba(75, 85, 99, 0.5)' : 'rgba(203, 213, 225, 0.8)'}`)
     .style('border-radius', '6px')
     .style('padding', '4px 8px')
     .style('font-size', '0.85rem')
@@ -1477,7 +1469,7 @@ const renderPeriodComparisonTable = () => {
       d3.select(this).style('border-color', 'rgba(59, 130, 246, 0.5)');
     })
     .on('mouseout', function() {
-      d3.select(this).style('border-color', 'rgba(75, 85, 99, 0.5)');
+      d3.select(this).style('border-color', isDarkMode ? 'rgba(75, 85, 99, 0.5)' : 'rgba(203, 213, 225, 0.8)');
     })
     .on('change', function() {
       const selectedValue = this.value;
@@ -1491,7 +1483,7 @@ const renderPeriodComparisonTable = () => {
   // Добавляем опцию "Все месяцы"
   monthSelect.append('option')
     .attr('value', '')
-    .text('Все месяцы');
+    .text(t('filters.allMonths'));
  
   // Добавляем опции месяцев
   availableMonths.forEach(month => {
@@ -1508,17 +1500,17 @@ const renderPeriodComparisonTable = () => {
     .style('opacity', '0.5'); // Изначально затемнен
  
   daySelector.append('span')
-    .style('color', '#9ca3af')
+    .style('color', isDarkMode ? '#9ca3af' : '#64748b')
     .style('font-size', '0.85rem')
     .style('margin-right', '6px')
-    .text('День:');
+    .text(t('filters.day'));
  
   // Создаем селект дня с улучшенным стилем
   const daySelect = daySelector.append('select')
     .attr('id', 'day-select')
-    .style('background', 'rgba(17, 24, 39, 0.8)')
-    .style('color', '#f9fafb')
-    .style('border', '1px solid rgba(75, 85, 99, 0.5)')
+    .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.8)' : 'rgba(255, 255, 255, 0.9)')
+    .style('color', isDarkMode ? '#f9fafb' : '#1f2937')
+    .style('border', `1px solid ${isDarkMode ? 'rgba(75, 85, 99, 0.5)' : 'rgba(203, 213, 225, 0.8)'}`)
     .style('border-radius', '6px')
     .style('padding', '4px 8px')
     .style('font-size', '0.85rem')
@@ -1531,7 +1523,7 @@ const renderPeriodComparisonTable = () => {
       }
     })
     .on('mouseout', function() {
-      d3.select(this).style('border-color', 'rgba(75, 85, 99, 0.5)');
+      d3.select(this).style('border-color', isDarkMode ? 'rgba(75, 85, 99, 0.5)' : 'rgba(203, 213, 225, 0.8)');
     })
     .on('change', function() {
       setSelectedDay(this.value);
@@ -1541,7 +1533,7 @@ const renderPeriodComparisonTable = () => {
   // Добавляем опцию "Все дни"
   daySelect.append('option')
     .attr('value', '')
-    .text('Все дни');
+    .text(t('filters.allDays'));
  
   // Функция для обновления опций выбора дня
   const updateDayOptions = (monthKey) => {
@@ -1583,9 +1575,9 @@ const renderPeriodComparisonTable = () => {
   const periodBadge = filterPanel.append('div')
     .attr('id', 'period-badge')
     .style('margin-left', 'auto')
-    .style('background', 'rgba(59, 130, 246, 0.15)')
+    .style('background', isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)')
     .style('color', '#60a5fa')
-    .style('border', '1px solid rgba(59, 130, 246, 0.3)')
+    .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'}`)
     .style('border-radius', '6px')
     .style('padding', '4px 10px')
     .style('font-size', '0.8rem')
@@ -1593,7 +1585,7 @@ const renderPeriodComparisonTable = () => {
  
   // Добавляем кнопку сброса фильтров
   const resetButton = filterPanel.append('button')
-    .style('background', 'rgba(59, 130, 246, 0.2)')
+    .style('background', isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)')
     .style('color', '#60a5fa')
     .style('border', 'none')
     .style('padding', '4px 10px')
@@ -1604,12 +1596,12 @@ const renderPeriodComparisonTable = () => {
     .style('display', 'flex')
     .style('align-items', 'center')
     .style('gap', '4px')
-    .html('<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h12l4-8-8 12-1-9-2 5h-5z"/></svg> <span>Сбросить</span>')
+    .html(`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h12l4-8-8 12-1-9-2 5h-5z"/></svg> <span>${t('buttons.reset')}</span>`)
     .on('mouseover', function() {
-      d3.select(this).style('background', 'rgba(59, 130, 246, 0.3)');
+      d3.select(this).style('background', isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)');
     })
     .on('mouseout', function() {
-      d3.select(this).style('background', 'rgba(59, 130, 246, 0.2)');
+      d3.select(this).style('background', isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)');
     })
     .on('click', function() {
       // Сбрасываем выбранные значения
@@ -1628,8 +1620,8 @@ const renderPeriodComparisonTable = () => {
  
   // Добавляем диагностическую информацию (временно)
   const debugInfo = filterPanel.append('div')
-    .style('background', 'rgba(0, 0, 0, 0.3)')
-    .style('color', '#f0f0f0')
+    .style('background', isDarkMode ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.1)')
+    .style('color', isDarkMode ? '#f0f0f0' : '#333333')
     .style('padding', '4px 8px')
     .style('font-size', '0.75rem')
     .style('border-radius', '4px');
@@ -1656,10 +1648,10 @@ const renderPeriodComparisonTable = () => {
   const svg = chartContainer.append('svg')
     .attr('width', width)
     .attr('height', height)
-    .style('background', 'linear-gradient(135deg, #1f2937 0%, #111827 100%)')
+    .style('background', isDarkMode ? 'linear-gradient(135deg, #1f2937 0%, #111827 100%)' : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)')
     .style('border-radius', '1rem')
     .style('box-shadow', '0 10px 25px -5px rgba(0, 0, 0, 0.3)')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)');
+    .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.2)'}`);
  
   // Добавляем карточку с заголовком и описанием
   const headerCard = svg.append('g')
@@ -1672,8 +1664,8 @@ const renderPeriodComparisonTable = () => {
     .attr('width', 400)
     .attr('height', 50)
     .attr('rx', 25)
-    .attr('fill', 'rgba(30, 58, 138, 0.3)')
-    .attr('stroke', 'rgba(59, 130, 246, 0.5)')
+    .attr('fill', isDarkMode ? 'rgba(30, 58, 138, 0.3)' : 'rgba(59, 130, 246, 0.1)')
+    .attr('stroke', isDarkMode ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.3)')
     .attr('stroke-width', 1);
  
   // Добавляем заголовок с тенью для текста
@@ -1684,9 +1676,9 @@ const renderPeriodComparisonTable = () => {
     .attr('text-anchor', 'middle')
     .style('font-size', '1.3rem')
     .style('font-weight', 'bold')
-    .style('fill', '#f9fafb')
+    .style('fill', isDarkMode ? '#f9fafb' : '#1f2937')
     .style('filter', 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))')
-    .text(`Аналитика продаж автомобилей`);
+    .text(t('title'));
  
   // Функция для обновления графика по выбранному месяцу (показывает все дни месяца)
   const updateChartByMonth = (monthKey) => {
@@ -1707,11 +1699,11 @@ const renderPeriodComparisonTable = () => {
     // Обновляем бейдж периода
     const periodBadge = d3.select('#period-badge')
       .style('display', 'block')
-      .html(`Период: ${MONTHS[month-1]} ${year}`);
+      .html(`${t('filters.period')} ${MONTHS[month-1]} ${year}`);
     
     // Обновляем заголовок
     d3.select('.chart-title')
-      .text(`Аналитика продаж за ${MONTHS[month-1]} ${year}`);
+      .text(`${t('title')} - ${MONTHS[month-1]} ${year}`);
     
     // Генерируем данные по дням месяца
     const daysInMonth = new Date(year, month, 0).getDate();
@@ -1758,11 +1750,11 @@ const renderPeriodComparisonTable = () => {
     // Обновляем бейдж периода
     const periodBadge = d3.select('#period-badge')
       .style('display', 'block')
-      .html(`Период: ${day} ${MONTHS[month-1]} ${year}`);
+      .html(`${t('filters.period')} ${day} ${MONTHS[month-1]} ${year}`);
     
     // Обновляем заголовок
     d3.select('.chart-title')
-      .text(`Аналитика продаж за ${day} ${MONTHS[month-1]} ${year}`);
+      .text(`${t('title')} - ${day} ${MONTHS[month-1]} ${year}`);
     
     // Генерируем данные для выбранного дня
     const dayData = generateDayData(year, month, parseInt(day));
@@ -1889,7 +1881,7 @@ const renderPeriodComparisonTable = () => {
       .attr('x2', width - margin.right)
       .attr('y1', d => y(d))
       .attr('y2', d => y(d))
-      .attr('stroke', 'rgba(107, 114, 128, 0.15)')
+      .attr('stroke', isDarkMode ? 'rgba(107, 114, 128, 0.15)' : 'rgba(229, 231, 235, 0.5)')
       .attr('stroke-dasharray', '3,3');
     
     // Добавляем оси с улучшенным стилем
@@ -1899,7 +1891,7 @@ const renderPeriodComparisonTable = () => {
       .call(g => g.select('.domain').remove())
       .call(g => g.selectAll('.tick line').remove())
       .call(g => g.selectAll('text')
-        .style('fill', '#d1d5db')
+        .style('fill', isDarkMode ? '#d1d5db' : '#4b5563')
         .style('font-size', isDaysList ? '0.7rem' : '0.85rem') // Размер текста меньше для дней
         .attr('dy', '0.6em')
         // Не поворачиваем цифры дней
@@ -1910,25 +1902,17 @@ const renderPeriodComparisonTable = () => {
       .attr('transform', `translate(${margin.left},0)`)
       .call(d3.axisLeft(y).ticks(5).tickFormat(d => formatProfitCompact(d)))
       .call(g => g.select('.domain').remove())
+      .call(g => g.selectAll('text')
+        .style('fill', isDarkMode ? '#d1d5db' : '#4b5563')
+        .style('font-size', '0.8rem'))
       .call(g => g.selectAll('.tick line')
         .attr('x2', width - margin.left - margin.right)
-        .attr('stroke-opacity', 0.05))
-      .call(g => g.selectAll('text')
-        .style('fill', '#d1d5db')
-        .style('font-size', '0.8rem'));
+        .attr('stroke', isDarkMode ? 'rgba(148, 163, 184, 0.1)' : 'rgba(229, 231, 235, 0.3)')
+        .attr('stroke-dasharray', '2,2'));
     
     svg.append('g').call(xAxis);
     svg.append('g').call(yAxis);
     
-    // Добавляем подпись к оси Y
-    svg.append('text')
-      .attr('transform', 'rotate(-90)')
-      .attr('x', -(height - margin.bottom + margin.top)/2)
-      .attr('y', margin.left/3)
-      .attr('text-anchor', 'middle')
-      .style('fill', '#9ca3af')
-      .style('font-size', '0.85rem')
-      // .text('Объем продаж (UZS)');
     
     // Создаем группы для каждого месяца/дня
     const itemGroups = svg.append('g')
@@ -1945,13 +1929,13 @@ const renderPeriodComparisonTable = () => {
         .attr('class', 'chart-tooltip')
         .style('position', 'absolute')
         .style('visibility', 'hidden')
-        .style('background', 'rgba(17, 24, 39, 0.95)')
-        .style('color', '#f9fafb')
+        .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)')
+        .style('color', isDarkMode ? '#f9fafb' : '#1f2937')
         .style('padding', '10px 15px')
         .style('border-radius', '5px')
         .style('font-size', '0.9rem')
         .style('box-shadow', '0 4px 15px rgba(0, 0, 0, 0.3)')
-        .style('border', '1px solid rgba(59, 130, 246, 0.3)')
+        .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'}`)
         .style('z-index', 10);
     }
     
@@ -1966,17 +1950,17 @@ const renderPeriodComparisonTable = () => {
       
       // Добавляем красиво форматированное содержимое тултипа
       tooltip.html(`
-        <div style="border-bottom: 1px solid rgba(75, 85, 99, 0.3); margin-bottom: 8px; padding-bottom: 8px;">
+        <div style="border-bottom: 1px solid ${isDarkMode ? 'rgba(75, 85, 99, 0.3)' : 'rgba(229, 231, 235, 0.8)'}; margin-bottom: 8px; padding-bottom: 8px;">
           <div style="font-weight: bold; font-size: 1rem; margin-bottom: 4px;">${d.name}</div>
-          <div style="font-size: 0.8rem; color: #9ca3af;">Нажмите для детального анализа</div>
+          <div style="font-size: 0.8rem; color: ${isDarkMode ? '#9ca3af' : '#64748b'};">${t('models.viewDetails')}</div>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
           <div>
-            <div style="font-size: 0.75rem; color: #9ca3af;">Продажи</div>
+            <div style="font-size: 0.75rem; color: ${isDarkMode ? '#9ca3af' : '#64748b'};">${t('metrics.totalSales')}</div>
             <div style="font-weight: bold;">${formatProfitCompact(d.sales)}</div>
           </div>
           <div>
-            <div style="font-size: 0.75rem; color: #9ca3af;">Доля</div>
+            <div style="font-size: 0.75rem; color: ${isDarkMode ? '#9ca3af' : '#64748b'};">${t('metrics.share')}</div>
             <div style="font-weight: bold; color: #60a5fa;">${percentage}%</div>
           </div>
         </div>
@@ -2060,7 +2044,7 @@ const renderPeriodComparisonTable = () => {
       .attr('height', d => height - margin.bottom - y(d.value))
       .attr('rx', 4)
       .attr('fill', d => `url(#gradient-${d.year})`)
-      .attr('stroke', d => d3.rgb(colorScale(d.year)).darker(0.5))
+      .attr('stroke', d => isDarkMode ? d3.rgb(colorScale(d.year)).darker(0.5) : d3.rgb(colorScale(d.year)).darker(0.2))
       .attr('stroke-width', 0.5)
       .attr('opacity', 0.9)
       .style('cursor', 'pointer')
@@ -2074,11 +2058,11 @@ const renderPeriodComparisonTable = () => {
         tooltip.html(`
           <div style="display: flex; align-items: center; margin-bottom: 8px;">
             <div style="width: 12px; height: 12px; border-radius: 50%; background: ${colorScale(d.year)}; margin-right: 8px;"></div>
-            <strong>${isDaysList ? `День ${d.name}` : d.name} ${d.year}</strong>
+            <strong>${isDaysList ? `${t('filters.day')} ${d.name}` : d.name} ${d.year}</strong>
           </div>
-          <div style="margin-left: 20px;">Продажи: <strong>${formatProfitCompact(d.value)}</strong></div>
-          <div style="font-size: 0.8rem; color: #9ca3af; margin-top: 5px;">
-            Нажмите для просмотра детализации
+          <div style="margin-left: 20px;">${t('charts.total')}: <strong>${formatProfitCompact(d.value)}</strong></div>
+          <div style="font-size: 0.8rem; color: ${isDarkMode ? '#9ca3af' : '#64748b'}; margin-top: 5px;">
+            ${t('models.viewDetails')}
           </div>
         `)
         .style('visibility', 'visible')
@@ -2148,7 +2132,7 @@ const renderPeriodComparisonTable = () => {
       .attr('text-anchor', 'middle')
       .style('font-size', isDaysList ? '0.6rem' : '0.7rem') // Меньший размер для дней
       .style('font-weight', 'bold')
-      .style('fill', '#f9fafb')
+      .style('fill', isDarkMode ? '#f9fafb' : '#1f2937')
       .style('filter', 'drop-shadow(0 1px 1px rgba(0,0,0,0.7))')
       .style('opacity', 0) // Начинаем с прозрачного состояния для анимации
       .text(d => d.value > 0 ? formatProfitCompact(d.value) : '')
@@ -2171,8 +2155,8 @@ const renderPeriodComparisonTable = () => {
         .attr('width', 130)
         .attr('height', maxVisibleLegendItems * 30 + 10)
         .attr('rx', 10)
-        .attr('fill', 'rgba(17, 24, 39, 0.6)')
-        .attr('stroke', 'rgba(59, 130, 246, 0.2)')
+        .attr('fill', isDarkMode ? 'rgba(17, 24, 39, 0.6)' : 'rgba(255, 255, 255, 0.8)')
+        .attr('stroke', isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)')
         .attr('stroke-width', 1);
     }
     
@@ -2222,7 +2206,7 @@ const renderPeriodComparisonTable = () => {
       .attr('x', 18)
       .attr('y', 10)
       .style('font-size', '0.8rem')
-      .style('fill', '#f9fafb')
+      .style('fill', isDarkMode ? '#f9fafb' : '#1f2937')
       .text(d => d);
     
     // Добавляем подсказку о прокрутке, если много годов
@@ -2232,164 +2216,13 @@ const renderPeriodComparisonTable = () => {
         .attr('y', maxVisibleLegendItems * 30 + 25)
         .attr('text-anchor', 'middle')
         .style('font-size', '0.7rem')
-        .style('fill', '#9ca3af')
+        .style('fill', isDarkMode ? '#9ca3af' : '#64748b')
         .text('⟳ Прокрутите для просмотра');
     }
   };
   
   // Инициализация графика с полными данными
   updateChart();
-};
-
-const showSelectionOptions = (year, month, monthName) => {
-  if (!mainChartRef.current) return;
-  d3.selectAll('.chart-tooltip, .bar-tooltip, .model-tooltip').remove();
-  // Очищаем контейнер
-  mainChartRef.current.innerHTML = '';
-  
-  // Создаем стильный контейнер для выбора опций
-  const container = d3.select(mainChartRef.current)
-    .append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .style('justify-content', 'center')
-    .style('width', '100%')
-    .style('height', '100%')
-    .style('background', 'linear-gradient(135deg, #1f2937 0%, #111827 100%)')
-    .style('border-radius', '1rem')
-    .style('padding', '20px')
-    .style('box-shadow', '0 10px 25px -5px rgba(0, 0, 0, 0.3)');
-  
-  // Добавляем заголовок с периодом
-  container.append('h2')
-    .style('font-size', '1.5rem')
-    .style('font-weight', 'bold')
-    .style('color', '#f9fafb')
-    .style('margin-bottom', '30px')
-    .style('text-align', 'center')
-    .html(`Детализация продаж: <span style="color: #60a5fa;">${monthName}</span>`);
-  
-  // Создаем контейнер для карточек выбора
-  const cardsContainer = container.append('div')
-    .style('display', 'flex')
-    .style('gap', '40px')
-    .style('justify-content', 'center')
-    .style('margin-bottom', '30px');
-  
-  // Функция для создания стильной карточки выбора
-  const createOptionCard = (title, icon, description, onClick) => {
-    const card = cardsContainer.append('div')
-      .style('background', 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%)')
-      .style('border', '1px solid rgba(59, 130, 246, 0.2)')
-      .style('border-radius', '16px')
-      .style('width', '250px')
-      .style('padding', '25px')
-      .style('text-align', 'center')
-      .style('cursor', 'pointer')
-      .style('transition', 'transform 0.3s, box-shadow 0.3s')
-      .style('position', 'relative')
-      .style('overflow', 'hidden')
-      .on('mouseover', function() {
-        d3.select(this)
-          .style('transform', 'translateY(-5px)')
-          .style('box-shadow', '0 15px 30px -10px rgba(0, 0, 0, 0.4)');
-      })
-      .on('mouseout', function() {
-        d3.select(this)
-          .style('transform', 'translateY(0)')
-          .style('box-shadow', 'none');
-      })
-      .on('click', onClick);
-    
-    // Добавляем фоновый градиент
-    card.append('div')
-      .style('position', 'absolute')
-      .style('top', '0')
-      .style('left', '0')
-      .style('width', '100%')
-      .style('height', '100%')
-      .style('background', 'radial-gradient(circle at 90% 10%, rgba(59, 130, 246, 0.15) 0%, transparent 80%)')
-      .style('z-index', '0');
-    
-    // Добавляем содержимое карточки
-    const content = card.append('div')
-      .style('position', 'relative')
-      .style('z-index', '1');
-    
-    content.append('div')
-      .style('font-size', '2.5rem')
-      .style('color', '#60a5fa')
-      .style('margin-bottom', '15px')
-      .html(icon);
-    
-    content.append('h3')
-      .style('font-size', '1.3rem')
-      .style('font-weight', 'bold')
-      .style('color', '#f9fafb')
-      .style('margin-bottom', '10px')
-      .text(title);
-    
-    content.append('p')
-      .style('font-size', '0.9rem')
-      .style('color', '#9ca3af')
-      .style('line-height', '1.5')
-      .text(description);
-    
-    // Добавляем кнопку действия
-    content.append('div')
-      .style('background', 'rgba(59, 130, 246, 0.2)')
-      .style('color', '#60a5fa')
-      .style('padding', '8px 15px')
-      .style('border-radius', '20px')
-      .style('font-size', '0.85rem')
-      .style('margin-top', '20px')
-      .style('display', 'inline-block')
-      .text('Выбрать');
-  };
-  
-  // Создаем карточку выбора: по моделям автомобилей
-  createOptionCard(
-    'По моделям авто',
-    '<i class="fas fa-car"></i>',
-    'Анализ продаж различных моделей автомобилей с разбивкой по популярности и доходности',
-    () => showCarModelDetails(year, month, monthName)
-  );
-  
-  // Создаем карточку выбора: по регионам
-  createOptionCard(
-    'По регионам',
-    '<i class="fas fa-map-marker-alt"></i>',
-    'Анализ продаж по регионам Узбекистана с визуализацией географического распределения',
-    () => showRegionDetails(year, month, monthName)
-  );
-  
-  // Добавляем кнопку возврата
-  container.append('button')
-    .style('background', 'rgba(59, 130, 246, 0.2)')
-    .style('color', '#60a5fa')
-    .style('border', 'none')
-    .style('padding', '10px 20px')
-    .style('border-radius', '8px')
-    .style('font-size', '0.9rem')
-    .style('cursor', 'pointer')
-    .style('transition', 'background 0.2s')
-    .style('margin-top', '20px')
-    .text('Вернуться к общему графику')
-    .on('mouseover', function() {
-      d3.select(this).style('background', 'rgba(59, 130, 246, 0.3)');
-    })
-    .on('mouseout', function() {
-      d3.select(this).style('background', 'rgba(59, 130, 246, 0.2)');
-    })
-    .on('click', renderPeriodComparisonTable);
-  
-  // Добавляем стили Font Awesome для иконок
-  const head = document.head || document.getElementsByTagName('head')[0];
-  const fontAwesome = document.createElement('link');
-  fontAwesome.rel = 'stylesheet';
-  fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css';
-  head.appendChild(fontAwesome);
 };
 
 const showCarModelDetails = (year, month, monthName) => {
@@ -5655,3098 +5488,155 @@ async function updateRangeComparisonData(startMonthId, endMonthId, providedMonth
  
  console.groupEnd(); // Завершаем группу логирования
 };
-const renderProgressChart = () => {
-  if (!progressChartRef.current || Object.keys(financialData).length === 0) return;
+const showSelectionOptions = (year, month, monthName) => {
+  if (!mainChartRef.current) return;
+  d3.selectAll('.chart-tooltip, .bar-tooltip, .model-tooltip').remove();
+  // Очищаем контейнер
+  mainChartRef.current.innerHTML = '';
   
-  // Очистка контейнера
-  progressChartRef.current.innerHTML = '';
-  
-  // Получаем актуальные данные для текущего режима отображения
-  let targetAmount, totalEarned;
-  
-  if (displayMode === 'yearly' || displayMode === 'compare') {
-    // Для режима одного года или сравнения берем данные по последнему выбранному году
-    const latestYear = Math.max(...selectedYears);
-    const yearData = financialData[latestYear] || {};
-    targetAmount = yearData.targetAmount || 0;
-    totalEarned = yearData.totalEarned || 0;
-  } else {
-    // Для режима периода - сумма за выбранный период
-    targetAmount = 0;
-    totalEarned = 0;
-    
-    for (let year = startYear; year <= endYear; year++) {
-      if (!financialData[year]) continue;
-      
-      const monthlyTarget = financialData[year].targetAmount / 12;
-      
-      financialData[year].months.forEach(month => {
-        if (
-          (year === startYear && month.month < startMonth) || 
-          (year === endYear && month.month > endMonth)
-        ) {
-          return;
-        }
-        
-        targetAmount += monthlyTarget;
-        totalEarned += month.total;
-      });
-    }
-  }
-  
-  // Расчет процента выполнения плана с проверкой на корректность данных
-  const percentage = Math.min(100, Math.round((totalEarned / (targetAmount || 1)) * 100));
-  
-  // Создаем контейнер с флекс-версткой для лучшей организации
-  const container = d3.select(progressChartRef.current)
+  // Создаем стильный контейнер для выбора опций
+  const container = d3.select(mainChartRef.current)
     .append('div')
     .style('display', 'flex')
     .style('flex-direction', 'column')
     .style('align-items', 'center')
     .style('justify-content', 'center')
-    .style('height', '100%')
-    .style('padding', '15px')
-    .style('background', 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%)')
-    .style('border-radius', '12px')
-    .style('box-shadow', '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)');
-  
-  // Добавляем заголовок с улучшенной типографикой
-  container.append('h3')
-    .style('color', '#f9fafb')
-    .style('font-size', '1.1rem')
-    .style('font-weight', 'bold')
-    .style('margin-top', '5px')
-    .style('margin-bottom', '15px')
-    .style('text-align', 'center')
-    .style('background', 'linear-gradient(90deg, #3b82f6, #60a5fa)')
-    .style('background-clip', 'text')
-    .style('-webkit-background-clip', 'text')
-    .style('color', 'transparent')
-    .style('text-shadow', '0 1px 2px rgba(0, 0, 0, 0.1)')
-    .text('Прогресс выполнения плана продаж');
-  
-  // Создаем контейнер для кругового прогресс-бара с улучшенным позиционированием
-  const progressContainer = container.append('div')
-    .style('position', 'relative')
-    .style('width', '160px')
-    .style('height', '160px')
-    .style('margin', '10px 0')
-    .style('display', 'flex')
-    .style('align-items', 'center')
-    .style('justify-content', 'center');
-    
-  // Создаем SVG для кругового индикатора с улучшенными свойствами
-  const svg = progressContainer.append('svg')
-    .attr('width', '100%')
-    .attr('height', '100%')
-    .style('transform', 'rotate(-90deg)'); // Повернем чтобы прогресс шел по часовой
-
-  // Определяем параметры круга с улучшенной визуализацией
-  const circleSize = 160;
-  const strokeWidth = 14;
-  const radius = (circleSize - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  
-  // Добавляем декоративный фоновый элемент для улучшения эстетики
-  svg.append('circle')
-    .attr('cx', circleSize / 2)
-    .attr('cy', circleSize / 2)
-    .attr('r', radius + strokeWidth / 2)
-    .attr('fill', 'rgba(15, 23, 42, 0.5)')
-    .attr('stroke', 'rgba(59, 130, 246, 0.1)')
-    .attr('stroke-width', 1)
-    .attr('opacity', 0.3);
-  
-  // Улучшенный фоновый круг с градиентом
-  const gradient = svg.append('defs')
-    .append('linearGradient')
-    .attr('id', 'circle-bg-gradient')
-    .attr('x1', '0%')
-    .attr('y1', '0%')
-    .attr('x2', '100%')
-    .attr('y2', '100%');
-    
-  gradient.append('stop')
-    .attr('offset', '0%')
-    .attr('stop-color', '#1e293b')
-    .attr('stop-opacity', 0.6);
-    
-  gradient.append('stop')
-    .attr('offset', '100%')
-    .attr('stop-color', '#0f172a')
-    .attr('stop-opacity', 0.8);
-  
-  // Добавляем фоновый круг с улучшенной стилизацией
-  svg.append('circle')
-    .attr('cx', circleSize / 2)
-    .attr('cy', circleSize / 2)
-    .attr('r', radius)
-    .attr('fill', 'none')
-    .attr('stroke', 'url(#circle-bg-gradient)')
-    .attr('stroke-width', strokeWidth)
-    .attr('stroke-linecap', 'round');
-  
-  // Вычисляем длину дуги для прогресса
-  const progressLength = (percentage / 100) * circumference;
-  
-  // Функция для определения цвета в зависимости от процента с улучшенной палитрой
-  const getProgressColor = (percent) => {
-    if (percent >= 100) return '#10b981'; // Зеленый для 100%+
-    if (percent >= 85) return '#3b82f6';  // Синий для 85-99%
-    if (percent >= 70) return '#6366f1';  // Фиолетовый для 70-84%
-    if (percent >= 50) return '#f59e0b';  // Оранжевый для 50-69%
-    if (percent >= 30) return '#f97316';  // Темно-оранжевый для 30-49%
-    return '#ef4444';                     // Красный для <30%
-  };
-  
-  // Создаем градиент для прогресс-бара
-  const progressGradient = svg.append('defs')
-    .append('linearGradient')
-    .attr('id', 'progress-gradient')
-    .attr('x1', '0%')
-    .attr('y1', '0%')
-    .attr('x2', '100%')
-    .attr('y2', '0%');
-    
-  const mainColor = getProgressColor(percentage);
-  const darkerColor = d3.color(mainColor).darker(0.5).toString();
-  const lighterColor = d3.color(mainColor).brighter(0.3).toString();
-    
-  progressGradient.append('stop')
-    .attr('offset', '0%')
-    .attr('stop-color', lighterColor);
-    
-  progressGradient.append('stop')
-    .attr('offset', '100%')
-    .attr('stop-color', mainColor);
-  
-  // Добавляем дугу прогресса с анимацией и улучшенной стилизацией
-  const progressCircle = svg.append('circle')
-    .attr('cx', circleSize / 2)
-    .attr('cy', circleSize / 2)
-    .attr('r', radius)
-    .attr('fill', 'none')
-    .attr('stroke', 'url(#progress-gradient)')
-    .attr('stroke-width', strokeWidth)
-    .attr('stroke-dasharray', circumference)
-    .attr('stroke-dashoffset', circumference) // Начинаем с нуля
-    .attr('stroke-linecap', 'round')
-    .style('filter', 'drop-shadow(0 0 4px ' + mainColor + ')');
-  
-  // Добавляем анимацию заполнения с улучшенным таймингом
-  progressCircle.transition()
-    .duration(1500)
-    .ease(d3.easeElasticOut.amplitude(0.8).period(1)) // Улучшенная функция анимации
-    .attr('stroke-dashoffset', circumference - progressLength);
-  
-  // Добавляем контейнер для текста в центре с улучшенной стилизацией
-  const textContainer = progressContainer.append('div')
-    .style('position', 'absolute')
-    .style('top', '0')
-    .style('left', '0')
     .style('width', '100%')
     .style('height', '100%')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('align-items', 'center')
-    .style('justify-content', 'center')
-    .style('text-align', 'center')
-    .style('pointer-events', 'none'); // Предотвращаем перехват событий
+    .style('background', 'linear-gradient(135deg, #1f2937 0%, #111827 100%)')
+    .style('border-radius', '1rem')
+    .style('padding', '20px')
+    .style('box-shadow', '0 10px 25px -5px rgba(0, 0, 0, 0.3)');
   
-  // Добавляем большой процент в центр с улучшенной типографикой
-  const percentElement = textContainer.append('div')
-    .style('font-size', '2.5rem')
-    .style('font-weight', 'bold')
-    .style('color', mainColor)
-    .style('line-height', '1')
-    .style('margin-bottom', '4px')
-    .style('text-shadow', '0 2px 4px rgba(0, 0, 0, 0.3)')
-    .text('0%');
-    
-  // Анимация счетчика процентов с улучшенным алгоритмом
-  let startValue = 0;
-  const duration = 1500;
-  const frameDuration = 16; // ~60fps
-  const totalFrames = Math.min(120, duration / frameDuration);
-  const incrementPerFrame = percentage / totalFrames;
-  
-  // Функция для нелинейной интерполяции
-  const easeOutQuart = x => 1 - Math.pow(1 - x, 4);
-  
-  let frame = 0;
-  const counterAnimation = () => {
-    if (frame === totalFrames) {
-      percentElement.text(`${percentage}%`);
-      return;
-    }
-    
-    frame++;
-    const progress = easeOutQuart(frame / totalFrames);
-    const currentValue = Math.round(progress * percentage);
-    
-    percentElement.text(`${currentValue}%`);
-    requestAnimationFrame(counterAnimation);
-  };
-  
-  requestAnimationFrame(counterAnimation);
-  
-  // Информация о суммах под процентом с улучшенной стилизацией
-  textContainer.append('div')
-    .style('font-size', '0.85rem')
-    .style('color', '#94a3b8')
-    .style('margin-top', '2px')
-    .style('letter-spacing', '0.5px')
-    .text('выполнения плана');
-    
-  // Добавляем пояснительную информацию под круговым индикатором
-  const detailsContainer = container.append('div')
-    .style('display', 'flex')
-    .style('flex-direction', 'column')
-    .style('width', '100%')
-    .style('max-width', '280px')
-    .style('margin-top', '20px')
-    .style('background', 'rgba(30, 41, 59, 0.5)')
-    .style('border-radius', '8px')
-    .style('padding', '15px')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)')
-    .style('backdrop-filter', 'blur(4px)');
-    
-  // Информация о текущей и целевой сумме с улучшенной типографикой
-  detailsContainer.append('div')
-    .style('display', 'flex')
-    .style('justify-content', 'space-between')
-    .style('margin-bottom', '10px')
-    .html(`
-      <span style="color: #94a3b8; font-size: 0.9rem;">Текущая сумма:</span>
-      <span style="color: #f9fafb; font-size: 0.9rem; font-weight: 600; letter-spacing: 0.5px; 
-        background: linear-gradient(90deg, ${mainColor}, ${lighterColor}); 
-        -webkit-background-clip: text; background-clip: text; color: transparent;">
-        ${formatCurrency(totalEarned)}
-      </span>
-    `);
-    
-  detailsContainer.append('div')
-    .style('display', 'flex')
-    .style('justify-content', 'space-between')
-    .style('margin-bottom', '15px')
-    .html(`
-      <span style="color: #94a3b8; font-size: 0.9rem;">Целевая сумма:</span>
-      <span style="color: #f9fafb; font-size: 0.9rem; font-weight: 600;">${formatCurrency(targetAmount)}</span>
-    `);
-    
-  // Добавляем индикатор остатка
-  const remainingAmount = Math.max(0, targetAmount - totalEarned);
-  const remainingPercentage = Math.max(0, 100 - percentage);
-  
-  detailsContainer.append('div')
-    .style('display', 'flex')
-    .style('justify-content', 'space-between')
-    .style('margin-bottom', '15px')
-    .html(`
-      <span style="color: #94a3b8; font-size: 0.9rem;">Осталось выполнить:</span>
-      <span style="color: #f9fafb; font-size: 0.9rem; font-weight: 600;">
-        ${formatCurrency(remainingAmount)} <span style="color: #94a3b8;">(${remainingPercentage}%)</span>
-      </span>
-    `);
-    
-  // Добавляем прогресс-бар для визуализации остатка
-  const remainingBarContainer = detailsContainer.append('div')
-    .style('width', '100%')
-    .style('height', '6px')
-    .style('background', 'rgba(30, 41, 59, 0.8)')
-    .style('border-radius', '3px')
-    .style('overflow', 'hidden')
-    .style('margin-bottom', '15px');
-    
-  remainingBarContainer.append('div')
-    .style('width', `${percentage}%`)
-    .style('height', '100%')
-    .style('background', `linear-gradient(to right, ${darkerColor}, ${mainColor})`)
-    .style('border-radius', '3px')
-    .style('transform', 'scaleX(0)')
-    .style('transform-origin', 'left')
-    .style('transition', 'transform 1s ease-out')
-    .transition()
-    .duration(1000)
-    .delay(800)
-    .style('transform', 'scaleX(1)');
-    
-  // Добавляем статус-сообщение с улучшенной логикой и информативностью
-  const getStatusMessage = (percent) => {
-    if (percent >= 100) return { text: 'План полностью выполнен!', color: '#10b981', icon: '✅' };
-    if (percent >= 90) return { text: 'Отличный результат, почти выполнено', color: '#3b82f6', icon: '🎯' };
-    if (percent >= 80) return { text: 'Хороший прогресс, близко к цели', color: '#6366f1', icon: '📈' };
-    if (percent >= 70) return { text: 'Уверенное движение к цели', color: '#8b5cf6', icon: '👍' };
-    if (percent >= 50) return { text: 'Средний прогресс, нужно ускориться', color: '#f59e0b', icon: '⚡' };
-    if (percent >= 30) return { text: 'Необходимо ускорить темп продаж', color: '#f97316', icon: '⏱️' };
-    return { text: 'Требуется значительное улучшение', color: '#ef4444', icon: '⚠️' };
-  };
-  
-  const status = getStatusMessage(percentage);
-  
-  const statusContainer = detailsContainer.append('div')
-    .style('display', 'flex')
-    .style('align-items', 'center')
-    .style('justify-content', 'center')
-    .style('padding', '10px')
-    .style('background', `${status.color}15`) // Полупрозрачный фон в цвет статуса
-    .style('border-radius', '6px')
-    .style('border', `1px solid ${status.color}30`);
-  
-  statusContainer.append('div')
-    .style('display', 'flex')
-    .style('align-items', 'center')
-    .style('gap', '8px')
-    .html(`
-      <span style="font-size: 1.2rem;">${status.icon}</span>
-      <span style="color: ${status.color}; font-weight: 600; letter-spacing: 0.3px;">${status.text}</span>
-    `);
-  
-  // Дополнительная информация о расчете с указанием периода
-  let periodInfo = '';
-  if (displayMode === 'yearly') {
-    periodInfo = `Показатель выполнения плана за ${selectedYears[0]} год`;
-  } else if (displayMode === 'compare') {
-    periodInfo = `Показатель для ${Math.max(...selectedYears)} года`;
-  } else {
-    const startDate = `${startMonth < 10 ? '0' + startMonth : startMonth}.${startYear}`;
-    const endDate = `${endMonth < 10 ? '0' + endMonth : endMonth}.${endYear}`;
-    periodInfo = `Показатель для периода ${startDate} - ${endDate}`;
-  }
-  
-  container.append('div')
-    .style('font-size', '0.8rem')
-    .style('color', '#94a3b8')
-    .style('margin-top', '10px')
-    .style('text-align', 'center')
-    .style('font-style', 'italic')
-    .text(periodInfo);
-};
-const renderDetailsChart = () => {
-  if (!detailsChartRef.current || !filteredData.length) return;
-  
-  // Очистка контейнера
-  detailsChartRef.current.innerHTML = '';
-  
-  // Суммирование данных по типам продаж
-  const totalRetail = filteredData.reduce((sum, month) => sum + month.retail, 0);
-  const totalWholesale = filteredData.reduce((sum, month) => sum + month.wholesale, 0);
-  const totalPromo = filteredData.reduce((sum, month) => sum + month.promo, 0);
-  
-  // Подготовка данных для пирога с дополнительной валидацией
-  const pieData = [
-    { id: 'retail', label: SALE_TYPES.RETAIL.name, value: totalRetail, color: SALE_TYPES.RETAIL.color },
-    { id: 'wholesale', label: SALE_TYPES.WHOLESALE.name, value: totalWholesale, color: SALE_TYPES.WHOLESALE.color },
-    { id: 'promo', label: SALE_TYPES.PROMO.name, value: totalPromo, color: SALE_TYPES.PROMO.color }
-  ].filter(item => item.value > 0); // Фильтруем нулевые значения для лучшего отображения
-  
-  // Проверка наличия данных
-  if (pieData.length === 0) {
-    detailsChartRef.current.innerHTML = `
-      <div style="display:flex;justify-content:center;align-items:center;height:100%;flex-direction:column;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" 
-          stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-        <p style="color:#9ca3af;margin-top:12px;text-align:center;">Нет данных для отображения категорий продаж</p>
-      </div>
-    `;
-    return;
-  }
-  
-  // Отрисовка пирога с дополнительной визуализацией
-  const container = detailsChartRef.current;
-  const width = container.clientWidth;
-  const height = container.clientHeight || 320;
-  const margin = { top: 30, right: 120, bottom: 20, left: 20 };
-  const radius = Math.min(width - margin.left - margin.right, height - margin.top - margin.bottom) / 2;
-  
-  // Создаем основной контейнер с улучшенной стилизацией
-  const chartContainer = d3.select(container)
-    .append('div')
-    .style('width', '100%')
-    .style('height', '100%')
-    .style('background', 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%)')
-    .style('border-radius', '12px')
-    .style('box-shadow', '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)')
-    .style('padding', '15px')
-    .style('position', 'relative')
-    .style('overflow', 'hidden');
-  
-  // Добавляем декоративный элемент фона
-  chartContainer.append('div')
-    .style('position', 'absolute')
-    .style('top', '0')
-    .style('left', '0')
-    .style('width', '100%')
-    .style('height', '100%')
-    .style('background-image', 'radial-gradient(circle at 10% 90%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)')
-    .style('z-index', '0');
-  
-  // Создаем SVG с улучшенным позиционированием
-  const svg = chartContainer.append('svg')
-    .attr('width', width)
-    .attr('height', height)
-    .style('position', 'relative')
-    .style('z-index', '1');
-  
-  // Добавляем заголовок с улучшенной типографикой
-  svg.append('text')
-    .attr('x', width / 2)
-    .attr('y', margin.top / 2)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '1.1rem')
-    .style('font-weight', 'bold')
-    .style('fill', '#f9fafb')
-    .style('text-shadow', '0 1px 2px rgba(0, 0, 0, 0.2)')
-    .text('Структура продаж по категориям');
-  
-  // Создаем группу для пирога с правильным позиционированием
-  const g = svg.append('g')
-    .attr('transform', `translate(${(width - margin.right) / 2},${height / 2})`);
-  
-  // Создаем генератор пирога с улучшенными параметрами
-  const pie = d3.pie()
-    .sort(null)
-    .padAngle(0.03) // Добавляем небольшой отступ между секторами
-    .value(d => d.value);
-  
-  // Создаем арки с улучшенной визуализацией
-  const arc = d3.arc()
-    .innerRadius(radius * 0.4) // Больший внутренний радиус для пончика
-    .outerRadius(radius * 0.9)
-    .cornerRadius(6); // Скругление углов секторов
-  
-  // Функция для анимации дуги при наведении
-  const arcHover = d3.arc()
-    .innerRadius(radius * 0.38)
-    .outerRadius(radius * 0.95)
-    .cornerRadius(6);
-  
-  // Создаем улучшенные градиенты для каждой категории
-  pieData.forEach((d, i) => {
-    const id = `pie-gradient-${d.id}`;
-    
-    const gradient = svg.append('defs')
-      .append('linearGradient')
-      .attr('id', id)
-      .attr('x1', '0%')
-      .attr('y1', '0%')
-      .attr('x2', '100%')
-      .attr('y2', '100%');
-      
-    // Основной цвет категории
-    const baseColor = d3.color(d.color);
-    const lighterColor = baseColor.brighter(0.5);
-    const darkerColor = baseColor.darker(0.3);
-      
-    gradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', lighterColor.toString())
-      .attr('stop-opacity', 0.95);
-      
-    gradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', darkerColor.toString())
-      .attr('stop-opacity', 0.85);
-    
-    // Создаем также градиент для наведения
-    const hoverGradientId = `pie-hover-gradient-${d.id}`;
-    
-    const hoverGradient = svg.append('defs')
-      .append('linearGradient')
-      .attr('id', hoverGradientId)
-      .attr('x1', '0%')
-      .attr('y1', '0%')
-      .attr('x2', '100%')
-      .attr('y2', '100%');
-      
-    hoverGradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', lighterColor.brighter(0.2).toString())
-      .attr('stop-opacity', 1);
-      
-    hoverGradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', baseColor.toString())
-      .attr('stop-opacity', 0.9);
-  });
-  
-  // Рассчитываем общую сумму для процентов
-  const total = pieData.reduce((sum, d) => sum + d.value, 0);
-  
-  // Фильтр для свечения при наведении
-  svg.append('defs')
-    .append('filter')
-    .attr('id', 'glow')
-    .append('feGaussianBlur')
-    .attr('stdDeviation', '3')
-    .attr('result', 'coloredBlur');
-  
-  // Добавляем дуги с улучшенной анимацией и интерактивностью
-  const arcs = g.selectAll('.arc')
-    .data(pie(pieData))
-    .join('g')
-    .attr('class', 'arc');
-  
-  // Добавляем пути с анимацией и улучшенной стилизацией
-  const paths = arcs.append('path')
-    .attr('fill', d => `url(#pie-gradient-${d.data.id})`)
-    .attr('stroke', '#1f2937')
-    .attr('stroke-width', 1.5)
-    .style('cursor', 'pointer')
-    .style('transition', 'filter 0.3s')
-    .on('mouseover', function(event, d) {
-      d3.select(this)
-        .attr('fill', `url(#pie-hover-gradient-${d.data.id})`)
-        .transition()
-        .duration(200)
-        .attr('d', arcHover)
-        .style('filter', 'url(#glow)');
-          
-      // Обновляем центральный текст с анимацией
-      centerTextGroup.style('opacity', 0)
-        .transition()
-        .duration(200)
-        .style('opacity', 1);
-        
-      centerText.text(d3.format(',.0f')(d.data.value));
-      subText.text(d.data.label);
-      percentText.text(`${d3.format('.1f')((d.data.value / total) * 100)}%`);
-      
-      // Обновляем иконку в центре
-      centerIcon.attr('fill', d.data.color)
-        .attr('transform', 'scale(1.2)');
-      
-      // Подсвечиваем соответствующий элемент легенды
-      legendItems.select(`#legend-${d.data.id}`)
-        .transition()
-        .duration(200)
-        .style('font-weight', 'bold')
-        .attr('x', 30);
-        
-      // Выделяем фон легенды
-      legendItems.selectAll(`.legend-bg-${d.data.id}`)
-        .transition()
-        .duration(200)
-        .style('opacity', 0.15);
-    })
-    .on('mouseout', function(event, d) {
-      d3.select(this)
-        .attr('fill', `url(#pie-gradient-${d.data.id})`)
-        .transition()
-        .duration(200)
-        .attr('d', arc)
-        .style('filter', 'none');
-          
-      // Возвращаем центральный текст
-      centerText.text(d3.format(',.0f')(total));
-      subText.text('Общий объем');
-      percentText.text('100%');
-      
-      // Возвращаем иконку в нормальное состояние
-      centerIcon.attr('fill', '#4b5563')
-        .attr('transform', 'scale(1)');
-      
-      // Возвращаем нормальный вид легенды
-      legendItems.selectAll('text')
-        .transition()
-        .duration(200)
-        .style('font-weight', 'normal')
-        .attr('x', 25);
-        
-      // Скрываем фон легенды
-      legendItems.selectAll('.legend-bg')
-        .transition()
-        .duration(200)
-        .style('opacity', 0);
-    });
-  
-  // Добавляем анимацию появления с усовершенствованной механикой
-  paths.each(function(d) {
-    const node = d3.select(this);
-    const angleInterpolation = d3.interpolate({startAngle: d.startAngle, endAngle: d.startAngle}, d);
-    
-    node
-      .attr('d', arc({startAngle: d.startAngle, endAngle: d.startAngle}))
-      .transition()
-      .duration(800)
-      .delay(d.index * 150)
-      .attrTween('d', () => t => arc(angleInterpolation(t)));
-  });
-  
-  // Добавляем группу для центрального текста
-  const centerTextGroup = g.append('g')
-    .attr('text-anchor', 'middle');
-  
-  // Добавляем круглый фон для центрального текста
-  centerTextGroup.append('circle')
-    .attr('r', radius * 0.35)
-    .attr('fill', 'rgba(30, 41, 59, 0.7)')
-    .attr('stroke', 'rgba(59, 130, 246, 0.3)')
-    .attr('stroke-width', 1);
-  
-  // Добавляем иконку в центр
-  const centerIcon = centerTextGroup.append('path')
-    .attr('d', 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1.93.82 1.62 2.02 1.62 1.19 0 1.78-.65 1.78-1.34 0-.68-.33-1.18-1.88-1.54-1.67-.38-3.48-.94-3.48-3.02 0-1.62 1.38-2.84 3.02-3.2V5h2.67v2.12c1.57.32 2.62 1.62 2.63 3.22h-1.97c-.07-.9-.67-1.56-1.73-1.56-1.04 0-1.7.58-1.7 1.27 0 .69.44 1.09 2.03 1.48 1.99.46 3.28 1.31 3.28 3.16 0 1.45-1.17 2.77-2.69 3.4z')
-    .attr('transform', 'translate(-12, -12) scale(1.2)') // Центрируем иконку
-    .attr('fill', '#4b5563');
-  
-  // Добавляем текст для общей суммы
-  const centerText = centerTextGroup.append('text')
-    .attr('dy', '0.5em')
+  // Добавляем заголовок с периодом
+  container.append('h2')
     .style('font-size', '1.5rem')
     .style('font-weight', 'bold')
-    .style('fill', '#f9fafb')
-    .style('letter-spacing', '0.5px')
-    .text(d3.format(',.0f')(total));
-  
-  // Добавляем подтекст с названием категории
-  const subText = centerTextGroup.append('text')
-    .attr('dy', '3em')
-    .style('font-size', '0.9rem')
-    .style('fill', '#94a3b8')
-    .text('Общий объем');
-  
-  // Добавляем текст процента
-  const percentText = centerTextGroup.append('text')
-    .attr('dy', '-1.5em')
-    .style('font-size', '1.2rem')
-    .style('fill', '#60a5fa')
-    .style('font-weight', '600')
-    .text('100%');
-  
-  // Добавляем улучшенную легенду с расширенными данными
-  const legendGroup = svg.append('g')
-    .attr('transform', `translate(${width - margin.right + 20}, ${height / 2 - (pieData.length * 30) / 2})`)
-    .style('font-size', '0.9rem');
-  
-  // Добавляем заголовок легенды
-  legendGroup.append('text')
-    .attr('x', 0)
-    .attr('y', -25)
-    .style('font-size', '0.9rem')
-    .style('fill', '#94a3b8')
-    .style('font-weight', 'bold')
-    .text('Категории продаж');
-  
-  // Добавляем элементы легенды с улучшенным форматированием
-  const legendItems = legendGroup.selectAll('.legend-item')
-    .data(pieData)
-    .join('g')
-    .attr('class', 'legend-item')
-    .attr('transform', (d, i) => `translate(0, ${i * 30})`)
-    .style('cursor', 'pointer')
-    .on('mouseover', function(event, d) {
-      // Находим соответствующий сегмент
-      const segment = paths.filter(p => p.data.id === d.id);
-      
-      // Имитируем наведение на сегмент
-      segment
-        .attr('fill', `url(#pie-hover-gradient-${d.id})`)
-        .transition()
-        .duration(200)
-        .attr('d', arcHover)
-        .style('filter', 'url(#glow)');
-      
-      // Обновляем центральный текст
-      centerText.text(d3.format(',.0f')(d.value));
-      subText.text(d.label);
-      percentText.text(`${d3.format('.1f')((d.value / total) * 100)}%`);
-      
-      // Обновляем иконку в центре
-      centerIcon.attr('fill', d.color)
-        .attr('transform', 'scale(1.2)');
-      
-      // Выделяем текущий элемент легенды
-      d3.select(this).select('text')
-        .transition()
-        .duration(200)
-        .style('font-weight', 'bold')
-        .attr('x', 30);
-        
-      // Показываем фон текущего элемента
-      d3.select(this).select('.legend-bg')
-        .transition()
-        .duration(200)
-        .style('opacity', 0.15);
-    })
-    .on('mouseout', function(event, d) {
-      // Находим соответствующий сегмент
-      const segment = paths.filter(p => p.data.id === d.id);
-      
-      // Возвращаем нормальный вид сегмента
-      segment
-        .attr('fill', `url(#pie-gradient-${d.id})`)
-        .transition()
-        .duration(200)
-        .attr('d', arc)
-        .style('filter', 'none');
-      
-      // Возвращаем центральный текст
-      centerText.text(d3.format(',.0f')(total));
-      subText.text('Общий объем');
-      percentText.text('100%');
-      
-      // Возвращаем иконку в нормальное состояние
-      centerIcon.attr('fill', '#4b5563')
-        .attr('transform', 'scale(1)');
-      
-      // Возвращаем нормальный вид легенды
-      d3.select(this).select('text')
-        .transition()
-        .duration(200)
-        .style('font-weight', 'normal')
-        .attr('x', 25);
-        
-      // Скрываем фон
-      d3.select(this).select('.legend-bg')
-        .transition()
-        .duration(200)
-        .style('opacity', 0);
-    });
-  
-  // Добавляем фон для элементов легенды
-  legendItems.append('rect')
-    .attr('class', d => `legend-bg legend-bg-${d.id}`)
-    .attr('x', -5)
-    .attr('y', -15)
-    .attr('width', 100)
-    .attr('height', 28)
-    .attr('rx', 4)
-    .attr('fill', d => d.color)
-    .style('opacity', 0);
-  
-  // Добавляем маркеры и текст легенды с улучшенной стилизацией
-  legendItems.append('rect')
-    .attr('width', 15)
-    .attr('height', 15)
-    .attr('rx', 3)
-    .attr('fill', d => d.color)
-    .style('filter', 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))');
-  
-  legendItems.append('text')
-    .attr('id', d => `legend-${d.id}`)
-    .attr('x', 25)
-    .attr('y', 12)
-    .style('fill', '#f9fafb')
-    .text(d => d.label);
-  
-  // Добавляем данные о суммах и процентах
-  legendItems.append('text')
-    .attr('x', 0)
-    .attr('y', 30)
-    .style('font-size', '0.8rem')
-    .style('fill', d => d.color)
-    .text(d => {
-      const percentage = ((d.value / total) * 100).toFixed(1);
-      return `${d3.format(',.0f')(d.value)} UZS (${percentage}%)`;
-    });
-  
-  // Добавляем интерактивные элементы управления
-  const controlPanel = chartContainer.append('div')
-    .style('position', 'absolute')
-    .style('top', '10px')
-    .style('right', '10px')
-    .style('display', 'flex')
-    .style('gap', '8px');
-  
-  // Кнопка экспорта данных
-  const exportButton = controlPanel.append('button')
-    .style('background', 'rgba(30, 41, 59, 0.7)')
-    .style('border', 'none')
-    .style('color', '#9ca3af')
-    .style('cursor', 'pointer')
-    .style('width', '28px')
-    .style('height', '28px')
-    .style('border-radius', '4px')
-    .style('display', 'flex')
-    .style('align-items', 'center')
-    .style('justify-content', 'center')
-    .style('transition', 'all 0.2s')
-    .attr('title', 'Экспорт данных')
-    .html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>')
-    .on('mouseover', function() {
-      d3.select(this)
-        .style('background', 'rgba(59, 130, 246, 0.3)')
-        .style('color', '#f9fafb');
-    })
-    .on('mouseout', function() {
-      d3.select(this)
-        .style('background', 'rgba(30, 41, 59, 0.7)')
-        .style('color', '#9ca3af');
-    })
-    .on('click', function() {
-      // Логика экспорта данных
-      exportChartData(pieData, 'strukturaProdazh');
-    });
-};
-const exportChartData = (data, filename) => {
-  const csvContent = "data:text/csv;charset=utf-8," 
-    + "Категория,Значение,Процент\n"
-    + data.map(item => {
-        const total = data.reduce((sum, d) => sum + d.value, 0);
-        const percentage = ((item.value / total) * 100).toFixed(2);
-        return `${item.label},${item.value},${percentage}%`;
-      }).join("\n");
-    
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
-const renderYearlyTrendChart = () => {
-  if (!yearlyTrendChartRef.current || Object.keys(financialData).length === 0) return;
-  
-  // Очистка контейнера
-  yearlyTrendChartRef.current.innerHTML = '';
-  
-  // Подготовка данных для линейного графика с проверкой на валидность
-  const yearlyData = Object.entries(financialData)
-    .filter(([year, data]) => data && data.totalEarned !== undefined)
-    .map(([year, data]) => ({
-      x: parseInt(year),
-      y: data.totalEarned,
-      rawData: data
-    }));
-  
-  // Проверка наличия достаточного количества данных для отображения тренда
-  if (yearlyData.length < 2) {
-    yearlyTrendChartRef.current.innerHTML = `
-      <div style="display:flex;justify-content:center;align-items:center;height:100%;flex-direction:column;
-        background:linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%);
-        border-radius:12px;padding:20px;border:1px solid rgba(59, 130, 246, 0.1);">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" 
-          stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="2" x2="12" y2="6"></line>
-          <line x1="12" y1="18" x2="12" y2="22"></line>
-          <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
-          <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
-          <line x1="2" y1="12" x2="6" y2="12"></line>
-          <line x1="18" y1="12" x2="22" y2="12"></line>
-          <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
-          <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
-        </svg>
-        <p style="color:#9ca3af;margin-top:12px;text-align:center;">Недостаточно данных для построения тренда по годам</p>
-        <p style="color:#6b7280;margin-top:6px;font-size:0.85rem;text-align:center;">Необходимо минимум 2 года данных</p>
-      </div>
-    `;
-    return;
-  }
-  
-  // Сортировка по годам для правильного отображения тренда
-  yearlyData.sort((a, b) => a.x - b.x);
-  
-  // Если есть данные по категориям, добавляем их
-  const retailData = Object.entries(financialData)
-    .filter(([year, data]) => data && data.categories && data.categories.retail !== undefined)
-    .map(([year, data]) => ({
-      x: parseInt(year),
-      y: data.categories.retail
-    }))
-    .sort((a, b) => a.x - b.x);
-  
-  const wholesaleData = Object.entries(financialData)
-    .filter(([year, data]) => data && data.categories && data.categories.wholesale !== undefined)
-    .map(([year, data]) => ({
-      x: parseInt(year),
-      y: data.categories.wholesale
-    }))
-    .sort((a, b) => a.x - b.x);
-  
-  const promoData = Object.entries(financialData)
-    .filter(([year, data]) => data && data.categories && data.categories.promo !== undefined)
-    .map(([year, data]) => ({
-      x: parseInt(year),
-      y: data.categories.promo
-    }))
-    .sort((a, b) => a.x - b.x);
-  
-  // Создаем улучшенный стек-график с интерактивностью
-  const container = yearlyTrendChartRef.current;
-  
-  // Создаем основной контейнер с улучшенным стилем
-  const chartContainer = d3.select(container)
-    .append('div')
-    .style('width', '100%')
-    .style('height', '100%')
-    .style('background', 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%)')
-    .style('border-radius', '12px')
-    .style('box-shadow', '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)')
-    .style('position', 'relative');
-  
-  // Добавляем декоративный элемент фона
-  chartContainer.append('div')
-    .style('position', 'absolute')
-    .style('top', '0')
-    .style('left', '0')
-    .style('width', '100%')
-    .style('height', '100%')
-    .style('background-image', 'radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)')
-    .style('z-index', '0');
-  
-  const width = container.clientWidth;
-  const height = container.clientHeight || 240;
-  const margin = { top: 40, right: 80, bottom: 40, left: 60 };
-  
-  // Создаем SVG с правильным позиционированием
-  const svg = chartContainer.append('svg')
-    .attr('width', width)
-    .attr('height', height)
-    .style('position', 'relative')
-    .style('z-index', '1');
-  
-  // Добавляем заголовок с улучшенной типографикой
-  svg.append('text')
-    .attr('x', width / 2)
-    .attr('y', margin.top / 2)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '1.1rem')
-    .style('font-weight', 'bold')
-    .style('fill', '#f9fafb')
-    .style('text-shadow', '0 1px 2px rgba(0, 0, 0, 0.2)')
-    .text(`Тренд продаж за ${yearlyData[0].x}–${yearlyData[yearlyData.length - 1].x} годы`);
-  
-  // Создаем шкалы с улучшенными параметрами
-  const x = d3.scaleLinear()
-    .domain([
-      d3.min(yearlyData, d => d.x) - 0.5, 
-      d3.max(yearlyData, d => d.x) + 0.5
-    ]) // Добавляем отступ с обеих сторон
-    .range([margin.left, width - margin.right]);
-  
-  // Находим максимальное значение среди всех наборов данных
-  const maxValue = d3.max([
-    d3.max(yearlyData, d => d.y),
-    retailData.length ? d3.max(retailData, d => d.y) : 0,
-    wholesaleData.length ? d3.max(wholesaleData, d => d.y) : 0,
-    promoData.length ? d3.max(promoData, d => d.y) : 0
-  ]) * 1.15; // Добавляем отступ сверху
-  
-  const y = d3.scaleLinear()
-    .domain([0, maxValue])
-    .nice()
-    .range([height - margin.bottom, margin.top]);
-  
-  // Создаем улучшенные оси
-  const xAxis = g => g
-    .attr('transform', `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x)
-      .ticks(yearlyData.length)
-      .tickFormat(d => Math.floor(d) === d ? d : ''))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text')
-      .style('fill', '#d1d5db')
-      .style('font-size', '0.85rem')
-      .style('font-weight', 'bold'));
-  
-  const yAxis = g => g
-    .attr('transform', `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y)
-      .ticks(5)
-      .tickFormat(d => d3.format(".2s")(d)
-        .replace(/G/, ' млрд')
-        .replace(/M/, ' млн')
-        .replace(/k/, ' тыс.')))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text')
-      .style('fill', '#d1d5db')
-      .style('font-size', '0.8rem'))
-    .call(g => g.selectAll('.tick line')
-      .attr('x2', width - margin.left - margin.right)
-      .attr('stroke', 'rgba(148, 163, 184, 0.1)')
-      .attr('stroke-dasharray', '2,2'));
-  
-  // Добавляем оси
-  svg.append('g').call(xAxis);
-  svg.append('g').call(yAxis);
-  
-  // Добавляем надпись на оси Y
-  svg.append('text')
-    .attr('transform', 'rotate(-90)')
-    .attr('x', -height/2)
-    .attr('y', margin.left/3)
-    .attr('text-anchor', 'middle')
-    .style('fill', '#9ca3af')
-    .style('font-size', '0.8rem')
-    .text('Объем продаж, сум');
-  
-  // Создаем область для заполнения с градиентом
-  const areaGradient = svg.append('defs')
-    .append('linearGradient')
-    .attr('id', 'area-gradient')
-    .attr('x1', '0%')
-    .attr('y1', '0%')
-    .attr('x2', '0%')
-    .attr('y2', '100%');
-    
-  areaGradient.append('stop')
-    .attr('offset', '0%')
-    .attr('stop-color', '#3b82f6')
-    .attr('stop-opacity', 0.7);
-    
-  areaGradient.append('stop')
-    .attr('offset', '80%')
-    .attr('stop-color', '#3b82f6')
-    .attr('stop-opacity', 0.05);
-  
-  // Определяем область для заполнения под линией
-  const area = d3.area()
-    .x(d => x(d.x))
-    .y0(height - margin.bottom)
-    .y1(d => y(d.y))
-    .curve(d3.curveMonotoneX); // Используем кривую, которая сохраняет монотонность
-  
-  // Добавляем заполненную область под линией основного тренда
-  const areaPath = svg.append('path')
-    .datum(yearlyData)
-    .attr('fill', 'url(#area-gradient)')
-    .attr('d', area)
-    .style('opacity', 0) // Начинаем с прозрачного
-    .transition()
-    .duration(1000)
-    .style('opacity', 1);
-  
-  // Создаем основную линию тренда
-  const line = d3.line()
-    .x(d => x(d.x))
-    .y(d => y(d.y))
-    .curve(d3.curveMonotoneX);
-  
-  // Добавляем линию тренда с улучшенной стилизацией
-  const totalPath = svg.append('path')
-    .datum(yearlyData)
-    .attr('fill', 'none')
-    .attr('stroke', '#3b82f6')
-    .attr('stroke-width', 3)
-    .attr('stroke-linejoin', 'round')
-    .attr('stroke-linecap', 'round')
-    .attr('d', line)
-    .style('filter', 'drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2))');
-  
-  // Анимация появления линии
-  const totalLength = totalPath.node().getTotalLength();
-  
-  totalPath
-    .attr('stroke-dasharray', totalLength + ' ' + totalLength)
-    .attr('stroke-dashoffset', totalLength)
-    .transition()
-    .duration(1500)
-    .ease(d3.easeLinear)
-    .attr('stroke-dashoffset', 0)
-    .on('end', () => {
-      // Удаляем пунктирную линию после завершения анимации
-      totalPath.attr('stroke-dasharray', 'none');
-    });
-  
-  // Создаем группу для точек на графике
-  const pointsGroup = svg.append('g');
-  
-  // Добавляем точки на линию с анимацией появления и интерактивностью
-  const points = pointsGroup.selectAll('.data-point')
-    .data(yearlyData)
-    .join('g')
-    .attr('class', 'data-point')
-    .attr('transform', d => `translate(${x(d.x)}, ${y(d.y)})`)
-    .style('cursor', 'pointer');
-  
-  // Добавляем невидимые большие круги для лучшего взаимодействия
-  points.append('circle')
-    .attr('r', 15)
-    .attr('fill', 'transparent')
-    .style('pointer-events', 'all');
-  
-  // Добавляем видимые маленькие круги с базовым стилем
-  const visiblePoints = points.append('circle')
-    .attr('r', 0) // Начинаем с нулевого радиуса для анимации
-    .attr('fill', '#3b82f6')
-    .attr('stroke', '#1e293b')
-    .attr('stroke-width', 2)
-    .transition()
-    .duration(300)
-    .delay((_, i) => i * 200 + 1500) // Появляются после линии
-    .attr('r', 6);
-  
-  // Создаем всплывающие подсказки для точек
-  const tooltip = d3.select(container)
-    .append('div')
-    .attr('class', 'chart-tooltip')
-    .style('position', 'absolute')
-    .style('visibility', 'hidden')
-    .style('background', 'rgba(15, 23, 42, 0.95)')
     .style('color', '#f9fafb')
-    .style('padding', '10px 15px')
-    .style('border-radius', '6px')
-    .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.3)')
-    .style('border', '1px solid rgba(59, 130, 246, 0.3)')
-    .style('font-size', '0.85rem')
-    .style('z-index', 10)
-    .style('pointer-events', 'none')
-    .style('transform', 'translate(-50%, -100%)')
-    .style('transition', 'opacity 0.2s, transform 0.2s')
-    .style('opacity', 0);
+    .style('margin-bottom', '30px')
+    .style('text-align', 'center')
+    .html(`Детализация продаж: <span style="color: #60a5fa;">${monthName}</span>`);
   
-  // Добавляем интерактивность к точкам
-  points
-    .on('mouseover', function(event, d) {
-      // Показываем подсказку
-      tooltip
-        .style('visibility', 'visible')
-        .style('opacity', 1)
-        .style('transform', 'translate(-50%, -110%)')
-        .html(`
-          <div style="margin-bottom: 5px;font-weight:bold;color:#60a5fa">${d.x} год</div>
-          <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:3px">
-            <span>Общий объем:</span>
-            <span style="font-weight:600">${formatCurrency(d.y)}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:3px">
-            <span>Розница:</span>
-            <span style="font-weight:600;color:${SALE_TYPES.RETAIL.color}">
-              ${formatCurrency(d.rawData.categories?.retail || 0)}
-            </span>
-          </div>
-          <div style="display:flex;justify-content:space-between;gap:10px">
-            <span>Опт:</span>
-            <span style="font-weight:600;color:${SALE_TYPES.WHOLESALE.color}">
-              ${formatCurrency(d.rawData.categories?.wholesale || 0)}
-            </span>
-          </div>
-        `)
-        .style('left', `${x(d.x)}px`)
-        .style('top', `${y(d.y) - 10}px`);
-      
-      // Увеличиваем текущую точку
-      d3.select(this).select('circle')
-        .transition()
-        .duration(200)
-        .attr('r', 8)
-        .attr('fill', '#60a5fa');
-        
-      // Добавляем пульсацию
-      d3.select(this).append('circle')
-        .attr('r', 6)
-        .attr('fill', 'rgba(59, 130, 246, 0.2)')
-        .style('pointer-events', 'none')
-        .transition()
-        .duration(1000)
-        .attr('r', 20)
-        .style('opacity', 0)
-        .remove();
-    })
-    .on('mouseout', function() {
-      // Скрываем подсказку
-      tooltip
-        .style('opacity', 0)
-        .style('transform', 'translate(-50%, -100%)')
-        .transition()
-        .duration(200)
-        .style('visibility', 'hidden');
-      
-      // Возвращаем точку в нормальное состояние
-      d3.select(this).select('circle')
-        .transition()
-        .duration(200)
-        .attr('r', 6)
-        .attr('fill', '#3b82f6');
-    })
-    .on('mousemove', function(event, d) {
-      // Обновляем позицию подсказки
-      tooltip
-        .style('left', `${event.layerX}px`)
-        .style('top', `${y(d.y) - 10}px`);
-    });
+  // Создаем контейнер для карточек выбора
+  const cardsContainer = container.append('div')
+    .style('display', 'flex')
+    .style('gap', '40px')
+    .style('justify-content', 'center')
+    .style('margin-bottom', '30px');
   
-  // Добавляем подписи к точкам
-  const pointLabels = pointsGroup.selectAll('.point-label')
-    .data(yearlyData)
-    .join('text')
-    .attr('class', 'point-label')
-    .attr('x', d => x(d.x))
-    .attr('y', d => y(d.y) - 15)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '0.75rem')
-    .style('font-weight', 'bold')
-    .style('fill', '#f9fafb')
-    .style('opacity', 0)
-    .style('pointer-events', 'none')
-    .style('text-shadow', '0 1px 3px rgba(0, 0, 0, 0.3)')
-    .text(d => formatProfitCompact(d.y));
-  
-  // Анимация появления подписей
-  pointLabels
-    .transition()
-    .duration(300)
-    .delay((_, i) => i * 200 + 1800) // Появляются после точек
-    .style('opacity', 1);
-  
-  // Добавляем дополнительные линии по категориям, если выбраны все категории
-  if (focusCategory === 'all' && retailData.length > 0 && wholesaleData.length > 0) {
-    // Создаем линии для категорий
-    const createCategoryLine = (data, color, id) => {
-      // Создаем линию
-      const path = svg.append('path')
-        .datum(data)
-        .attr('fill', 'none')
-        .attr('stroke', color)
-        .attr('stroke-width', 2)
-        .attr('stroke-dasharray', '3,3')
-        .attr('d', line)
-        .style('opacity', 0);
-      
-      // Анимация появления
-      path
-        .transition()
-        .duration(800)
-        .delay(2000 + (id * 200))
-        .style('opacity', 0.7);
-      
-      return path;
-    };
-    
-    // Создаем линии для категорий
-    const retailPath = createCategoryLine(retailData, SALE_TYPES.RETAIL.color, 1);
-    const wholesalePath = createCategoryLine(wholesaleData, SALE_TYPES.WHOLESALE.color, 2);
-    const promoPath = promoData.length > 0 ? 
-      createCategoryLine(promoData, SALE_TYPES.PROMO.color, 3) : null;
-    
-    // Добавляем легенду
-    const legend = svg.append('g')
-      .attr('transform', `translate(${width - margin.right + 10}, ${margin.top + 10})`);
-    
-    // Создаем элементы легенды
-    const createLegendItem = (y, label, color, dashed = false) => {
-      const item = legend.append('g')
-        .attr('transform', `translate(0, ${y})`)
-        .style('cursor', 'pointer')
-        .on('mouseover', function() {
-          d3.select(this).select('text')
-            .transition()
-            .duration(200)
-            .style('font-weight', 'bold');
-        })
-        .on('mouseout', function() {
-          d3.select(this).select('text')
-            .transition()
-            .duration(200)
-            .style('font-weight', 'normal');
-        });
-      
-      // Линия легенды
-      item.append('line')
-        .attr('x1', 0)
-        .attr('x2', 20)
-        .attr('y1', 0)
-        .attr('y2', 0)
-        .attr('stroke', color)
-        .attr('stroke-width', dashed ? 2 : 3)
-        .attr('stroke-dasharray', dashed ? '3,3' : null);
-      
-      // Текст легенды
-      item.append('text')
-        .attr('x', 25)
-        .attr('y', 4)
-        .style('font-size', '0.8rem')
-        .style('fill', '#d1d5db')
-        .text(label);
-      
-      return item;
-    };
-    
-    // Добавляем элементы легенды
-    const totalLegend = createLegendItem(0, `${t('table.headers.totalSales')}`, '#3b82f6');
-    const retailLegend = createLegendItem(20, 'Розница', SALE_TYPES.RETAIL.color, true);
-    const wholesaleLegend = createLegendItem(40, 'Опт', SALE_TYPES.WHOLESALE.color, true);
-    
-    if (promoData.length > 0) {
-      const promoLegend = createLegendItem(60, 'Акции', SALE_TYPES.PROMO.color, true);
-    }
-    
-    // Добавляем интерактивность к легенде
-    totalLegend.on('click', function() {
-      const currentOpacity = totalPath.style('opacity');
-      const newOpacity = currentOpacity == 1 ? 0.2 : 1;
-      
-      totalPath.transition()
-        .duration(300)
-        .style('opacity', newOpacity);
-        
-      areaPath.transition()
-        .duration(300)
-        .style('opacity', newOpacity);
-        
-      d3.select(this).select('line')
-        .transition()
-        .duration(300)
-        .attr('stroke-opacity', newOpacity);
-    });
-    
-    retailLegend.on('click', function() {
-      const currentOpacity = retailPath.style('opacity');
-      const newOpacity = currentOpacity > 0.5 ? 0.2 : 0.7;
-      
-      retailPath.transition()
-        .duration(300)
-        .style('opacity', newOpacity);
-        
-      d3.select(this).select('line')
-        .transition()
-        .duration(300)
-        .attr('stroke-opacity', newOpacity > 0.5 ? 1 : 0.5);
-    });
-    
-    wholesaleLegend.on('click', function() {
-      const currentOpacity = wholesalePath.style('opacity');
-      const newOpacity = currentOpacity > 0.5 ? 0.2 : 0.7;
-      
-      wholesalePath.transition()
-        .duration(300)
-        .style('opacity', newOpacity);
-        
-      d3.select(this).select('line')
-        .transition()
-        .duration(300)
-        .attr('stroke-opacity', newOpacity > 0.5 ? 1 : 0.5);
-    });
-    
-    if (promoPath) {
-      legend.selectAll('.legend-item').filter((d, i) => i === 3)
-        .on('click', function() {
-          const currentOpacity = promoPath.style('opacity');
-          const newOpacity = currentOpacity > 0.5 ? 0.2 : 0.7;
-          
-          promoPath.transition()
-            .duration(300)
-            .style('opacity', newOpacity);
-            
-          d3.select(this).select('line')
-            .transition()
-            .duration(300)
-            .attr('stroke-opacity', newOpacity > 0.5 ? 1 : 0.5);
-        });
-    }
-  }
-  
-  // Добавляем анализ тренда
-  if (yearlyData.length >= 3) {
-    // Вычисляем изменение за последний год
-    const lastYearChange = yearlyData[yearlyData.length - 1].y / yearlyData[yearlyData.length - 2].y;
-    const percentChange = ((lastYearChange - 1) * 100).toFixed(1);
-    
-    // Вычисляем средний рост за все годы
-    const firstYear = yearlyData[0].y;
-    const lastYear = yearlyData[yearlyData.length - 1].y;
-    const yearsCount = yearlyData.length - 1;
-    const averageGrowthRate = ((Math.pow(lastYear / firstYear, 1 / yearsCount) - 1) * 100).toFixed(1);
-    
-    // Добавляем блок с аналитикой
-    const analyticsBlock = chartContainer.append('div')
-      .style('position', 'absolute')
-      .style('bottom', '10px')
-      .style('left', '10px')
-      .style('background', 'rgba(15, 23, 42, 0.8)')
-      .style('border-radius', '6px')
-      .style('padding', '8px 12px')
+  // Функция для создания стильной карточки выбора
+  const createOptionCard = (title, icon, description, onClick) => {
+    const card = cardsContainer.append('div')
+      .style('background', 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%)')
       .style('border', '1px solid rgba(59, 130, 246, 0.2)')
-      .style('font-size', '0.8rem')
-      .style('max-width', '220px');
-    
-    // Определяем цвет и иконку для роста/падения
-    const growthColor = percentChange >= 0 ? '#10b981' : '#ef4444';
-    const growthIcon = percentChange >= 0 ? '↗' : '↘';
-    
-    analyticsBlock.html(`
-      <div style="margin-bottom:6px;color:#d1d5db;font-weight:bold">Аналитика тренда:</div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span style="color:#9ca3af">Изменение за год:</span>
-        <span style="color:${growthColor};font-weight:bold">${growthIcon} ${percentChange}%</span>
-      </div>
-      <div style="display:flex;justify-content:space-between">
-        <span style="color:#9ca3af">Средний рост:</span>
-        <span style="color:#60a5fa;font-weight:bold">${averageGrowthRate}% в год</span>
-      </div>
-    `);
-  }
-  
-  // Добавляем элементы управления графиком
-  const controls = chartContainer.append('div')
-    .style('position', 'absolute')
-    .style('top', '10px')
-    .style('right', '10px')
-    .style('display', 'flex')
-    .style('gap', '5px');
-  
-  // Кнопка экспорта данных
-  const exportButton = controls.append('button')
-    .style('background', 'rgba(30, 41, 59, 0.7)')
-    .style('border', 'none')
-    .style('color', '#9ca3af')
-    .style('cursor', 'pointer')
-    .style('width', '28px')
-    .style('height', '28px')
-    .style('border-radius', '4px')
-    .style('display', 'flex')
-    .style('align-items', 'center')
-    .style('justify-content', 'center')
-    .style('transition', 'all 0.2s')
-    .attr('title', 'Экспорт данных')
-    .html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>')
-    .on('mouseover', function() {
-      d3.select(this)
-        .style('background', 'rgba(59, 130, 246, 0.3)')
-        .style('color', '#f9fafb');
-    })
-    .on('mouseout', function() {
-      d3.select(this)
-        .style('background', 'rgba(30, 41, 59, 0.7)')
-        .style('color', '#9ca3af');
-    })
-    .on('click', function() {
-      // Экспорт данных в CSV
-      exportTrendData(yearlyData, 'trend_analysis');
-    });
-    
-  // Функция для экспорта данных тренда
-  function exportTrendData(data, filename) {
-    // Формируем CSV строку
-    let csvContent = "data:text/csv;charset=utf-8,Год,Общие продажи,Розница,Опт,Акции\n";
-    
-    data.forEach(d => {
-      csvContent += `${d.x},${d.y},${d.rawData.categories?.retail || 0},${d.rawData.categories?.wholesale || 0},${d.rawData.categories?.promo || 0}\n`;
-    });
-    
-    // Создаем ссылку для скачивания
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-};
-const renderForecastChart = () => {
-  if (!forecastChartRef.current || Object.keys(financialData).length === 0) return;
-  
-  const container = forecastChartRef.current;
-  container.innerHTML = '';
-  
-  // Создаем основной контейнер с улучшенной стилизацией
-  const chartContainer = d3.select(container)
-    .append('div')
-    .style('width', '100%')
-    .style('height', '100%')
-    .style('background', 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%)')
-    .style('border-radius', '12px')
-    .style('box-shadow', '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)')
-    .style('position', 'relative')
-    .style('overflow', 'hidden');
-  
-  // Добавляем декоративный элемент фона
-  chartContainer.append('div')
-    .style('position', 'absolute')
-    .style('top', '0')
-    .style('left', '0')
-    .style('width', '100%')
-    .style('height', '100%')
-    .style('background-image', 'radial-gradient(circle at 90% 90%, rgba(16, 185, 129, 0.1) 0%, transparent 50%)')
-    .style('z-index', '0');
-  
-  const width = container.clientWidth;
-  const height = container.clientHeight || 250;
-  const margin = { top: 40, right: 80, bottom: 50, left: 60 };
-  
-  // Создаем SVG с правильным позиционированием
-  const svg = chartContainer.append('svg')
-    .attr('width', width)
-    .attr('height', height)
-    .style('position', 'relative')
-    .style('z-index', '1');
-  
-  // Добавляем заголовок с улучшенной типографикой
-  svg.append('text')
-    .attr('x', width / 2)
-    .attr('y', margin.top / 2)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '1.1rem')
-    .style('font-weight', 'bold')
-    .style('fill', '#f9fafb')
-    .style('text-shadow', '0 1px 2px rgba(0, 0, 0, 0.2)')
-    .text('Прогноз на следующий год');
-  
-  // Подготовка данных для прогноза
-  const lastYear = Math.max(...Object.keys(financialData).map(Number));
-  const lastYearData = financialData[lastYear];
-  
-  if (!lastYearData) {
-    // Отображаем информацию, если данные отсутствуют
-    chartContainer.append('div')
-      .style('display', 'flex')
-      .style('flex-direction', 'column')
-      .style('align-items', 'center')
-      .style('justify-content', 'center')
-      .style('height', '100%')
-      .style('padding', '20px')
-      .html(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" 
-          stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-        <p style="color:#9ca3af;margin-top:12px;text-align:center;">Недостаточно данных для построения прогноза</p>
-      `);
-    return;
-  }
-  
-  // Собираем фактические данные с улучшенной валидацией
-  const actualData = lastYearData.months.map((month, index) => ({
-    month: index + 1,
-    name: MONTHS[index],
-    value: focusCategory === 'all' ? month.total : month[focusCategory] || 0,
-    year: lastYear
-  }));
-  
-  // Анализируем данные для более точного прогноза
-  const calculateGrowthTrend = () => {
-    // Ищем данные за предыдущий год для анализа тренда
-    const prevYear = lastYear - 1;
-    const prevYearData = financialData[prevYear];
-    
-    // Если есть данные за предыдущий год, рассчитываем тренд
-    if (prevYearData) {
-      let totalGrowth = 0;
-      let monthsWithData = 0;
-      
-      prevYearData.months.forEach((month, index) => {
-        const prevValue = focusCategory === 'all' ? month.total : month[focusCategory] || 0;
-        const currentValue = actualData[index].value;
-        
-        // Учитываем только месяцы с ненулевыми значениями
-        if (prevValue > 0 && currentValue > 0) {
-          totalGrowth += (currentValue / prevValue);
-          monthsWithData++;
-        }
-      });
-      
-      // Вычисляем средний рост
-      if (monthsWithData > 0) {
-        const averageGrowth = totalGrowth / monthsWithData;
-        return averageGrowth;
-      }
-    }
-    
-    // Если нет данных за предыдущий год, используем базовый коэффициент роста
-    return 1.15; // 15% рост
-  };
-  
-  // Получаем средний коэффициент роста на основе исторических данных
-  const growthFactor = calculateGrowthTrend();
-  
-  // Определяем сезонность (на основе колебаний в текущем году)
-  const calculateSeasonality = () => {
-    // Вычисляем среднее значение по месяцам
-    const average = actualData.reduce((sum, month) => sum + month.value, 0) / actualData.length;
-    
-    // Рассчитываем сезонные коэффициенты для каждого месяца
-    return actualData.map(month => ({
-      month: month.month,
-      factor: average > 0 ? month.value / average : 1
-    }));
-  };
-  
-  const seasonalFactors = calculateSeasonality();
-  
-  // Создаем прогноз на следующий год с учетом сезонности и тренда
-  const forecastData = lastYearData.months.map((month, index) => {
-    // Базовый прогноз с учетом роста
-    const baseValue = (focusCategory === 'all' ? month.total : month[focusCategory]) * growthFactor;
-    
-    // Применяем сезонный коэффициент
-    const seasonalFactor = seasonalFactors[index].factor;
-    
-    // Добавляем случайное колебание для реалистичности (±5%)
-    const randomVariation = 1 + (Math.random() * 0.1 - 0.05);
-    
-    return {
-      month: index + 1,
-      name: MONTHS[index],
-      value: baseValue * seasonalFactor * randomVariation,
-      year: lastYear + 1
-    };
-  });
-  
-  // Объединяем для визуализации с дополнительными метаданными
-  const combinedData = [
-    ...actualData.map(d => ({ ...d, type: 'actual' })),
-    ...forecastData.map(d => ({ ...d, type: 'forecast' }))
-  ];
-  
-  // Добавляем индикаторы качества прогноза
-  const confidenceLevel = Math.min(0.9, 0.6 + (Object.keys(financialData).length * 0.1));
-  const forecastQuality = confidenceLevel >= 0.8 ? 'высокая' : (confidenceLevel >= 0.7 ? 'средняя' : 'низкая');
-  
-  // Создаем шкалы с улучшенными параметрами
-  const x = d3.scaleLinear()
-    .domain([1, 12])
-    .range([margin.left, width - margin.right]);
-  
-  // Находим максимальное значение с запасом для легенд и надписей
-  const maxValue = d3.max(combinedData, d => d.value) * 1.15;
-  
-  const y = d3.scaleLinear()
-    .domain([0, maxValue])
-    .nice()
-    .range([height - margin.bottom, margin.top]);
-  
-  // Создаем улучшенные оси
-  const xAxis = g => g
-    .attr('transform', `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x)
-      .ticks(12)
-      .tickFormat(d => MONTHS[d-1].substring(0, 3)))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text')
-      .style('fill', '#d1d5db')
-      .style('font-size', '0.8rem')
-      .attr('transform', 'rotate(-30)')
-      .attr('text-anchor', 'end')
-      .attr('dx', '-0.8em')
-      .attr('dy', '0.15em'));
-  
-  const yAxis = g => g
-    .attr('transform', `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y)
-      .ticks(5)
-      .tickFormat(d => formatProfitCompact(d)))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text')
-      .style('fill', '#d1d5db')
-      .style('font-size', '0.8rem'))
-    .call(g => g.selectAll('.tick line')
-      .attr('x2', width - margin.left - margin.right)
-      .attr('stroke', 'rgba(148, 163, 184, 0.1)')
-      .attr('stroke-dasharray', '2,2'));
-  
-  // Добавляем оси
-  svg.append('g').call(xAxis);
-  svg.append('g').call(yAxis);
-  
-  // Добавляем вспомогательную сетку
-  svg.append('g')
-    .selectAll('line')
-    .data(y.ticks(5))
-    .join('line')
-    .attr('x1', margin.left)
-    .attr('x2', width - margin.right)
-    .attr('y1', d => y(d))
-    .attr('y2', d => y(d))
-    .attr('stroke', 'rgba(75, 85, 99, 0.1)')
-    .attr('stroke-width', 1);
-  
-  // Создаем градиенты для заливки областей
-  // Градиент для фактических данных
-  const actualGradient = svg.append('defs')
-    .append('linearGradient')
-    .attr('id', 'actual-gradient')
-    .attr('x1', '0%')
-    .attr('y1', '0%')
-    .attr('x2', '0%')
-    .attr('y2', '100%');
-    
-  actualGradient.append('stop')
-    .attr('offset', '0%')
-    .attr('stop-color', '#3b82f6')
-    .attr('stop-opacity', 0.7);
-    
-  actualGradient.append('stop')
-    .attr('offset', '100%')
-    .attr('stop-color', '#3b82f6')
-    .attr('stop-opacity', 0.05);
-  
-  // Градиент для прогнозных данных
-  const forecastGradient = svg.append('defs')
-    .append('linearGradient')
-    .attr('id', 'forecast-gradient')
-    .attr('x1', '0%')
-    .attr('y1', '0%')
-    .attr('x2', '0%')
-    .attr('y2', '100%');
-    
-  forecastGradient.append('stop')
-    .attr('offset', '0%')
-    .attr('stop-color', '#10b981')
-    .attr('stop-opacity', 0.6);
-    
-  forecastGradient.append('stop')
-    .attr('offset', '100%')
-    .attr('stop-color', '#10b981')
-    .attr('stop-opacity', 0.05);
-  
-  // Создаем функции для построения линий и областей
-  const line = d3.line()
-    .x(d => x(d.month))
-    .y(d => y(d.value))
-    .curve(d3.curveMonotoneX);
-  
-  const area = d3.area()
-    .x(d => x(d.month))
-    .y0(height - margin.bottom)
-    .y1(d => y(d.value))
-    .curve(d3.curveMonotoneX);
-  
-  // Добавляем области под линиями с улучшенной стилизацией
-  // Область для фактических данных
-  svg.append('path')
-    .datum(actualData)
-    .attr('fill', 'url(#actual-gradient)')
-    .attr('d', area)
-    .style('opacity', 0)
-    .transition()
-    .duration(1000)
-    .style('opacity', 0.8);
-  
-  // Область для прогнозных данных
-  svg.append('path')
-    .datum(forecastData)
-    .attr('fill', 'url(#forecast-gradient)')
-    .attr('d', area)
-    .style('opacity', 0)
-    .transition()
-    .duration(1000)
-    .delay(800)
-    .style('opacity', 0.6);
-  
-  // Добавляем линии с улучшенной стилизацией и анимацией
-  // Линия фактических данных
-  const actualLine = svg.append('path')
-    .datum(actualData)
-    .attr('fill', 'none')
-    .attr('stroke', '#3b82f6')
-    .attr('stroke-width', 3)
-    .attr('stroke-linejoin', 'round')
-    .attr('stroke-linecap', 'round')
-    .attr('d', line);
-  
-  // Анимация для фактической линии
-  const actualLength = actualLine.node().getTotalLength();
-  
-  actualLine
-    .attr('stroke-dasharray', actualLength + ' ' + actualLength)
-    .attr('stroke-dashoffset', actualLength)
-    .transition()
-    .duration(1500)
-    .attr('stroke-dashoffset', 0);
-  
-  // Линия прогнозных данных
-  const forecastLine = svg.append('path')
-    .datum(forecastData)
-    .attr('fill', 'none')
-    .attr('stroke', '#10b981')
-    .attr('stroke-width', 2.5)
-    .attr('stroke-dasharray', '6,3')
-    .attr('d', line)
-    .style('opacity', 0);
-  
-  // Анимация для прогнозной линии
-  forecastLine
-    .transition()
-    .delay(1500)
-    .duration(1000)
-    .style('opacity', 1);
-  
-  // Добавляем маркеры с улучшенной интерактивностью
-  // Группа для фактических точек
-  const actualPoints = svg.append('g')
-    .selectAll('.actual-point')
-    .data(actualData)
-    .join('g')
-    .attr('class', 'actual-point')
-    .attr('transform', d => `translate(${x(d.month)}, ${y(d.value)})`)
-    .style('cursor', 'pointer');
-  
-  // Добавляем невидимые большие круги для лучшего взаимодействия
-  actualPoints.append('circle')
-    .attr('r', 15)
-    .attr('fill', 'transparent')
-    .style('pointer-events', 'all');
-  
-  // Добавляем видимые маленькие круги
-  const actualCircles = actualPoints.append('circle')
-    .attr('r', 0)
-    .attr('fill', '#3b82f6')
-    .attr('stroke', '#1e293b')
-    .attr('stroke-width', 2)
-    .transition()
-    .duration(300)
-    .delay((_, i) => i * 100 + 1500)
-    .attr('r', 5);
-  
-  // Группа для прогнозных точек
-  const forecastPoints = svg.append('g')
-    .selectAll('.forecast-point')
-    .data(forecastData)
-    .join('g')
-    .attr('class', 'forecast-point')
-    .attr('transform', d => `translate(${x(d.month)}, ${y(d.value)})`)
-    .style('cursor', 'pointer');
-  
-  // Добавляем невидимые большие круги для лучшего взаимодействия
-  forecastPoints.append('circle')
-    .attr('r', 15)
-    .attr('fill', 'transparent')
-    .style('pointer-events', 'all');
-  
-  // Добавляем видимые маленькие круги
-  const forecastCircles = forecastPoints.append('circle')
-    .attr('r', 0)
-    .attr('fill', '#10b981')
-    .attr('stroke', '#1e293b')
-    .attr('stroke-width', 2)
-    .transition()
-    .duration(300)
-    .delay((_, i) => i * 100 + 2500)
-    .attr('r', 5);
-  
-  // Создаем всплывающую подсказку
-  const tooltip = d3.select(container)
-    .append('div')
-    .attr('class', 'chart-tooltip')
-    .style('position', 'absolute')
-    .style('visibility', 'hidden')
-    .style('background', 'rgba(15, 23, 42, 0.95)')
-    .style('color', '#f9fafb')
-    .style('padding', '10px 15px')
-    .style('border-radius', '6px')
-    .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.3)')
-    .style('border', '1px solid rgba(59, 130, 246, 0.3)')
-    .style('font-size', '0.85rem')
-    .style('z-index', 10)
-    .style('pointer-events', 'none')
-    .style('transform', 'translate(-50%, -100%)')
-    .style('transition', 'opacity 0.2s, transform 0.2s')
-    .style('opacity', 0);
-  
-  // Добавляем интерактивность к точкам
-  const handlePointHover = (event, d, isActual) => {
-    const color = isActual ? '#3b82f6' : '#10b981';
-    const typeLabel = isActual ? 'Фактические данные' : 'Прогноз';
-    
-    // Показываем подсказку
-    tooltip
-      .style('visibility', 'visible')
-      .style('opacity', 1)
-      .style('transform', 'translate(-50%, -110%)')
-      .html(`
-        <div style="color:${color};font-weight:bold;margin-bottom:4px;">
-          ${d.name} ${d.year} (${typeLabel})
-        </div>
-        <div style="display:flex;justify-content:space-between;gap:15px;margin-bottom:3px">
-          <span>Значение:</span>
-          <span style="font-weight:600">${formatCurrency(d.value)}</span>
-        </div>
-        ${!isActual ? `
-          <div style="background:rgba(16, 185, 129, 0.1);margin-top:6px;padding:4px 6px;
-            border-radius:4px;font-size:0.8rem;text-align:center;">
-            <span style="color:#a1a1aa">Точность прогноза: </span>
-            <span style="color:#10b981">${forecastQuality}</span>
-          </div>
-        ` : ''}
-      `)
-      .style('left', `${event.layerX}px`)
-      .style('top', `${y(d.value) - 10}px`);
-    
-    // Увеличиваем точку
-    d3.select(event.currentTarget).select('circle:last-child')
-      .transition()
-      .duration(200)
-      .attr('r', 7)
-      .attr('filter', 'drop-shadow(0 0 3px ' + color + ')');
-    
-    // Подсвечиваем соответствующую линию
-    if (isActual) {
-      actualLine.transition()
-        .duration(200)
-        .attr('stroke-width', 4)
-        .attr('stroke', d3.rgb('#3b82f6').brighter(0.2));
-    } else {
-      forecastLine.transition()
-        .duration(200)
-        .style('opacity', 1)
-        .attr('stroke-width', 3.5)
-        .attr('stroke', d3.rgb('#10b981').brighter(0.2));
-    }
-  };
-  
-  const handlePointLeave = (event, d, isActual) => {
-    // Скрываем подсказку
-    tooltip
-      .style('opacity', 0)
-      .style('transform', 'translate(-50%, -100%)')
-      .transition()
-      .duration(200)
-      .style('visibility', 'hidden');
-    
-    // Возвращаем точку к исходному размеру
-    d3.select(event.currentTarget).select('circle:last-child')
-      .transition()
-      .duration(200)
-      .attr('r', 5)
-      .attr('filter', 'none');
-    
-    // Возвращаем линию к исходному состоянию
-    if (isActual) {
-      actualLine.transition()
-        .duration(200)
-        .attr('stroke-width', 3)
-        .attr('stroke', '#3b82f6');
-    } else {
-      forecastLine.transition()
-        .duration(200)
-        .attr('stroke-width', 2.5)
-        .attr('stroke', '#10b981');
-    }
-  };
-  
-  // Привязываем обработчики к точкам
-  actualPoints
-    .on('mouseover', (e, d) => handlePointHover(e, d, true))
-    .on('mouseout', (e, d) => handlePointLeave(e, d, true))
-    .on('mousemove', function(event) {
-      tooltip
-        .style('left', `${event.layerX}px`)
-        .style('top', `${y(d3.select(this).datum().value) - 10}px`);
-    });
-  
-  forecastPoints
-    .on('mouseover', (e, d) => handlePointHover(e, d, false))
-    .on('mouseout', (e, d) => handlePointLeave(e, d, false))
-    .on('mousemove', function(event) {
-      tooltip
-        .style('left', `${event.layerX}px`)
-        .style('top', `${y(d3.select(this).datum().value) - 10}px`);
-    });
-  
-  // Добавляем разделитель между фактическими данными и прогнозом
-  svg.append('line')
-    .attr('x1', x(12.5))
-    .attr('x2', x(12.5))
-    .attr('y1', margin.top)
-    .attr('y2', height - margin.bottom)
-    .attr('stroke', '#9ca3af')
-    .attr('stroke-width', 1)
-    .attr('stroke-dasharray', '4,4')
-    .style('opacity', 0)
-    .transition()
-    .duration(500)
-    .delay(2000)
-    .style('opacity', 0.7);
-  
-  // Добавляем подписи годов
-  svg.append('text')
-    .attr('x', x(6))
-    .attr('y', height - 10)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '0.9rem')
-    .style('fill', '#3b82f6')
-    .style('opacity', 0)
-    .text(lastYear)
-    .transition()
-    .duration(500)
-    .delay(2200)
-    .style('opacity', 1);
-  
-  svg.append('text')
-    .attr('x', x(6) + (x(12) - x(1)) / 2)
-    .attr('y', height - 10)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '0.9rem')
-    .style('fill', '#10b981')
-    .style('opacity', 0)
-    .text(lastYear + 1)
-    .transition()
-    .duration(500)
-    .delay(2300)
-    .style('opacity', 1);
-  
-  // Добавляем легенду
-  const legend = svg.append('g')
-    .attr('transform', `translate(${width - margin.right + 5}, ${margin.top + 5})`);
-  
-  // Фактические данные
-  const actualLegend = legend.append('g')
-    .style('cursor', 'pointer')
-    .on('mouseover', function() {
-      d3.select(this).select('text')
-        .transition()
-        .duration(200)
-        .style('font-weight', 'bold');
-      
-      actualLine.transition()
-        .duration(200)
-        .attr('stroke-width', 4)
-        .attr('stroke', d3.rgb('#3b82f6').brighter(0.2));
-    })
-    .on('mouseout', function() {
-      d3.select(this).select('text')
-        .transition()
-        .duration(200)
-        .style('font-weight', 'normal');
-      
-      actualLine.transition()
-        .duration(200)
-        .attr('stroke-width', 3)
-        .attr('stroke', '#3b82f6');
-    });
-  
-  actualLegend.append('line')
-    .attr('x1', 0)
-    .attr('x2', 20)
-    .attr('y1', 0)
-    .attr('y2', 0)
-    .attr('stroke', '#3b82f6')
-    .attr('stroke-width', 3);
-  
-  actualLegend.append('text')
-    .attr('x', 25)
-    .attr('y', 4)
-    .style('font-size', '0.8rem')
-    .style('fill', '#d1d5db')
-    .text(`Факт (${lastYear})`);
-  
-  // Прогнозные данные
-  const forecastLegend = legend.append('g')
-    .attr('transform', 'translate(0, 20)')
-    .style('cursor', 'pointer')
-    .on('mouseover', function() {
-      d3.select(this).select('text')
-        .transition()
-        .duration(200)
-        .style('font-weight', 'bold');
-      
-      forecastLine.transition()
-        .duration(200)
-        .attr('stroke-width', 3.5)
-        .attr('stroke', d3.rgb('#10b981').brighter(0.2));
-    })
-    .on('mouseout', function() {
-      d3.select(this).select('text')
-        .transition()
-        .duration(200)
-        .style('font-weight', 'normal');
-      
-      forecastLine.transition()
-        .duration(200)
-        .attr('stroke-width', 2.5)
-        .attr('stroke', '#10b981');
-    });
-  
-  forecastLegend.append('line')
-    .attr('x1', 0)
-    .attr('x2', 20)
-    .attr('y1', 0)
-    .attr('y2', 0)
-    .attr('stroke', '#10b981')
-    .attr('stroke-width', 2.5)
-    .attr('stroke-dasharray', '6,3');
-  
-  forecastLegend.append('text')
-    .attr('x', 25)
-    .attr('y', 4)
-    .style('font-size', '0.8rem')
-    .style('fill', '#d1d5db')
-    .text(`Прогноз (${lastYear + 1})`);
-  
-  // Добавляем информацию о росте и точности прогноза
-  const lastYearTotal = actualData.reduce((sum, d) => sum + d.value, 0);
-  const nextYearEstimate = forecastData.reduce((sum, d) => sum + d.value, 0);
-  const growthPercentage = ((nextYearEstimate / lastYearTotal) - 1) * 100;
-  
-  // Создаем информационную панель
-// Создаем информационную панель
-  const infoPanel = chartContainer.append('div')
-    .style('position', 'absolute')
-    .style('left', '10px')
-    .style('bottom', '10px')
-    .style('background', 'rgba(15, 23, 42, 0.8)')
-    .style('border-radius', '6px')
-    .style('padding', '10px 12px')
-    .style('border', '1px solid rgba(16, 185, 129, 0.2)')
-    .style('font-size', '0.8rem')
-    .style('max-width', '230px')
-    .style('box-shadow', '0 2px 10px rgba(0, 0, 0, 0.1)')
-    .style('backdrop-filter', 'blur(4px)');
-  
-  // Определяем цвет и иконку для роста
-  const growthColor = growthPercentage >= 0 ? '#10b981' : '#ef4444';
-  const growthIcon = growthPercentage >= 0 ? '↗' : '↘';
-  
-  // Добавляем информацию о прогнозе
-  infoPanel.html(`
-    <div style="margin-bottom:6px;color:#d1d5db;font-weight:bold;border-bottom:1px solid rgba(75, 85, 99, 0.4);padding-bottom:4px;">
-      Аналитика прогноза:
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-      <span style="color:#9ca3af">Ожидаемый рост:</span>
-      <span style="color:${growthColor};font-weight:bold">${growthIcon} ${growthPercentage.toFixed(1)}%</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-      <span style="color:#9ca3af">Точность прогноза:</span>
-      <span style="color:#60a5fa;font-weight:bold">${forecastQuality}</span>
-    </div>
-    <div style="display:flex;justify-content:space-between">
-      <span style="color:#9ca3af">Ожидаемый объем:</span>
-      <span style="color:#f9fafb;font-weight:600">${formatProfitCompact(nextYearEstimate)}</span>
-    </div>
-  `);
-  
-  // Добавляем панель с методологией прогноза
-  const methodologyPanel = chartContainer.append('div')
-    .style('position', 'absolute')
-    .style('right', '10px')
-    .style('bottom', '10px')
-    .style('background', 'rgba(15, 23, 42, 0.6)')
-    .style('border-radius', '6px')
-    .style('padding', '8px 10px')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)')
-    .style('font-size', '0.75rem')
-    .style('color', '#9ca3af')
-    .style('max-width', '180px')
-    .style('cursor', 'help')
-    .style('transition', 'all 0.2s')
-    .on('mouseover', function() {
-      d3.select(this)
-        .style('background', 'rgba(30, 41, 59, 0.8)')
-        .style('color', '#d1d5db');
-    })
-    .on('mouseout', function() {
-      d3.select(this)
-        .style('background', 'rgba(15, 23, 42, 0.6)')
-        .style('color', '#9ca3af');
-    });
-    
-  methodologyPanel.html(`
-    <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" 
-        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line>
-        <line x1="12" y1="8" x2="12.01" y2="8"></line>
-      </svg>
-      <span style="font-weight:bold">Методология прогноза</span>
-    </div>
-    <div style="font-size:0.7rem;line-height:1.4;">
-      Прогноз основан на анализе исторических данных с учетом сезонных колебаний и общего тренда роста.
-    </div>
-  `);
-  
-  // Добавляем элементы управления
-  const controls = chartContainer.append('div')
-    .style('position', 'absolute')
-    .style('top', '10px')
-    .style('right', '10px')
-    .style('display', 'flex')
-    .style('gap', '5px');
-  
-  // Кнопка экспорта данных
-  const exportButton = controls.append('button')
-    .style('background', 'rgba(30, 41, 59, 0.7)')
-    .style('border', 'none')
-    .style('color', '#9ca3af')
-    .style('cursor', 'pointer')
-    .style('width', '28px')
-    .style('height', '28px')
-    .style('border-radius', '4px')
-    .style('display', 'flex')
-    .style('align-items', 'center')
-    .style('justify-content', 'center')
-    .style('transition', 'all 0.2s')
-    .attr('title', 'Экспорт данных прогноза')
-    .html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>')
-    .on('mouseover', function() {
-      d3.select(this)
-        .style('background', 'rgba(59, 130, 246, 0.3)')
-        .style('color', '#f9fafb');
-    })
-    .on('mouseout', function() {
-      d3.select(this)
-        .style('background', 'rgba(30, 41, 59, 0.7)')
-        .style('color', '#9ca3af');
-    })
-    .on('click', function() {
-      // Экспорт данных в CSV
-      exportForecastData(actualData, forecastData);
-    });
-  
-  // Кнопка настройки параметров прогноза
-  const settingsButton = controls.append('button')
-    .style('background', 'rgba(30, 41, 59, 0.7)')
-    .style('border', 'none')
-    .style('color', '#9ca3af')
-    .style('cursor', 'pointer')
-    .style('width', '28px')
-    .style('height', '28px')
-    .style('border-radius', '4px')
-    .style('display', 'flex')
-    .style('align-items', 'center')
-    .style('justify-content', 'center')
-    .style('transition', 'all 0.2s')
-    .attr('title', 'Настроить параметры прогноза')
-    .html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>')
-    .on('mouseover', function() {
-      d3.select(this)
-        .style('background', 'rgba(139, 92, 246, 0.3)')
-        .style('color', '#f9fafb');
-    })
-    .on('mouseout', function() {
-      d3.select(this)
-        .style('background', 'rgba(30, 41, 59, 0.7)')
-        .style('color', '#9ca3af');
-    })
-    .on('click', function() {
-      // Показываем панель настроек прогноза
-      showForecastSettings(chartContainer, growthFactor, seasonalFactors);
-    });
-  
-  // Функция для экспорта данных прогноза
-  function exportForecastData(actual, forecast) {
-    // Формируем CSV строку
-    let csvContent = "data:text/csv;charset=utf-8,Месяц,Год,Тип данных,Значение\n";
-    
-    actual.forEach(d => {
-      csvContent += `${d.name},${d.year},Фактические,${d.value}\n`;
-    });
-    
-    forecast.forEach(d => {
-      csvContent += `${d.name},${d.year},Прогноз,${d.value}\n`;
-    });
-    
-    // Создаем ссылку для скачивания
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `forecast_${lastYear}_${lastYear+1}_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-  
-  // Функция для отображения панели настроек прогноза
-  function showForecastSettings(container, currentGrowth, seasonality) {
-    // Удаляем предыдущую панель настроек, если она есть
-    container.selectAll('.forecast-settings-panel').remove();
-    
-    // Создаем панель настроек
-    const settingsPanel = container.append('div')
-      .attr('class', 'forecast-settings-panel')
-      .style('position', 'absolute')
-      .style('top', '50%')
-      .style('left', '50%')
-      .style('transform', 'translate(-50%, -50%)')
-      .style('background', 'rgba(15, 23, 42, 0.95)')
-      .style('border-radius', '8px')
-      .style('padding', '15px 20px')
-      .style('border', '1px solid rgba(59, 130, 246, 0.3)')
-      .style('box-shadow', '0 10px 25px rgba(0, 0, 0, 0.3)')
-      .style('z-index', 100)
-      .style('min-width', '300px')
-      .style('backdrop-filter', 'blur(8px)')
-      .style('opacity', 0)
-      .style('transform', 'translate(-50%, -48%)')
-      .transition()
-      .duration(300)
-      .style('opacity', 1)
-      .style('transform', 'translate(-50%, -50%)');
-    
-    // Заголовок панели
-    settingsPanel.append('div')
-      .style('display', 'flex')
-      .style('justify-content', 'space-between')
-      .style('align-items', 'center')
-      .style('margin-bottom', '15px')
-      .style('padding-bottom', '8px')
-      .style('border-bottom', '1px solid rgba(75, 85, 99, 0.3)')
-      .html(`
-        <span style="font-size:1rem;font-weight:bold;color:#f9fafb;">Параметры прогноза</span>
-        <button style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:1.2rem;
-          padding:0;display:flex;align-items:center;justify-content:center;width:24px;height:24px;">×</button>
-      `);
-    
-    // Закрываем панель при клике на кнопку закрытия
-    settingsPanel.select('button')
-      .on('click', function() {
-        settingsPanel
-          .transition()
-          .duration(200)
-          .style('opacity', 0)
-          .style('transform', 'translate(-50%, -48%)')
-          .remove();
-      });
-    
-    // Добавляем слайдер для коэффициента роста
-    settingsPanel.append('div')
-      .style('margin-bottom', '15px')
-      .html(`
-        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-          <label style="color:#d1d5db;font-size:0.9rem;">Коэффициент роста</label>
-          <span style="color:#60a5fa;font-weight:bold;font-size:0.9rem;" id="growth-value">
-            ${((currentGrowth - 1) * 100).toFixed(1)}%
-          </span>
-        </div>
-        <input type="range" min="0.8" max="1.5" step="0.01" value="${currentGrowth}"
-          style="width:100%;margin-top:5px;" id="growth-slider">
-      `);
-    
-    // Обновляем отображение значения при изменении слайдера
-    settingsPanel.select('#growth-slider')
-      .on('input', function() {
-        const value = parseFloat(this.value);
-        settingsPanel.select('#growth-value')
-          .text(((value - 1) * 100).toFixed(1) + '%');
-      });
-    
-    // Добавляем другие параметры прогноза по необходимости
-    
-    // Добавляем кнопки действий
-    const buttonsContainer = settingsPanel.append('div')
-      .style('display', 'flex')
-      .style('justify-content', 'flex-end')
-      .style('gap', '10px')
-      .style('margin-top', '20px');
-    
-    // Кнопка Отмена
-    buttonsContainer.append('button')
-      .style('background', 'rgba(75, 85, 99, 0.2)')
-      .style('color', '#d1d5db')
-      .style('border', 'none')
-      .style('padding', '8px 15px')
-      .style('border-radius', '6px')
+      .style('border-radius', '16px')
+      .style('width', '250px')
+      .style('padding', '25px')
+      .style('text-align', 'center')
       .style('cursor', 'pointer')
-      .style('font-size', '0.9rem')
-      .style('transition', 'all 0.2s')
-      .text('Отмена')
+      .style('transition', 'transform 0.3s, box-shadow 0.3s')
+      .style('position', 'relative')
+      .style('overflow', 'hidden')
       .on('mouseover', function() {
         d3.select(this)
-          .style('background', 'rgba(75, 85, 99, 0.3)')
-          .style('color', '#f9fafb');
+          .style('transform', 'translateY(-5px)')
+          .style('box-shadow', '0 15px 30px -10px rgba(0, 0, 0, 0.4)');
       })
       .on('mouseout', function() {
         d3.select(this)
-          .style('background', 'rgba(75, 85, 99, 0.2)')
-          .style('color', '#d1d5db');
+          .style('transform', 'translateY(0)')
+          .style('box-shadow', 'none');
       })
-      .on('click', function() {
-        settingsPanel
-          .transition()
-          .duration(200)
-          .style('opacity', 0)
-          .style('transform', 'translate(-50%, -48%)')
-          .remove();
-      });
+      .on('click', onClick);
     
-    // Кнопка Применить
-    buttonsContainer.append('button')
-      .style('background', 'rgba(16, 185, 129, 0.2)')
-      .style('color', '#10b981')
-      .style('border', 'none')
-      .style('padding', '8px 15px')
-      .style('border-radius', '6px')
-      .style('cursor', 'pointer')
-      .style('font-size', '0.9rem')
-      .style('font-weight', 'bold')
-      .style('transition', 'all 0.2s')
-      .text('Применить')
-      .on('mouseover', function() {
-        d3.select(this)
-          .style('background', 'rgba(16, 185, 129, 0.3)')
-          .style('color', '#f9fafb');
-      })
-      .on('mouseout', function() {
-        d3.select(this)
-          .style('background', 'rgba(16, 185, 129, 0.2)')
-          .style('color', '#10b981');
-      })
-      .on('click', function() {
-        // Получаем новое значение коэффициента роста
-        const newGrowthFactor = parseFloat(settingsPanel.select('#growth-slider').property('value'));
-        
-        // Закрываем панель настроек
-        settingsPanel
-          .transition()
-          .duration(200)
-          .style('opacity', 0)
-          .style('transform', 'translate(-50%, -48%)')
-          .remove();
-        
-        // Перестраиваем график с новыми параметрами
-        container.html('');
-        setTimeout(() => {
-          renderForecastChartWithParams(container, lastYear, lastYearData, newGrowthFactor, seasonalFactors);
-        }, 300);
-      });
-    
-    // Добавляем фон для предотвращения взаимодействия с основным интерфейсом
-    container.insert('div', '.forecast-settings-panel')
-      .attr('class', 'settings-backdrop')
+    // Добавляем фоновый градиент
+    card.append('div')
       .style('position', 'absolute')
-      .style('top', 0)
-      .style('left', 0)
+      .style('top', '0')
+      .style('left', '0')
       .style('width', '100%')
       .style('height', '100%')
-      .style('background', 'rgba(0, 0, 0, 0.5)')
-      .style('z-index', 99)
-      .style('opacity', 0)
-      .style('backdrop-filter', 'blur(2px)')
-      .transition()
-      .duration(300)
-      .style('opacity', 1)
-      .on('click', function() {
-        // Закрываем панель при клике на фон
-        container.selectAll('.forecast-settings-panel, .settings-backdrop')
-          .transition()
-          .duration(200)
-          .style('opacity', 0)
-          .remove();
-      });
-  }
-  
-  // Реализация функции для перерисовки графика с новыми параметрами
-  function renderForecastChartWithParams(container, year, yearData, newGrowthFactor, seasonalFactors) {
-    // В реальной реализации здесь был бы вызов основной функции renderForecastChart
-    // с передачей новых параметров. Для демонстрации просто перерисовываем график.
-    renderForecastChart();
-  }
-};
-const renderCategoryDistribution = () => {
-  if (!categoryDistributionRef.current || !filteredData.length) return;
-         
-  const container = categoryDistributionRef.current;
-  container.innerHTML = '';
-  
-  // Создаем основной контейнер с улучшенной стилизацией
-  const chartContainer = d3.select(container)
-    .append('div')
-    .style('width', '100%')
-    .style('height', '100%')
-    .style('background', 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%)')
-    .style('border-radius', '12px')
-    .style('box-shadow', '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)')
-    .style('border', '1px solid rgba(59, 130, 246, 0.1)')
-    .style('position', 'relative')
-    .style('overflow', 'hidden');
-  
-  // Добавляем декоративный элемент фона
-  chartContainer.append('div')
-    .style('position', 'absolute')
-    .style('top', '0')
-    .style('left', '0')
-    .style('width', '100%')
-    .style('height', '100%')
-    .style('background-image', 'radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.1) 0%, transparent 50%)')
-    .style('z-index', '0');
-  
-  const width = container.clientWidth;
-  const height = container.clientHeight || 250;
-  const margin = { top: 40, right: 120, bottom: 50, left: 60 };
-  
-  // Создаем SVG с правильным позиционированием
-  const svg = chartContainer.append('svg')
-    .attr('width', width)
-    .attr('height', height)
-    .style('position', 'relative')
-    .style('z-index', '1');
-  
-  // Добавляем заголовок с улучшенной типографикой
-  svg.append('text')
-    .attr('x', width / 2)
-    .attr('y', margin.top / 2)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '1.1rem')
-    .style('font-weight', 'bold')
-    .style('fill', '#f9fafb')
-    .style('text-shadow', '0 1px 2px rgba(0, 0, 0, 0.2)')
-    .text('Динамика структуры продаж');
-  
-  // Группируем данные по месяцам и категориям с улучшенной обработкой
-  // Проходим по месяцам
-  const monthGroups = {};
-  
-  filteredData.forEach(month => {
-    let monthKey;
+      .style('background', 'radial-gradient(circle at 90% 10%, rgba(59, 130, 246, 0.15) 0%, transparent 80%)')
+      .style('z-index', '0');
     
-    if (displayMode === 'yearly') {
-      monthKey = month.name;
-    } else if (displayMode === 'compare') {
-      monthKey = `${month.name} ${month.year}`;
-    } else {
-      monthKey = month.label || `${month.name} ${month.year}`;
-    }
+    // Добавляем содержимое карточки
+    const content = card.append('div')
+      .style('position', 'relative')
+      .style('z-index', '1');
     
-    if (!monthGroups[monthKey]) {
-      monthGroups[monthKey] = {
-        name: monthKey,
-        month: month.month,
-        year: month.year,
-        retail: 0,
-        wholesale: 0,
-        promo: 0,
-        total: 0
-      };
-    }
+    content.append('div')
+      .style('font-size', '2.5rem')
+      .style('color', '#60a5fa')
+      .style('margin-bottom', '15px')
+      .html(icon);
     
-    // Суммируем значения, если есть несколько записей на один месяц
-    monthGroups[monthKey].retail += month.retail || 0;
-    monthGroups[monthKey].wholesale += month.wholesale || 0;
-    monthGroups[monthKey].promo += month.promo || 0;
-    monthGroups[monthKey].total += month.total || 0;
-  });
-  
-  // Преобразуем объект в массив для сортировки
-  let sortedMonths = Object.values(monthGroups);
-  
-  // Применяем соответствующую сортировку в зависимости от режима отображения
-  if (displayMode === 'yearly') {
-    // По номеру месяца
-    sortedMonths.sort((a, b) => a.month - b.month);
-  } else if (displayMode === 'compare') {
-    // По году и номеру месяца
-    sortedMonths.sort((a, b) => {
-      if (a.year !== b.year) return a.year - b.year;
-      return a.month - b.month;
-    });
-  } else {
-    // Для режима период - по хронологии
-    sortedMonths.sort((a, b) => {
-      if (a.year !== b.year) return a.year - b.year;
-      return a.month - b.month;
-    });
-  }
-  
-  // Для визуализации выбираем оптимальное количество месяцев
-  // чтобы не перегружать график
-  if (sortedMonths.length > 8) {
-    // Выбираем стратегию выборки в зависимости от количества данных
-    if (sortedMonths.length <= 12) {
-      // Для 9-12 месяцев берем каждый второй месяц
-      sortedMonths = sortedMonths.filter((_, i) => i % 2 === 0);
-    } else if (sortedMonths.length <= 24) {
-      // Для 13-24 месяцев берем каждый третий месяц
-      sortedMonths = sortedMonths.filter((_, i) => i % 3 === 0);
-    } else {
-      // Для большего количества равномерно выбираем 8 точек
-      const step = Math.floor(sortedMonths.length / 7);
-      sortedMonths = [
-        sortedMonths[0],
-        ...Array.from({ length: 6 }, (_, i) => sortedMonths[step * (i + 1)]),
-        sortedMonths[sortedMonths.length - 1]
-      ];
-    }
-  }
-  
-  // Проверяем наличие данных после фильтрации
-  if (sortedMonths.length === 0) {
-    chartContainer.append('div')
-      .style('display', 'flex')
-      .style('flex-direction', 'column')
-      .style('align-items', 'center')
-      .style('justify-content', 'center')
-      .style('height', '100%')
-      .style('padding', '20px')
-      .html(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" 
-          stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-        <p style="color:#9ca3af;margin-top:12px;text-align:center;">Нет данных для отображения структуры продаж</p>
-      `);
-    return;
-  }
-  
-  // Преобразуем данные для stacked bar chart
-  // каждая категория - отдельная запись для каждого месяца
-  const stackedData = [];
-  
-  sortedMonths.forEach(month => {
-    // Вычисляем проценты для каждой категории
-    const total = month.total || 1; // Избегаем деления на ноль
-    
-    // Добавляем записи для каждой категории
-    stackedData.push(
-      { month: month.name, category: 'retail', value: (month.retail / total) * 100 },
-      { month: month.name, category: 'wholesale', value: (month.wholesale / total) * 100 },
-      { month: month.name, category: 'promo', value: (month.promo / total) * 100 }
-    );
-  });
-  
-  // Создаем шкалы с улучшенными параметрами
-  const months = [...new Set(stackedData.map(d => d.month))];
-  
-  const x = d3.scaleBand()
-    .domain(months)
-    .range([margin.left, width - margin.right])
-    .padding(0.3);
-  
-  const y = d3.scaleLinear()
-    .domain([0, 100]) // Процентная шкала
-    .range([height - margin.bottom, margin.top]);
-  
-  // Создаем улучшенную цветовую схему для категорий
-  const colorScale = d3.scaleOrdinal()
-    .domain(['retail', 'wholesale', 'promo'])
-    .range([
-      SALE_TYPES.RETAIL.color,
-      SALE_TYPES.WHOLESALE.color,
-      SALE_TYPES.PROMO.color
-    ]);
-  
-  // Создаем градиенты для улучшенной визуализации
-  const defs = svg.append('defs');
-  
-  ['retail', 'wholesale', 'promo'].forEach(category => {
-    const gradient = defs.append('linearGradient')
-      .attr('id', `gradient-${category}`)
-      .attr('x1', '0%')
-      .attr('y1', '0%')
-      .attr('x2', '0%')
-      .attr('y2', '100%');
-    
-    const baseColor = d3.color(colorScale(category));
-    
-    gradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', baseColor.brighter(0.3))
-      .attr('stop-opacity', 0.95);
-    
-    gradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', baseColor)
-      .attr('stop-opacity', 0.85);
-  });
-  
-  // Создаем оси с улучшенной стилизацией
-  const xAxis = g => g
-    .attr('transform', `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x)
-      .tickFormat(d => {
-        // Сокращаем длинные надписи
-        if (d.length > 10) {
-          return d.substring(0, 8) + '...';
-        }
-        return d;
-      }))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text')
-      .style('fill', '#d1d5db')
-      .style('font-size', '0.8rem')
-      .attr('transform', 'rotate(-25)')
-      .attr('text-anchor', 'end')
-      .attr('dx', '-0.8em')
-      .attr('dy', '0.15em'));
-  
-  const yAxis = g => g
-    .attr('transform', `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y)
-      .ticks(5)
-      .tickFormat(d => `${d}%`))
-    .call(g => g.select('.domain').remove())
-    .call(g => g.selectAll('text')
-      .style('fill', '#d1d5db')
-      .style('font-size', '0.8rem'))
-    .call(g => g.selectAll('.tick line')
-      .attr('x2', width - margin.left - margin.right)
-      .attr('stroke', 'rgba(148, 163, 184, 0.1)')
-      .attr('stroke-dasharray', '2,2'));
-  
-  // Добавляем оси
-  svg.append('g').call(xAxis);
-  svg.append('g').call(yAxis);
-  
-  // Добавляем вспомогательную сетку
-  svg.append('g')
-    .selectAll('line')
-    .data(y.ticks(5))
-    .join('line')
-    .attr('x1', margin.left)
-    .attr('x2', width - margin.right)
-    .attr('y1', d => y(d))
-    .attr('y2', d => y(d))
-    .attr('stroke', 'rgba(75, 85, 99, 0.1)')
-    .attr('stroke-width', 1);
-  
-  // Группируем данные для построения stacked bar chart
-  const dataReady = d3.stack()
-    .keys(['retail', 'wholesale', 'promo'])
-    .value((d, key) => {
-      // Находим запись для текущего месяца и категории
-      const entry = stackedData.find(
-        item => item.month === d && item.category === key
-      );
-      return entry ? entry.value : 0;
-    })
-    .order(d3.stackOrderNone)
-    .offset(d3.stackOffsetNone);
-  
-  const series = dataReady(months);
-  
-  // Добавляем tooltip для интерактивности
-  const tooltip = d3.select(container)
-    .append('div')
-    .attr('class', 'chart-tooltip')
-    .style('position', 'absolute')
-    .style('visibility', 'hidden')
-    .style('background', 'rgba(15, 23, 42, 0.95)')
-    .style('color', '#f9fafb')
-    .style('padding', '10px 15px')
-    .style('border-radius', '6px')
-    .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.3)')
-    .style('border', '1px solid rgba(59, 130, 246, 0.3)')
-    .style('font-size', '0.85rem')
-    .style('z-index', 10)
-    .style('pointer-events', 'none')
-    .style('transition', 'opacity 0.2s, transform 0.2s')
-    .style('opacity', 0);
-  
-  // Добавляем stacked bars с улучшенной стилизацией и анимацией
-  svg.append('g')
-    .selectAll('g')
-    .data(series)
-    .join('g')
-    .attr('fill', (d, i) => `url(#gradient-${d.key})`)
-    .selectAll('rect')
-    .data(d => d)
-    .join('rect')
-    .attr('x', d => x(d.data))
-    .attr('y', d => y(d[1]))
-    .attr('height', d => y(d[0]) - y(d[1]))
-    .attr('width', x.bandwidth())
-    .attr('rx', 2) // Скругление углов
-    .attr('stroke', '#1e293b')
-    .attr('stroke-width', 0.5)
-    .style('cursor', 'pointer')
-    .style('filter', 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))')
-    .on('mouseover', function(event, d) {
-      // Выделяем текущий элемент
-      d3.select(this)
-        .transition()
-        .duration(200)
-        .attr('stroke-width', 1.5)
-        .style('filter', 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))');
-      
-      // Находим категорию по цвету
-      const category = series.find(serie => 
-        serie.some(item => item[0] === d[0] && item[1] === d[1])
-      ).key;
-      
-      // Получаем месяц
-      const monthName = d.data;
-      
-      // Находим оригинальные данные для месяца
-      const monthData = monthGroups[monthName];
-      
-      // Вычисляем значение для категории и долю
-      const value = monthData[category];
-      const percentage = (value / monthData.total * 100).toFixed(1);
-      
-      // Определяем правильное название категории
-      const categoryName = category === 'retail' ? SALE_TYPES.RETAIL.name :
-                           category === 'wholesale' ? SALE_TYPES.WHOLESALE.name :
-                           SALE_TYPES.PROMO.name;
-      
-      // Показываем tooltip с данными
-      tooltip
-        .style('visibility', 'visible')
-        .style('opacity', 1)
-        .style('left', `${event.pageX + 15}px`)
-        .style('top', `${event.pageY - 20}px`)
-        .html(`
-          <div style="color:${colorScale(category)};font-weight:bold;margin-bottom:4px;">
-            ${categoryName}
-          </div>
-          <div style="display:flex;justify-content:space-between;gap:15px;margin-bottom:3px">
-            <span>Период:</span>
-            <span style="font-weight:600">${monthName}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;gap:15px;margin-bottom:3px">
-            <span>Объем:</span>
-            <span style="font-weight:600">${formatCurrency(value)}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;gap:15px">
-            <span>Доля:</span>
-            <span style="font-weight:600">${percentage}%</span>
-          </div>
-        `);
-    })
-    .on('mousemove', function(event) {
-      // Обновляем позицию tooltip при движении
-      tooltip
-        .style('left', `${event.pageX + 15}px`)
-        .style('top', `${event.pageY - 20}px`);
-    })
-    .on('mouseout', function() {
-      // Возвращаем исходный вид элемента
-      d3.select(this)
-        .transition()
-        .duration(200)
-        .attr('stroke-width', 0.5)
-        .style('filter', 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))');
-      
-      // Скрываем tooltip
-      tooltip
-        .style('opacity', 0)
-        .transition()
-        .duration(200)
-        .style('visibility', 'hidden');
-    })
-    // Анимация появления
-    .attr('y', height - margin.bottom)
-    .attr('height', 0)
-    .transition()
-    .duration(800)
-    .delay((d, i) => i * 10)
-    .attr('y', d => y(d[1]))
-    .attr('height', d => y(d[0]) - y(d[1]));
-  
-  // Добавляем легенду
-  const legend = svg.append('g')
-    .attr('transform', `translate(${width - margin.right + 10}, ${margin.top})`);
-  
-  // Создаем элементы легенды с интерактивностью
-  const categories = [
-    { id: 'retail', name: SALE_TYPES.RETAIL.name },
-    { id: 'wholesale', name: SALE_TYPES.WHOLESALE.name },
-    { id: 'promo', name: SALE_TYPES.PROMO.name }
-  ];
-  
-  categories.forEach((category, i) => {
-    const legendItem = legend.append('g')
-      .attr('transform', `translate(0, ${i * 25})`)
-      .style('cursor', 'pointer')
-      .on('mouseover', function() {
-        // Подсвечиваем соответствующие сегменты
-        svg.selectAll('rect')
-          .filter(d => {
-            const serie = series.find(s => 
-              s.some(item => item[0] === d[0] && item[1] === d[1])
-            );
-            return serie && serie.key === category.id;
-          })
-          .transition()
-          .duration(200)
-          .attr('stroke-width', 1.5)
-          .style('filter', 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))');
-        
-        // Выделяем элемент легенды
-        d3.select(this).select('text')
-          .transition()
-          .duration(200)
-          .style('font-weight', 'bold');
-      })
-      .on('mouseout', function() {
-        // Возвращаем исходный вид сегментов
-        svg.selectAll('rect')
-          .transition()
-          .duration(200)
-          .attr('stroke-width', 0.5)
-          .style('filter', 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))');
-        
-        // Возвращаем исходный вид элемента легенды
-        d3.select(this).select('text')
-          .transition()
-          .duration(200)
-          .style('font-weight', 'normal');
-      });
-    
-    // Добавляем прямоугольник легенды
-    legendItem.append('rect')
-      .attr('width', 15)
-      .attr('height', 15)
-      .attr('rx', 2)
-      .attr('fill', colorScale(category.id));
-    
-    // Добавляем текст легенды
-    legendItem.append('text')
-      .attr('x', 25)
-      .attr('y', 12)
-      .style('font-size', '0.8rem')
-      .style('fill', '#d1d5db')
-      .text(category.name);
-  });
-  
-  // Добавляем анализ тренда структуры продаж
-  if (sortedMonths.length >= 3) {
-    // Вычисляем средние доли категорий в первой и последней трети периода
-    const firstThird = sortedMonths.slice(0, Math.ceil(sortedMonths.length / 3));
-    const lastThird = sortedMonths.slice(-Math.ceil(sortedMonths.length / 3));
-    
-    // Вычисляем средние доли для первой трети
-    const firstRetailShare = firstThird.reduce((sum, month) => 
-      sum + (month.retail / month.total) * 100, 0) / firstThird.length;
-    
-    const firstWholesaleShare = firstThird.reduce((sum, month) => 
-      sum + (month.wholesale / month.total) * 100, 0) / firstThird.length;
-    
-    // Вычисляем средние доли для последней трети
-    const lastRetailShare = lastThird.reduce((sum, month) => 
-      sum + (month.retail / month.total) * 100, 0) / lastThird.length;
-    
-    const lastWholesaleShare = lastThird.reduce((sum, month) => 
-      sum + (month.wholesale / month.total) * 100, 0) / lastThird.length;
-    
-    // Вычисляем изменения
-    const retailChange = lastRetailShare - firstRetailShare;
-    const wholesaleChange = lastWholesaleShare - firstWholesaleShare;
-    
-    // Добавляем панель с анализом трендов
-    const trendPanel = chartContainer.append('div')
-      .style('position', 'absolute')
-      .style('left', '10px')
-      .style('bottom', '10px')
-      .style('background', 'rgba(15, 23, 42, 0.8)')
-      .style('border-radius', '6px')
-      .style('padding', '10px 12px')
-      .style('border', '1px solid rgba(99, 102, 241, 0.2)')
-      .style('font-size', '0.8rem')
-      .style('max-width', '230px')
-      .style('box-shadow', '0 2px 10px rgba(0, 0, 0, 0.1)')
-      .style('backdrop-filter', 'blur(4px)');
-    
-    // Заголовок панели
-    trendPanel.append('div')
-      .style('margin-bottom', '6px')
-      .style('color', '#d1d5db')
+    content.append('h3')
+      .style('font-size', '1.3rem')
       .style('font-weight', 'bold')
-      .style('border-bottom', '1px solid rgba(75, 85, 99, 0.4)')
-      .style('padding-bottom', '4px')
-      .text('Анализ тренда структуры:');
-    
-    // Изменение доли розничных продаж
-    const retailColor = retailChange > 0 ? '#10b981' : retailChange < 0 ? '#ef4444' : '#9ca3af';
-    const retailIcon = retailChange > 0 ? '↗' : retailChange < 0 ? '↘' : '→';
-    
-    trendPanel.append('div')
-      .style('display', 'flex')
-      .style('justify-content', 'space-between')
-      .style('margin-bottom', '4px')
-      .html(`
-        <span style="color:#9ca3af">Розница:</span>
-        <span style="color:${retailColor};font-weight:bold">
-          ${retailIcon} ${Math.abs(retailChange).toFixed(1)}%
-        </span>
-      `);
-    
-    // Изменение доли оптовых продаж
-    const wholesaleColor = wholesaleChange > 0 ? '#10b981' : wholesaleChange < 0 ? '#ef4444' : '#9ca3af';
-    const wholesaleIcon = wholesaleChange > 0 ? '↗' : wholesaleChange < 0 ? '↘' : '→';
-    
-    trendPanel.append('div')
-      .style('display', 'flex')
-      .style('justify-content', 'space-between')
-      .style('margin-bottom', '4px')
-      .html(`
-        <span style="color:#9ca3af">Опт:</span>
-        <span style="color:${wholesaleColor};font-weight:bold">
-          ${wholesaleIcon} ${Math.abs(wholesaleChange).toFixed(1)}%
-        </span>
-      `);
-    
-    // Определение основного тренда
-    let trendText = '';
-    if (Math.abs(retailChange) > Math.abs(wholesaleChange)) {
-      if (retailChange > 2) {
-        trendText = 'Рост доли розничных продаж';
-      } else if (retailChange < -2) {
-        trendText = 'Снижение доли розничных продаж';
-      } else {
-        trendText = 'Стабильная структура продаж';
-      }
-    } else {
-      if (wholesaleChange > 2) {
-        trendText = 'Рост доли оптовых продаж';
-      } else if (wholesaleChange < -2) {
-        trendText = 'Снижение доли оптовых продаж';
-      } else {
-        trendText = 'Стабильная структура продаж';
-      }
-    }
-    
-    trendPanel.append('div')
-      .style('margin-top', '8px')
       .style('color', '#f9fafb')
-      .style('font-weight', 'bold')
+      .style('margin-bottom', '10px')
+      .text(title);
+    
+    content.append('p')
+      .style('font-size', '0.9rem')
+      .style('color', '#9ca3af')
+      .style('line-height', '1.5')
+      .text(description);
+    
+    // Добавляем кнопку действия
+    content.append('div')
+      .style('background', 'rgba(59, 130, 246, 0.2)')
+      .style('color', '#60a5fa')
+      .style('padding', '8px 15px')
+      .style('border-radius', '20px')
       .style('font-size', '0.85rem')
-      .text(trendText);
-  }
+      .style('margin-top', '20px')
+      .style('display', 'inline-block')
+      .text('Выбрать');
+  };
   
-  // Добавляем элементы управления
-  const controls = chartContainer.append('div')
-    .style('position', 'absolute')
-    .style('top', '10px')
-    .style('right', '10px')
-    .style('display', 'flex')
-    .style('gap', '5px');
+  // Создаем карточку выбора: по моделям автомобилей
+  createOptionCard(
+    'По моделям авто',
+    '<i class="fas fa-car"></i>',
+    'Анализ продаж различных моделей автомобилей с разбивкой по популярности и доходности',
+    () => showCarModelDetails(year, month, monthName)
+  );
   
-  // Кнопка экспорта данных
-  const exportButton = controls.append('button')
-    .style('background', 'rgba(30, 41, 59, 0.7)')
+  // Создаем карточку выбора: по регионам
+  createOptionCard(
+    'По регионам',
+    '<i class="fas fa-map-marker-alt"></i>',
+    'Анализ продаж по регионам Узбекистана с визуализацией географического распределения',
+    () => showRegionDetails(year, month, monthName)
+  );
+  
+  // Добавляем кнопку возврата
+  container.append('button')
+    .style('background', 'rgba(59, 130, 246, 0.2)')
+    .style('color', '#60a5fa')
     .style('border', 'none')
-    .style('color', '#9ca3af')
+    .style('padding', '10px 20px')
+    .style('border-radius', '8px')
+    .style('font-size', '0.9rem')
     .style('cursor', 'pointer')
-    .style('width', '28px')
-    .style('height', '28px')
-    .style('border-radius', '4px')
-    .style('display', 'flex')
-    .style('align-items', 'center')
-    .style('justify-content', 'center')
-    .style('transition', 'all 0.2s')
-    .attr('title', 'Экспорт данных')
-    .html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>')
+    .style('transition', 'background 0.2s')
+    .style('margin-top', '20px')
+    .text('Вернуться к общему графику')
     .on('mouseover', function() {
-      d3.select(this)
-        .style('background', 'rgba(59, 130, 246, 0.3)')
-        .style('color', '#f9fafb');
+      d3.select(this).style('background', 'rgba(59, 130, 246, 0.3)');
     })
     .on('mouseout', function() {
-      d3.select(this)
-        .style('background', 'rgba(30, 41, 59, 0.7)')
-        .style('color', '#9ca3af');
+      d3.select(this).style('background', 'rgba(59, 130, 246, 0.2)');
     })
-    .on('click', function() {
-      // Экспорт данных в CSV
-      exportStructureData(sortedMonths);
-    });
+    .on('click', renderPeriodComparisonTable);
   
-  // Функция для экспорта данных
-  function exportStructureData(data) {
-    // Формируем CSV строку
-    let csvContent = "data:text/csv;charset=utf-8,Месяц,Розница (%),Опт (%),Акции (%),Розница (сумма),Опт (сумма),Акции (сумма),Общая сумма\n";
-    
-    data.forEach(month => {
-      const retailShare = (month.retail / month.total * 100).toFixed(2);
-      const wholesaleShare = (month.wholesale / month.total * 100).toFixed(2);
-      const promoShare = (month.promo / month.total * 100).toFixed(2);
-      
-      csvContent += `${month.name},${retailShare},${wholesaleShare},${promoShare},${month.retail},${month.wholesale},${month.promo},${month.total}\n`;
-    });
-    
-    // Создаем ссылку для скачивания
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `structure_analysis_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
+  // Добавляем стили Font Awesome для иконок
+  const head = document.head || document.getElementsByTagName('head')[0];
+  const fontAwesome = document.createElement('link');
+  fontAwesome.rel = 'stylesheet';
+  fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css';
+  head.appendChild(fontAwesome);
 };
 const formatDisplayDate = (dateStr) => {
   if (!dateStr) return '';
@@ -8974,6 +5864,7 @@ const renderDailySalesTotalRow = () => {
     </tr>
   );
 };
+
 return (
   <div 
     className="min-h-screen p-4 md:p-6"
@@ -9230,7 +6121,7 @@ return (
             
             {/* РАЗДЕЛ: Основной график и прогресс */}
             <div className="gap-6 mb-6">
-              <div className="lg:col-span-2 bg-gray-800 rounded-xl p-2 border border-gray-700/50 shadow-lg">
+              <div className="lg:col-span-2  rounded-xl p-2 border shadow-lg">
                 <div ref={mainChartRef} className="w-full h-full"></div>
               </div>
             </div>
