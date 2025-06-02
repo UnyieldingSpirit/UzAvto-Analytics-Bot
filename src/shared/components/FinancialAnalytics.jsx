@@ -9104,85 +9104,129 @@ return (
         {filteredData.length > 0 && (
           <>
             {/* РАЗДЕЛ: Информационные карточки */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-xl p-5 border border-blue-500/20 shadow-lg"
-              >
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-600/30 flex items-center justify-center mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-100" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div>
-                  <h3 className="text-lg font-medium text-blue-300">
-  {focusCategory === 'all' ? t('infoCards.totalAmount') : 
-  focusCategory === 'retail' ? t('infoCards.retailSales') : 
-  t('infoCards.wholesaleSales')}
-</h3>
-<p className="text-blue-300/70 text-sm mt-1">
-  {t('infoCards.currentMonth')}
-</p>
-                  </div>
-                </div>
-              </motion.div>
-              
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-xl p-5 border border-purple-500/20 shadow-lg"
-              >
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-purple-600/30 flex items-center justify-center mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-100" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div>
-                <h3 className="text-lg font-medium text-purple-300">
-  {focusCategory === 'all' ? t('infoCards.averageDaily') : 
-  focusCategory === 'retail' ? t('infoCards.averageDailyRetail') : 
-  t('infoCards.averageDailyWholesale')}
-</h3>
-<p className="text-purple-300/70 text-sm mt-1">
-  {t('infoCards.basedOnDays', { count: new Date().getDate() })}
-</p>
-                  </div>
-                </div>
-              </motion.div>
-              
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-xl p-5 border border-green-500/20 shadow-lg"
-              >
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-600/30 flex items-center justify-center mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-100" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-green-300">
-                      {focusCategory === 'all' ? 'Ожидаемая сумма за месяц' : 
-                      focusCategory === 'retail' ? 'Прогноз розницы за месяц' : 
-                      'Прогноз опта за месяц'}
-                    </h3>
-                    <p className="text-3xl font-bold text-white mt-1">
-                      {formatCurrency(calculateTotalMonthEstimate())}
-                    </p>
-                    <p className="text-green-300/70 text-sm mt-1">
-                      {new Date().getDate()} / {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()} дней месяца прошло
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
+
+{/* РАЗДЕЛ: Информационные карточки */}
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.1 }}
+    className="rounded-xl p-5 shadow-lg"
+    style={{
+      background: isDarkMode 
+        ? 'linear-gradient(to br, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.1))' 
+        : 'linear-gradient(to br, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05))',
+      border: `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'}`
+    }}
+  >
+    <div className="flex items-center">
+      <div 
+        className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center mr-4"
+        style={{
+          backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'
+        }}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill={isDarkMode ? '#93c5fd' : '#3b82f6'}>
+          <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+        </svg>
+      </div>
+      <div>
+        <h3 style={{ color: isDarkMode ? '#93c5fd' : '#3b82f6' }}>
+          {focusCategory === 'all' ? t('infoCards.totalAmount') : 
+           focusCategory === 'retail' ? t('infoCards.retailSales') : 
+           t('infoCards.wholesaleSales')}
+        </h3>
+        <p className="text-3xl font-bold mt-1" style={{ color: colors.text }}>
+          {formatCurrency(getCurrentMonthTotal())}
+        </p>
+        <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
+          {t('infoCards.currentMonth')}
+        </p>
+      </div>
+    </div>
+  </motion.div>
+  
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.2 }}
+    className="rounded-xl p-5 shadow-lg"
+    style={{
+      background: isDarkMode 
+        ? 'linear-gradient(to br, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1))' 
+        : 'linear-gradient(to br, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05))',
+      border: `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)'}`
+    }}
+  >
+    <div className="flex items-center">
+      <div 
+        className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center mr-4"
+        style={{
+          backgroundColor: isDarkMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)'
+        }}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill={isDarkMode ? '#c4b5fd' : '#8b5cf6'}>
+          <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clipRule="evenodd" />
+        </svg>
+      </div>
+      <div>
+        <h3 style={{ color: isDarkMode ? '#c4b5fd' : '#8b5cf6' }}>
+          {focusCategory === 'all' ? t('infoCards.averageDaily') : 
+           focusCategory === 'retail' ? t('infoCards.averageDailyRetail') : 
+           t('infoCards.averageDailyWholesale')}
+        </h3>
+        <p className="text-3xl font-bold mt-1" style={{ color: colors.text }}>
+          {formatCurrency(getCurrentMonthTotal() / new Date().getDate())}
+        </p>
+        <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
+          {t('infoCards.basedOnDays', { count: new Date().getDate() })}
+        </p>
+      </div>
+    </div>
+  </motion.div>
+  
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.3 }}
+    className="rounded-xl p-5 shadow-lg"
+    style={{
+      background: isDarkMode 
+        ? 'linear-gradient(to br, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1))' 
+        : 'linear-gradient(to br, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05))',
+      border: `1px solid ${isDarkMode ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.2)'}`
+    }}
+  >
+    <div className="flex items-center">
+      <div 
+        className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center mr-4"
+        style={{
+          backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.2)'
+        }}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill={isDarkMode ? '#86efac' : '#10b981'}>
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+        </svg>
+      </div>
+      <div>
+        <h3 style={{ color: isDarkMode ? '#86efac' : '#10b981' }}>
+          {focusCategory === 'all' ? t('infoCards.expectedMonth') : 
+           focusCategory === 'retail' ? t('infoCards.expectedRetail') : 
+           t('infoCards.expectedWholesale')}
+        </h3>
+        <p className="text-3xl font-bold mt-1" style={{ color: colors.text }}>
+          {formatCurrency(calculateTotalMonthEstimate())}
+        </p>
+        <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
+          {t('infoCards.monthProgress', { 
+            current: new Date().getDate(), 
+            total: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() 
+          })}
+        </p>
+      </div>
+    </div>
+  </motion.div>
+</div>
             
             {/* РАЗДЕЛ: Основной график и прогресс */}
             <div className="gap-6 mb-6">
