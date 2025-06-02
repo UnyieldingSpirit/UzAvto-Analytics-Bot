@@ -389,7 +389,9 @@ export default function ResponsiveNav() {
   }}>
     <motion.button
       whileTap={{ scale: 0.95 }}
-      onClick={() => setMode('light')}
+      onClick={() => {setMode('light'),  setTimeout(() => {
+        window.location.reload();
+    }, 100);}}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -426,7 +428,11 @@ export default function ResponsiveNav() {
     
     <motion.button
       whileTap={{ scale: 0.95 }}
-      onClick={() => setMode('dark')}
+                  onClick={() => {
+                    setMode('dark'),
+                    setTimeout(() => {
+        window.location.reload();
+    }, 100);}}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -480,7 +486,9 @@ export default function ResponsiveNav() {
       <motion.button
         key={lang.code}
         whileTap={{ scale: 0.95 }}
-        onClick={() => setLocale(lang.code as 'ru' | 'uz' | 'en')}
+        onClick={() => {setLocale(lang.code as 'ru' | 'uz' | 'en'),  setTimeout(() => {
+        window.location.reload();
+    }, 100);}}
         style={{
           display: 'flex',
           alignItems: 'center',

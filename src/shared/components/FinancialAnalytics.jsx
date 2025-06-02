@@ -3367,809 +3367,253 @@ const showRegionDetails = async (year, month, monthName) => {
     .append('div')
     .style('width', '100%')
     .style('height', '100%')
-    .style('background', 'linear-gradient(135deg, #1f2937 0%, #111827 100%)')
+    .style('background', isDarkMode ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)')
     .style('border-radius', '1rem')
     .style('padding', '20px');
   
-  // Добавляем логирование для отладки
-  console.group('RegionDetails Debug');
-  console.log('Вызов функции showRegionDetails с параметрами:', {year, month, monthName});
+  // Определяем ширину контейнера для адаптивного дизайна
+  const containerWidth = mainChartRef.current.clientWidth;
+  const isMobile = containerWidth < 768;
   
   // Заголовок и навигация
   const header = container.append('div')
     .style('display', 'flex')
+    .style('flex-direction', isMobile ? 'column' : 'row')
     .style('justify-content', 'space-between')
+    .style('align-items', isMobile ? 'flex-start' : 'center')
+    .style('margin-bottom', '20px')
+    .style('padding-bottom', '15px')
+    .style('gap', '15px')
+    .style('border-bottom', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)'}`);
+  
+  // Добавляем иконку и анимированный заголовок
+  const titleSection = header.append('div')
+    .style('display', 'flex')
     .style('align-items', 'center')
-    .style('margin-bottom', '20px');
+    .style('gap', '12px');
+    
+  titleSection.append('div')
+    .style('background', isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)')
+    .style('width', '40px')
+    .style('height', '40px')
+    .style('border-radius', '10px')
+    .style('display', 'flex')
+    .style('align-items', 'center')
+    .style('justify-content', 'center')
+    .html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>');
   
-  header.append('h2')
-    .style('font-size', '1.4rem')
+  titleSection.append('h2')
+    .style('font-size', isMobile ? '1.2rem' : '1.5rem')
     .style('font-weight', 'bold')
-    .style('color', '#f9fafb')
-    .html(`Анализ региональных продаж: <span style="color: #60a5fa;">${monthName}</span>`);
+    .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
+    .style('margin', '0')
+    .html(`${t('regions.title', { period: monthName })}`);
   
+  // Улучшенные интерактивные кнопки
   const buttonGroup = header.append('div')
     .style('display', 'flex')
-    .style('gap', '10px');
+    .style('flex-wrap', 'wrap')
+    .style('gap', '12px');
   
   buttonGroup.append('button')
-    .style('background', 'rgba(16, 185, 129, 0.2)')
+    .style('background', isDarkMode ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)')
     .style('color', '#34d399')
-    .style('border', 'none')
+    .style('border', `1px solid ${isDarkMode ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.2)'}`)
     .style('padding', '8px 15px')
     .style('border-radius', '8px')
     .style('font-size', '0.85rem')
+    .style('font-weight', '500')
     .style('cursor', 'pointer')
-    .text('← К общему графику')
+    .style('display', 'flex')
+    .style('align-items', 'center')
+    .style('gap', '6px')
+    .style('transition', 'all 0.2s ease-in-out')
+    .html(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> ${t('models.backToOverview')}`)
+    .on('mouseover', function() {
+      d3.select(this)
+        .style('background', isDarkMode ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.15)')
+        .style('transform', 'translateY(-2px)');
+    })
+    .on('mouseout', function() {
+      d3.select(this)
+        .style('background', isDarkMode ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)')
+        .style('transform', 'translateY(0)');
+    })
     .on('click', renderPeriodComparisonTable);
 
   // Функция для загрузки данных с API
-const loadRegionData = async (startDate, endDate, category, showLoader = true) => {
-  try {
-    // Показываем индикатор загрузки, если нужно
-    if (showLoader) {
-      container.append('div')
-        .attr('class', 'region-data-loader')
-        .style('display', 'flex')
-        .style('align-items', 'center')
-        .style('justify-content', 'center')
-        .style('height', '100px')
-        .style('color', '#9ca3af')
-        .html(`
-          <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-          <span class="ml-3">Загрузка данных о регионах...</span>
-        `);
-    }
-    
-    // Определяем соответствующий эндпоинт API в зависимости от категории
-    let endpoint = "get_all_payment";
-    if (category === 'retail') {
-      endpoint = "get_roz_payment";
-    } else if (category === 'wholesale') {
-      endpoint = "get_opt_payment";
-    }
-    
-    console.log(`Выполняется запрос к API: ${endpoint} с датами ${startDate}-${endDate}`);
-    
-    // Выполняем запрос к API
-    const response = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: `begin_date=${startDate}&end_date=${endDate}`
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-    
-    // Парсим ответ
-    const apiData = await response.json();
-    console.log("Получены данные от API:", apiData);
-    
-    // Формируем месяц в формате YYYY-MM для поиска
-    const monthStr = `${year}-${String(month).padStart(2, '0')}`;
-    
-    // Извлекаем данные о регионах
-    let regionData = [];
-    
-    // Проверяем, какой тип данных мы обрабатываем на основе категории
-    if (category === 'retail') {
-      // Для розничных продаж обрабатываем данные аналогично transformModelBasedData
-      console.log("Обрабатываем данные розничных продаж");
+  const loadRegionData = async (startDate, endDate, category, showLoader = true) => {
+    try {
+      // Показываем индикатор загрузки, если нужно
+      if (showLoader) {
+        container.append('div')
+          .attr('class', 'region-data-loader')
+          .style('display', 'flex')
+          .style('align-items', 'center')
+          .style('justify-content', 'center')
+          .style('height', '100px')
+          .style('color', isDarkMode ? '#9ca3af' : '#64748b')
+          .html(`
+            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+            <span class="ml-3">${t('regions.loadingData')}</span>
+          `);
+      }
       
-      if (Array.isArray(apiData)) {
-        // Объединяем данные по регионам из всех моделей
-        const regionMap = new Map();
+      // Определяем соответствующий эндпоинт API в зависимости от категории
+      let endpoint = "get_all_payment";
+      if (category === 'retail') {
+        endpoint = "get_roz_payment";
+      } else if (category === 'wholesale') {
+        endpoint = "get_opt_payment";
+      }
+      
+      console.log(`Выполняется запрос к API: ${endpoint} с датами ${startDate}-${endDate}`);
+      
+      // Выполняем запрос к API
+      const response = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: `begin_date=${startDate}&end_date=${endDate}`
+      });
+      
+      if (!response.ok) {
+        throw new Error(t('errors.httpError', { status: response.status }));
+      }
+      
+      // Парсим ответ
+      const apiData = await response.json();
+      console.log("Получены данные от API:", apiData);
+      
+      // Формируем месяц в формате YYYY-MM для поиска
+      const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+      
+      // Извлекаем данные о регионах
+      let regionData = [];
+      
+      // Проверяем, какой тип данных мы обрабатываем на основе категории
+      if (category === 'retail') {
+        // Для розничных продаж обрабатываем данные аналогично transformModelBasedData
+        console.log("Обрабатываем данные розничных продаж");
         
-        apiData.forEach(model => {
-          if (!model || !Array.isArray(model.filter_by_region)) {
-            console.warn("Модель без данных о регионах:", model);
-            return;
-          }
+        if (Array.isArray(apiData)) {
+          // Объединяем данные по регионам из всех моделей
+          const regionMap = new Map();
           
-          // Ищем данные для выбранного месяца
-          const monthData = model.filter_by_region.find(m => m.month === monthStr);
-          if (!monthData || !Array.isArray(monthData.regions)) {
-            console.log(`Нет данных о регионах для месяца ${monthStr} в модели ${model.model_name || 'неизвестная модель'}`);
-            return;
-          }
-          
-          // Агрегируем данные о регионах для всех моделей
-          monthData.regions.forEach(region => {
-            if (!region || !region.region_id) return;
-            
-            const regionId = region.region_id;
-            if (!regionMap.has(regionId)) {
-              regionMap.set(regionId, {
-                region_id: regionId,
-                region_name: region.region_name || `Регион ${regionId}`,
-                amount: 0,
-                all_count: 0
-              });
+          apiData.forEach(model => {
+            if (!model || !Array.isArray(model.filter_by_region)) {
+              console.warn("Модель без данных о регионах:", model);
+              return;
             }
             
-            // Суммируем значения для этого региона
-            const regionEntry = regionMap.get(regionId);
-            regionEntry.amount += parseFloat(region.amount || 0);
-            regionEntry.all_count += parseInt(region.all_count || 0, 10);
+            // Ищем данные для выбранного месяца
+            const monthData = model.filter_by_region.find(m => m.month === monthStr);
+            if (!monthData || !Array.isArray(monthData.regions)) {
+              console.log(`Нет данных о регионах для месяца ${monthStr} в модели ${model.model_name || 'неизвестная модель'}`);
+              return;
+            }
+            
+            // Агрегируем данные о регионах для всех моделей
+            monthData.regions.forEach(region => {
+              if (!region || !region.region_id) return;
+              
+              const regionId = region.region_id;
+              if (!regionMap.has(regionId)) {
+                regionMap.set(regionId, {
+                  region_id: regionId,
+                  region_name: region.region_name || t('regions.unknownRegion'),
+                  amount: 0,
+                  all_count: 0
+                });
+              }
+              
+              // Суммируем значения для этого региона
+              const regionEntry = regionMap.get(regionId);
+              regionEntry.amount += parseFloat(region.amount || 0);
+              regionEntry.all_count += parseInt(region.all_count || 0, 10);
+            });
           });
-        });
-        
-        // Преобразуем Map в массив
-        regionData = Array.from(regionMap.values());
-        console.log(`Объединены данные о ${regionData.length} регионах из розничных продаж`);
+          
+          // Преобразуем Map в массив
+          regionData = Array.from(regionMap.values());
+          console.log(`Объединены данные о ${regionData.length} регионах из розничных продаж`);
+        } else {
+          console.warn("Данные розничных продаж не являются массивом:", apiData);
+        }
       } else {
-        console.warn("Данные розничных продаж не являются массивом:", apiData);
-      }
-    } else {
-      // Для оптовых и общих продаж - стандартная обработка
-      console.log("Обрабатываем данные оптовых/общих продаж");
-      
-      // Логируем для отладки
-      console.log(`Ищем месяц ${monthStr} в данных`);
-      
-      // Функция для извлечения данных о регионах из ответа API
-      const extractRegions = (apiData, monthStr) => {
-        if (!apiData) return [];
+        // Для оптовых и общих продаж - стандартная обработка
+        console.log("Обрабатываем данные оптовых/общих продаж");
         
-        // Проверяем разные структуры данных
-        if (Array.isArray(apiData)) {
-          // Если ответ - массив
-          for (const item of apiData) {
-            if (Array.isArray(item.filter_by_region)) {
-              const monthData = item.filter_by_region.find(m => m.month === monthStr);
+        // Функция для извлечения данных о регионах из ответа API
+        const extractRegions = (apiData, monthStr) => {
+          if (!apiData) return [];
+          
+          // Проверяем разные структуры данных
+          if (Array.isArray(apiData)) {
+            // Если ответ - массив
+            for (const item of apiData) {
+              if (Array.isArray(item.filter_by_region)) {
+                const monthData = item.filter_by_region.find(m => m.month === monthStr);
+                if (monthData && Array.isArray(monthData.regions)) {
+                  console.log(`Найдены данные о регионах для месяца ${monthStr}: ${monthData.regions.length} регионов`);
+                  return monthData.regions;
+                }
+              }
+            }
+          } else if (apiData && typeof apiData === 'object') {
+            // Если ответ - объект
+            if (Array.isArray(apiData.filter_by_region)) {
+              const monthData = apiData.filter_by_region.find(m => m.month === monthStr);
               if (monthData && Array.isArray(monthData.regions)) {
                 console.log(`Найдены данные о регионах для месяца ${monthStr}: ${monthData.regions.length} регионов`);
                 return monthData.regions;
               }
             }
-          }
-        } else if (apiData && typeof apiData === 'object') {
-          // Если ответ - объект
-          if (Array.isArray(apiData.filter_by_region)) {
-            const monthData = apiData.filter_by_region.find(m => m.month === monthStr);
-            if (monthData && Array.isArray(monthData.regions)) {
-              console.log(`Найдены данные о регионах для месяца ${monthStr}: ${monthData.regions.length} регионов`);
-              return monthData.regions;
+            
+            // Проверяем прямой доступ к regions
+            if (Array.isArray(apiData.regions)) {
+              console.log(`Найдены данные о регионах напрямую: ${apiData.regions.length} регионов`);
+              return apiData.regions;
             }
           }
           
-          // Проверяем прямой доступ к regions
-          if (Array.isArray(apiData.regions)) {
-            console.log(`Найдены данные о регионах напрямую: ${apiData.regions.length} регионов`);
-            return apiData.regions;
-          }
-        }
+          return [];
+        };
         
-        return [];
-      };
+        regionData = extractRegions(apiData, monthStr);
+      }
       
-      regionData = extractRegions(apiData, monthStr);
-    }
-    
-    // Удаляем индикатор загрузки, если он есть
-    container.selectAll('.region-data-loader').remove();
-    
-    if (regionData.length === 0) {
-      console.log("Не найдено данных о регионах в API-ответе");
+      // Удаляем индикатор загрузки, если он есть
+      container.selectAll('.region-data-loader').remove();
+      
+      if (regionData.length === 0) {
+        console.log(t('regions.noData'));
+        return null;
+      }
+      
+      console.log(`Найдено ${regionData.length} регионов в API-ответе`);
+      return regionData;
+      
+    } catch (error) {
+      // Удаляем индикатор загрузки, если он есть
+      container.selectAll('.region-data-loader').remove();
+      
+      console.error('Ошибка при получении данных о регионах:', error);
+      
+      // Показываем сообщение об ошибке
+      container.append('div')
+        .style('color', '#ef4444')
+        .style('padding', '10px')
+        .style('background', isDarkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)')
+        .style('border', `1px solid ${isDarkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)'}`)
+        .style('border-radius', '6px')
+        .style('margin-top', '10px')
+        .text(t('errors.loadingError') + ': ' + error.message);
+      
       return null;
     }
-    
-    console.log(`Найдено ${regionData.length} регионов в API-ответе`);
-    return regionData;
-    
-  } catch (error) {
-    // Удаляем индикатор загрузки, если он есть
-    container.selectAll('.region-data-loader').remove();
-    
-    console.error('Ошибка при получении данных о регионах:', error);
-    
-    // Показываем сообщение об ошибке
-    container.append('div')
-      .style('color', '#ef4444')
-      .style('padding', '10px')
-      .style('background', 'rgba(239, 68, 68, 0.1)')
-      .style('border', '1px solid rgba(239, 68, 68, 0.3)')
-      .style('border-radius', '6px')
-      .style('margin-top', '10px')
-      .text(`Ошибка при загрузке данных: ${error.message}`);
-    
-    return null;
-  }
-};
-  
-const renderDailySalesTable = () => {
-  // Создаем контейнер для таблицы в нижней части страницы
-  const tableContainer = document.createElement('div');
-  tableContainer.className = 'mt-6 bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 border border-gray-700/50';
-  
-  // Заголовок секции
-  const header = document.createElement('div');
-  header.className = 'flex justify-between items-center mb-4';
-  
-  const headerTitle = document.createElement('h2');
-  headerTitle.className = 'text-xl md:text-2xl font-bold text-white bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent';
-  headerTitle.textContent = 'Детальная статистика продаж по дням';
-  
-  const controlPanel = document.createElement('div');
-  controlPanel.className = 'flex items-center gap-2';
-  
-  // Добавляем элементы выбора дат
-  const dateRangeContainer = document.createElement('div');
-  dateRangeContainer.className = 'flex items-center gap-3';
-  
-  // Создаем элементы выбора дат
-  const startDateContainer = document.createElement('div');
-  startDateContainer.className = 'relative';
-  
-  const startDateInput = document.createElement('input');
-  startDateInput.type = 'date';
-  startDateInput.className = 'bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36';
-  startDateInput.value = formatDateForInput(apiStartDate);
-  startDateInput.addEventListener('change', (e) => {
-    tableDateStart = formatDateFromInput(e.target.value);
-  });
-  
-  startDateContainer.appendChild(startDateInput);
-  
-  const dateRangeSeparator = document.createElement('span');
-  dateRangeSeparator.className = 'text-gray-400';
-  dateRangeSeparator.textContent = '—';
-  
-  const endDateContainer = document.createElement('div');
-  endDateContainer.className = 'relative';
-  
-  const endDateInput = document.createElement('input');
-  endDateInput.type = 'date';
-  endDateInput.className = 'bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36';
-  endDateInput.value = formatDateForInput(apiEndDate);
-  endDateInput.addEventListener('change', (e) => {
-    tableDateEnd = formatDateFromInput(e.target.value);
-  });
-  
-  endDateContainer.appendChild(endDateInput);
-  dateRangeContainer.appendChild(startDateContainer);
-  dateRangeContainer.appendChild(dateRangeSeparator);
-  dateRangeContainer.appendChild(endDateContainer);
-  
-  // Кнопка обновления данных
-  const refreshButton = document.createElement('button');
-  refreshButton.className = 'bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-1';
-  refreshButton.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-      <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"></path>
-    </svg>
-    Загрузить данные
-  `;
-  refreshButton.addEventListener('click', fetchDailySalesData);
-  
-  controlPanel.appendChild(dateRangeContainer);
-  controlPanel.appendChild(refreshButton);
-  
-  header.appendChild(headerTitle);
-  header.appendChild(controlPanel);
-  tableContainer.appendChild(header);
-  
-  // Контейнер для таблицы с возможностью горизонтальной прокрутки
-  const tableWrapper = document.createElement('div');
-  tableWrapper.className = 'overflow-x-auto';
-  
-  // Индикатор загрузки
-  const loadingIndicator = document.createElement('div');
-  loadingIndicator.className = 'flex justify-center items-center py-10';
-  loadingIndicator.innerHTML = `
-    <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-    <span class="ml-3 text-gray-300">Загрузка данных...</span>
-  `;
-  
-  // Сообщение при отсутствии данных
-  const noDataMessage = document.createElement('div');
-  noDataMessage.className = 'flex flex-col items-center justify-center py-10 text-gray-400';
-  noDataMessage.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-    </svg>
-    <p class="text-lg">Данные отсутствуют для выбранного периода</p>
-    <p class="text-sm mt-1">Выберите другой диапазон дат или обновите данные</p>
-  `;
-  noDataMessage.style.display = 'none';
-  
-  // Содержимое таблицы (будет заполнено при загрузке данных)
-  const tableSalesContent = document.createElement('div');
-  tableSalesContent.id = 'daily-sales-table-content';
-  tableSalesContent.className = 'hidden'; // Скрыто до загрузки данных
-  
-  tableWrapper.appendChild(loadingIndicator);
-  tableWrapper.appendChild(noDataMessage);
-  tableWrapper.appendChild(tableSalesContent);
-  tableContainer.appendChild(tableWrapper);
-  
-  // Добавляем таблицу в DOM
-  document.querySelector('.min-h-screen').appendChild(tableContainer);
-  
-  // Инициализируем переменные для хранения дат и данных
-  let tableDateStart = apiStartDate;
-  let tableDateEnd = apiEndDate;
-  let salesData = {
-    all: [],
-    retail: [],
-    wholesale: []
   };
-  
-  // Функция для загрузки данных о продажах по дням
-
-  
-  // Функция для проверки наличия данных
-  function hasData(salesData) {
-    return salesData.all.length > 0 || salesData.retail.length > 0 || salesData.wholesale.length > 0;
-  }
-  
-  // Функция для отображения данных в таблице
-  function renderSalesTable(data) {
-    // Получаем элемент для таблицы
-    const tableContainer = document.getElementById('daily-sales-table-content');
-    tableContainer.innerHTML = '';
-    
-    // Создаем структуру таблицы
-    const table = document.createElement('table');
-    table.className = 'min-w-full divide-y divide-gray-700 table-fixed';
-    
-    // Создаем заголовок таблицы
-    const thead = document.createElement('thead');
-    thead.className = 'bg-gray-700/50';
-    
-    const headerRow = document.createElement('tr');
-    
-    // Заголовки столбцов
-    const headers = [
-      { text: `${t('table.headers.date')}`, className: 'w-32' },
-      { text: `${t('table.headers.totalSales')}`, className: 'w-44' },
-      { text: `${t('table.headers.retailSales')}`, className: 'w-44' },
-      { text: `${t('table.headers.wholesaleSales')}`, className: 'w-44' },
-      { text: 'Модели (розница)', className: '' }
-    ];
-    
-    headers.forEach(header => {
-      const th = document.createElement('th');
-      th.scope = 'col';
-      th.className = `px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider ${header.className}`;
-      th.textContent = header.text;
-      headerRow.appendChild(th);
-    });
-    
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-    
-    // Создаем тело таблицы
-    const tbody = document.createElement('tbody');
-    tbody.className = 'bg-gray-800 divide-y divide-gray-700';
-    
-    // Создаем объединенный набор дат из всех трех источников
-    const allDates = new Set();
-    
-    // Функция для получения даты из строки формата YYYY-MM-DD
-    const getDateFromString = (dateStr) => {
-      if (!dateStr) return null;
-      return dateStr;
-    };
-    
-    // Собираем все даты
-    data.all.forEach(item => {
-      const date = getDateFromString(item.day);
-      if (date) allDates.add(date);
-    });
-    
-    data.retail.forEach(item => {
-      const date = getDateFromString(item.day);
-      if (date) allDates.add(date);
-    });
-    
-    data.wholesale.forEach(item => {
-      const date = getDateFromString(item.day);
-      if (date) allDates.add(date);
-    });
-    
-    // Преобразуем Set в массив и сортируем даты
-    const sortedDates = Array.from(allDates).sort((a, b) => {
-      return new Date(a) - new Date(b);
-    });
-    
-    // Создаем индексы данных по датам для быстрого доступа
-    const allSalesIndex = {};
-    const retailSalesIndex = {};
-    const wholesaleSalesIndex = {};
-    
-    data.all.forEach(item => {
-      allSalesIndex[item.day] = item;
-    });
-    
-    data.retail.forEach(item => {
-      retailSalesIndex[item.day] = item;
-    });
-    
-    data.wholesale.forEach(item => {
-      wholesaleSalesIndex[item.day] = item;
-    });
-    
-    // Для каждой даты создаем строку таблицы
-    sortedDates.forEach((date, index) => {
-      const row = document.createElement('tr');
-      row.className = index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-750';
-      
-      // Форматируем дату из YYYY-MM-DD в DD.MM.YYYY
-      const displayDate = formatDisplayDate(date);
-      
-      // Получаем данные для текущей даты
-      const allSalesData = allSalesIndex[date] || { amount: 0, all_count: 0 };
-      const retailSalesData = retailSalesIndex[date] || { amount: 0, all_count: 0, models: [] };
-      const wholesaleSalesData = wholesaleSalesIndex[date] || { amount: 0, all_count: 0 };
-      
-      // Ячейка даты
-      const dateCell = document.createElement('td');
-      dateCell.className = 'px-3 py-4 whitespace-nowrap';
-      dateCell.innerHTML = `
-        <div class="text-sm font-medium text-white">${displayDate}</div>
-        <div class="text-xs text-gray-400">${getDayOfWeek(date)}</div>
-      `;
-      row.appendChild(dateCell);
-      
-      // Ячейка общих продаж
-      const allSalesCell = document.createElement('td');
-      allSalesCell.className = 'px-3 py-4 whitespace-nowrap';
-      allSalesCell.innerHTML = `
-        <div class="text-sm font-medium text-white">${formatProfitCompact(allSalesData.amount)}</div>
-      `;
-      row.appendChild(allSalesCell);
-      
-      // Ячейка розничных продаж
-      const retailSalesCell = document.createElement('td');
-      retailSalesCell.className = 'px-3 py-4 whitespace-nowrap';
-      retailSalesCell.innerHTML = `
-        <div class="text-sm font-medium text-blue-400">${formatProfitCompact(retailSalesData.amount)}</div>
-      `;
-      row.appendChild(retailSalesCell);
-      
-      // Ячейка оптовых продаж
-      const wholesaleSalesCell = document.createElement('td');
-      wholesaleSalesCell.className = 'px-3 py-4 whitespace-nowrap';
-      wholesaleSalesCell.innerHTML = `
-        <div class="text-sm font-medium text-purple-400">${formatProfitCompact(wholesaleSalesData.amount)}</div>
-      `;
-      row.appendChild(wholesaleSalesCell);
-      
-      // Ячейка с моделями розничных продаж
-      const modelsCell = document.createElement('td');
-      modelsCell.className = 'px-3 py-4';
-      
-      // Проверяем наличие данных о моделях
-      if (retailSalesData.models && retailSalesData.models.length > 0) {
-        const modelsContainer = document.createElement('div');
-        modelsContainer.className = 'flex flex-wrap gap-2';
-        
-        // Отображаем до 3 моделей, остальные скрываем под кнопкой "Еще"
-        const visibleModels = retailSalesData.models.slice(0, 3);
-        const hiddenModels = retailSalesData.models.slice(3);
-        
-        // Создаем чипы для видимых моделей
-        visibleModels.forEach(model => {
-          const modelChip = createModelChip(model);
-          modelsContainer.appendChild(modelChip);
-        });
-        
-        // Если есть скрытые модели, добавляем кнопку "Еще"
-        if (hiddenModels.length > 0) {
-          const moreButton = document.createElement('button');
-          moreButton.className = 'py-1 px-2 text-xs rounded-full bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors';
-          moreButton.textContent = `Еще ${hiddenModels.length}...`;
-          
-          // Обработчик клика для отображения всех моделей
-          moreButton.addEventListener('click', () => {
-            // Создаем модальное окно с полным списком моделей
-            showModelsModal(date, displayDate, retailSalesData.models);
-          });
-          
-          modelsContainer.appendChild(moreButton);
-        }
-        
-        modelsCell.appendChild(modelsContainer);
-      } else {
-        // Сообщение при отсутствии данных о моделях
-        modelsCell.innerHTML = `<span class="text-sm text-gray-500">Нет данных о моделях</span>`;
-      }
-      
-      row.appendChild(modelsCell);
-      tbody.appendChild(row);
-    });
-    
-    table.appendChild(tbody);
-    tableContainer.appendChild(table);
-    
-    // Создаем итоговую строку с суммарными данными
-    const totalRow = createTotalRow(data);
-    tbody.appendChild(totalRow);
-  }
-  
-  // Функция для создания чипа модели
-  function createModelChip(model) {
-    const chip = document.createElement('div');
-    chip.className = 'bg-blue-600/20 text-blue-300 text-xs rounded-full py-1 px-2 flex items-center';
-    
-    // Название и количество
-    chip.innerHTML = `
-      <span class="mr-1">${model.model_name || 'Модель'}</span>
-      <span class="text-xs bg-blue-600/40 rounded-full px-1.5">${model.all_count || 0}</span>
-    `;
-    
-    // Добавляем тултип с информацией
-    
-    return chip;
-  }
-  
-  // Функция для создания итоговой строки
-  function createTotalRow(data) {
-    const totalRow = document.createElement('tr');
-    totalRow.className = 'bg-gray-700/30 font-medium';
-    
-    // Ячейка с надписью "Итого"
-    const totalLabelCell = document.createElement('td');
-    totalLabelCell.className = 'px-3 py-4 whitespace-nowrap text-sm text-white';
-    totalLabelCell.textContent = 'ИТОГО:';
-    totalRow.appendChild(totalLabelCell);
-    
-    // Функция для расчета общей суммы и количества
-    const calculateTotal = (dataArray) => {
-      return dataArray.reduce((acc, item) => {
-        return {
-          amount: acc.amount + (parseFloat(item.amount) || 0),
-          all_count: acc.all_count + (parseInt(item.all_count) || 0)
-        };
-      }, { amount: 0, all_count: 0 });
-    };
-    
-    // Расчет итогов по всем категориям
-    const allTotal = calculateTotal(data.all);
-    const retailTotal = calculateTotal(data.retail);
-    const wholesaleTotal = calculateTotal(data.wholesale);
-    
-    // Ячейка итогов общих продаж
-    const allTotalCell = document.createElement('td');
-    allTotalCell.className = 'px-3 py-4 whitespace-nowrap';
-    allTotalCell.innerHTML = `
-      <div class="text-sm font-bold text-white">${formatProfitCompact(allTotal.amount)}</div>
-    `;
-    totalRow.appendChild(allTotalCell);
-    
-    // Ячейка итогов розничных продаж
-    const retailTotalCell = document.createElement('td');
-    retailTotalCell.className = 'px-3 py-4 whitespace-nowrap';
-    retailTotalCell.innerHTML = `
-      <div class="text-sm font-bold text-blue-300">${formatProfitCompact(retailTotal.amount)}</div>
-    `;
-    totalRow.appendChild(retailTotalCell);
-    
-    // Ячейка итогов оптовых продаж
-    const wholesaleTotalCell = document.createElement('td');
-    wholesaleTotalCell.className = 'px-3 py-4 whitespace-nowrap';
-    wholesaleTotalCell.innerHTML = `
-      <div class="text-sm font-bold text-purple-300">${formatProfitCompact(wholesaleTotal.amount)}</div>
-    `;
-    totalRow.appendChild(wholesaleTotalCell);
-    
-    // Пустая ячейка для соблюдения структуры
-    const emptyCell = document.createElement('td');
-    totalRow.appendChild(emptyCell);
-    
-    return totalRow;
-  }
-  
-  // Функция для отображения модального окна со всеми моделями
-  function showModelsModal(date, displayDate, models) {
-    // Создаем затемненный фон
-    const modalBackdrop = document.createElement('div');
-    modalBackdrop.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-    document.body.appendChild(modalBackdrop);
-    
-    // Создаем модальное окно
-    const modalContent = document.createElement('div');
-    modalContent.className = 'bg-gray-800 rounded-xl shadow-xl p-5 max-w-3xl w-full max-h-[80vh] flex flex-col border border-gray-700';
-    
-    // Заголовок модального окна
-    const modalHeader = document.createElement('div');
-    modalHeader.className = 'flex justify-between items-center mb-4 pb-3 border-b border-gray-700';
-    
-    const modalTitle = document.createElement('h3');
-    modalTitle.className = 'text-lg font-bold text-white';
-    modalTitle.textContent = `Модели автомобилей за ${displayDate}`;
-    
-    const closeButton = document.createElement('button');
-    closeButton.className = 'text-gray-400 hover:text-white';
-    closeButton.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-      </svg>
-    `;
-    closeButton.addEventListener('click', () => {
-      document.body.removeChild(modalBackdrop);
-    });
-    
-    modalHeader.appendChild(modalTitle);
-    modalHeader.appendChild(closeButton);
-    modalContent.appendChild(modalHeader);
-    
-    // Содержимое модального окна
-    const modalBody = document.createElement('div');
-    modalBody.className = 'overflow-y-auto flex-grow';
-    
-    // Проверяем наличие моделей
-    if (models && models.length > 0) {
-      // Создаем таблицу для отображения данных о моделях
-      const modelsTable = document.createElement('table');
-      modelsTable.className = 'min-w-full divide-y divide-gray-700';
-      
-      // Заголовок таблицы
-      const tableHead = document.createElement('thead');
-      tableHead.className = 'bg-gray-700/50';
-      
-      const headerRow = document.createElement('tr');
-      
-      // Заголовки столбцов
-      const headers = [
-        { text: '№', className: 'w-10' },
-        { text: 'Модель', className: 'w-1/3' },
-        { text: 'Продажи', className: 'w-1/5' },
-        { text: 'Средняя цена', className: 'w-1/5' }
-      ];
-      
-      headers.forEach(header => {
-        const th = document.createElement('th');
-        th.scope = 'col';
-        th.className = `px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider ${header.className}`;
-        th.textContent = header.text;
-        headerRow.appendChild(th);
-      });
-      
-      tableHead.appendChild(headerRow);
-      modelsTable.appendChild(tableHead);
-      
-      // Тело таблицы
-      const tableBody = document.createElement('tbody');
-      tableBody.className = 'bg-gray-800 divide-y divide-gray-700';
-      
-      // Сортируем модели по сумме продаж (от большей к меньшей)
-      const sortedModels = [...models].sort((a, b) => {
-        return (parseFloat(b.amount) || 0) - (parseFloat(a.amount) || 0);
-      });
-      
-      // Для каждой модели создаем строку
-      sortedModels.forEach((model, index) => {
-        const row = document.createElement('tr');
-        row.className = index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-750';
-        
-        // Номер по порядку
-        const indexCell = document.createElement('td');
-        indexCell.className = 'px-3 py-3 whitespace-nowrap text-sm text-gray-300';
-        indexCell.textContent = index + 1;
-        row.appendChild(indexCell);
-        
-        // Название модели
-        const nameCell = document.createElement('td');
-        nameCell.className = 'px-3 py-3 whitespace-nowrap';
-        nameCell.innerHTML = `
-          <div class="text-sm font-medium text-white">${model.model_name || 'Модель'}</div>
-          <div class="text-xs text-gray-400">${model.model_id || ''}</div>
-        `;
-        row.appendChild(nameCell);
-        
-        // Сумма продаж
-        const amountCell = document.createElement('td');
-        amountCell.className = 'px-3 py-3 whitespace-nowrap text-sm text-blue-400';
-        amountCell.textContent = formatProfitCompact(model.amount);
-        row.appendChild(amountCell);
-        
-        // Количество
-        const countCell = document.createElement('td');
-        countCell.className = 'px-3 py-3 whitespace-nowrap text-sm text-white';
-        row.appendChild(countCell);
-        
-        // Средняя цена
-        const avgPriceCell = document.createElement('td');
-        avgPriceCell.className = 'px-3 py-3 whitespace-nowrap text-sm text-green-400';
-        const avgPrice = model.all_count > 0 ? model.amount / model.all_count : 0;
-        avgPriceCell.textContent = formatProfitCompact(avgPrice);
-        row.appendChild(avgPriceCell);
-        
-        tableBody.appendChild(row);
-      });
-      
-      modelsTable.appendChild(tableBody);
-      modalBody.appendChild(modelsTable);
-    } else {
-      // Сообщение при отсутствии данных
-      const noDataMessage = document.createElement('div');
-      noDataMessage.className = 'flex flex-col items-center justify-center py-10 text-gray-400';
-      noDataMessage.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        <p class="text-lg">Нет данных о моделях</p>
-      `;
-      modalBody.appendChild(noDataMessage);
-    }
-    
-    modalContent.appendChild(modalBody);
-    
-    // Футер модального окна
-    const modalFooter = document.createElement('div');
-    modalFooter.className = 'pt-3 mt-3 border-t border-gray-700 flex justify-end';
-    
-    const closeModalButton = document.createElement('button');
-    closeModalButton.className = 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded';
-    closeModalButton.textContent = 'Закрыть';
-    closeModalButton.addEventListener('click', () => {
-      document.body.removeChild(modalBackdrop);
-    });
-    
-    modalFooter.appendChild(closeModalButton);
-    modalContent.appendChild(modalFooter);
-    
-    modalBackdrop.appendChild(modalContent);
-    
-    // Закрытие модального окна при клике на фон
-    modalBackdrop.addEventListener('click', (e) => {
-      if (e.target === modalBackdrop) {
-        document.body.removeChild(modalBackdrop);
-      }
-    });
-  }
-  
-  // Функция для форматирования даты YYYY-MM-DD в DD.MM.YYYY
-  function formatDisplayDate(dateStr) {
-    if (!dateStr) return '';
-    const parts = dateStr.split('-');
-    if (parts.length !== 3) return dateStr;
-    return `${parts[2]}.${parts[1]}.${parts[0]}`;
-  }
-  
-  // Функция для получения дня недели
-const getDayOfWeek = (dateStr) => {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  const days = [
-    t('weekdays.sunday'),
-    t('weekdays.monday'),
-    t('weekdays.tuesday'),
-    t('weekdays.wednesday'),
-    t('weekdays.thursday'),
-    t('weekdays.friday'),
-    t('weekdays.saturday')
-  ];
-  return days[date.getDay()];
-};
-  
-  // Загружаем данные при первой отрисовке компонента
-  fetchDailySalesData();
-};
-  
-  // Если этих функций нет, добавьте их
-const formatDateForInput = (dateString) => {
-  if (!dateString) return '';
-  
-  const parts = dateString.split('.');
-  if (parts.length !== 3) return '';
-  
-  return `${parts[2]}-${parts[1]}-${parts[0]}`;
-};
-
-const formatDateFromInput = (dateString) => {
-  if (!dateString) return '';
-  
-  const parts = dateString.split('-');
-  if (parts.length !== 3) return '';
-  
-  return `${parts[2]}.${parts[1]}.${parts[0]}`;
-};
   
   // Функция преобразования данных API в удобный формат
   const processRegionData = (apiRegions) => {
@@ -4193,8 +3637,8 @@ const formatDateFromInput = (dateString) => {
         .style('align-items', 'center')
         .style('justify-content', 'center')
         .style('height', '300px')
-        .style('color', '#9ca3af')
-        .text('Нет данных о регионах для отображения');
+        .style('color', isDarkMode ? '#9ca3af' : '#64748b')
+        .text(t('regions.noData'));
       return;
     }
     
@@ -4208,35 +3652,35 @@ const formatDateFromInput = (dateString) => {
       .style('display', 'grid')
       .style('grid-template-rows', 'auto auto')
       .style('gap', '20px')
-      .style('height', 'calc(100% - 100px)'); // Уменьшаем отступ для табов
+      .style('height', 'calc(100% - 100px)');
 
     // Создаем верхнюю секцию для таблицы регионов и круговой диаграммы
     const topSection = grid.append('div')
       .style('display', 'grid')
-      .style('grid-template-columns', 'minmax(0, 3fr) minmax(0, 2fr)')
+      .style('grid-template-columns', isMobile ? '1fr' : 'minmax(0, 3fr) minmax(0, 2fr)')
       .style('gap', '20px');
 
     // Левая колонка - таблица рейтинга регионов
     const regionRankingContainer = topSection.append('div')
-      .style('background', 'rgba(17, 24, 39, 0.4)')
+      .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.4)' : 'rgba(255, 255, 255, 0.8)')
       .style('border-radius', '12px')
       .style('padding', '15px')
-      .style('border', '1px solid rgba(59, 130, 246, 0.1)')
+      .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)'}`)
       .style('display', 'flex')
       .style('flex-direction', 'column');
 
     regionRankingContainer.append('h3')
       .style('font-size', '1.1rem')
-      .style('color', '#f9fafb')
+      .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
       .style('margin-bottom', '10px')
       .style('text-align', 'center')
-      .text(`Рейтинг и доля регионов: ${monthName}`);
+      .text(t('regions.rating', { period: monthName }));
     
     // Создаем таблицу с рейтингом регионов
     const rankingTable = regionRankingContainer.append('div')
       .style('flex-grow', '1')
       .style('overflow-y', 'auto')
-      .style('background', 'rgba(17, 24, 39, 0.6)')
+      .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.6)' : 'rgba(248, 250, 252, 0.8)')
       .style('border-radius', '8px')
       .style('padding', '5px');
 
@@ -4245,24 +3689,26 @@ const formatDateFromInput = (dateString) => {
       .style('display', 'grid')
       .style('grid-template-columns', '8% 32% 20% 15% 25%')
       .style('padding', '10px')
-      .style('background', 'rgba(30, 41, 59, 0.8)')
+      .style('background', isDarkMode ? 'rgba(30, 41, 59, 0.8)' : 'rgba(226, 232, 240, 0.8)')
       .style('border-radius', '8px 8px 0 0')
       .style('position', 'sticky')
       .style('top', '0')
       .style('z-index', '1');
 
-    rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', '#f9fafb').text('№');
-    rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', '#f9fafb').text('Регион');
-    rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'center').text('Продажи');
-    rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'center').text('');
-    rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', '#f9fafb').style('text-align', 'center').text('Доля рынка');
+    rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', isDarkMode ? '#f9fafb' : '#0f172a').text('№');
+    rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', isDarkMode ? '#f9fafb' : '#0f172a').text(t('table.headers.region'));
+    rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', isDarkMode ? '#f9fafb' : '#0f172a').style('text-align', 'center').text(t('regions.sales'));
+    rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', isDarkMode ? '#f9fafb' : '#0f172a').style('text-align', 'center').text(t('regions.contracts'));
+    rankingHeader.append('div').style('font-size', '0.85rem').style('font-weight', 'bold').style('color', isDarkMode ? '#f9fafb' : '#0f172a').style('text-align', 'center').text(t('regions.marketShare'));
 
     // Строки таблицы с анимацией
     regions.forEach((region, i) => {
       const marketShare = (region.sales / totalSales) * 100;
       console.log(`Регион #${i+1}: ${region.name}, Продажи: ${region.sales}, Кол-во: ${region.count}, Доля: ${marketShare.toFixed(1)}%`);
       
-      const backgroundColor = i % 2 === 0 ? 'rgba(30, 41, 59, 0.3)' : 'rgba(30, 41, 59, 0.5)';
+      const backgroundColor = i % 2 === 0 
+        ? (isDarkMode ? 'rgba(30, 41, 59, 0.3)' : 'rgba(241, 245, 249, 0.5)') 
+        : (isDarkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(248, 250, 252, 0.5)');
       
       const row = rankingTable.append('div')
         .style('display', 'grid')
@@ -4272,13 +3718,17 @@ const formatDateFromInput = (dateString) => {
         .style('border-left', i < 3 ? `3px solid ${d3.interpolateReds(0.3 + i * 0.2)}` : 'none')
         .style('cursor', 'pointer')
         .style('transition', 'all 0.2s')
-        .on('mouseover', function() { d3.select(this).style('background', 'rgba(59, 130, 246, 0.2)'); })
-        .on('mouseout', function() { d3.select(this).style('background', backgroundColor); });
+        .on('mouseover', function() { 
+          d3.select(this).style('background', isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'); 
+        })
+        .on('mouseout', function() { 
+          d3.select(this).style('background', backgroundColor); 
+        });
       
       // Номер
       row.append('div')
         .style('font-size', '0.85rem')
-        .style('color', '#f9fafb')
+        .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
         .style('font-weight', 'bold')
         .style('display', 'flex')
         .style('align-items', 'center')
@@ -4287,7 +3737,7 @@ const formatDateFromInput = (dateString) => {
       // Имя региона
       row.append('div')
         .style('font-size', '0.85rem')
-        .style('color', '#f9fafb')
+        .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
         .style('font-weight', i < 3 ? 'bold' : 'normal')
         .style('display', 'flex')
         .style('align-items', 'center')
@@ -4296,21 +3746,22 @@ const formatDateFromInput = (dateString) => {
       // Сумма продаж
       row.append('div')
         .style('font-size', '0.85rem')
-        .style('color', '#f9fafb')
+        .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
         .style('text-align', 'center')
         .style('display', 'flex')
         .style('align-items', 'center')
         .style('justify-content', 'center')
         .text(formatProfitCompact(region.sales));
       
-      // Количество продаж (контракты) - прямо из all_count
+      // Количество продаж (контракты)
       row.append('div')
         .style('font-size', '0.85rem')
-        .style('color', '#f9fafb')
+        .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
         .style('text-align', 'center')
         .style('display', 'flex')
         .style('align-items', 'center')
         .style('justify-content', 'center')
+        .text(region.count);
       
       // Доля рынка с графиком
       const marketShareCell = row.append('div')
@@ -4321,7 +3772,7 @@ const formatDateFromInput = (dateString) => {
       // Текст доли рынка
       marketShareCell.append('span')
         .style('font-size', '0.85rem')
-        .style('color', '#f9fafb')
+        .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
         .style('min-width', '45px')
         .text(`${marketShare.toFixed(1)}%`);
       
@@ -4329,7 +3780,7 @@ const formatDateFromInput = (dateString) => {
       const barContainer = marketShareCell.append('div')
         .style('flex-grow', '1')
         .style('height', '8px')
-        .style('background', 'rgba(75, 85, 99, 0.3)')
+        .style('background', isDarkMode ? 'rgba(75, 85, 99, 0.3)' : 'rgba(203, 213, 225, 0.3)')
         .style('border-radius', '4px')
         .style('overflow', 'hidden');
       
@@ -4348,17 +3799,17 @@ const formatDateFromInput = (dateString) => {
     
     // Правая колонка - круговая диаграмма структуры регионов
     const pieChartContainer = topSection.append('div')
-      .style('background', 'rgba(17, 24, 39, 0.4)')
+      .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.4)' : 'rgba(255, 255, 255, 0.8)')
       .style('border-radius', '12px')
       .style('padding', '15px')
-      .style('border', '1px solid rgba(59, 130, 246, 0.1)');
+      .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)'}`);
     
     pieChartContainer.append('h3')
       .style('font-size', '1.1rem')
-      .style('color', '#f9fafb')
+      .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
       .style('margin-bottom', '15px')
       .style('text-align', 'center')
-      .text(`Структура продаж по регионам: ${monthName}`);
+      .text(t('regions.structure', { period: monthName }));
     
     // Создаем круговую диаграмму
     const pieSvg = pieChartContainer.append('svg')
@@ -4380,8 +3831,8 @@ const formatDateFromInput = (dateString) => {
       pieData = [...regions.slice(0, maxRegionsInPie - 1)];
       const otherSales = regions.slice(maxRegionsInPie - 1).reduce((sum, r) => sum + r.sales, 0);
       const otherCount = regions.slice(maxRegionsInPie - 1).reduce((sum, r) => sum + r.count, 0);
-      pieData.push({ name: 'Другие регионы', sales: otherSales, count: otherCount });
-      console.log(`Некоторые регионы объединены в "Другие регионы": ${regions.length - (maxRegionsInPie - 1)} регионов`);
+      pieData.push({ name: t('regions.otherRegions'), sales: otherSales, count: otherCount });
+      console.log(`Некоторые регионы объединены в "${t('regions.otherRegions')}": ${regions.length - (maxRegionsInPie - 1)} регионов`);
     }
     
     console.log("Регионы для диаграммы:", pieData.map(r => r.name));
@@ -4402,12 +3853,12 @@ const formatDateFromInput = (dateString) => {
       const pie = d3.pie()
         .value(d => d.sales)
         .sort(null)
-        .padAngle(0.03); // Добавляем небольшой отступ между секторами
+        .padAngle(0.03);
       
       const arc = d3.arc()
-        .innerRadius(pieRadius * 0.4) // Больший внутренний радиус для пончика
+        .innerRadius(pieRadius * 0.4)
         .outerRadius(pieRadius * 0.9)
-        .cornerRadius(6); // Скругление углов секторов
+        .cornerRadius(6);
       
       // Функция для анимации дуги при наведении
       const arcHover = d3.arc()
@@ -4450,7 +3901,7 @@ const formatDateFromInput = (dateString) => {
         .data(pie(pieData))
         .join('path')
         .attr('fill', (d, i) => `url(#pie-region-gradient-${i})`)
-        .attr('stroke', '#111827')
+        .attr('stroke', isDarkMode ? '#111827' : '#ffffff')
         .attr('stroke-width', 1)
         .style('cursor', 'pointer')
         .on('mouseover', function(event, d) {
@@ -4466,6 +3917,7 @@ const formatDateFromInput = (dateString) => {
           centerPercent.text(`${((d.data.sales / total) * 100).toFixed(1)}%`);
           
           // Показываем количество контрактов
+          centerCount.text(`${d.data.count} ${t('table.headers.count').toLowerCase()}`);
           
           // Показываем легенду для выбранного элемента
           pieLegendItems.style('opacity', 0.5);
@@ -4481,9 +3933,10 @@ const formatDateFromInput = (dateString) => {
             .attr('d', arc);
           
           // Восстанавливаем общую сумму в центре
-          centerText.text('Общий объем');
+          centerText.text(t('metrics.volume'));
           centerNumber.text(formatProfitCompact(total));
           centerPercent.text('100%');
+          centerCount.text(`${totalCount} ${t('table.headers.count').toLowerCase()}`);
           
           // Восстанавливаем легенду
           pieLegendItems.style('opacity', 1)
@@ -4516,15 +3969,15 @@ const formatDateFromInput = (dateString) => {
         .attr('text-anchor', 'middle')
         .attr('dy', '-1.5em')
         .style('font-size', '0.9rem')
-        .style('fill', '#d1d5db')
-        .text('Общий объем');
+        .style('fill', isDarkMode ? '#d1d5db' : '#64748b')
+        .text(t('metrics.volume'));
       
       const centerNumber = pieG.append('text')
         .attr('text-anchor', 'middle')
         .attr('dy', '0em')
         .style('font-size', '1.2rem')
         .style('font-weight', 'bold')
-        .style('fill', '#f9fafb')
+        .style('fill', isDarkMode ? '#f9fafb' : '#0f172a')
         .text(formatProfitCompact(total));
       
       const centerPercent = pieG.append('text')
@@ -4539,7 +3992,8 @@ const formatDateFromInput = (dateString) => {
         .attr('text-anchor', 'middle')
         .attr('dy', '3em')
         .style('font-size', '0.9rem')
-        .style('fill', '#9ca3af')
+        .style('fill', isDarkMode ? '#9ca3af' : '#64748b')
+        .text(`${totalCount} ${t('table.headers.count').toLowerCase()}`);
       
       // Создаем оптимизированную легенду для диаграммы
       const legendData = pieData.slice(0, Math.min(7, pieData.length));
@@ -4567,7 +4021,7 @@ const formatDateFromInput = (dateString) => {
           centerText.text(d.data.name);
           centerNumber.text(formatProfitCompact(d.data.sales));
           centerPercent.text(`${((d.data.sales / total) * 100).toFixed(1)}%`);
-          centerCount.text(`${d.data.count} шт.`);
+          centerCount.text(`${d.data.count} ${t('table.headers.count').toLowerCase()}`);
           
           // Выделяем текущий элемент легенды
           d3.select(this)
@@ -4584,10 +4038,10 @@ const formatDateFromInput = (dateString) => {
             .attr('d', arc);
           
           // Восстанавливаем общую сумму в центре
-          centerText.text('Общий объем');
+          centerText.text(t('metrics.volume'));
           centerNumber.text(formatProfitCompact(total));
           centerPercent.text('100%');
-          centerCount.text(`${totalCount} шт.`);
+          centerCount.text(`${totalCount} ${t('table.headers.count').toLowerCase()}`);
           
           // Восстанавливаем легенду
           pieLegendItems.style('opacity', 1)
@@ -4605,7 +4059,7 @@ const formatDateFromInput = (dateString) => {
         .attr('x', 18)
         .attr('y', 10)
         .style('font-size', '0.7rem')
-        .style('fill', '#f9fafb')
+        .style('fill', isDarkMode ? '#f9fafb' : '#0f172a')
         .text(d => {
           // Сокращаем длинные названия регионов
           const name = d.data.name;
@@ -4654,17 +4108,17 @@ const formatDateFromInput = (dateString) => {
       .style('align-items', 'center')
       .style('gap', '15px')
       .style('margin-bottom', '15px')
-      .style('background', 'rgba(30, 41, 59, 0.5)')
+      .style('background', isDarkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(226, 232, 240, 0.5)')
       .style('border-radius', '8px')
       .style('padding', '12px 15px')
-      .style('border', '1px solid rgba(59, 130, 246, 0.1)');
+      .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)'}`);
     
     // Добавляем заголовок
     rangeSelector.append('div')
-      .style('color', '#f9fafb')
+      .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
       .style('font-weight', 'bold')
       .style('font-size', '0.9rem')
-      .text('Сравнение продаж регионов:');
+      .text(t('filters.comparison'));
     
     // Контейнер для селекторов
     const selectorsContainer = rangeSelector.append('div')
@@ -4674,14 +4128,14 @@ const formatDateFromInput = (dateString) => {
     
     // От какого месяца
     selectorsContainer.append('span')
-      .style('color', '#9ca3af')
+      .style('color', isDarkMode ? '#9ca3af' : '#64748b')
       .style('font-size', '0.85rem')
-      .text('От:');
+      .text(t('filters.from'));
     
     const startMonthSelect = selectorsContainer.append('select')
-      .style('background', 'rgba(17, 24, 39, 0.7)')
-      .style('color', '#f9fafb')
-      .style('border', '1px solid rgba(75, 85, 99, 0.5)')
+      .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.7)' : 'rgba(255, 255, 255, 0.9)')
+      .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
+      .style('border', `1px solid ${isDarkMode ? 'rgba(75, 85, 99, 0.5)' : 'rgba(203, 213, 225, 0.8)'}`)
       .style('border-radius', '6px')
       .style('padding', '6px 10px')
       .style('font-size', '0.85rem')
@@ -4689,14 +4143,14 @@ const formatDateFromInput = (dateString) => {
     
     // До какого месяца
     selectorsContainer.append('span')
-      .style('color', '#9ca3af')
+      .style('color', isDarkMode ? '#9ca3af' : '#64748b')
       .style('font-size', '0.85rem')
-      .text('До:');
+      .text(t('filters.to'));
     
     const endMonthSelect = selectorsContainer.append('select')
-      .style('background', 'rgba(17, 24, 39, 0.7)')
-      .style('color', '#f9fafb')
-      .style('border', '1px solid rgba(75, 85, 99, 0.5)')
+      .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.7)' : 'rgba(255, 255, 255, 0.9)')
+      .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
+      .style('border', `1px solid ${isDarkMode ? 'rgba(75, 85, 99, 0.5)' : 'rgba(203, 213, 225, 0.8)'}`)
       .style('border-radius', '6px')
       .style('padding', '6px 10px')
       .style('font-size', '0.85rem')
@@ -4728,7 +4182,7 @@ const formatDateFromInput = (dateString) => {
     
     // Кнопка применения
     const applyButton = rangeSelector.append('button')
-      .style('background', 'rgba(16, 185, 129, 0.2)')
+      .style('background', isDarkMode ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.15)')
       .style('color', '#10b981')
       .style('border', 'none')
       .style('padding', '6px 15px')
@@ -4740,15 +4194,15 @@ const formatDateFromInput = (dateString) => {
       .style('align-items', 'center')
       .style('gap', '5px')
       .style('transition', 'all 0.2s')
-      .html('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>Применить')
+      .html(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>${t('buttons.apply')}`)
       .on('mouseover', function() {
         d3.select(this)
-          .style('background', 'rgba(16, 185, 129, 0.3)')
+          .style('background', isDarkMode ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.2)')
           .style('color', '#f9fafb');
       })
       .on('mouseout', function() {
         d3.select(this)
-          .style('background', 'rgba(16, 185, 129, 0.2)')
+          .style('background', isDarkMode ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.15)')
           .style('color', '#10b981');
       })
       .on('click', function() {
@@ -4771,17 +4225,17 @@ const formatDateFromInput = (dateString) => {
     const compareChartContainer = grid.append('div')
       .attr('id', 'region-comparison-container')
       .style('grid-column', '1 / -1') // Занимает всю ширину
-      .style('background', 'rgba(17, 24, 39, 0.4)')
+      .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.4)' : 'rgba(255, 255, 255, 0.8)')
       .style('border-radius', '12px')
       .style('padding', '15px')
-      .style('border', '1px solid rgba(59, 130, 246, 0.1)');
+      .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)'}`);
    
     compareChartContainer.append('h3')
       .style('font-size', '1.1rem')
-      .style('color', '#f9fafb')
+      .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
       .style('margin-bottom', '15px')
       .style('text-align', 'center')
-      .text(`Сравнение региональных показателей`);
+      .text(t('regions.comparison', { start: '', end: '' }));
     
     // Добавляем индикатор загрузки в контейнер для сравнения
     compareChartContainer.append('div')
@@ -4790,622 +4244,622 @@ const formatDateFromInput = (dateString) => {
       .style('justify-content', 'center')
       .style('align-items', 'center')
       .style('height', '100px')
-      .style('color', '#9ca3af')
+      .style('color', isDarkMode ? '#9ca3af' : '#64748b')
       .html(`
-        <div style="width: 25px; height: 25px; border-radius: 50%; border: 2px solid rgba(59, 130, 246, 0.2); border-top-color: #3b82f6; animation: spin 1s linear infinite;"></div>
-        <span style="margin-left: 10px;">Загрузка данных для сравнения...</span>
+        <div style="width: 25px; height: 25px; border-radius: 50%; border: 2px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}; border-top-color: #3b82f6; animation: spin 1s linear infinite;"></div>
+        <span style="margin-left: 10px;">${t('regions.loadingData')}</span>
       `);
     
     // Возвращаем список месяцев, чтобы его можно было использовать в инициации сравнения
     return selectableMonths;
   };
   
-async function updateRangeComparisonData(startMonthId, endMonthId, providedMonths = null) {
-  console.log(`Запуск сравнения периодов: ${startMonthId} - ${endMonthId}`);
-  
-  const comparisonContainer = d3.select('#region-comparison-container');
-  
-  // Проверяем, существует ли контейнер для сравнения
-  if (!comparisonContainer.node()) {
-    console.error('Контейнер #region-comparison-container не найден');
-    return;
-  }
-  
-  // Очищаем содержимое контейнера
-  comparisonContainer.selectAll('*').remove();
-  
-  // Используем предоставленный список месяцев или из компонента
-  const monthsToUse = providedMonths || selectableMonths;
-  
-  // Получаем информацию о выбранных месяцах
-  if (!monthsToUse || monthsToUse.length === 0) {
-    console.error('Массив месяцев не определен или пуст');
-    comparisonContainer.append('div')
-      .style('padding', '20px')
-      .style('color', '#ef4444')
-      .text('Ошибка: не удалось получить данные о доступных периодах');
-    return;
-  }
-  
-  const startMonthData = monthsToUse.find(m => m.id === startMonthId);
-  const endMonthData = monthsToUse.find(m => m.id === endMonthId);
-  
-  console.log('Данные для периодов сравнения:', { startMonthData, endMonthData });
-  
-  if (!startMonthData || !endMonthData) {
-    comparisonContainer.append('div')
-      .style('display', 'flex')
-      .style('align-items', 'center')
-      .style('justify-content', 'center')
-      .style('height', '200px')
-      .style('color', '#9ca3af')
-      .text('Выберите периоды для сравнения');
-    return;
-  }
-  
-  // Формируем названия периодов
-  const startPeriodName = `${MONTHS[startMonthData.month-1]} ${startMonthData.year}`;
-  const endPeriodName = `${MONTHS[endMonthData.month-1]} ${endMonthData.year}`;
-  
-  // Заголовок с периодами сравнения
-  comparisonContainer.append('h3')
-    .style('font-size', '1.1rem')
-    .style('color', '#f9fafb')
-    .style('margin-bottom', '15px')
-    .style('text-align', 'center')
-    .text(`Сравнение: ${startPeriodName} vs ${endPeriodName}`);
-  
-  // Индикатор загрузки
-  const loader = comparisonContainer.append('div')
-    .style('display', 'flex')
-    .style('justify-content', 'center')
-    .style('align-items', 'center')
-    .style('height', '150px')
-    .style('color', '#9ca3af');
+  async function updateRangeComparisonData(startMonthId, endMonthId, providedMonths = null) {
+    console.log(`Запуск сравнения периодов: ${startMonthId} - ${endMonthId}`);
     
-  const spinnerSize = 40;
-  loader.append('div')
-    .style('width', `${spinnerSize}px`)
-    .style('height', `${spinnerSize}px`)
-    .style('border-radius', '50%')
-    .style('border', '3px solid rgba(59, 130, 246, 0.2)')
-    .style('border-top-color', '#3b82f6')
-    .style('animation', 'spin 1s linear infinite')
-    .style('margin-right', '10px');
-  
-  loader.append('div')
-    .text('Обработка данных для сравнения...');
-  
-  try {
-    // Определяем даты для двух периодов для запросов API
-    const startYear = startMonthData.year;
-    const startMonth = startMonthData.month;
-    const endYear = endMonthData.year;
-    const endMonth = endMonthData.month;
+    const comparisonContainer = d3.select('#region-comparison-container');
     
-    // Форматируем даты для API запросов
-    const formatApiDate = (year, month, day) => {
-      return `${String(day).padStart(2, '0')}.${String(month).padStart(2, '0')}.${year}`;
-    };
-    
-    // Определяем последний день месяца
-    const getLastDayOfMonth = (year, month) => {
-      return new Date(year, month, 0).getDate();
-    };
-    
-    // Даты для начального периода
-    const startPeriodStartDate = formatApiDate(startYear, startMonth, 1);
-    const startPeriodEndDate = formatApiDate(startYear, startMonth, getLastDayOfMonth(startYear, startMonth));
-    
-    // Даты для конечного периода
-    const endPeriodStartDate = formatApiDate(endYear, endMonth, 1);
-    const endPeriodEndDate = formatApiDate(endYear, endMonth, getLastDayOfMonth(endYear, endMonth));
-    
-    console.log("Даты для API запросов:");
-    console.log(`Начальный период: ${startPeriodStartDate} - ${startPeriodEndDate}`);
-    console.log(`Конечный период: ${endPeriodStartDate} - ${endPeriodEndDate}`);
-    
-    // Делаем запросы к API для обоих периодов
-    // Определяем API endpoint в зависимости от выбранной категории
-    let endpoint = "get_all_payment";
-    if (focusCategory === 'retail') {
-      endpoint = "get_roz_payment";
-    } else if (focusCategory === 'wholesale') {
-      endpoint = "get_opt_payment";
-    }
-    
-    // Получаем данные для начального периода
-    console.log(`Запрос к API для начального периода: ${endpoint}`);
-    const startPeriodResponse = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: `begin_date=${startPeriodStartDate}&end_date=${startPeriodEndDate}`
-    });
-    
-    if (!startPeriodResponse.ok) {
-      throw new Error(`Ошибка HTTP при запросе данных начального периода: ${startPeriodResponse.status}`);
-    }
-    
-    const startPeriodData = await startPeriodResponse.json();
-    console.log("Данные начального периода:", startPeriodData);
-    
-    // Получаем данные для конечного периода
-    console.log(`Запрос к API для конечного периода: ${endpoint}`);
-    const endPeriodResponse = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: `begin_date=${endPeriodStartDate}&end_date=${endPeriodEndDate}`
-    });
-    
-    if (!endPeriodResponse.ok) {
-      throw new Error(`Ошибка HTTP при запросе данных конечного периода: ${endPeriodResponse.status}`);
-    }
-    
-    const endPeriodData = await endPeriodResponse.json();
-    console.log("Данные конечного периода:", endPeriodData);
-    
-    // Извлекаем данные о регионах
-    // Функция для извлечения данных о регионах из ответа API
-    const extractRegions = (apiData, year, month) => {
-      const monthStr = `${year}-${String(month).padStart(2, '0')}`;
-      let regions = [];
-      
-      // Логируем для отладки
-      console.log(`Извлечение данных о регионах для ${monthStr}`);
-      console.log("Структура данных:", JSON.stringify(apiData).substring(0, 200) + "...");
-      
-      // Проверяем разные структуры данных
-      if (Array.isArray(apiData)) {
-        // Если ответ - массив
-        for (const item of apiData) {
-          if (Array.isArray(item.filter_by_region)) {
-            const monthData = item.filter_by_region.find(m => m.month === monthStr);
-            if (monthData && Array.isArray(monthData.regions)) {
-              regions = monthData.regions;
-              console.log(`Найдены данные о регионах в массиве: ${regions.length} регионов`);
-              break;
-            }
-          } else if (item.filter_by_region && typeof item.filter_by_region === 'object') {
-            // Проверяем прямой доступ к регионам
-            if (Array.isArray(item.filter_by_region.regions)) {
-              regions = item.filter_by_region.regions;
-              console.log(`Найдены данные о регионах напрямую: ${regions.length} регионов`);
-              break;
-            }
-          }
-        }
-      } else if (apiData && apiData.filter_by_region) {
-        // Если ответ - объект с filter_by_region
-        if (Array.isArray(apiData.filter_by_region)) {
-          const monthData = apiData.filter_by_region.find(m => m.month === monthStr);
-          if (monthData && Array.isArray(monthData.regions)) {
-            regions = monthData.regions;
-            console.log(`Найдены данные о регионах в объекте: ${regions.length} регионов`);
-          }
-        } else if (typeof apiData.filter_by_region === 'object' && apiData.filter_by_region.regions) {
-          // Прямой доступ к regions
-          regions = apiData.filter_by_region.regions;
-          console.log(`Найдены данные о регионах напрямую: ${regions.length} регионов`);
-        }
-      }
-      
-      // Еще один вариант - прямой доступ к regions на верхнем уровне
-      if (regions.length === 0 && Array.isArray(apiData.regions)) {
-        regions = apiData.regions;
-        console.log(`Найдены данные о регионах на верхнем уровне: ${regions.length} регионов`);
-      }
-      
-      // Если после всех проверок регионы не найдены - логируем ошибку
-      if (regions.length === 0) {
-        console.error("Не удалось найти данные о регионах в ответе API");
-        console.log("Полный ответ API:", JSON.stringify(apiData));
-      }
-      
-      return regions;
-    };
-    
-    // Извлекаем данные о регионах
-    const startPeriodRegions = extractRegions(startPeriodData, startYear, startMonth);
-    const endPeriodRegions = extractRegions(endPeriodData, endYear, endMonth);
-    
-    // Обрабатываем данные о регионах
-    const processRegions = (apiRegions) => {
-      if (!apiRegions || !Array.isArray(apiRegions) || apiRegions.length === 0) {
-        return [];
-      }
-      
-      // Логируем пример данных региона
-      console.log("Пример данных региона:", apiRegions[0]);
-      
-      return apiRegions.map(region => {
-        // Проверяем наличие всех необходимых полей
-        const id = region.region_id || '0';
-        const name = region.region_name || 'Неизвестный регион';
-        const sales = parseFloat(region.amount || 0);
-        
-        return { id, name, sales };
-      });
-    };
-    
-    const processedStartRegions = processRegions(startPeriodRegions);
-    const processedEndRegions = processRegions(endPeriodRegions);
-    
-    console.log(`Обработано ${processedStartRegions.length} регионов начального периода и ${processedEndRegions.length} регионов конечного периода`);
-    
-    // Проверяем наличие данных
-    if (processedStartRegions.length === 0 && processedEndRegions.length === 0) {
-      loader.remove();
-      comparisonContainer.append('div')
-        .style('display', 'flex')
-        .style('justify-content', 'center')
-        .style('align-items', 'center')
-        .style('height', '200px')
-        .style('color', '#9ca3af')
-        .text('Нет данных для сравнения за выбранный период');
+    // Проверяем, существует ли контейнер для сравнения
+    if (!comparisonContainer.node()) {
+      console.error('Контейнер #region-comparison-container не найден');
       return;
     }
     
-    // Объединяем данные для сравнения в единую структуру
-    const regionMap = new Map();
+    // Очищаем содержимое контейнера
+    comparisonContainer.selectAll('*').remove();
     
-    // Сначала добавляем регионы из конечного периода
-    processedEndRegions.forEach(region => {
-      regionMap.set(region.id, {
-        name: region.name,
-        currentSales: region.sales,
-        previousSales: 0
-      });
-    });
+    // Используем предоставленный список месяцев или из компонента
+    const monthsToUse = providedMonths || selectableMonths;
     
-    // Затем добавляем или обновляем из начального периода
-    processedStartRegions.forEach(region => {
-      if (regionMap.has(region.id)) {
-        const existingRegion = regionMap.get(region.id);
-        existingRegion.previousSales = region.sales;
-      } else {
-        regionMap.set(region.id, {
-          name: region.name,
-          currentSales: 0,
-          previousSales: region.sales
-        });
-      }
-    });
-    
-    // Преобразуем Map в массив
-    const compareData = Array.from(regionMap.values())
-      .filter(region => region.currentSales > 0 || region.previousSales > 0) // Убираем регионы без данных
-      .sort((a, b) => b.currentSales - a.currentSales); // Сортируем по текущим продажам
-    
-    console.log(`Данные для сравнения подготовлены: ${compareData.length} регионов`);
-    
-    // Удаляем индикатор загрузки
-    loader.remove();
-    
-    if (compareData.length === 0) {
+    // Получаем информацию о выбранных месяцах
+    if (!monthsToUse || monthsToUse.length === 0) {
+      console.error('Массив месяцев не определен или пуст');
       comparisonContainer.append('div')
-        .style('display', 'flex')
-        .style('justify-content', 'center')
-        .style('align-items', 'center')
-        .style('height', '200px')
-        .style('color', '#9ca3af')
-        .text('Нет данных для сравнения за выбранный период');
+        .style('padding', '20px')
+        .style('color', '#ef4444')
+        .text(t('errors.loadingError'));
       return;
     }
     
-    // Берем топ-8 регионов для графика
-    const topRegions = compareData.slice(0, 8);
+    const startMonthData = monthsToUse.find(m => m.id === startMonthId);
+    const endMonthData = monthsToUse.find(m => m.id === endMonthId);
     
-    // Создаем контейнер для графика сравнения
-    const graphContainer = comparisonContainer.append('div')
-      .style('flex', '1')
-      .style('background', 'rgba(17, 24, 39, 0.6)')
-      .style('border-radius', '8px')
-      .style('padding', '15px')
-      .style('height', '400px');
+    console.log('Данные для периодов сравнения:', { startMonthData, endMonthData });
     
-    graphContainer.append('h4')
-      .style('font-size', '1rem')
-      .style('color', '#f9fafb')
+    if (!startMonthData || !endMonthData) {
+      comparisonContainer.append('div')
+        .style('display', 'flex')
+        .style('align-items', 'center')
+        .style('justify-content', 'center')
+        .style('height', '200px')
+        .style('color', isDarkMode ? '#9ca3af' : '#64748b')
+        .text(t('regions.selectPeriod'));
+      return;
+    }
+    
+    // Формируем названия периодов
+    const startPeriodName = `${MONTHS[startMonthData.month-1]} ${startMonthData.year}`;
+    const endPeriodName = `${MONTHS[endMonthData.month-1]} ${endMonthData.year}`;
+    
+    // Заголовок с периодами сравнения
+    comparisonContainer.append('h3')
+      .style('font-size', '1.1rem')
+      .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
       .style('margin-bottom', '15px')
       .style('text-align', 'center')
-      .text(`Сравнение объемов продаж по регионам`);
+      .text(t('regions.comparison', { start: startPeriodName, end: endPeriodName }));
     
-    // SVG для графика
-    const graphSvg = graphContainer.append('svg')
-      .attr('width', '100%')
-      .attr('height', 'calc(100% - 40px)');
+    // Индикатор загрузки
+    const loader = comparisonContainer.append('div')
+      .style('display', 'flex')
+      .style('justify-content', 'center')
+      .style('align-items', 'center')
+      .style('height', '150px')
+      .style('color', isDarkMode ? '#9ca3af' : '#64748b');
+      
+    const spinnerSize = 40;
+    loader.append('div')
+      .style('width', `${spinnerSize}px`)
+      .style('height', `${spinnerSize}px`)
+      .style('border-radius', '50%')
+      .style('border', `3px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}`)
+      .style('border-top-color', '#3b82f6')
+      .style('animation', 'spin 1s linear infinite')
+      .style('margin-right', '10px');
     
-    const graphWidth = graphSvg.node().clientWidth;
-    const graphHeight = graphSvg.node().clientHeight;
-    const graphMargin = { top: 20, right: 30, bottom: 120, left: 60 };
+    loader.append('div')
+      .text(t('regions.loadingData'));
     
-    // Максимальное значение для масштаба
-    const maxValue = d3.max(topRegions, d => Math.max(d.currentSales, d.previousSales)) * 1.1;
-    
-    // Шкалы для графика (для вертикальных столбцов)
-    const xScale = d3.scaleBand()
-      .domain(topRegions.map(d => d.name))
-      .range([graphMargin.left, graphWidth - graphMargin.right])
-      .padding(0.2);
-    
-    const yScale = d3.scaleLinear()
-      .domain([0, maxValue])
-      .range([graphHeight - graphMargin.bottom, graphMargin.top]);
-    
-    // Внутренняя шкала для группировки столбцов
-    const xSubScale = d3.scaleBand()
-      .domain([0, 1]) // 0 - предыдущий период, 1 - текущий период
-      .range([0, xScale.bandwidth()])
-      .padding(0.1);
-    
-    // Оси для графика
-    // Ось X (регионы)
-    graphSvg.append('g')
-      .attr('transform', `translate(0,${graphHeight - graphMargin.bottom})`)
-      .call(d3.axisBottom(xScale))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('text')
-        .style('fill', '#d1d5db')
-        .style('font-size', '0.8rem')
-        .attr('transform', 'rotate(-45)')
-        .attr('text-anchor', 'end')
-        .attr('dx', '-0.8em')
-        .attr('dy', '0.15em'));
-    
-    // Ось Y (продажи)
-    graphSvg.append('g')
-      .attr('transform', `translate(${graphMargin.left},0)`)
-      .call(d3.axisLeft(yScale)
-        .ticks(5)
-        .tickFormat(d => formatProfitCompact(d)))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('text')
-        .style('fill', '#d1d5db')
-        .style('font-size', '0.8rem'))
-      .call(g => g.selectAll('.tick line')
-        .attr('x2', graphWidth - graphMargin.left - graphMargin.right)
-        .attr('stroke', 'rgba(148, 163, 184, 0.1)')
-        .attr('stroke-dasharray', '2,2'));
-    
-    // Добавляем фоновую сетку
-    graphSvg.append('g')
-      .selectAll('line.grid')
-      .data(yScale.ticks(5))
-      .join('line')
-      .attr('class', 'grid')
-      .attr('x1', graphMargin.left)
-      .attr('x2', graphWidth - graphMargin.right)
-      .attr('y1', d => yScale(d))
-      .attr('y2', d => yScale(d))
-      .attr('stroke', 'rgba(148, 163, 184, 0.1)')
-      .attr('stroke-width', 1);
-    
-    // Создаем градиенты для столбцов
-    const defs = graphSvg.append('defs');
-    
-    // Градиент для текущего периода
-    const currentGradient = defs.append('linearGradient')
-      .attr('id', 'current-period-gradient')
-      .attr('x1', '0%')
-      .attr('y1', '0%')
-      .attr('x2', '0%')
-      .attr('y2', '100%');
-    
-    currentGradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#60a5fa')
-      .attr('stop-opacity', 1);
-    
-    currentGradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#3b82f6')
-      .attr('stop-opacity', 0.8);
-    
-    // Градиент для предыдущего периода
-    const previousGradient = defs.append('linearGradient')
-      .attr('id', 'previous-period-gradient')
-      .attr('x1', '0%')
-      .attr('y1', '0%')
-      .attr('x2', '0%')
-      .attr('y2', '100%');
-    
-    previousGradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#cbd5e1')
-      .attr('stop-opacity', 1);
-    
-    previousGradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#94a3b8')
-      .attr('stop-opacity', 0.8);
-    
-    // Добавляем столбцы для предыдущего периода
-    graphSvg.selectAll('.previous-sales-bar')
-      .data(topRegions)
-      .join('rect')
-      .attr('class', 'previous-sales-bar')
-      .attr('x', d => xScale(d.name) + xSubScale(0))
-      .attr('y', graphHeight - graphMargin.bottom)
-      .attr('width', xSubScale.bandwidth())
-      .attr('height', 0)
-      .attr('fill', 'url(#previous-period-gradient)')
-      .attr('rx', 4)
-      .attr('stroke', '#1f2937')
-      .attr('stroke-width', 1)
-      .attr('stroke-opacity', 0.5)
-      .transition()
-      .duration(800)
-      .delay((d, i) => i * 100)
-      .attr('y', d => yScale(d.previousSales))
-      .attr('height', d => graphHeight - graphMargin.bottom - yScale(d.previousSales));
-    
-    // Добавляем столбцы для текущего периода
-    graphSvg.selectAll('.current-sales-bar')
-      .data(topRegions)
-      .join('rect')
-      .attr('class', 'current-sales-bar')
-      .attr('x', d => xScale(d.name) + xSubScale(1))
-      .attr('y', graphHeight - graphMargin.bottom)
-      .attr('width', xSubScale.bandwidth())
-      .attr('height', 0)
-      .attr('fill', 'url(#current-period-gradient)')
-      .attr('rx', 4)
-      .attr('stroke', '#1f2937')
-      .attr('stroke-width', 1)
-      .attr('stroke-opacity', 0.5)
-      .transition()
-      .duration(800)
-      .delay((d, i) => i * 100 + 300)
-      .attr('y', d => yScale(d.currentSales))
-      .attr('height', d => graphHeight - graphMargin.bottom - yScale(d.currentSales));
-    
-    // Добавляем текстовые метки со значениями для предыдущего периода
-    graphSvg.selectAll('.previous-sales-label')
-      .data(topRegions)
-      .join('text')
-      .attr('class', 'previous-sales-label')
-      .attr('x', d => xScale(d.name) + xSubScale(0) + xSubScale.bandwidth() / 2)
-      .attr('y', d => yScale(d.previousSales) - 5)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '0.7rem')
-      .style('fill', '#cbd5e1')
-      .style('opacity', 0)
-      .text(d => formatProfitCompact(d.previousSales))
-      .transition()
-      .duration(400)
-      .delay((d, i) => i * 100 + 900)
-      .style('opacity', 1);
-    
-    // Добавляем текстовые метки со значениями для текущего периода
-    graphSvg.selectAll('.current-sales-label')
-      .data(topRegions)
-      .join('text')
-      .attr('class', 'current-sales-label')
-      .attr('x', d => xScale(d.name) + xSubScale(1) + xSubScale.bandwidth() / 2)
-      .attr('y', d => yScale(d.currentSales) - 5)
-      .attr('text-anchor', 'middle')
-      .style('font-size', '0.7rem')
-      .style('fill', '#93c5fd')
-      .style('opacity', 0)
-      .text(d => formatProfitCompact(d.currentSales))
-      .transition()
-      .duration(400)
-      .delay((d, i) => i * 100 + 1100)
-      .style('opacity', 1);
-    
-    // Добавляем легенду
-    const legend = graphSvg.append('g')
-      .attr('transform', `translate(${graphWidth - graphMargin.right - 130}, ${graphMargin.top})`);
-    
-    // Текущий период
-    legend.append('rect')
-      .attr('width', 15)
-      .attr('height', 15)
-      .attr('rx', 3)
-      .attr('fill', 'url(#current-period-gradient)');
-    
-    legend.append('text')
-      .attr('x', 22)
-      .attr('y', 12)
-      .style('font-size', '0.9rem')
-      .style('fill', '#f9fafb')
-      .text(endPeriodName);
-    
-    // Предыдущий период
-    legend.append('rect')
-      .attr('width', 15)
-      .attr('height', 15)
-      .attr('rx', 3)
-      .attr('fill', 'url(#previous-period-gradient)')
-      .attr('transform', 'translate(0, 25)');
-    
-    legend.append('text')
-      .attr('x', 22)
-      .attr('y', 37)
-      .style('font-size', '0.9rem')
-      .style('fill', '#f9fafb')
-      .text(startPeriodName);
-    
-    // Добавляем тултипы для столбцов
-    const addBarInteractivity = (selector, isPrevious) => {
-      graphSvg.selectAll(selector)
-        .on('mouseover', function(event, d) {
-          const value = isPrevious ? d.previousSales : d.currentSales;
-          const periodName = isPrevious ? startPeriodName : endPeriodName;
-          const color = isPrevious ? '#94a3b8' : '#3b82f6';
+    try {
+      // Определяем даты для двух периодов для запросов API
+      const startYear = startMonthData.year;
+      const startMonth = startMonthData.month;
+      const endYear = endMonthData.year;
+      const endMonth = endMonthData.month;
+      
+      // Форматируем даты для API запросов
+      const formatApiDate = (year, month, day) => {
+        return `${String(day).padStart(2, '0')}.${String(month).padStart(2, '0')}.${year}`;
+      };
+      
+      // Определяем последний день месяца
+      const getLastDayOfMonth = (year, month) => {
+        return new Date(year, month, 0).getDate();
+      };
+      
+      // Даты для начального периода
+      const startPeriodStartDate = formatApiDate(startYear, startMonth, 1);
+      const startPeriodEndDate = formatApiDate(startYear, startMonth, getLastDayOfMonth(startYear, startMonth));
+      
+      // Даты для конечного периода
+      const endPeriodStartDate = formatApiDate(endYear, endMonth, 1);
+      const endPeriodEndDate = formatApiDate(endYear, endMonth, getLastDayOfMonth(endYear, endMonth));
+      
+      console.log("Даты для API запросов:");
+      console.log(`Начальный период: ${startPeriodStartDate} - ${startPeriodEndDate}`);
+      console.log(`Конечный период: ${endPeriodStartDate} - ${endPeriodEndDate}`);
+      
+      // Делаем запросы к API для обоих периодов
+      // Определяем API endpoint в зависимости от выбранной категории
+      let endpoint = "get_all_payment";
+      if (focusCategory === 'retail') {
+        endpoint = "get_roz_payment";
+      } else if (focusCategory === 'wholesale') {
+        endpoint = "get_opt_payment";
+      }
+      
+      // Получаем данные для начального периода
+      console.log(`Запрос к API для начального периода: ${endpoint}`);
+      const startPeriodResponse = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: `begin_date=${startPeriodStartDate}&end_date=${startPeriodEndDate}`
+      });
+      
+      if (!startPeriodResponse.ok) {
+        throw new Error(t('errors.httpError', { status: startPeriodResponse.status }));
+      }
+      
+      const startPeriodData = await startPeriodResponse.json();
+      console.log("Данные начального периода:", startPeriodData);
+      
+      // Получаем данные для конечного периода
+      console.log(`Запрос к API для конечного периода: ${endpoint}`);
+      const endPeriodResponse = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: `begin_date=${endPeriodStartDate}&end_date=${endPeriodEndDate}`
+      });
+      
+      if (!endPeriodResponse.ok) {
+        throw new Error(t('errors.httpError', { status: endPeriodResponse.status }));
+      }
+      
+      const endPeriodData = await endPeriodResponse.json();
+      console.log("Данные конечного периода:", endPeriodData);
+      
+      // Извлекаем данные о регионах
+      // Функция для извлечения данных о регионах из ответа API
+      const extractRegions = (apiData, year, month) => {
+        const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+        let regions = [];
+        
+        // Логируем для отладки
+        console.log(`Извлечение данных о регионах для ${monthStr}`);
+        console.log("Структура данных:", JSON.stringify(apiData).substring(0, 200) + "...");
+        
+        // Проверяем разные структуры данных
+        if (Array.isArray(apiData)) {
+          // Если ответ - массив
+          for (const item of apiData) {
+            if (Array.isArray(item.filter_by_region)) {
+              const monthData = item.filter_by_region.find(m => m.month === monthStr);
+              if (monthData && Array.isArray(monthData.regions)) {
+                regions = monthData.regions;
+                console.log(`Найдены данные о регионах в массиве: ${regions.length} регионов`);
+                break;
+              }
+            } else if (item.filter_by_region && typeof item.filter_by_region === 'object') {
+              // Проверяем прямой доступ к регионам
+              if (Array.isArray(item.filter_by_region.regions)) {
+                regions = item.filter_by_region.regions;
+                console.log(`Найдены данные о регионах напрямую: ${regions.length} регионов`);
+                break;
+              }
+            }
+          }
+        } else if (apiData && apiData.filter_by_region) {
+          // Если ответ - объект с filter_by_region
+          if (Array.isArray(apiData.filter_by_region)) {
+            const monthData = apiData.filter_by_region.find(m => m.month === monthStr);
+            if (monthData && Array.isArray(monthData.regions)) {
+              regions = monthData.regions;
+              console.log(`Найдены данные о регионах в объекте: ${regions.length} регионов`);
+            }
+          } else if (typeof apiData.filter_by_region === 'object' && apiData.filter_by_region.regions) {
+            // Прямой доступ к regions
+            regions = apiData.filter_by_region.regions;
+            console.log(`Найдены данные о регионах напрямую: ${regions.length} регионов`);
+          }
+        }
+        
+        // Еще один вариант - прямой доступ к regions на верхнем уровне
+        if (regions.length === 0 && Array.isArray(apiData.regions)) {
+          regions = apiData.regions;
+          console.log(`Найдены данные о регионах на верхнем уровне: ${regions.length} регионов`);
+        }
+        
+        // Если после всех проверок регионы не найдены - логируем ошибку
+        if (regions.length === 0) {
+          console.error(t('errors.noRegionData'));
+          console.log("Полный ответ API:", JSON.stringify(apiData));
+        }
+        
+        return regions;
+      };
+      
+      // Извлекаем данные о регионах
+      const startPeriodRegions = extractRegions(startPeriodData, startYear, startMonth);
+      const endPeriodRegions = extractRegions(endPeriodData, endYear, endMonth);
+      
+      // Обрабатываем данные о регионах
+      const processRegions = (apiRegions) => {
+        if (!apiRegions || !Array.isArray(apiRegions) || apiRegions.length === 0) {
+          return [];
+        }
+        
+        // Логируем пример данных региона
+        console.log("Пример данных региона:", apiRegions[0]);
+        
+        return apiRegions.map(region => {
+          // Проверяем наличие всех необходимых полей
+          const id = region.region_id || '0';
+          const name = region.region_name || t('regions.unknownRegion');
+          const sales = parseFloat(region.amount || 0);
           
-          // Увеличиваем столбец при наведении
-          d3.select(this)
-            .transition()
-            .duration(200)
-            .attr('fill', d3.rgb(color).brighter(0.2))
-            .attr('filter', 'brightness(1.2)');
-          
-          // Показываем тултип
-          d3.select('body').append('div')
-            .attr('class', 'chart-tooltip')
-            .style('position', 'absolute')
-            .style('background', 'rgba(17, 24, 39, 0.95)')
-            .style('color', '#f9fafb')
-            .style('border-radius', '6px')
-            .style('padding', '10px 15px')
-            .style('font-size', '0.95rem')
-            .style('pointer-events', 'none')
-            .style('z-index', 1000)
-            .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.3)')
-            .style('border', `1px solid ${color}`)
-            .style('left', `${event.pageX + 10}px`)
-            .style('top', `${event.pageY - 80}px`)
-            .html(`
-              <div style="font-weight:bold;font-size:1rem;margin-bottom:5px;">${d.name}</div>
-              <div style="color:#a1a1aa">${periodName}</div>
-              <div style="margin-top:8px">
-                <span style="font-weight:600;">${formatProfitCompact(value)}</span>
-              </div>
-            `);
-        })
-        .on('mousemove', function(event) {
-          d3.select('.chart-tooltip')
-            .style('left', `${event.pageX + 10}px`)
-            .style('top', `${event.pageY - 80}px`);
-        })
-        .on('mouseout', function() {
-          // Возвращаем исходный вид столбца
-          d3.select(this)
-            .transition()
-            .duration(200)
-            .attr('fill', isPrevious ? 'url(#previous-period-gradient)' : 'url(#current-period-gradient)')
-            .attr('filter', 'none');
-          
-          // Удаляем тултип
-          d3.select('.chart-tooltip').remove();
+          return { id, name, sales };
         });
-    };
-    
-    // Добавляем интерактивность столбцам
-    addBarInteractivity('.previous-sales-bar', true);
-    addBarInteractivity('.current-sales-bar', false);
-    
-  } catch (error) {
-    // Удаляем индикатор загрузки
-    loader.remove();
-    
-    console.error('Ошибка при загрузке данных для сравнения:', error);
-    
-    comparisonContainer.append('div')
-      .style('color', '#ef4444')
-      .style('padding', '15px')
-      .style('background', 'rgba(239, 68, 68, 0.1)')
-      .style('border', '1px solid rgba(239, 68, 68, 0.3)')
-      .style('border-radius', '6px')
-      .style('margin-top', '15px')
-      .text(`Ошибка при загрузке данных для сравнения: ${error.message}`);
-  }
-}
+      };
+      
+      const processedStartRegions = processRegions(startPeriodRegions);
+      const processedEndRegions = processRegions(endPeriodRegions);
+      
+      console.log(`Обработано ${processedStartRegions.length} регионов начального периода и ${processedEndRegions.length} регионов конечного периода`);
+      
+      // Проверяем наличие данных
+      if (processedStartRegions.length === 0 && processedEndRegions.length === 0) {
+        loader.remove();
+        comparisonContainer.append('div')
+          .style('display', 'flex')
+          .style('justify-content', 'center')
+          .style('align-items', 'center')
+          .style('height', '200px')
+        .style('color', isDarkMode ? '#9ca3af' : '#64748b')
+         .text(t('regions.noData'));
+       return;
+     }
+     
+     // Объединяем данные для сравнения в единую структуру
+     const regionMap = new Map();
+     
+     // Сначала добавляем регионы из конечного периода
+     processedEndRegions.forEach(region => {
+       regionMap.set(region.id, {
+         name: region.name,
+         currentSales: region.sales,
+         previousSales: 0
+       });
+     });
+     
+     // Затем добавляем или обновляем из начального периода
+     processedStartRegions.forEach(region => {
+       if (regionMap.has(region.id)) {
+         const existingRegion = regionMap.get(region.id);
+         existingRegion.previousSales = region.sales;
+       } else {
+         regionMap.set(region.id, {
+           name: region.name,
+           currentSales: 0,
+           previousSales: region.sales
+         });
+       }
+     });
+     
+     // Преобразуем Map в массив
+     const compareData = Array.from(regionMap.values())
+       .filter(region => region.currentSales > 0 || region.previousSales > 0) // Убираем регионы без данных
+       .sort((a, b) => b.currentSales - a.currentSales); // Сортируем по текущим продажам
+     
+     console.log(`Данные для сравнения подготовлены: ${compareData.length} регионов`);
+     
+     // Удаляем индикатор загрузки
+     loader.remove();
+     
+     if (compareData.length === 0) {
+       comparisonContainer.append('div')
+         .style('display', 'flex')
+         .style('justify-content', 'center')
+         .style('align-items', 'center')
+         .style('height', '200px')
+         .style('color', isDarkMode ? '#9ca3af' : '#64748b')
+         .text(t('regions.noData'));
+       return;
+     }
+     
+     // Берем топ-8 регионов для графика
+     const topRegions = compareData.slice(0, 8);
+     
+     // Создаем контейнер для графика сравнения
+     const graphContainer = comparisonContainer.append('div')
+       .style('flex', '1')
+       .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.6)' : 'rgba(248, 250, 252, 0.8)')
+       .style('border-radius', '8px')
+       .style('padding', '15px')
+       .style('height', '400px');
+     
+     graphContainer.append('h4')
+       .style('font-size', '1rem')
+       .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
+       .style('margin-bottom', '15px')
+       .style('text-align', 'center')
+       .text(t('charts.salesVolume'));
+     
+     // SVG для графика
+     const graphSvg = graphContainer.append('svg')
+       .attr('width', '100%')
+       .attr('height', 'calc(100% - 40px)');
+     
+     const graphWidth = graphSvg.node().clientWidth;
+     const graphHeight = graphSvg.node().clientHeight;
+     const graphMargin = { top: 20, right: 30, bottom: 120, left: 70 };
+     
+     // Максимальное значение для масштаба
+     const maxValue = d3.max(topRegions, d => Math.max(d.currentSales, d.previousSales)) * 1.1;
+     
+     // Шкалы для графика (для вертикальных столбцов)
+     const xScale = d3.scaleBand()
+       .domain(topRegions.map(d => d.name))
+       .range([graphMargin.left, graphWidth - graphMargin.right])
+       .padding(0.2);
+     
+     const yScale = d3.scaleLinear()
+       .domain([0, maxValue])
+       .range([graphHeight - graphMargin.bottom, graphMargin.top]);
+     
+     // Внутренняя шкала для группировки столбцов
+     const xSubScale = d3.scaleBand()
+       .domain([0, 1]) // 0 - предыдущий период, 1 - текущий период
+       .range([0, xScale.bandwidth()])
+       .padding(0.1);
+     
+     // Оси для графика
+     // Ось X (регионы)
+     graphSvg.append('g')
+       .attr('transform', `translate(0,${graphHeight - graphMargin.bottom})`)
+       .call(d3.axisBottom(xScale))
+       .call(g => g.select('.domain').remove())
+       .call(g => g.selectAll('text')
+         .style('fill', isDarkMode ? '#d1d5db' : '#4b5563')
+         .style('font-size', '0.8rem')
+         .attr('transform', 'rotate(-45)')
+         .attr('text-anchor', 'end')
+         .attr('dx', '-0.8em')
+         .attr('dy', '0.15em'));
+     
+     // Ось Y (продажи)
+     graphSvg.append('g')
+       .attr('transform', `translate(${graphMargin.left},0)`)
+       .call(d3.axisLeft(yScale)
+         .ticks(5)
+         .tickFormat(d => formatProfitCompact(d)))
+       .call(g => g.select('.domain').remove())
+       .call(g => g.selectAll('text')
+         .style('fill', isDarkMode ? '#d1d5db' : '#4b5563')
+         .style('font-size', '0.8rem'))
+       .call(g => g.selectAll('.tick line')
+         .attr('x2', graphWidth - graphMargin.left - graphMargin.right)
+         .attr('stroke', isDarkMode ? 'rgba(148, 163, 184, 0.1)' : 'rgba(229, 231, 235, 0.3)')
+         .attr('stroke-dasharray', '2,2'));
+     
+     // Добавляем фоновую сетку
+     graphSvg.append('g')
+       .selectAll('line.grid')
+       .data(yScale.ticks(5))
+       .join('line')
+       .attr('class', 'grid')
+       .attr('x1', graphMargin.left)
+       .attr('x2', graphWidth - graphMargin.right)
+       .attr('y1', d => yScale(d))
+       .attr('y2', d => yScale(d))
+       .attr('stroke', isDarkMode ? 'rgba(148, 163, 184, 0.1)' : 'rgba(229, 231, 235, 0.3)')
+       .attr('stroke-width', 1);
+     
+     // Создаем градиенты для столбцов
+     const defs = graphSvg.append('defs');
+     
+     // Градиент для текущего периода
+     const currentGradient = defs.append('linearGradient')
+       .attr('id', 'current-period-gradient')
+       .attr('x1', '0%')
+       .attr('y1', '0%')
+       .attr('x2', '0%')
+       .attr('y2', '100%');
+     
+     currentGradient.append('stop')
+       .attr('offset', '0%')
+       .attr('stop-color', '#60a5fa')
+       .attr('stop-opacity', 1);
+     
+     currentGradient.append('stop')
+       .attr('offset', '100%')
+       .attr('stop-color', '#3b82f6')
+       .attr('stop-opacity', 0.8);
+     
+     // Градиент для предыдущего периода
+     const previousGradient = defs.append('linearGradient')
+       .attr('id', 'previous-period-gradient')
+       .attr('x1', '0%')
+       .attr('y1', '0%')
+       .attr('x2', '0%')
+       .attr('y2', '100%');
+     
+     previousGradient.append('stop')
+       .attr('offset', '0%')
+       .attr('stop-color', isDarkMode ? '#cbd5e1' : '#cbd5e1')
+       .attr('stop-opacity', 1);
+     
+     previousGradient.append('stop')
+       .attr('offset', '100%')
+       .attr('stop-color', isDarkMode ? '#94a3b8' : '#94a3b8')
+       .attr('stop-opacity', 0.8);
+     
+     // Добавляем столбцы для предыдущего периода
+     graphSvg.selectAll('.previous-sales-bar')
+       .data(topRegions)
+       .join('rect')
+       .attr('class', 'previous-sales-bar')
+       .attr('x', d => xScale(d.name) + xSubScale(0))
+       .attr('y', graphHeight - graphMargin.bottom)
+       .attr('width', xSubScale.bandwidth())
+       .attr('height', 0)
+       .attr('fill', 'url(#previous-period-gradient)')
+       .attr('rx', 4)
+       .attr('stroke', isDarkMode ? '#1f2937' : '#e5e7eb')
+       .attr('stroke-width', 1)
+       .attr('stroke-opacity', 0.5)
+       .transition()
+       .duration(800)
+       .delay((d, i) => i * 100)
+       .attr('y', d => yScale(d.previousSales))
+       .attr('height', d => graphHeight - graphMargin.bottom - yScale(d.previousSales));
+     
+     // Добавляем столбцы для текущего периода
+     graphSvg.selectAll('.current-sales-bar')
+       .data(topRegions)
+       .join('rect')
+       .attr('class', 'current-sales-bar')
+       .attr('x', d => xScale(d.name) + xSubScale(1))
+       .attr('y', graphHeight - graphMargin.bottom)
+       .attr('width', xSubScale.bandwidth())
+       .attr('height', 0)
+       .attr('fill', 'url(#current-period-gradient)')
+       .attr('rx', 4)
+       .attr('stroke', isDarkMode ? '#1f2937' : '#e5e7eb')
+       .attr('stroke-width', 1)
+       .attr('stroke-opacity', 0.5)
+       .transition()
+       .duration(800)
+       .delay((d, i) => i * 100 + 300)
+       .attr('y', d => yScale(d.currentSales))
+       .attr('height', d => graphHeight - graphMargin.bottom - yScale(d.currentSales));
+     
+     // Добавляем текстовые метки со значениями для предыдущего периода
+     graphSvg.selectAll('.previous-sales-label')
+       .data(topRegions)
+       .join('text')
+       .attr('class', 'previous-sales-label')
+       .attr('x', d => xScale(d.name) + xSubScale(0) + xSubScale.bandwidth() / 2)
+       .attr('y', d => yScale(d.previousSales) - 5)
+       .attr('text-anchor', 'middle')
+       .style('font-size', '0.7rem')
+       .style('fill', isDarkMode ? '#cbd5e1' : '#64748b')
+       .style('opacity', 0)
+       .text(d => formatProfitCompact(d.previousSales))
+       .transition()
+       .duration(400)
+       .delay((d, i) => i * 100 + 900)
+       .style('opacity', 1);
+     
+     // Добавляем текстовые метки со значениями для текущего периода
+     graphSvg.selectAll('.current-sales-label')
+       .data(topRegions)
+       .join('text')
+       .attr('class', 'current-sales-label')
+       .attr('x', d => xScale(d.name) + xSubScale(1) + xSubScale.bandwidth() / 2)
+       .attr('y', d => yScale(d.currentSales) - 5)
+       .attr('text-anchor', 'middle')
+       .style('font-size', '0.7rem')
+       .style('fill', isDarkMode ? '#93c5fd' : '#3b82f6')
+       .style('opacity', 0)
+       .text(d => formatProfitCompact(d.currentSales))
+       .transition()
+       .duration(400)
+       .delay((d, i) => i * 100 + 1100)
+       .style('opacity', 1);
+     
+     // Добавляем легенду
+     const legend = graphSvg.append('g')
+       .attr('transform', `translate(${graphWidth - graphMargin.right - 130}, ${graphMargin.top})`);
+     
+     // Текущий период
+     legend.append('rect')
+       .attr('width', 15)
+       .attr('height', 15)
+       .attr('rx', 3)
+       .attr('fill', 'url(#current-period-gradient)');
+     
+     legend.append('text')
+       .attr('x', 22)
+       .attr('y', 12)
+       .style('font-size', '0.9rem')
+       .style('fill', isDarkMode ? '#f9fafb' : '#0f172a')
+       .text(endPeriodName);
+     
+     // Предыдущий период
+     legend.append('rect')
+       .attr('width', 15)
+       .attr('height', 15)
+       .attr('rx', 3)
+       .attr('fill', 'url(#previous-period-gradient)')
+       .attr('transform', 'translate(0, 25)');
+     
+     legend.append('text')
+       .attr('x', 22)
+       .attr('y', 37)
+       .style('font-size', '0.9rem')
+       .style('fill', isDarkMode ? '#f9fafb' : '#0f172a')
+       .text(startPeriodName);
+     
+     // Добавляем тултипы для столбцов
+     const addBarInteractivity = (selector, isPrevious) => {
+       graphSvg.selectAll(selector)
+         .on('mouseover', function(event, d) {
+           const value = isPrevious ? d.previousSales : d.currentSales;
+           const periodName = isPrevious ? startPeriodName : endPeriodName;
+           const color = isPrevious ? '#94a3b8' : '#3b82f6';
+           
+           // Увеличиваем столбец при наведении
+           d3.select(this)
+             .transition()
+             .duration(200)
+             .attr('fill', d3.rgb(color).brighter(0.2))
+             .attr('filter', 'brightness(1.2)');
+           
+           // Показываем тултип
+           d3.select('body').append('div')
+             .attr('class', 'chart-tooltip')
+             .style('position', 'absolute')
+             .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)')
+             .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
+             .style('border-radius', '6px')
+             .style('padding', '10px 15px')
+             .style('font-size', '0.95rem')
+             .style('pointer-events', 'none')
+             .style('z-index', 1000)
+             .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.3)')
+             .style('border', `1px solid ${color}`)
+             .style('left', `${event.pageX + 10}px`)
+             .style('top', `${event.pageY - 80}px`)
+             .html(`
+               <div style="font-weight:bold;font-size:1rem;margin-bottom:5px;">${d.name}</div>
+               <div style="color:${isDarkMode ? '#a1a1aa' : '#71717a'}">${periodName}</div>
+               <div style="margin-top:8px">
+                 <span style="font-weight:600;">${formatProfitCompact(value)}</span>
+               </div>
+             `);
+         })
+         .on('mousemove', function(event) {
+           d3.select('.chart-tooltip')
+             .style('left', `${event.pageX + 10}px`)
+             .style('top', `${event.pageY - 80}px`);
+         })
+         .on('mouseout', function() {
+           // Возвращаем исходный вид столбца
+           d3.select(this)
+             .transition()
+             .duration(200)
+             .attr('fill', isPrevious ? 'url(#previous-period-gradient)' : 'url(#current-period-gradient)')
+             .attr('filter', 'none');
+           
+           // Удаляем тултип
+           d3.select('.chart-tooltip').remove();
+         });
+     };
+     
+     // Добавляем интерактивность столбцам
+     addBarInteractivity('.previous-sales-bar', true);
+     addBarInteractivity('.current-sales-bar', false);
+     
+   } catch (error) {
+     // Удаляем индикатор загрузки
+     loader.remove();
+     
+     console.error('Ошибка при загрузке данных для сравнения:', error);
+     
+     comparisonContainer.append('div')
+       .style('color', '#ef4444')
+       .style('padding', '15px')
+       .style('background', isDarkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)')
+       .style('border', `1px solid ${isDarkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)'}`)
+       .style('border-radius', '6px')
+       .style('margin-top', '15px')
+       .text(t('errors.comparisonError', { message: error.message }));
+   }
+ }
  
  // Загружаем и отображаем данные для текущего периода
  const apiStartDate = `01.${String(month).padStart(2, '0')}.${year}`;
@@ -5422,10 +4876,10 @@ async function updateRangeComparisonData(startMonthId, endMonthId, providedMonth
      .style('align-items', 'center')
      .style('justify-content', 'center')
      .style('height', '200px')
-     .style('color', '#9ca3af')
+     .style('color', isDarkMode ? '#9ca3af' : '#64748b')
      .html(`
        <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-       <span class="ml-3">Загрузка данных о регионах...</span>
+       <span class="ml-3">${t('regions.loadingData')}</span>
      `);
 
    const regions = await loadRegionData(apiStartDate, apiEndDate, focusCategory);
@@ -5509,8 +4963,8 @@ async function updateRangeComparisonData(startMonthId, endMonthId, providedMonth
              .style('align-items', 'center')
              .style('justify-content', 'center')
              .style('height', '200px')
-             .style('color', '#9ca3af')
-             .text('Выберите диапазон для сравнения и нажмите "Применить"');
+             .style('color', isDarkMode ? '#9ca3af' : '#64748b')
+             .text(t('regions.selectPeriod'));
          }
        } else {
          // Используем сохраненные ID
@@ -5527,8 +4981,8 @@ async function updateRangeComparisonData(startMonthId, endMonthId, providedMonth
        .style('align-items', 'center')
        .style('justify-content', 'center')
        .style('height', '300px')
-       .style('color', '#9ca3af')
-       .text('Нет данных о регионах для отображения');
+       .style('color', isDarkMode ? '#9ca3af' : '#64748b')
+       .text(t('regions.noData'));
    }
  } catch (error) {
    console.error('Ошибка при загрузке данных о регионах:', error);
@@ -5546,14 +5000,13 @@ async function updateRangeComparisonData(startMonthId, endMonthId, providedMonth
      .style('color', '#ef4444')
      .style('text-align', 'center')
      .html(`
-       <div>Ошибка при загрузке данных о регионах</div>
+       <div>${t('regions.errorLoading')}</div>
        <div style="margin-top: 10px; font-size: 0.9rem;">${error.message}</div>
      `);
  }
  
  console.groupEnd(); // Завершаем группу логирования
 };
-  
 const showSelectionOptions = (year, month, monthName) => {
   if (!mainChartRef.current) return;
   d3.selectAll('.chart-tooltip, .bar-tooltip, .model-tooltip').remove();
@@ -5569,19 +5022,23 @@ const showSelectionOptions = (year, month, monthName) => {
     .style('justify-content', 'center')
     .style('width', '100%')
     .style('height', '100%')
-    .style('background', 'linear-gradient(135deg, #1f2937 0%, #111827 100%)')
+    .style('background', isDarkMode 
+      ? 'linear-gradient(135deg, #1f2937 0%, #111827 100%)' 
+      : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)')
     .style('border-radius', '1rem')
     .style('padding', '20px')
-    .style('box-shadow', '0 10px 25px -5px rgba(0, 0, 0, 0.3)');
+    .style('box-shadow', isDarkMode 
+      ? '0 10px 25px -5px rgba(0, 0, 0, 0.3)' 
+      : '0 10px 25px -5px rgba(0, 0, 0, 0.1)');
   
   // Добавляем заголовок с периодом
   container.append('h2')
     .style('font-size', '1.5rem')
     .style('font-weight', 'bold')
-    .style('color', '#f9fafb')
+    .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
     .style('margin-bottom', '30px')
     .style('text-align', 'center')
-    .html(`Детализация продаж: <span style="color: #60a5fa;">${monthName}</span>`);
+    .html(`${t('models.title', { period: `<span style="color: #60a5fa;">${monthName}</span>` })}`);
   
   // Создаем контейнер для карточек выбора
   const cardsContainer = container.append('div')
@@ -5593,8 +5050,10 @@ const showSelectionOptions = (year, month, monthName) => {
   // Функция для создания стильной карточки выбора
   const createOptionCard = (title, icon, description, onClick) => {
     const card = cardsContainer.append('div')
-      .style('background', 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%)')
-      .style('border', '1px solid rgba(59, 130, 246, 0.2)')
+      .style('background', isDarkMode 
+        ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%)' 
+        : 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.02) 100%)')
+      .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)'}`)
       .style('border-radius', '16px')
       .style('width', '250px')
       .style('padding', '25px')
@@ -5606,7 +5065,9 @@ const showSelectionOptions = (year, month, monthName) => {
       .on('mouseover', function() {
         d3.select(this)
           .style('transform', 'translateY(-5px)')
-          .style('box-shadow', '0 15px 30px -10px rgba(0, 0, 0, 0.4)');
+          .style('box-shadow', isDarkMode 
+            ? '0 15px 30px -10px rgba(0, 0, 0, 0.4)' 
+            : '0 15px 30px -10px rgba(0, 0, 0, 0.2)');
       })
       .on('mouseout', function() {
         d3.select(this)
@@ -5639,47 +5100,47 @@ const showSelectionOptions = (year, month, monthName) => {
     content.append('h3')
       .style('font-size', '1.3rem')
       .style('font-weight', 'bold')
-      .style('color', '#f9fafb')
+      .style('color', isDarkMode ? '#f9fafb' : '#0f172a')
       .style('margin-bottom', '10px')
       .text(title);
     
     content.append('p')
       .style('font-size', '0.9rem')
-      .style('color', '#9ca3af')
+      .style('color', isDarkMode ? '#9ca3af' : '#64748b')
       .style('line-height', '1.5')
       .text(description);
     
     // Добавляем кнопку действия
     content.append('div')
-      .style('background', 'rgba(59, 130, 246, 0.2)')
+      .style('background', isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)')
       .style('color', '#60a5fa')
       .style('padding', '8px 15px')
       .style('border-radius', '20px')
       .style('font-size', '0.85rem')
       .style('margin-top', '20px')
       .style('display', 'inline-block')
-      .text('Выбрать');
+      .text(t('buttons.apply'));
   };
   
   // Создаем карточку выбора: по моделям автомобилей
   createOptionCard(
-    'По моделям авто',
+    t('models.byModels'),
     '<i class="fas fa-car"></i>',
-    'Анализ продаж различных моделей автомобилей с разбивкой по популярности и доходности',
+    t('models.modelsAnalysis'),
     () => showCarModelDetails(year, month, monthName)
   );
   
   // Создаем карточку выбора: по регионам
   createOptionCard(
-    'По регионам',
+    t('models.byRegions'),
     '<i class="fas fa-map-marker-alt"></i>',
-    'Анализ продаж по регионам Узбекистана с визуализацией географического распределения',
+    t('models.regionsAnalysis'),
     () => showRegionDetails(year, month, monthName)
   );
   
   // Добавляем кнопку возврата
   container.append('button')
-    .style('background', 'rgba(59, 130, 246, 0.2)')
+    .style('background', isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)')
     .style('color', '#60a5fa')
     .style('border', 'none')
     .style('padding', '10px 20px')
@@ -5688,12 +5149,12 @@ const showSelectionOptions = (year, month, monthName) => {
     .style('cursor', 'pointer')
     .style('transition', 'background 0.2s')
     .style('margin-top', '20px')
-    .text('Вернуться к общему графику')
+    .text(t('models.backToOverview'))
     .on('mouseover', function() {
-      d3.select(this).style('background', 'rgba(59, 130, 246, 0.3)');
+      d3.select(this).style('background', isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)');
     })
     .on('mouseout', function() {
-      d3.select(this).style('background', 'rgba(59, 130, 246, 0.2)');
+      d3.select(this).style('background', isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)');
     })
     .on('click', renderPeriodComparisonTable);
   
@@ -5709,12 +5170,6 @@ const formatDisplayDate = (dateStr) => {
   const parts = dateStr.split('-');
   if (parts.length !== 3) return dateStr;
   return `${parts[2]}.${parts[1]}.${parts[0]}`;
-};
-const getDayOfWeek = (dateStr) => {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  const days = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
-  return days[date.getDay()];
 };
 const renderDailySalesTableRows = () => {
   // Модели, которые нужно отображать отдельно
@@ -5814,43 +5269,61 @@ const renderDailySalesTableRows = () => {
     }
     
     return (
-      <tr key={date} className={index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-750'}>
+      <tr key={date} className={index % 2 === 0 
+        ? (isDarkMode ? 'bg-gray-800' : 'bg-gray-50') 
+        : (isDarkMode ? 'bg-gray-750' : 'bg-white')
+      }>
         {/* Дата */}
         <td className="px-3 py-4 whitespace-nowrap">
-          <div className="text-sm font-medium text-white">{displayDate}</div>
-          <div className="text-xs text-gray-400">{getDayOfWeek(date)}</div>
+          <div className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            {displayDate}
+          </div>
+          <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            {getDayOfWeek(date)}
+          </div>
         </td>
         
         {/* Общие продажи */}
         <td className="px-3 py-4 whitespace-nowrap">
-          <div className="text-sm font-medium text-white">{formatProfitCompact(allAmount)}</div>
+          <div className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            {formatProfitCompact(allAmount)}
+          </div>
         </td>
         
         {/* Розничные продажи */}
         <td className="px-3 py-4 whitespace-nowrap">
-          <div className="text-sm font-medium text-blue-400">{formatProfitCompact(retailAmount)}</div>
+          <div className={`text-sm font-medium ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+            {formatProfitCompact(retailAmount)}
+          </div>
         </td>
         
         {/* Оптовые продажи */}
         <td className="px-3 py-4 whitespace-nowrap">
-          <div className="text-sm font-medium text-purple-400">{formatProfitCompact(wholesaleAmount)}</div>
+          <div className={`text-sm font-medium ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>
+            {formatProfitCompact(wholesaleAmount)}
+          </div>
         </td>
         
         {/* Данные по конкретным моделям */}
         {specificModels.map(modelName => (
           <td key={modelName} className="px-3 py-4 whitespace-nowrap">
-            <div className="text-sm font-medium text-green-400">{formatProfitCompact(modelData[modelName].amount)}</div>
+            <div className={`text-sm font-medium ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+              {formatProfitCompact(modelData[modelName].amount)}
+            </div>
           </td>
         ))}
         
         {/* Остальные модели */}
         <td className="px-3 py-4 whitespace-nowrap">
-          <div className="text-sm font-medium text-yellow-400">{formatProfitCompact(otherModelsAmount)}</div>
+          <div className={`text-sm font-medium ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
+            {formatProfitCompact(otherModelsAmount)}
+          </div>
         </td>
       </tr>
     );
   });
 };
+
 const renderDailySalesTotalRow = () => {
   // Модели, которые нужно отображать отдельно
   const specificModels = ["DAMAS-2", "ONIX", "TRACKER-2", "COBALT"];
@@ -5901,35 +5374,64 @@ const renderDailySalesTotalRow = () => {
   });
   
   return (
-    <tr className="bg-gray-700/30 font-medium">
-      <td className="px-3 py-4 whitespace-nowrap text-sm" style={{ color: colors.text }}>{t('table.total')}</td>
-      
-      <td className="px-3 py-4 whitespace-nowrap">
-        <div className="text-sm font-bold text-white">{formatProfitCompact(allTotal.amount)}</div>
+    <tr className={isDarkMode ? 'bg-gray-700/30' : 'bg-gray-100'} style={{ fontWeight: '500' }}>
+      <td className="px-3 py-4 whitespace-nowrap text-sm" style={{ color: isDarkMode ? '#f3f4f6' : '#111827' }}>
+        {t('table.total')}
       </td>
       
       <td className="px-3 py-4 whitespace-nowrap">
-        <div className="text-sm font-bold text-blue-300">{formatProfitCompact(retailTotal.amount)}</div>
+        <div className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+          {formatProfitCompact(allTotal.amount)}
+        </div>
       </td>
       
       <td className="px-3 py-4 whitespace-nowrap">
-        <div className="text-sm font-bold text-purple-300">{formatProfitCompact(wholesaleTotal.amount)}</div>
+        <div className={`text-sm font-bold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+          {formatProfitCompact(retailTotal.amount)}
+        </div>
+      </td>
+      
+      <td className="px-3 py-4 whitespace-nowrap">
+        <div className={`text-sm font-bold ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>
+          {formatProfitCompact(wholesaleTotal.amount)}
+        </div>
       </td>
       
       {/* Итоги по моделям */}
       {specificModels.map(model => (
         <td key={model} className="px-3 py-4 whitespace-nowrap">
-          <div className="text-sm font-bold text-green-300">{formatProfitCompact(modelTotals[model].amount)}</div>
+          <div className={`text-sm font-bold ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>
+            {formatProfitCompact(modelTotals[model].amount)}
+          </div>
         </td>
       ))}
       
       {/* Итоги по остальным моделям */}
       <td className="px-3 py-4 whitespace-nowrap">
-        <div className="text-sm font-bold text-yellow-300">{formatProfitCompact(otherModelsTotal.amount)}</div>
+        <div className={`text-sm font-bold ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>
+          {formatProfitCompact(otherModelsTotal.amount)}
+        </div>
       </td>
     </tr>
   );
 };
+
+// Вспомогательная функция для получения дня недели с переводом
+const getDayOfWeek = (dateStr) => {
+  const date = new Date(dateStr);
+  const dayOfWeek = date.getDay();
+  const weekdays = [
+    t('weekdays.sunday'),
+    t('weekdays.monday'),
+    t('weekdays.tuesday'),
+    t('weekdays.wednesday'),
+    t('weekdays.thursday'),
+    t('weekdays.friday'),
+    t('weekdays.saturday')
+  ];
+  return weekdays[dayOfWeek];
+};
+
 
 return (
   <div 
@@ -6187,101 +5689,171 @@ return (
             
             {/* РАЗДЕЛ: Основной график и прогресс */}
             <div className="gap-6 mb-6">
-              <div className="lg:col-span-2  rounded-xl p-2 border shadow-lg">
+              <div className="lg:col-span-2 rounded-xl p-2">
                 <div ref={mainChartRef} className="w-full h-full"></div>
               </div>
             </div>
           </>
         )}
 
-        {/* РАЗДЕЛ: Таблица детальной статистики продаж по дням */}
-        <div className="mt-6 bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 border border-gray-700/50">
-          <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
-  {t('table.title')}
-</h2>
-            
-            {/* Панель управления таблицей */}
-            <div className="flex items-center gap-2">
-              {/* Выбор дат для таблицы */}
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <input 
-                    type="date" 
-                    className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36"
-                    value={formatDateForInput(tableDateStart || apiStartDate)}
-                    onChange={(e) => setTableDateStart(formatDateFromInput(e.target.value))}
-                  />
-                </div>
-                
-                <span className="text-gray-400">—</span>
-                
-                <div className="relative">
-                  <input 
-                    type="date" 
-                    className="bg-gray-700/80 text-white px-3 py-1.5 rounded-md text-sm border border-gray-600/50 w-36"
-                    value={formatDateForInput(tableDateEnd || apiEndDate)}
-                    onChange={(e) => setTableDateEnd(formatDateFromInput(e.target.value))}
-                  />
-                </div>
-              </div>
-              
-              {/* Кнопка обновления таблицы */}
-              <button 
-                className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-1"
-                onClick={fetchDailySalesData}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                </svg>
-                {t('buttons.loadData')}
-              </button>
-            </div>
-          </div>
-          
-          {/* Контейнер таблицы с обработкой состояний загрузки */}
-          <div className="overflow-x-auto">
-            {isLoadingDailySales ? (
-              <div className="flex justify-center items-center py-10">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                <span className="ml-3" style={{ color: colors.textSecondary }}>{t('table.loading')}</span>
-              </div>
-            ) : dailySalesData.all.length === 0 && dailySalesData.retail.length === 0 && dailySalesData.wholesale.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-               <p className="text-lg">{t('table.noData')}</p>
-<p className="text-sm mt-1">{t('table.selectDifferentPeriod')}</p>
-              </div>
-            ) : (
-              <table className="min-w-full divide-y divide-gray-700 table-fixed">
-             <thead className="bg-gray-700/50">
-  <tr>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-32">{t('table.headers.date')}</th>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">{t('table.headers.totalSales')}</th>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">{t('table.headers.retailSales')}</th>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">{t('table.headers.wholesaleSales')}</th>
+     <div className={`mt-6 shadow-xl backdrop-blur-sm rounded-xl p-5 border ${
+  isDarkMode 
+    ? 'bg-gray-800/80 border-gray-700/50' 
+    : 'bg-white/90 border-gray-200'
+}`}>
+  <div className="flex justify-between items-center mb-4">
+    <h2 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+      {t('table.title')}
+    </h2>
     
-    {/* Новые заголовки для моделей */}
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">DAMAS-2</th>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">ONIX</th>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">TRACKER-2</th>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">COBALT</th>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Остальные</th>
-  </tr>
-</thead>
-                <tbody className="bg-gray-800 divide-y divide-gray-700">
-                  {/* Генерируем строки таблицы */}
-                  {renderDailySalesTableRows()}
-                  
-                  {/* Итоговая строка */}
-                  {renderDailySalesTotalRow()}
-                </tbody>
-              </table>
-            )}
-          </div>
+    {/* Панель управления таблицей */}
+    <div className="flex items-center gap-2">
+      {/* Выбор дат для таблицы */}
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <input 
+            type="date" 
+            className={`px-3 py-1.5 rounded-md text-sm border w-36 ${
+              isDarkMode 
+                ? 'bg-gray-700/80 text-white border-gray-600/50 focus:border-blue-500' 
+                : 'bg-white text-gray-900 border-gray-300 focus:border-blue-600'
+            }`}
+            value={formatDateForInput(tableDateStart || apiStartDate)}
+            onChange={(e) => setTableDateStart(formatDateFromInput(e.target.value))}
+          />
         </div>
+        
+        <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>—</span>
+        
+        <div className="relative">
+          <input 
+            type="date" 
+            className={`px-3 py-1.5 rounded-md text-sm border w-36 ${
+              isDarkMode 
+                ? 'bg-gray-700/80 text-white border-gray-600/50 focus:border-blue-500' 
+                : 'bg-white text-gray-900 border-gray-300 focus:border-blue-600'
+            }`}
+            value={formatDateForInput(tableDateEnd || apiEndDate)}
+            onChange={(e) => setTableDateEnd(formatDateFromInput(e.target.value))}
+          />
+        </div>
+      </div>
+      
+      {/* Кнопка обновления таблицы */}
+      <button 
+        className={`transition-colors text-white px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-1 ${
+          isDarkMode 
+            ? 'bg-blue-600 hover:bg-blue-700' 
+            : 'bg-blue-600 hover:bg-blue-700'
+        }`}
+        onClick={fetchDailySalesData}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+        </svg>
+        {t('buttons.loadData')}
+      </button>
+    </div>
+  </div>
+  
+  {/* Контейнер таблицы с обработкой состояний загрузки */}
+  <div className="overflow-x-auto">
+    {isLoadingDailySales ? (
+      <div className="flex justify-center items-center py-10">
+        <div className={`animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 ${
+          isDarkMode ? 'border-blue-500' : 'border-blue-600'
+        }`}></div>
+        <span className={`ml-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          {t('table.loading')}
+        </span>
+      </div>
+    ) : dailySalesData.all.length === 0 && dailySalesData.retail.length === 0 && dailySalesData.wholesale.length === 0 ? (
+      <div className={`flex flex-col items-center justify-center py-10 ${
+        isDarkMode ? 'text-gray-400' : 'text-gray-500'
+      }`}>
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          className={`h-16 w-16 mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} 
+          fill="none" 
+          viewBox="0 0 24 24" 
+          stroke="currentColor"
+        >
+          <path 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            strokeWidth="1.5" 
+            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+          />
+        </svg>
+        <p className="text-lg">{t('table.noData')}</p>
+        <p className="text-sm mt-1">{t('table.selectDifferentPeriod')}</p>
+      </div>
+    ) : (
+      <table className={`min-w-full table-fixed ${
+        isDarkMode ? 'divide-y divide-gray-700' : 'divide-y divide-gray-200'
+      }`}>
+        <thead className={isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}>
+          <tr>
+            <th scope="col" className={`px-3 py-3 text-left text-xs font-medium uppercase tracking-wider w-32 ${
+              isDarkMode ? 'text-gray-300' : 'text-gray-700'
+            }`}>
+              {t('table.headers.date')}
+            </th>
+            <th scope="col" className={`px-3 py-3 text-left text-xs font-medium uppercase tracking-wider w-44 ${
+              isDarkMode ? 'text-gray-300' : 'text-gray-700'
+            }`}>
+              {t('table.headers.totalSales')}
+            </th>
+            <th scope="col" className={`px-3 py-3 text-left text-xs font-medium uppercase tracking-wider w-44 ${
+              isDarkMode ? 'text-gray-300' : 'text-gray-700'
+            }`}>
+              {t('table.headers.retailSales')}
+            </th>
+            <th scope="col" className={`px-3 py-3 text-left text-xs font-medium uppercase tracking-wider w-44 ${
+              isDarkMode ? 'text-gray-300' : 'text-gray-700'
+            }`}>
+              {t('table.headers.wholesaleSales')}
+            </th>
+            
+            {/* Новые заголовки для моделей */}
+            <th scope="col" className={`px-3 py-3 text-left text-xs font-medium uppercase tracking-wider w-44 ${
+              isDarkMode ? 'text-gray-300' : 'text-gray-700'
+            }`}>
+              DAMAS-2
+            </th>
+            <th scope="col" className={`px-3 py-3 text-left text-xs font-medium uppercase tracking-wider w-44 ${
+              isDarkMode ? 'text-gray-300' : 'text-gray-700'
+            }`}>
+              ONIX
+            </th>
+            <th scope="col" className={`px-3 py-3 text-left text-xs font-medium uppercase tracking-wider w-44 ${
+              isDarkMode ? 'text-gray-300' : 'text-gray-700'
+            }`}>
+              TRACKER-2
+            </th>
+            <th scope="col" className={`px-3 py-3 text-left text-xs font-medium uppercase tracking-wider w-44 ${
+              isDarkMode ? 'text-gray-300' : 'text-gray-700'
+            }`}>
+              COBALT
+            </th>
+            <th scope="col" className={`px-3 py-3 text-left text-xs font-medium uppercase tracking-wider w-44 ${
+              isDarkMode ? 'text-gray-300' : 'text-gray-700'
+            }`}>
+              {t('table.headers.remaining')}
+            </th>
+          </tr>
+        </thead>
+        <tbody className={`${isDarkMode ? 'bg-gray-800 divide-y divide-gray-700' : 'bg-white divide-y divide-gray-200'}`}>
+          {/* Генерируем строки таблицы */}
+          {renderDailySalesTableRows()}
+          
+          {/* Итоговая строка */}
+          {renderDailySalesTotalRow()}
+        </tbody>
+      </table>
+    )}
+  </div>
+</div>
       </>
     )}
     <style jsx>{`
