@@ -2266,6 +2266,8 @@ export default function Statistics() {
  const renderSalespersonCharts = () => {
   if (!salespersonChartRef.current || !salespersonSecondaryChartRef.current || !filteredSalespersonData.length || !selectedModel || !selectedDealer) return;
   
+  const chartStyles = getChartStyles();
+  
   if (viewMode === 'general') {
     // Получаем всех продавцов, отсортированных по продажам (от большего к меньшему)
     const sortedSalespeople = [...filteredSalespersonData]
@@ -2281,7 +2283,7 @@ export default function Statistics() {
       id: salesperson.salespersonId,
       label: salesperson.salespersonName,
       value: salesperson.sales,
-      color: selectedModel.color,
+      color: getThemedColor(selectedModel.color),
       salesperson
     }));
     
@@ -2309,8 +2311,8 @@ export default function Statistics() {
         .append('svg')
         .attr('width', width)
         .attr('height', height)
-        .style('background', '#1f2937')
-        .style('border-radius', '0.5rem');
+        .style('background', chartStyles.backgroundColor)
+        .style('border-radius', chartStyles.borderRadius);
       
       // Добавляем заголовок с адаптивным размером шрифта
       svg.append('text')
@@ -2319,7 +2321,7 @@ export default function Statistics() {
         .attr('text-anchor', 'middle')
         .style('font-size', window.innerWidth < 640 ? '0.9rem' : '1.2rem')
         .style('font-weight', 'bold')
-        .style('fill', '#f9fafb')
+        .style('fill', chartStyles.textColor)
         .text(t('charts.salesPersonSales', { 
           model: selectedModel.name, 
           dealer: selectedDealer.dealerName, 
@@ -2352,7 +2354,7 @@ export default function Statistics() {
         )
         .call(g => g.select('.domain').remove())
         .call(g => g.selectAll('.tick line')
-          .attr('stroke', '#374151')
+          .attr('stroke', chartStyles.gridColor)
           .attr('stroke-opacity', 0.5)
           .attr('stroke-dasharray', '2,2'));
       
@@ -2361,7 +2363,7 @@ export default function Statistics() {
         .call(d3.axisLeft(y).ticks(5))
         .call(g => g.select('.domain').remove())
         .call(g => g.selectAll('text')
-          .style('fill', '#f9fafb')
+          .style('fill', chartStyles.textColor)
           .style('font-size', window.innerWidth < 640 ? '0.7rem' : '0.85rem'));
       
       // Добавляем подпись оси Y
@@ -2370,15 +2372,15 @@ export default function Statistics() {
         .attr('transform', 'rotate(-90)')
         .attr('y', -margin.left + (window.innerWidth < 640 ? 15 : 20))
         .attr('x', -chartHeight / 2)
-        .style('fill', '#f9fafb')
+        .style('fill', chartStyles.textColor)
         .style('font-size', window.innerWidth < 640 ? '0.7rem' : '0.9rem')
         .text(t('charts.sales', { defaultValue: 'Количество продаж' }));
       
       // Создаем цветовую шкалу для столбцов
       const getBarColor = (_, i) => {
-        const baseColor = selectedModel.color;
+        const baseColor = getThemedColor(selectedModel.color);
         const hslColor = d3.hsl(baseColor);
-        hslColor.l = 0.4 + (i * 0.1);
+        hslColor.l = isDark ? 0.5 + (i * 0.05) : 0.4 + (i * 0.05);
         return hslColor.toString();
       };
       
@@ -2399,7 +2401,7 @@ export default function Statistics() {
             .transition()
             .duration(100)
             .attr('opacity', 0.8)
-            .attr('stroke', '#ffffff')
+            .attr('stroke', chartStyles.textColor)
             .attr('stroke-width', 2);
             
           // Подсвечиваем соответствующую подпись
@@ -2407,7 +2409,7 @@ export default function Statistics() {
             .transition()
             .duration(100)
             .style('font-weight', 'bold')
-            .style('fill', '#ffffff');
+            .style('fill', chartStyles.textColor);
           
           // Отображаем подробную информацию о продавце
           const tooltip = g.append('g')
@@ -2417,7 +2419,7 @@ export default function Statistics() {
           const tooltipText = tooltip.append('text')
             .attr('text-anchor', 'middle')
             .attr('dy', '-0.5em')
-            .style('fill', '#ffffff')
+            .style('fill', chartStyles.tooltipText)
             .style('font-size', window.innerWidth < 640 ? '10px' : '12px')
             .style('font-weight', 'bold')
             .text(`${d.value.toLocaleString()}`);
@@ -2425,7 +2427,7 @@ export default function Statistics() {
           const tooltipLabel = tooltip.append('text')
             .attr('text-anchor', 'middle')
             .attr('dy', '1em')
-            .style('fill', '#ffffff')
+            .style('fill', chartStyles.tooltipText)
             .style('font-size', window.innerWidth < 640 ? '9px' : '11px')
             .text(d.label);
           
@@ -2438,7 +2440,7 @@ export default function Statistics() {
             .attr('width', bbox.width + 12)
             .attr('height', textHeight + 12)
             .attr('rx', 4)
-            .attr('fill', 'rgba(0, 0, 0, 0.8)');
+            .attr('fill', chartStyles.tooltipBackground);
           
           tooltipText.raise();
           tooltipLabel.raise();
@@ -2455,7 +2457,7 @@ export default function Statistics() {
             .transition()
             .duration(100)
             .style('font-weight', 'normal')
-            .style('fill', '#9ca3af');
+            .style('fill', chartStyles.secondaryTextColor);
           
           // Удаляем подсказку
           g.selectAll('.salesperson-tooltip').remove();
@@ -2476,7 +2478,7 @@ export default function Statistics() {
         .attr('text-anchor', 'middle')
         .style('font-size', window.innerWidth < 640 ? '8px' : '10px')
         .style('font-weight', 'bold')
-        .style('fill', '#ffffff')
+        .style('fill', chartStyles.textColor)
         .text(d => d.value.toLocaleString())
         .attr('opacity', 0)
         .transition()
@@ -2512,12 +2514,12 @@ export default function Statistics() {
           .attr('width', colWidth * 0.9)
           .attr('height', 24)
           .attr('rx', 4)
-          .attr('fill', getBarColor(d, i)) // Используем ту же цветовую схему
-          .attr('opacity', 0.15)
+          .attr('fill', isDark ? '#1f293788' : '#f3f4f688')
+          .attr('opacity', 0)
           .transition()
           .duration(500)
           .delay(i * 50 + 600)
-          .attr('opacity', 0.15);
+          .attr('opacity', 1);
         
         // Максимальная длина имени в символах
         const maxNameLength = window.innerWidth < 640 ? 15 : 
@@ -2537,7 +2539,7 @@ export default function Statistics() {
           .attr('y', yPos)
           .attr('text-anchor', 'middle')
           .style('font-size', window.innerWidth < 640 ? '8px' : '10px')
-          .style('fill', '#9ca3af')
+          .style('fill', chartStyles.secondaryTextColor)
           .style('cursor', 'pointer')
           .text(truncatedName)
           .on('mouseover', function() {
@@ -2546,7 +2548,7 @@ export default function Statistics() {
               .transition()
               .duration(100)
               .style('font-weight', 'bold')
-              .style('fill', '#ffffff');
+              .style('fill', chartStyles.textColor);
             
             // Подсвечиваем соответствующий столбец
             g.selectAll('.bar')
@@ -2554,7 +2556,7 @@ export default function Statistics() {
               .transition()
               .duration(100)
               .attr('opacity', 0.8)
-              .attr('stroke', '#ffffff')
+              .attr('stroke', chartStyles.textColor)
               .attr('stroke-width', 2);
             
             // Показываем полное имя при наведении, если оно было сокращено
@@ -2565,7 +2567,7 @@ export default function Statistics() {
               
               const tooltipText = tooltip.append('text')
                 .attr('text-anchor', 'middle')
-                .style('fill', '#ffffff')
+                .style('fill', chartStyles.tooltipText)
                 .style('font-size', window.innerWidth < 640 ? '9px' : '11px')
                 .text(name);
               
@@ -2577,7 +2579,7 @@ export default function Statistics() {
                 .attr('width', bbox.width + 10)
                 .attr('height', bbox.height + 4)
                 .attr('rx', 3)
-                .attr('fill', 'rgba(0, 0, 0, 0.8)');
+                .attr('fill', chartStyles.tooltipBackground);
               
               tooltipText.raise();
             }
@@ -2588,7 +2590,7 @@ export default function Statistics() {
               .transition()
               .duration(100)
               .style('font-weight', 'normal')
-              .style('fill', '#9ca3af');
+              .style('fill', chartStyles.secondaryTextColor);
             
             // Возвращаем столбец к нормальному виду
             g.selectAll('.bar')
@@ -2618,21 +2620,15 @@ export default function Statistics() {
           defaultValue: `Доля продаж ${selectedModel.name} в ${selectedDealer.dealerName} (${getDateRangeLabel()})` 
         }),
         height: window.innerWidth < 640 ? 300 : 400,
-        colors: chartData.map((_, i) => {
-          // Создаем вариации цвета модели
-          const baseColor = selectedModel.color;
-          const hslColor = d3.hsl(baseColor);
-          hslColor.l = 0.4 + (i * 0.1);
-          return hslColor.toString();
-        })
+        theme: isDark ? 'dark' : 'light',
+        styles: chartStyles
       });
     }
     
     // Для графика динамики продаж берем только топ-5 продавцов
     const topFiveSalespeople = sortedSalespeople.slice(0, 5);
 
-    // Попробуем найти оригинальные необработанные данные в компоненте
-    // Создадим объект для хранения данных по месяцам для каждого продавца
+    // Создаем объект для хранения данных по месяцам для каждого продавца
     const salespersonMonthlyData = {};
     
     // Инициализируем объект для каждого продавца
@@ -2648,7 +2644,7 @@ export default function Statistics() {
       const container = salespersonSecondaryChartRef.current;
       container.innerHTML = `
         <div class="flex justify-center items-center h-full">
-          <div class="text-gray-400 text-center p-4">
+          <div class="${isDark ? 'text-gray-400' : 'text-gray-600'} text-center p-4">
             <p class="text-sm sm:text-base">${t('charts.noMonthlyData', { defaultValue: 'Недостаточно данных для отображения динамики продаж' })}</p>
             <p class="text-xs sm:text-sm mt-2">${t('charts.changeDateRange', { defaultValue: 'Используйте другой диапазон дат или обновите данные' })}</p>
           </div>
@@ -2660,12 +2656,12 @@ export default function Statistics() {
     // Создаем структуру данных для графика
     let monthlyData = [];
     
-    // Проверяем, есть ли у нас доступ к raw_data - оригинальным данным от API
-    if (typeof raw_data !== 'undefined' && raw_data && Array.isArray(raw_data)) {
+    // Проверяем, есть ли у нас доступ к raw_data
+    if (window.originalApiData && Array.isArray(window.originalApiData)) {
       console.log('Используем raw_data для графика продавцов');
       
       // Ищем данные для текущей модели
-      const modelData = raw_data.find(m => m.model_id === selectedModel.id);
+      const modelData = window.originalApiData.find(m => m.model_id === selectedModel.id);
       
       if (modelData && modelData.filter_by_month) {
         // Для каждого месяца
@@ -2713,62 +2709,38 @@ export default function Statistics() {
       }
     }
     
-    // Если не смогли получить данные из raw_data, используем другой подход
+    // Если не смогли получить данные из raw_data, используем альтернативный подход
     if (monthlyData.length === 0) {
       console.log('Используем альтернативный подход для графика продавцов');
       
-      // Если все подходы не сработали, используем равномерное распределение для демонстрации
-      console.log('Используем равномерное распределение данных по месяцам');
-      
-      // Получаем данные о продажах продавцов из существующей структуры
-      // Просто разделим общие продажи на количество месяцев для демонстрации
-      
-      // Проверим, есть ли данные напрямую в trendData
-      // Попробуем извлечь данные продавцов из trendData
-      let hasSalespersonTrendData = false;
-      
-      // Создаем массив данных по месяцам для каждого продавца, распределяя продажи в соответствии с трендом
+      // Используем равномерное распределение для демонстрации
       if (data.trendData && data.trendData.length > 0) {
-        // Вычисляем общую сумму продаж во всех месяцах
         const totalTrendSales = data.trendData.reduce((sum, item) => sum + item.sales, 0);
         
         if (totalTrendSales > 0) {
-          // Для каждого продавца
           topFiveSalespeople.forEach(salesperson => {
-            // Для каждого месяца
             data.trendData.forEach(trend => {
               if (trend.date) {
-                // Вычисляем долю продаж в этом месяце от общих продаж
                 const monthShareOfTotal = trend.sales / totalTrendSales;
-                
-                // Вычисляем продажи этого продавца в этом месяце
-                // пропорционально его доле в общих продажах и распределению по месяцам
                 const salesInMonth = Math.round(salesperson.sales * monthShareOfTotal);
                 
-                // Добавляем точку данных
                 monthlyData.push({
                   x: trend.date,
                   y: salesInMonth,
                   group: salesperson.salespersonName
                 });
-                
-                hasSalespersonTrendData = true;
               }
             });
           });
         }
       }
       
-      // Если ничего не сработало, используем равномерное распределение как последний вариант
-      if (!hasSalespersonTrendData && monthlyData.length === 0) {
-        // Количество месяцев для равномерного распределения
+      // Если ничего не сработало, используем равномерное распределение
+      if (monthlyData.length === 0) {
         const monthCount = allMonths.length;
         
-        // Для каждого продавца из топ-5
         topFiveSalespeople.forEach(salesperson => {
-          // Для каждого месяца добавляем запись в monthlyData
           allMonths.forEach(month => {
-            // Распределяем продажи продавца равномерно по всем месяцам
             const salesInMonth = Math.round(salesperson.sales / monthCount);
             
             monthlyData.push({
@@ -2812,8 +2784,8 @@ export default function Statistics() {
       .append('svg')
       .attr('width', width)
       .attr('height', height)
-      .style('background', '#1f2937')
-      .style('border-radius', '0.5rem');
+      .style('background', chartStyles.backgroundColor)
+      .style('border-radius', chartStyles.borderRadius);
       
     // Добавляем заголовок
     svg.append('text')
@@ -2822,7 +2794,7 @@ export default function Statistics() {
       .attr('text-anchor', 'middle')
       .style('font-size', window.innerWidth < 640 ? '0.9rem' : '1.2rem')
       .style('font-weight', 'bold')
-      .style('fill', '#f9fafb')
+      .style('fill', chartStyles.textColor)
       .text(t('charts.salesTimeline', { 
         period: getDateRangeLabel(), 
         defaultValue: `Динамика продаж топ-5 продавцов за период: ${getDateRangeLabel()}` 
@@ -2839,7 +2811,7 @@ export default function Statistics() {
       }
     };
     
-    // Для x используем scalePoint вместо scaleTime, так как у нас строковые ключи
+    // Для x используем scalePoint вместо scaleTime
     const x = d3.scalePoint()
       .domain(allMonths)
       .range([margin.left, width - margin.right]);
@@ -2856,18 +2828,18 @@ export default function Statistics() {
     const colorScale = d3.scaleOrdinal()
       .domain(Object.keys(monthlyByPerson))
       .range([
-        '#FF5733', // Ярко-оранжевый
-        '#33A8FF', // Ярко-голубой
-        '#B933FF', // Фиолетовый
-        '#33FF57', // Ярко-зеленый
-        '#FFD433'  // Золотой
+        getThemedColor('#FF5733'), // Ярко-оранжевый
+        getThemedColor('#33A8FF'), // Ярко-голубой
+        getThemedColor('#B933FF'), // Фиолетовый
+        getThemedColor('#33FF57'), // Ярко-зеленый
+        getThemedColor('#FFD433')  // Золотой
       ]);
       
-    // Создаем функцию линии с настройкой для x и y координат
+    // Создаем функцию линии
     const line = d3.line()
       .x(d => x(d.x))
       .y(d => y(d.y))
-      .curve(d3.curveMonotoneX); // Используем плавные кривые
+      .curve(d3.curveMonotoneX);
     
     // Добавляем заливку для осей для лучшей читаемости
     svg.append('rect')
@@ -2875,7 +2847,7 @@ export default function Statistics() {
       .attr('y', height - margin.bottom)
       .attr('width', width)
       .attr('height', margin.bottom)
-      .attr('fill', '#1a2434')
+      .attr('fill', isDark ? '#1a2434' : '#f3f4f6')
       .attr('opacity', 0.5);
     
     svg.append('rect')
@@ -2883,7 +2855,7 @@ export default function Statistics() {
       .attr('y', 0)
       .attr('width', margin.left)
       .attr('height', height - margin.bottom)
-      .attr('fill', '#1a2434')
+      .attr('fill', isDark ? '#1a2434' : '#f3f4f6')
       .attr('opacity', 0.5);
     
     // Рисуем оси с адаптивным размером шрифта
@@ -2894,9 +2866,9 @@ export default function Statistics() {
       .call(d3.axisBottom(x).tickFormat(formatMonthYear))
       .call(g => g.select('.domain').remove())
       .call(g => g.selectAll('text')
-        .style('fill', '#f9fafb')
+        .style('fill', chartStyles.textColor)
         .style('font-size', window.innerWidth < 640 ? '0.7rem' : '0.9rem')
-        .attr('transform', window.innerWidth < 640 ? 'rotate(-25)' : 'rotate(-25)') // Больший угол поворота для мобильных
+        .attr('transform', window.innerWidth < 640 ? 'rotate(-25)' : 'rotate(-25)')
         .attr('text-anchor', 'end')
         .attr('dx', window.innerWidth < 640 ? '-0.6em' : '-0.8em')
         .attr('dy', window.innerWidth < 640 ? '0.15em' : '0.15em'));
@@ -2906,7 +2878,7 @@ export default function Statistics() {
       .call(d3.axisLeft(y).ticks(5))
       .call(g => g.select('.domain').remove())
       .call(g => g.selectAll('text')
-        .style('fill', '#f9fafb')
+        .style('fill', chartStyles.textColor)
         .style('font-size', window.innerWidth < 640 ? '0.7rem' : '0.9rem'));
       
     // Рисуем подписи осей
@@ -2914,7 +2886,7 @@ export default function Statistics() {
       .attr('text-anchor', 'middle')
       .attr('x', width / 2)
       .attr('y', height - (window.innerWidth < 640 ? 15 : 15))
-      .attr('fill', '#f9fafb')
+      .attr('fill', chartStyles.textColor)
       .style('font-size', window.innerWidth < 640 ? '0.7rem' : '0.9rem')
       .text(t('charts.month', { defaultValue: 'Месяц' }));
     
@@ -2923,7 +2895,7 @@ export default function Statistics() {
       .attr('transform', 'rotate(-90)')
       .attr('x', -(height - margin.bottom + margin.top) / 2)
       .attr('y', window.innerWidth < 640 ? 15 : 25)
-      .attr('fill', '#f9fafb')
+      .attr('fill', chartStyles.textColor)
       .style('font-size', window.innerWidth < 640 ? '0.7rem' : '0.9rem')
       .text(t('charts.sales', { defaultValue: 'Количество продаж' }));
     
@@ -2938,7 +2910,7 @@ export default function Statistics() {
       )
       .call(g => g.select('.domain').remove())
       .call(g => g.selectAll('.tick line')
-        .attr('stroke', '#374151')
+        .attr('stroke', chartStyles.gridColor)
         .attr('stroke-opacity', 0.5)
         .attr('stroke-dasharray', '2,2'));
     
@@ -2959,7 +2931,7 @@ export default function Statistics() {
         .datum(values)
         .attr('fill', 'none')
         .attr('stroke', colorScale(name))
-        .attr('stroke-width', window.innerWidth < 640 ? 3 : 4) // Делаем линию толще
+        .attr('stroke-width', window.innerWidth < 640 ? 3 : 4)
         .attr('stroke-linejoin', 'round')
         .attr('stroke-linecap', 'round')
         .attr('d', line)
@@ -3023,12 +2995,12 @@ export default function Statistics() {
         pointGroup.append('circle')
           .attr('r', 0)
           .attr('fill', colorScale(name))
-          .attr('stroke', '#1f2937')
+          .attr('stroke', chartStyles.backgroundColor)
           .attr('stroke-width', 2)
           .transition()
           .duration(500)
           .delay(i * 300 + j * 100 + 1000)
-          .attr('r', window.innerWidth < 640 ? 12 : 16); // Делаем точки больше
+          .attr('r', window.innerWidth < 640 ? 12 : 16);
         
         // Добавляем текст с числом продаж
         pointGroup.append('text')
@@ -3057,7 +3029,7 @@ export default function Statistics() {
           const labelText = label.append('text')
             .attr('text-anchor', 'middle')
             .attr('dy', '0em')
-            .attr('fill', '#fff')
+            .attr('fill', chartStyles.tooltipText)
             .style('font-size', window.innerWidth < 640 ? '10px' : '12px')
             .text(`${name}: ${d.y} (${formatMonthYear(d.x)})`);
           
@@ -3071,7 +3043,7 @@ export default function Statistics() {
             .attr('width', bbox.width + 10)
             .attr('height', bbox.height + 4)
             .attr('rx', 4)
-            .attr('fill', 'rgba(0, 0, 0, 0.8)');
+            .attr('fill', chartStyles.tooltipBackground);
           
           // Добавляем кнопку закрытия
           label.append('circle')
@@ -3113,7 +3085,7 @@ export default function Statistics() {
       .attr('y', -10)
       .style('font-size', window.innerWidth < 640 ? '12px' : '14px')
       .style('font-weight', 'bold')
-      .style('fill', '#f9fafb')
+      .style('fill', chartStyles.textColor)
       .text(t('salespeople.title', { defaultValue: 'Продавцы:' }));
     
     // Добавляем элементы легенды с интерактивностью
@@ -3123,7 +3095,7 @@ export default function Statistics() {
       const totalSales = personValues.reduce((sum, d) => sum + d.y, 0);
       
       const legendRow = legend.append('g')
-        .attr('transform', `translate(0, ${i * (window.innerWidth < 640 ? 28 : 35)})`) // Уменьшаем расстояние для мобильных
+        .attr('transform', `translate(0, ${i * (window.innerWidth < 640 ? 28 : 35)})`)
         .attr('class', `legend-${i}`)
         .style('cursor', 'pointer')
         .on('mouseover', function() {
@@ -3198,7 +3170,7 @@ export default function Statistics() {
         .attr('width', window.innerWidth < 640 ? 100 : 140)
         .attr('height', window.innerWidth < 640 ? 22 : 25)
         .attr('rx', 4)
-        .attr('fill', '#2d3748')
+        .attr('fill', isDark ? '#2d3748' : '#e5e7eb')
         .attr('opacity', 0.3);
       
       // Цветной индикатор
@@ -3221,7 +3193,7 @@ export default function Statistics() {
         .attr('x', window.innerWidth < 640 ? 20 : 30)
         .attr('y', 0)
         .attr('dy', '0.32em')
-        .attr('fill', '#f9fafb')
+        .attr('fill', chartStyles.textColor)
         .style('font-size', window.innerWidth < 640 ? '10px' : '12px')
         .text(displayName)
         .on('mouseover', function() {
@@ -3232,7 +3204,7 @@ export default function Statistics() {
               .attr('transform', `translate(${window.innerWidth < 640 ? 50 : 70}, ${i * (window.innerWidth < 640 ? 28 : 35)})`);
             
             const tooltipText = tooltip.append('text')
-              .style('fill', '#ffffff')
+              .style('fill', chartStyles.tooltipText)
               .style('font-size', window.innerWidth < 640 ? '10px' : '11px')
               .text(name);
             
@@ -3244,7 +3216,7 @@ export default function Statistics() {
               .attr('width', bbox.width + 10)
               .attr('height', bbox.height + 4)
               .attr('rx', 3)
-              .attr('fill', 'rgba(0, 0, 0, 0.8)');
+              .attr('fill', chartStyles.tooltipBackground);
             
             tooltipText.raise();
           }
@@ -3258,7 +3230,7 @@ export default function Statistics() {
       legendRow.append('text')
         .attr('x', window.innerWidth < 640 ? 20 : 30)
         .attr('y', window.innerWidth < 640 ? 12 : 15)
-        .attr('fill', '#9ca3af')
+        .attr('fill', chartStyles.secondaryTextColor)
         .style('font-size', window.innerWidth < 640 ? '8px' : '10px')
         .text(`${t('models.totalSales', { defaultValue: 'Всего' })}: ${totalSales}`);
     });
@@ -3268,7 +3240,7 @@ export default function Statistics() {
       .attr('x', margin.left)
       .attr('y', height - (window.innerWidth < 640 ? 10 : 15))
       .attr('text-anchor', 'start')
-      .attr('fill', '#9ca3af')
+      .attr('fill', chartStyles.secondaryTextColor)
       .style('font-size', window.innerWidth < 640 ? '8px' : '10px')
       .text(t('charts.clickDot', { defaultValue: 'Нажмите на точку для подробной информации' }));
 
@@ -3283,17 +3255,17 @@ export default function Statistics() {
         { 
           label: t('payments.status.paid', { defaultValue: 'Оплачено полностью' }), 
           value: filteredPaymentData.paidCars,
-          color: '#10b981' // зеленый
+          color: getThemedColor('#10b981') // зеленый
         },
         { 
           label: t('payments.status.returned', { defaultValue: 'Возвращено' }), 
           value: filteredPaymentData.returnedCars,
-          color: '#ef4444' // красный
+          color: getThemedColor('#ef4444') // красный
         },
         { 
           label: t('payments.status.pending', { defaultValue: 'Частичная оплата' }), 
           value: filteredPaymentData.pendingCars,
-          color: '#f59e0b' // оранжевый
+          color: getThemedColor('#f59e0b') // оранжевый
         }
       ];
       
@@ -3301,7 +3273,8 @@ export default function Statistics() {
         container: salespersonChartRef.current,
         title: `${t('payments.status.title', { defaultValue: 'Статус платежей' })} ${selectedModel.name} ${t('payments.status.in', { defaultValue: 'в' })} ${selectedDealer.dealerName}`,
         height: window.innerWidth < 640 ? 300 : 400,
-        colors: paymentStatusData.map(d => d.color)
+        theme: isDark ? 'dark' : 'light',
+        styles: chartStyles
       });
       
       // График сумм платежей
@@ -3309,17 +3282,17 @@ export default function Statistics() {
         { 
           label: t('payments.status.paid', { defaultValue: 'Оплачено' }), 
           value: filteredPaymentData.paidAmount,
-          color: '#10b981' // зеленый
+          color: getThemedColor('#10b981') // зеленый
         },
         { 
           label: t('payments.status.returned', { defaultValue: 'Возвращено' }), 
           value: filteredPaymentData.returnedAmount,
-          color: '#ef4444' // красный
+          color: getThemedColor('#ef4444') // красный
         },
         { 
           label: t('payments.status.pending', { defaultValue: 'В ожидании' }), 
           value: filteredPaymentData.pendingAmount,
-          color: '#f59e0b' // оранжевый
+          color: getThemedColor('#f59e0b') // оранжевый
         }
       ];
       
@@ -3327,7 +3300,8 @@ export default function Statistics() {
         container: salespersonSecondaryChartRef.current,
         title: `${t('payments.amounts.title', { defaultValue: 'Суммы платежей' })} ${selectedModel.name} (${getDateRangeLabel()})`,
         height: window.innerWidth < 640 ? 300 : 400,
-        colors: paymentAmountData.map(d => d.color)
+        theme: isDark ? 'dark' : 'light',
+        styles: chartStyles
       });
       
       // Детальная таблица транзакций с адаптивностью
@@ -3340,28 +3314,28 @@ export default function Statistics() {
         tableContainer.className = 'overflow-auto max-h-[300px] sm:max-h-[400px] mt-4';
         
         const table = document.createElement('table');
-        table.className = 'min-w-full divide-y divide-gray-700';
+        table.className = `min-w-full divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`;
         
         // Заголовок таблицы
         const tableHead = document.createElement('thead');
-        tableHead.className = 'bg-gray-800 sticky top-0';
+        tableHead.className = `${isDark ? 'bg-gray-800' : 'bg-gray-50'} sticky top-0`;
         tableHead.innerHTML = `
           <tr>
-            <th scope="col" class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">${t('payments.transactions.id', { defaultValue: 'ID' })}</th>
-            <th scope="col" class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">${t('payments.transactions.car', { defaultValue: 'Автомобиль' })}</th>
-            <th scope="col" class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">${t('payments.transactions.status', { defaultValue: 'Статус' })}</th>
-            <th scope="col" class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">${t('payments.transactions.amount', { defaultValue: 'Сумма (UZS)' })}</th>
-            <th scope="col" class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">${t('payments.transactions.paymentDate', { defaultValue: 'Дата платежа' })}</th>
-            <th scope="col" class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">${t('payments.transactions.returnInfo', { defaultValue: 'Возврат' })}</th>
-            <th scope="col" class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">${t('payments.transactions.balance', { defaultValue: 'Баланс' })}</th>
+            <th scope="col" class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider">${t('payments.transactions.id', { defaultValue: 'ID' })}</th>
+            <th scope="col" class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider">${t('payments.transactions.car', { defaultValue: 'Автомобиль' })}</th>
+            <th scope="col" class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider">${t('payments.transactions.status', { defaultValue: 'Статус' })}</th>
+            <th scope="col" class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider">${t('payments.transactions.amount', { defaultValue: 'Сумма (UZS)' })}</th>
+            <th scope="col" class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider">${t('payments.transactions.paymentDate', { defaultValue: 'Дата платежа' })}</th>
+            <th scope="col" class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider">${t('payments.transactions.returnInfo', { defaultValue: 'Возврат' })}</th>
+            <th scope="col" class="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider">${t('payments.transactions.balance', { defaultValue: 'Баланс' })}</th>
           </tr>
         `;
         
         // Тело таблицы
         const tableBody = document.createElement('tbody');
-        tableBody.className = 'bg-gray-900 divide-y divide-gray-800';
+        tableBody.className = `${isDark ? 'bg-gray-900 divide-y divide-gray-800' : 'bg-white divide-y divide-gray-200'}`;
         
-        // Сортируем транзакции: сначала возвращенные, затем частично оплаченные, затем полностью оплаченные
+        // Сортируем транзакции
         const sortedTransactions = [...filteredPaymentData.transactions].sort((a, b) => {
           const order = { returned: 0, pending: 1, paid: 2 };
           return order[a.status] - order[b.status];
@@ -3370,21 +3344,21 @@ export default function Statistics() {
         // Добавляем строки таблицы
         sortedTransactions.forEach((transaction, i) => {
           const row = document.createElement('tr');
-          row.className = i % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800/50';
+          row.className = i % 2 === 0 ? (isDark ? 'bg-gray-900' : 'bg-gray-50') : (isDark ? 'bg-gray-800/50' : 'bg-white');
           
           // Определяем цвет и текст статуса
           let statusColor, statusText;
           switch (transaction.status) {
             case 'paid':
-              statusColor = 'bg-green-900 text-green-300';
+              statusColor = isDark ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-800';
               statusText = t('payments.status.paid', { defaultValue: 'Оплачено' });
               break;
             case 'returned':
-              statusColor = 'bg-red-900 text-red-300';
+              statusColor = isDark ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-800';
               statusText = t('payments.status.returned', { defaultValue: 'Возвращено' });
               break;
             case 'pending':
-              statusColor = 'bg-yellow-900 text-yellow-300';
+              statusColor = isDark ? 'bg-yellow-900 text-yellow-300' : 'bg-yellow-100 text-yellow-800';
               statusText = t('payments.status.pending', { defaultValue: 'Частично' });
               break;
           }
@@ -3392,21 +3366,21 @@ export default function Statistics() {
           const formatter = new Intl.NumberFormat('ru-RU');
           
           row.innerHTML = `
-            <td class="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-400">${transaction.id}</td>
-            <td class="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-white">${transaction.carName}</td>
+            <td class="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}">${transaction.id}</td>
+            <td class="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm ${isDark ? 'text-white' : 'text-gray-900'}">${transaction.carName}</td>
             <td class="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
               <span class="px-1.5 sm:px-2 py-0.5 sm:py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">
                 ${statusText}
               </span>
             </td>
-            <td class="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-white">${formatter.format(transaction.paymentAmount)}</td>
-            <td class="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-400">${new Date(transaction.paymentDate).toLocaleDateString('ru-RU')}</td>
-            <td class="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm ${transaction.returnAmount > 0 ? 'text-red-400' : 'text-gray-500'}">
+            <td class="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm ${isDark ? 'text-white' : 'text-gray-900'}">${formatter.format(transaction.paymentAmount)}</td>
+            <td class="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}">${new Date(transaction.paymentDate).toLocaleDateString('ru-RU')}</td>
+            <td class="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm ${transaction.returnAmount > 0 ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-gray-500' : 'text-gray-400')}">
               ${transaction.returnAmount > 0 ? 
                 `${formatter.format(transaction.returnAmount)} (${new Date(transaction.returnDate).toLocaleDateString('ru-RU')})` : 
                 '-'}
             </td>
-            <td class="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm ${transaction.balanceAmount > 0 ? 'text-yellow-400' : 'text-green-400'}">
+            <td class="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm ${transaction.balanceAmount > 0 ? (isDark ? 'text-yellow-400' : 'text-yellow-600') : (isDark ? 'text-green-400' : 'text-green-600')}">
               ${formatter.format(transaction.balanceAmount)}
             </td>
           `;
@@ -3420,7 +3394,7 @@ export default function Statistics() {
         
         // Добавляем заголовок и таблицу в контейнер
         const titleElement = document.createElement('h3');
-        titleElement.className = 'text-lg sm:text-xl font-bold text-white mb-4';
+        titleElement.className = `text-lg sm:text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`;
         titleElement.textContent = t('payments.transactions.title', { count: filteredPaymentData.transactions.length, defaultValue: `Детализация транзакций (${filteredPaymentData.transactions.length})` });
         
         container.appendChild(titleElement);
@@ -3428,10 +3402,9 @@ export default function Statistics() {
       }
     }
   }
-};
+ };
 
- // Initialize on mount and update charts when view changes
- useEffect(() => {
+  useEffect(() => {
    if (view === 'models') {
      renderModelCharts();
    } else if (view === 'dealers' && selectedModel) {
