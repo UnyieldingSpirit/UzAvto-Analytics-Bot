@@ -1424,6 +1424,7 @@ const generateCSVReport = (data) => {
      currency: 'UZS'
    }
  };
+  
  
  const texts = csvTexts[currentLocale] || csvTexts.ru;
  
