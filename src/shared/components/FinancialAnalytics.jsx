@@ -4,12 +4,13 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as d3 from 'd3';
 import { D3Visualizer } from '../../utils/dataVisualizer';
+import { useThemeStore } from '../../store/theme';
+
+import { useTranslation } from '../../hooks/useTranslation';
+import { financialAnalyticsLocale } from '../components/locales/financialAnalytics';
 
 // Массив месяцев для отображения
-const MONTHS = [
-  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-];
+
 
 // Константы типов продаж
 const SALE_TYPES = {
@@ -45,7 +46,48 @@ export default function EnhancedFinancialAnalytics() {
 const [isLoadingDailySales, setIsLoadingDailySales] = useState(false);
 const [tableDateStart, setTableDateStart] = useState(apiStartDate);
 const [tableDateEnd, setTableDateEnd] = useState(apiEndDate);
+ const { t } = useTranslation(financialAnalyticsLocale);
+    const { mode: themeMode } = useThemeStore();
+  const isDarkMode = themeMode === 'dark';
+    const MONTHS = useMemo(() => [
+    t('months.january'),
+    t('months.february'),
+    t('months.march'),
+    t('months.april'),
+    t('months.may'),
+    t('months.june'),
+    t('months.july'),
+    t('months.august'),
+    t('months.september'),
+    t('months.october'),
+    t('months.november'),
+    t('months.december')
+  ], [t]);
   // Функция для получения текущего месяца и года
+    const getThemeColors = () => {
+    if (isDarkMode) {
+      return {
+        background: '#0f172a',
+        backgroundSecondary: '#1e293b',
+        text: '#f8fafc',
+        textSecondary: '#cbd5e1',
+        border: '#334155',
+        cardBg: '#1e293b',
+        cardBorder: '#334155'
+      };
+    } else {
+      return {
+        background: '#ffffff',
+        backgroundSecondary: '#f8fafc',
+        text: '#0f172a',
+        textSecondary: '#475569',
+        border: '#e2e8f0',
+        cardBg: '#ffffff',
+        cardBorder: '#e2e8f0'
+      };
+    }
+    };
+    const colors = getThemeColors();
   const getCurrentMonthAndYear = () => {
     const now = new Date();
     return {
@@ -3975,10 +4017,10 @@ const renderDailySalesTable = () => {
     
     // Заголовки столбцов
     const headers = [
-      { text: 'Дата', className: 'w-32' },
-      { text: 'Общие продажи', className: 'w-44' },
-      { text: 'Розничные продажи', className: 'w-44' },
-      { text: 'Оптовые продажи', className: 'w-44' },
+      { text: `${t('table.headers.date')}`, className: 'w-32' },
+      { text: `${t('table.headers.totalSales')}`, className: 'w-44' },
+      { text: `${t('table.headers.retailSales')}`, className: 'w-44' },
+      { text: `${t('table.headers.wholesaleSales')}`, className: 'w-44' },
       { text: 'Модели (розница)', className: '' }
     ];
     
@@ -4384,12 +4426,20 @@ const renderDailySalesTable = () => {
   }
   
   // Функция для получения дня недели
-  function getDayOfWeek(dateStr) {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const days = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
-    return days[date.getDay()];
-  }
+const getDayOfWeek = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const days = [
+    t('weekdays.sunday'),
+    t('weekdays.monday'),
+    t('weekdays.tuesday'),
+    t('weekdays.wednesday'),
+    t('weekdays.thursday'),
+    t('weekdays.friday'),
+    t('weekdays.saturday')
+  ];
+  return days[date.getDay()];
+};
   
   // Загружаем данные при первой отрисовке компонента
   fetchDailySalesData();
@@ -5861,7 +5911,7 @@ const showModelRegionalDistribution = (modelName, year, month, monthName) => {
   const growth = ((totalCount / lastYearCount - 1) * 100).toFixed(1);
   
   // Создаем информационные карточки
-  createInfoCard(infoPanel, 'Общие продажи', formatProfitCompact(totalSales), '', '#3b82f6');
+  createInfoCard(infoPanel, `${t('table.headers.totalSales')}`, formatProfitCompact(totalSales), '', '#3b82f6');
   createInfoCard(infoPanel, 'Количество', totalCount, 'шт.', '#f87171', growth);
   createInfoCard(infoPanel, 'Средняя цена', formatProfitCompact(avgPrice), '', '#8b5cf6');
   createInfoCard(infoPanel, 'Доля рынка', (Math.round(5 + Math.random() * 15)), '%', '#10b981');
@@ -7909,7 +7959,7 @@ const renderYearlyTrendChart = () => {
     };
     
     // Добавляем элементы легенды
-    const totalLegend = createLegendItem(0, 'Общие продажи', '#3b82f6');
+    const totalLegend = createLegendItem(0, `${t('table.headers.totalSales')}`, '#3b82f6');
     const retailLegend = createLegendItem(20, 'Розница', SALE_TYPES.RETAIL.color, true);
     const wholesaleLegend = createLegendItem(40, 'Опт', SALE_TYPES.WHOLESALE.color, true);
     
@@ -9962,10 +10012,10 @@ const showModelsModal = (date, displayDate, models) => {
           <table className="min-w-full divide-y divide-gray-700">
           <thead className="bg-gray-700/50">
   <tr>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-32">Дата</th>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Общие продажи</th>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Розничные продажи</th>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Оптовые продажи</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-32">{t('table.headers.date')}</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">{t('table.headers.totalSales')}</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">{t('table.headers.retailSales')}</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">{t('table.headers.wholesaleSales')}</th>
     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">DAMAS-2</th>
     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">ONIX</th>
     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">TRACKER-2</th>
@@ -10019,26 +10069,35 @@ const showModelsModal = (date, displayDate, models) => {
   );
 };
 
-  // JSX для компонента
 return (
-  <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-6">
+  <div 
+    className="min-h-screen p-4 md:p-6"
+    style={{
+      background: isDarkMode 
+        ? 'linear-gradient(to bottom right, #0f172a, #1e293b, #0f172a)' 
+        : 'linear-gradient(to bottom right, #f8fafc, #e2e8f0, #f8fafc)',
+      color: colors.text
+    }}
+  >
     {/* РАЗДЕЛ: Заголовок страницы */}
     <header className="mb-6">
-      <motion.h1 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-3xl md:text-4xl font-bold text-white bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent"
-      >
-        Финансовая аналитика продаж автомобилей
-      </motion.h1>
-      <motion.p 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="text-gray-400 mt-2"
-      >
-        Анализ финансовых показателей и динамики продаж моделей
-      </motion.p>
+   <motion.h1 
+  initial={{ opacity: 0, y: -20 }}
+  animate={{ opacity: 1, y: 0 }}
+  className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent"
+  style={{ color: 'transparent' }}
+>
+  {t('title')}
+</motion.h1>
+  <motion.p 
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  transition={{ delay: 0.2 }}
+  className="mt-2"
+  style={{ color: colors.textSecondary }}
+>
+  {t('subtitle')}
+</motion.p>
     </header>
     
     {/* Индикатор загрузки */}
@@ -10049,18 +10108,33 @@ return (
     ) : (
       <>
         {/* РАЗДЕЛ: Панель управления и фильтры */}
-        <div className="bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 mb-6 border border-gray-700/50">
+     <div 
+  className="shadow-xl backdrop-blur-sm rounded-xl p-5 mb-6"
+  style={{
+    backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.9)',
+    borderColor: colors.border,
+    borderWidth: '1px',
+    borderStyle: 'solid'
+  }}
+>
           <div className="flex flex-wrap items-center justify-between gap-4">
             {/* Табы для категорий продаж */}
-            <div className="flex bg-gray-700/80 rounded-lg p-1">
-              <button 
-                className={`px-3 py-1.5 rounded-md text-sm ${
-                  focusCategory === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
-                }`}
-                onClick={() => handleCategoryChange('all')}
-              >
-                Все продажи
-              </button>
+          <div 
+  className="flex rounded-lg p-1"
+  style={{
+    backgroundColor: isDarkMode ? 'rgba(55, 65, 81, 0.8)' : 'rgba(229, 231, 235, 0.8)'
+  }}
+>
+<button 
+  className="px-3 py-1.5 rounded-md text-sm shadow-md"
+  style={{
+    backgroundColor: focusCategory === 'all' ? '#3b82f6' : 'transparent',
+    color: focusCategory === 'all' ? '#ffffff' : colors.textSecondary
+  }}
+  onClick={() => handleCategoryChange('all')}
+>
+  {t('categories.all')}
+</button>
               <button 
                 className={`px-3 py-1.5 rounded-md text-sm ${
                   focusCategory === 'retail' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300'
@@ -10105,15 +10179,19 @@ return (
                 </div>
               </div>
               
-              <button 
-                className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-1"
-                onClick={refreshDataWithDateRange}
-              >
+           <button 
+  className="transition-colors text-white px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-1"
+  style={{
+    backgroundColor: '#3b82f6',
+    ':hover': { backgroundColor: '#2563eb' }
+  }}
+  onClick={refreshDataWithDateRange}
+>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                 </svg>
-                Обновить
-              </button>
+              {t('buttons.refresh')}
+</button>
             </div>
           </div>
         </div>
@@ -10135,17 +10213,14 @@ return (
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium text-blue-300">
-                      {focusCategory === 'all' ? 'Общая сумма' : 
-                      focusCategory === 'retail' ? 'Розничные продажи' : 
-                      'Оптовые продажи'}
-                    </h3>
-                    <p className="text-3xl font-bold text-white mt-1">
-                      {formatCurrency(getCurrentMonthTotal())}
-                    </p>
-                    <p className="text-blue-300/70 text-sm mt-1">
-                      За текущий месяц
-                    </p>
+                  <h3 className="text-lg font-medium text-blue-300">
+  {focusCategory === 'all' ? t('infoCards.totalAmount') : 
+  focusCategory === 'retail' ? t('infoCards.retailSales') : 
+  t('infoCards.wholesaleSales')}
+</h3>
+<p className="text-blue-300/70 text-sm mt-1">
+  {t('infoCards.currentMonth')}
+</p>
                   </div>
                 </div>
               </motion.div>
@@ -10163,17 +10238,14 @@ return (
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium text-purple-300">
-                      {focusCategory === 'all' ? 'Средний доход в день' : 
-                      focusCategory === 'retail' ? 'Среднее в день (розница)' : 
-                      'Среднее в день (опт)'}
-                    </h3>
-                    <p className="text-3xl font-bold text-white mt-1">
-                      {formatCurrency(calculateAverageDailyIncome())}
-                    </p>
-                    <p className="text-purple-300/70 text-sm mt-1">
-                      На основе {new Date().getDate()} прошедших дней
-                    </p>
+                <h3 className="text-lg font-medium text-purple-300">
+  {focusCategory === 'all' ? t('infoCards.averageDaily') : 
+  focusCategory === 'retail' ? t('infoCards.averageDailyRetail') : 
+  t('infoCards.averageDailyWholesale')}
+</h3>
+<p className="text-purple-300/70 text-sm mt-1">
+  {t('infoCards.basedOnDays', { count: new Date().getDate() })}
+</p>
                   </div>
                 </div>
               </motion.div>
@@ -10219,9 +10291,9 @@ return (
         {/* РАЗДЕЛ: Таблица детальной статистики продаж по дням */}
         <div className="mt-6 bg-gray-800/80 shadow-xl backdrop-blur-sm rounded-xl p-5 border border-gray-700/50">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl md:text-2xl font-bold text-white bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
-              Детальная статистика продаж по дням
-            </h2>
+        <h2 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+  {t('table.title')}
+</h2>
             
             {/* Панель управления таблицей */}
             <div className="flex items-center gap-2">
@@ -10256,7 +10328,7 @@ return (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                 </svg>
-                Загрузить данные
+                {t('buttons.loadData')}
               </button>
             </div>
           </div>
@@ -10266,24 +10338,24 @@ return (
             {isLoadingDailySales ? (
               <div className="flex justify-center items-center py-10">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                <span className="ml-3 text-gray-300">Загрузка данных...</span>
+                <span className="ml-3" style={{ color: colors.textSecondary }}>{t('table.loading')}</span>
               </div>
             ) : dailySalesData.all.length === 0 && dailySalesData.retail.length === 0 && dailySalesData.wholesale.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 text-gray-400">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <p className="text-lg">Данные отсутствуют для выбранного периода</p>
-                <p className="text-sm mt-1">Выберите другой диапазон дат или обновите данные</p>
+               <p className="text-lg">{t('table.noData')}</p>
+<p className="text-sm mt-1">{t('table.selectDifferentPeriod')}</p>
               </div>
             ) : (
               <table className="min-w-full divide-y divide-gray-700 table-fixed">
              <thead className="bg-gray-700/50">
   <tr>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-32">Дата</th>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Общие продажи</th>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Розничные продажи</th>
-    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">Оптовые продажи</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-32">{t('table.headers.date')}</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">{t('table.headers.totalSales')}</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">{t('table.headers.retailSales')}</th>
+    <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">{t('table.headers.wholesaleSales')}</th>
     
     {/* Новые заголовки для моделей */}
     <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-44">DAMAS-2</th>

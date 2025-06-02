@@ -24,7 +24,6 @@ import {
 } from 'recharts';
 import { useSpring, animated } from '@react-spring/web';
 
-// Компонент 3D-подобной визуализации с D3
 const D3CarVisualization = ({ data, selectedModel }) => {
   const svgRef = useRef();
   const containerRef = useRef();
@@ -177,26 +176,61 @@ const ColorDistributionChart = ({ colorStats, totalSales }) => {
   const { mode } = useThemeStore();
   const isDark = mode === 'dark';
   
-  // Функция для определения цвета по названию
-  const getColorCode = (colorName) => {
-    const lowerName = colorName.toLowerCase();
-    if (lowerName.includes('white') || lowerName.includes('белый')) return '#FFFFFF';
-    if (lowerName.includes('black') || lowerName.includes('черный')) return '#1a1a1a';
-    if (lowerName.includes('gray') || lowerName.includes('grey') || lowerName.includes('серый')) return '#6b7280';
-    if (lowerName.includes('silver') || lowerName.includes('серебр')) return '#c0c0c0';
-    if (lowerName.includes('blue') || lowerName.includes('синий')) return '#3b82f6';
-    if (lowerName.includes('red') || lowerName.includes('красный')) return '#ef4444';
-    if (lowerName.includes('green') || lowerName.includes('зеленый')) return '#10b981';
-    if (lowerName.includes('brown') || lowerName.includes('коричневый')) return '#92400e';
-    if (lowerName.includes('beige') || lowerName.includes('бежевый')) return '#d4b5a0';
-    if (lowerName.includes('gold') || lowerName.includes('золот')) return '#fbbf24';
-    if (lowerName.includes('orange') || lowerName.includes('оранж')) return '#f97316';
-    if (lowerName.includes('purple') || lowerName.includes('фиолет')) return '#8b5cf6';
-    return '#9ca3af';
+  // Маппинг названий цветов на hex-коды
+  const colorMap = {
+    'white': '#FFFFFF',
+    'белый': '#FFFFFF',
+    'black': '#000000',
+    'черный': '#000000',
+    'gray': '#6b7280',
+    'grey': '#6b7280',
+    'серый': '#6b7280',
+    'silver': '#c0c0c0',
+    'серебр': '#c0c0c0',
+    'blue': '#3b82f6',
+    'синий': '#3b82f6',
+    'red': '#ef4444',
+    'красный': '#ef4444',
+    'green': '#10b981',
+    'зеленый': '#10b981',
+    'brown': '#92400e',
+    'коричневый': '#92400e',
+    'beige': '#d4b5a0',
+    'бежевый': '#d4b5a0',
+    'gold': '#fbbf24',
+    'золот': '#fbbf24',
+    'orange': '#f97316',
+    'оранж': '#f97316',
+    'purple': '#8b5cf6',
+    'фиолет': '#8b5cf6'
   };
   
-  // Подготовка данных
-  const colorData = Object.entries(colorStats)
+  // Получаем цвет по названию
+  const getColorCode = (colorName) => {
+    const lowerName = colorName.toLowerCase();
+    for (const [key, value] of Object.entries(colorMap)) {
+      if (lowerName.includes(key)) return value;
+    }
+    return '#9ca3af'; // Дефолтный серый
+  };
+  
+  // Определяем цвет текста для фона
+  const getTextColor = (bgColor) => {
+    // Светлые цвета, на которых нужен темный текст
+    const lightColors = ['#FFFFFF', '#c0c0c0', '#d4b5a0', '#fbbf24', '#f97316'];
+    const isLightBg = lightColors.includes(bgColor);
+    
+    if (isDark) {
+      // В темной теме: на светлом фоне - темный текст, на темном - светлый
+      return isLightBg ? '#1e293b' : '#f3f4f6';
+    } else {
+      // В светлой теме: на светлом фоне - темный текст, на темном - белый
+      return isLightBg ? '#1e293b' : '#ffffff';
+    }
+  };
+  
+  // Подготовка данных для графика
+  const chartData = Object.entries(colorStats)
     .sort((a, b) => b[1].count - a[1].count)
     .slice(0, 12)
     .map(([name, stats]) => ({
@@ -206,71 +240,63 @@ const ColorDistributionChart = ({ colorStats, totalSales }) => {
       percent: ((stats.count / totalSales) * 100).toFixed(1)
     }));
   
-  // Кастомный контент для Treemap
-  const CustomTreemapContent = ({ x, y, width, height, name, value, color, percent }) => {
+  // Рендер содержимого ячейки
+  const CustomCell = ({ x, y, width, height, name, value, color, percent }) => {
+    const showText = width > 60 && height > 40;
     const fontSize = width > 100 ? 14 : width > 60 ? 12 : 10;
-    const showDetails = width > 60 && height > 40;
+    const textColor = getTextColor(color);
     
     return (
       <g>
+        {/* Основной прямоугольник */}
         <rect
           x={x}
           y={y}
           width={width}
           height={height}
-          style={{
-            fill: color,
-            stroke: isDark ? '#1f2937' : '#e5e7eb',
-            strokeWidth: 2,
-            opacity: 0.9
-          }}
+          fill={color}
+          stroke={isDark ? '#374151' : '#e5e7eb'}
+          strokeWidth={2}
         />
-        {color === '#FFFFFF' && (
-          <rect
-            x={x}
-            y={y}
-            width={width}
-            height={height}
-            style={{
-              fill: 'url(#whiteGradient)',
-              stroke: isDark ? '#1f2937' : '#e5e7eb',
-              strokeWidth: 2
-            }}
-          />
-        )}
-        {showDetails && (
-          <>
+        
+        {/* Текст только если достаточно места */}
+        {showText && (
+          <g>
+            {/* Название цвета */}
             <text
               x={x + width / 2}
               y={y + height / 2 - 10}
               textAnchor="middle"
-              fill={color === '#FFFFFF' || color === '#fbbf24' || color === '#d4b5a0' ? '#000' : '#fff'}
+              fill={textColor}
               fontSize={fontSize}
               fontWeight="600"
             >
               {name}
             </text>
+            
+            {/* Процент */}
             <text
               x={x + width / 2}
               y={y + height / 2 + 10}
               textAnchor="middle"
-              fill={color === '#FFFFFF' || color === '#fbbf24' || color === '#d4b5a0' ? '#000' : '#fff'}
+              fill={textColor}
               fontSize={fontSize - 2}
-              opacity="0.8"
             >
               {percent}%
             </text>
+            
+            {/* Количество */}
             <text
               x={x + width / 2}
               y={y + height / 2 + 25}
               textAnchor="middle"
-              fill={color === '#FFFFFF' || color === '#fbbf24' || color === '#d4b5a0' ? '#000' : '#fff'}
+              fill={textColor}
               fontSize={fontSize - 4}
-              opacity="0.6"
+              opacity="0.8"
             >
               {value.toLocaleString()} {t('metrics.units')}
             </text>
-          </>
+          </g>
         )}
       </g>
     );
@@ -280,32 +306,21 @@ const ColorDistributionChart = ({ colorStats, totalSales }) => {
     <div className="h-full w-full">
       <ResponsiveContainer width="100%" height="100%">
         <Treemap
-          data={colorData}
+          data={chartData}
           dataKey="value"
           aspectRatio={4/3}
-          stroke={isDark ? "#1f2937" : "#e5e7eb"}
-          content={<CustomTreemapContent />}
+          content={<CustomCell />}
         >
-          <defs>
-            <linearGradient id="whiteGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#f8f8f8" />
-              <stop offset="50%" stopColor="#ffffff" />
-              <stop offset="100%" stopColor="#e0e0e0" />
-            </linearGradient>
-          </defs>
           <Tooltip
             contentStyle={{
-              backgroundColor: isDark ? '#1f2937' : '#ffffff',
-              border: isDark ? '1px solid #374151' : '1px solid #e5e7eb',
+              backgroundColor: isDark ? '#ffffff' : '#ffffff',
+              border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
               borderRadius: '8px',
               padding: '12px',
               color: isDark ? '#f1f5f9' : '#1e293b'
             }}
-            formatter={(value, name) => [
-              <div key="tooltip">
-                <div className="font-semibold">{value.toLocaleString()} {t('metrics.units')}</div>
-                <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('reports.marketShare')}</div>
-              </div>,
+            formatter={(value, name, props) => [
+              `${value.toLocaleString()} ${t('metrics.units')} (${props.payload.percent}%)`,
               name
             ]}
           />
