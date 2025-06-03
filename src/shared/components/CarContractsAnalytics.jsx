@@ -4752,17 +4752,33 @@ const stats = getStats();
                 onClick={() => setSelectedModel(model.id)}
               />
             ))
-        ) : (
-          <div className="col-span-full p-6 bg-gray-800 rounded-lg text-center">
-            <div className="flex flex-col items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-gray-400 mb-2">{t.modelRange.noModelsAvailable}</p>
-              <p className="text-gray-500 text-sm">{t.modelRange.selectPeriodMessage}</p>
-            </div>
-          </div>
-        )}
+       ) : (
+  <div className={themeClass(
+    "col-span-full p-6 rounded-lg text-center",
+    "bg-gray-100 border border-gray-200",
+    "bg-gray-800"
+  )}>
+    <div className="flex flex-col items-center justify-center">
+      <svg xmlns="http://www.w3.org/2000/svg" className={themeClass(
+        "h-12 w-12 mb-3",
+        "text-gray-400",
+        "text-gray-500"
+      )} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <p className={themeClass(
+        "mb-2",
+        "text-gray-600",
+        "text-gray-400"
+      )}>{t.modelRange.noModelsAvailable}</p>
+      <p className={themeClass(
+        "text-sm",
+        "text-gray-500",
+        "text-gray-500"
+      )}>{t.modelRange.selectPeriodMessage}</p>
+    </div>
+  </div>
+)}
       </div>
     ) : (
       <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
