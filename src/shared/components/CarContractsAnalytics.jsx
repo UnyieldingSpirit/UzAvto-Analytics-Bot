@@ -4126,23 +4126,28 @@ const StatisticsCards = () => {
     return description;
   };
   
-  return (
+   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-      <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
+      {/* Блок "Общее количество" */}
+      <div className={themeClass(
+        "p-5 rounded-lg shadow-lg",
+        "bg-white border border-gray-200",
+        "bg-gray-800"
+      )}>
         <div className="flex justify-between items-start mb-4">
           <div>
-         <h3 className={themeClass(
-  "text-lg font-medium",
-  "text-gray-900",
-  "text-white"
-)}>
+            <h3 className={themeClass(
+              "text-lg font-medium",
+              "text-gray-900",
+              "text-white"
+            )}>
               {getMetricName()}{getFilterDescription()}
             </h3>
-          <p className={themeClass(
-  "text-sm mt-1",
-  "text-gray-600",
-  "text-gray-400"
-)}>
+            <p className={themeClass(
+              "text-sm mt-1",
+              "text-gray-600",
+              "text-gray-400"
+            )}>
               {t.stats.periodData
                 .replace('{{startDate}}', formatDate(startDate))
                 .replace('{{endDate}}', formatDate(endDate))}
@@ -4155,31 +4160,44 @@ const StatisticsCards = () => {
                 {t.stats.loading}<LoadingDots />
               </p>
             ) : (
-              <p className="text-2xl font-bold">{stats.count.toLocaleString(currentLocale === 'ru' ? 'ru-RU' : 'uz-UZ')}</p>
+              <p className={themeClass(
+                "text-2xl font-bold",
+                "text-gray-900",
+                "text-white"
+              )}>{stats.count.toLocaleString(currentLocale === 'ru' ? 'ru-RU' : 'uz-UZ')}</p>
             )}
           </div>
         </div>
-        <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
+        <div className={themeClass(
+          "w-full h-2 rounded-full overflow-hidden",
+          "bg-gray-200",
+          "bg-gray-700"
+        )}>
           <div className={`h-full rounded-full ${isCalculating ? 'bg-blue-500/50 animate-pulse' : 'bg-blue-500'}`} 
                style={{ width: '70%' }}></div>
         </div>
       </div>
      
-      <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
+      {/* Блок "Общая сумма" */}
+      <div className={themeClass(
+        "p-5 rounded-lg shadow-lg",
+        "bg-white border border-gray-200",
+        "bg-gray-800"
+      )}>
         <div className="flex justify-between items-start mb-4">
           <div>
-           <h3 className={themeClass(
-  "text-lg font-medium",
-  "text-gray-900",
-  "text-white"
-)}>
+            <h3 className={themeClass(
+              "text-lg font-medium",
+              "text-gray-900",
+              "text-white"
+            )}>
               {t.stats.totalAmount}{getFilterDescription()}
             </h3>
-          <p className={themeClass(
-  "text-sm mt-1",
-  "text-gray-600",
-  "text-gray-400"
-)}>
+            <p className={themeClass(
+              "text-sm mt-1",
+              "text-gray-600",
+              "text-gray-400"
+            )}>
               {t.stats.periodData
                 .replace('{{startDate}}', formatDate(startDate))
                 .replace('{{endDate}}', formatDate(endDate))}
@@ -4192,15 +4210,19 @@ const StatisticsCards = () => {
                 {t.stats.loading}<LoadingDots />
               </p>
             ) : (
-              <p className="text-2xl font-bold">{formatCurrency(stats.amount)}</p>
+              <p className={themeClass(
+                "text-2xl font-bold",
+                "text-gray-900",
+                "text-white"
+              )}>{formatCurrency(stats.amount)}</p>
             )}
           </div>
         </div>
-<div className={themeClass(
-  "w-full h-2 rounded-full overflow-hidden",
-  "bg-gray-200",
-  "bg-gray-700"
-)}>
+        <div className={themeClass(
+          "w-full h-2 rounded-full overflow-hidden",
+          "bg-gray-200",
+          "bg-gray-700"
+        )}>
           <div className={`h-full rounded-full ${isCalculating ? 'bg-green-500/50 animate-pulse' : 'bg-green-500'}`} 
                style={{ width: '65%' }}></div>
         </div>
@@ -4783,7 +4805,11 @@ const stats = getStats();
       
 
 {selectedModel !== 'all' && apiData && (
-  <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-2 rounded-lg shadow-lg mb-6 border border-gray-700">
+  <div className={themeClass(
+    "p-2 rounded-lg shadow-lg mb-6 border",
+    "bg-gradient-to-r from-gray-100 to-gray-50 border-gray-300",
+    "bg-gradient-to-r from-gray-800 to-gray-900 border-gray-700"
+  )}>
     <div className="flex flex-row items-center gap-6">
       <img 
         src={Array.isArray(apiData) 
@@ -4798,7 +4824,11 @@ const stats = getStats();
       />
       
       <div className="flex flex-col justify-between h-full py-2">
-        <h3 className="text-2xl font-bold text-white mb-2">
+        <h3 className={themeClass(
+          "text-2xl font-bold mb-2",
+          "text-gray-900",
+          "text-white"
+        )}>
           {Array.isArray(apiData) 
             ? apiData.find(m => m.model_id === selectedModel)?.model_name 
             : apiData.model_name || t.filters.model}
@@ -4817,36 +4847,49 @@ const stats = getStats();
     </div>
   </div>
 )}
-           <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
- <ContractsYearlyComparison
+    <div className={themeClass(
+  "p-5 rounded-lg shadow-lg mb-8",
+  "bg-white border border-gray-200",
+  "bg-gray-800"
+)}>
+  <ContractsYearlyComparison
     selectedRegion={selectedRegion}
     selectedModel={selectedModel}
     activeTab={activeTab}
     currentLocale={currentLocale}
+    themeMode={themeMode} // Добавьте передачу themeMode в компонент
   />
 </div>
     
 {activeTab === 'contracts' && (
   <>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-     <div className={themeClass(
-  "p-5 rounded-lg shadow-lg",
-  "bg-white border border-gray-200",
-  "bg-gray-800"
-)}>
-        <h3 className="text-xl font-semibold mb-4">{getRegionChartTitle()}</h3>
+      <div className={themeClass(
+        "p-5 rounded-lg shadow-lg",
+        "bg-white border border-gray-200",
+        "bg-gray-800"
+      )}>
+        <h3 className={themeClass(
+          "text-xl font-semibold mb-4",
+          "text-gray-900",
+          "text-white"
+        )}>{getRegionChartTitle()}</h3>
         <div 
           ref={regionContractsRef} 
           className="w-full h-[300px]"
         ></div>
       </div>
       
-     <div className={themeClass(
-  "p-5 rounded-lg shadow-lg",
-  "bg-white border border-gray-200",
-  "bg-gray-800"
-)}>
-        <h3 className="text-xl font-semibold mb-4">{getModelChartTitle()}</h3>
+      <div className={themeClass(
+        "p-5 rounded-lg shadow-lg",
+        "bg-white border border-gray-200",
+        "bg-gray-800"
+      )}>
+        <h3 className={themeClass(
+          "text-xl font-semibold mb-4",
+          "text-gray-900",
+          "text-white"
+        )}>{getModelChartTitle()}</h3>
         <div 
           ref={modelContractsRef} 
           className="w-full h-[300px]"
@@ -4854,8 +4897,17 @@ const stats = getStats();
       </div>
     </div>
     
-    <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8 h-[400px]">
-      <h3 className="text-xl font-semibold mb-4">{getTimelineChartTitle()}</h3>
+    {/* График динамики */}
+    <div className={themeClass(
+      "p-5 rounded-lg shadow-lg mb-8 h-[400px]",
+      "bg-white border border-gray-200",
+      "bg-gray-800"
+    )}>
+      <h3 className={themeClass(
+        "text-xl font-semibold mb-4",
+        "text-gray-900",
+        "text-white"
+      )}>{getTimelineChartTitle()}</h3>
       <div 
         ref={timelineContractsRef} 
         className="w-full h-[300px]"
@@ -4864,260 +4916,383 @@ const stats = getStats();
   </>
 )}
     
-    {activeTab === 'sales' && (
-      <>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-            <h3 className="text-xl font-semibold mb-4">{getRegionChartTitle()}</h3>
-            <div 
-              ref={regionSalesRef} 
-              className="w-full h-[300px]"
-            ></div>
-          </div>
-          
-          <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-            <h3 className="text-xl font-semibold mb-4">{getModelChartTitle()}</h3>
-            <div 
-              ref={modelSalesRef} 
-              className="w-full h-[300px]"
-            ></div>
-          </div>
-        </div>
-        
-        <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
-          <h3 className="text-xl font-semibold mb-4">{getTimelineChartTitle()}</h3>
-          <div 
-            ref={timelineSalesRef} 
-            className="w-full h-[300px]"
-          ></div>
-        </div>
-      </>
-    )}
+{activeTab === 'sales' && (
+  <>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className={themeClass(
+        "p-5 rounded-lg shadow-lg",
+        "bg-white border border-gray-200",
+        "bg-gray-800"
+      )}>
+        <h3 className={themeClass(
+          "text-xl font-semibold mb-4",
+          "text-gray-900",
+          "text-white"
+        )}>{getRegionChartTitle()}</h3>
+        <div 
+          ref={regionSalesRef} 
+          className="w-full h-[300px]"
+        ></div>
+      </div>
+      
+      <div className={themeClass(
+        "p-5 rounded-lg shadow-lg",
+        "bg-white border border-gray-200",
+        "bg-gray-800"
+      )}>
+        <h3 className={themeClass(
+          "text-xl font-semibold mb-4",
+          "text-gray-900",
+          "text-white"
+        )}>{getModelChartTitle()}</h3>
+        <div 
+          ref={modelSalesRef} 
+          className="w-full h-[300px]"
+        ></div>
+      </div>
+    </div>
     
-    {activeTab === 'stock' && (
-      <>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-            <h3 className="text-xl font-semibold mb-4">{getRegionChartTitle()}</h3>
-            <div 
-              ref={regionStockRef} 
-              className="w-full h-[300px]"
-            ></div>
-          </div>
-          
-          <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-            <h3 className="text-xl font-semibold mb-4">{getModelChartTitle()}</h3>
-            <div 
-              ref={modelStockRef} 
-              className="w-full h-[300px]"
-            ></div>
-          </div>
-        </div>
-        
-        <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
-          <h3 className="text-xl font-semibold mb-4">{getTimelineChartTitle()}</h3>
-          <div 
-            ref={stockTrendRef} 
-            className="w-full h-[300px]"
-          ></div>
-        </div>
-      </>
-    )}
+    <div className={themeClass(
+      "p-5 rounded-lg shadow-lg mb-8",
+      "bg-white border border-gray-200",
+      "bg-gray-800"
+    )}>
+      <h3 className={themeClass(
+        "text-xl font-semibold mb-4",
+        "text-gray-900",
+        "text-white"
+      )}>{getTimelineChartTitle()}</h3>
+      <div 
+        ref={timelineSalesRef} 
+        className="w-full h-[300px]"
+      ></div>
+    </div>
+  </>
+)}
+    
+ {activeTab === 'stock' && (
+  <>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className={themeClass(
+        "p-5 rounded-lg shadow-lg",
+        "bg-white border border-gray-200",
+        "bg-gray-800"
+      )}>
+        <h3 className={themeClass(
+          "text-xl font-semibold mb-4",
+          "text-gray-900",
+          "text-white"
+        )}>{getRegionChartTitle()}</h3>
+        <div 
+          ref={regionStockRef} 
+          className="w-full h-[300px]"
+        ></div>
+      </div>
+      
+      <div className={themeClass(
+        "p-5 rounded-lg shadow-lg",
+        "bg-white border border-gray-200",
+        "bg-gray-800"
+      )}>
+        <h3 className={themeClass(
+          "text-xl font-semibold mb-4",
+          "text-gray-900",
+          "text-white"
+        )}>{getModelChartTitle()}</h3>
+        <div 
+          ref={modelStockRef} 
+          className="w-full h-[300px]"
+        ></div>
+      </div>
+    </div>
+    
+    <div className={themeClass(
+      "p-5 rounded-lg shadow-lg mb-8",
+      "bg-white border border-gray-200",
+      "bg-gray-800"
+    )}>
+      <h3 className={themeClass(
+        "text-xl font-semibold mb-4",
+        "text-gray-900",
+        "text-white"
+      )}>{getTimelineChartTitle()}</h3>
+      <div 
+        ref={stockTrendRef} 
+        className="w-full h-[300px]"
+      ></div>
+    </div>
+  </>
+)}
     
     {/* Новые разделы для новых табов */}
-    {activeTab === 'retail' && (
-      <>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-            <h3 className="text-xl font-semibold mb-4">{getRegionChartTitle()}</h3>
-            <div 
-              ref={regionContractsRef} 
-              className="w-full h-[300px]"
-            ></div>
-          </div>
-          
-          <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-            <h3 className="text-xl font-semibold mb-4">{getModelChartTitle()}</h3>
-            <div 
-              ref={modelContractsRef} 
-              className="w-full h-[300px]"
-            ></div>
-          </div>
-        </div>
-        
-        <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
-          <h3 className="text-xl font-semibold mb-4">{getTimelineChartTitle()}</h3>
-          <div 
-            ref={timelineContractsRef} 
-            className="w-full h-[300px]"
-          ></div>
-        </div>
-      </>
-    )}
+  {activeTab === 'retail' && (
+  <>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className={themeClass(
+        "p-5 rounded-lg shadow-lg",
+        "bg-white border border-gray-200",
+        "bg-gray-800"
+      )}>
+        <h3 className={themeClass(
+          "text-xl font-semibold mb-4",
+          "text-gray-900",
+          "text-white"
+        )}>{getRegionChartTitle()}</h3>
+        <div 
+          ref={regionContractsRef} 
+          className="w-full h-[300px]"
+        ></div>
+      </div>
+      
+      <div className={themeClass(
+        "p-5 rounded-lg shadow-lg",
+        "bg-white border border-gray-200",
+        "bg-gray-800"
+      )}>
+        <h3 className={themeClass(
+          "text-xl font-semibold mb-4",
+          "text-gray-900",
+          "text-white"
+        )}>{getModelChartTitle()}</h3>
+        <div 
+          ref={modelContractsRef} 
+          className="w-full h-[300px]"
+        ></div>
+      </div>
+    </div>
     
-    {activeTab === 'wholesale' && (
-      <>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-            <h3 className="text-xl font-semibold mb-4">{getRegionChartTitle()}</h3>
-            <div 
-              ref={regionContractsRef} 
-              className="w-full h-[300px]"
-            ></div>
-          </div>
-          
-          <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-            <h3 className="text-xl font-semibold mb-4">{getModelChartTitle()}</h3>
-            <div 
-              ref={modelContractsRef} 
-              className="w-full h-[300px]"
-            ></div>
-          </div>
-        </div>
-        
-        <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
-          <h3 className="text-xl font-semibold mb-4">{getTimelineChartTitle()}</h3>
-          <div 
-            ref={timelineContractsRef} 
-            className="w-full h-[300px]"
-          ></div>
-        </div>
-      </>
-    )}
+    <div className={themeClass(
+      "p-5 rounded-lg shadow-lg mb-8",
+      "bg-white border border-gray-200",
+      "bg-gray-800"
+    )}>
+      <h3 className={themeClass(
+        "text-xl font-semibold mb-4",
+        "text-gray-900",
+        "text-white"
+      )}>{getTimelineChartTitle()}</h3>
+      <div 
+        ref={timelineContractsRef} 
+        className="w-full h-[300px]"
+      ></div>
+    </div>
+  </>
+)}
     
-  {activeTab === 'promotions' && (
- <>
-   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-     <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-       <h3 className="text-xl font-semibold mb-4">{getRegionChartTitle()}</h3>
-       <div 
-         ref={regionContractsRef} 
-         className="w-full h-[300px]"
-       ></div>
-     </div>
-     
-     <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
-       <h3 className="text-xl font-semibold mb-4">{getModelChartTitle()}</h3>
-       <div 
-         ref={modelContractsRef} 
-         className="w-full h-[300px]"
-       ></div>
-     </div>
-   </div>
-   
-   <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8 mt-[100px]">
-     <h3 className="text-xl font-semibold mb-4">{getTimelineChartTitle()}</h3>
-     <div 
-       ref={timelineContractsRef} 
-       className="w-full h-[300px]"
-     ></div>
-   </div>
-   
-   <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
-     <h3 className="text-xl font-semibold mb-4">{t.promotions.typesTitle}</h3>
-     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-       {/* Рассрочка моделей Onix и Tracker (2025) */}
-       <div className="p-4 bg-gray-700 rounded-lg border-l-4 border-green-400">
-         <h4 className="text-lg font-medium text-green-400 mb-2">{t.promotions.installmentOnixTracker}</h4>
-         <div className="space-y-2 text-sm">
-           <div className="flex justify-between">
-             <span className="text-gray-300">{t.promotions.modelYear}:</span>
-             <span className="text-white font-medium">2025</span>
-           </div>
-           <div className="flex justify-between">
-             <span className="text-gray-300">{t.promotions.downPayment}:</span>
-             <span className="text-green-400 font-bold">50%</span>
-           </div>
-           <div className="flex justify-between">
-             <span className="text-gray-300">{t.promotions.installmentPeriod}:</span>
-             <span className="text-white font-medium">30 {t.promotions.months}</span>
-           </div>
-         </div>
-       </div>
+ {activeTab === 'wholesale' && (
+  <>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className={themeClass(
+        "p-5 rounded-lg shadow-lg",
+        "bg-white border border-gray-200",
+        "bg-gray-800"
+      )}>
+        <h3 className={themeClass(
+          "text-xl font-semibold mb-4",
+          "text-gray-900",
+          "text-white"
+        )}>{getRegionChartTitle()}</h3>
+        <div 
+          ref={regionContractsRef} 
+          className="w-full h-[300px]"
+        ></div>
+      </div>
+      
+      <div className={themeClass(
+        "p-5 rounded-lg shadow-lg",
+        "bg-white border border-gray-200",
+        "bg-gray-800"
+      )}>
+        <h3 className={themeClass(
+          "text-xl font-semibold mb-4",
+          "text-gray-900",
+          "text-white"
+        )}>{getModelChartTitle()}</h3>
+        <div 
+          ref={modelContractsRef} 
+          className="w-full h-[300px]"
+        ></div>
+      </div>
+    </div>
+    
+    <div className={themeClass(
+      "p-5 rounded-lg shadow-lg mb-8",
+      "bg-white border border-gray-200",
+      "bg-gray-800"
+    )}>
+      <h3 className={themeClass(
+        "text-xl font-semibold mb-4",
+        "text-gray-900",
+        "text-white"
+      )}>{getTimelineChartTitle()}</h3>
+      <div 
+        ref={timelineContractsRef} 
+        className="w-full h-[300px]"
+      ></div>
+    </div>
+  </>
+)}
+    
+ {activeTab === 'promotions' && (
+  <>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className={themeClass(
+        "p-5 rounded-lg shadow-lg",
+        "bg-white border border-gray-200",
+        "bg-gray-800"
+      )}>
+        <h3 className={themeClass(
+          "text-xl font-semibold mb-4",
+          "text-gray-900",
+          "text-white"
+        )}>{getRegionChartTitle()}</h3>
+        <div 
+          ref={regionContractsRef} 
+          className="w-full h-[300px]"
+        ></div>
+      </div>
+      
+      <div className={themeClass(
+        "p-5 rounded-lg shadow-lg",
+        "bg-white border border-gray-200",
+        "bg-gray-800"
+      )}>
+        <h3 className={themeClass(
+          "text-xl font-semibold mb-4",
+          "text-gray-900",
+          "text-white"
+        )}>{getModelChartTitle()}</h3>
+        <div 
+          ref={modelContractsRef} 
+          className="w-full h-[300px]"
+        ></div>
+      </div>
+    </div>
+    
+    <div className={themeClass(
+      "p-5 rounded-lg shadow-lg mb-8 mt-[100px]",
+      "bg-white border border-gray-200",
+      "bg-gray-800"
+    )}>
+      <h3 className={themeClass(
+        "text-xl font-semibold mb-4",
+        "text-gray-900",
+        "text-white"
+      )}>{getTimelineChartTitle()}</h3>
+      <div 
+        ref={timelineContractsRef} 
+        className="w-full h-[300px]"
+      ></div>
+    </div>
+    
+    <div className={themeClass(
+      "p-5 rounded-lg shadow-lg mb-8",
+      "bg-white border border-gray-200",
+      "bg-gray-800"
+    )}>
+      <h3 className={themeClass(
+        "text-xl font-semibold mb-4",
+        "text-gray-900",
+        "text-white"
+      )}>{t.promotions.typesTitle}</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {/* Рассрочка моделей Onix и Tracker (2025) */}
+        <div className={themeClass(
+          "p-4 rounded-lg border-l-4 border-green-400",
+          "bg-gray-100",
+          "bg-gray-700"
+        )}>
+          <h4 className="text-lg font-medium text-green-400 mb-2">{t.promotions.installmentOnixTracker}</h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className={themeClass("", "text-gray-600", "text-gray-300")}>{t.promotions.modelYear}:</span>
+              <span className={themeClass("font-medium", "text-gray-900", "text-white")}>2025</span>
+            </div>
+            <div className="flex justify-between">
+              <span className={themeClass("", "text-gray-600", "text-gray-300")}>{t.promotions.downPayment}:</span>
+              <span className="text-green-400 font-bold">50%</span>
+            </div>
+            <div className="flex justify-between">
+              <span className={themeClass("", "text-gray-600", "text-gray-300")}>{t.promotions.installmentPeriod}:</span>
+              <span className={themeClass("font-medium", "text-gray-900", "text-white")}>30 {t.promotions.months}</span>
+            </div>
+          </div>
+        </div>
 
-       {/* Рассрочка для сотрудников Узавтосаноат */}
-       <div className="p-4 bg-gray-700 rounded-lg border-l-4 border-blue-400">
-         <h4 className="text-lg font-medium text-blue-400 mb-2">{t.promotions.employeeBenefits}</h4>
-         <div className="space-y-2 text-sm">
-           <div className="flex justify-between">
-             <span className="text-gray-300">{t.promotions.organization}:</span>
-             <span className="text-white font-medium">{currentLocale === 'ru' ? 'Узавтосаноат' : 'Uzavtosanoat'}</span>
-           </div>
-           <div className="flex justify-between">
-             <span className="text-gray-300">{t.promotions.model}:</span>
-             <span className="text-white font-medium">Onix (2024)</span>
-           </div>
-           <div className="flex justify-between">
-             <span className="text-gray-300">{t.promotions.downPayment}:</span>
-             <span className="text-blue-400 font-bold">30%</span>
-           </div>
-         </div>
-       </div>
+        {/* Рассрочка для сотрудников Узавтосаноат */}
+        <div className={themeClass(
+          "p-4 rounded-lg border-l-4 border-blue-400",
+          "bg-gray-100",
+          "bg-gray-700"
+        )}>
+          <h4 className="text-lg font-medium text-blue-400 mb-2">{t.promotions.employeeBenefits}</h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className={themeClass("", "text-gray-600", "text-gray-300")}>{t.promotions.organization}:</span>
+              <span className={themeClass("font-medium", "text-gray-900", "text-white")}>{currentLocale === 'ru' ? 'Узавтосаноат' : 'Uzavtosanoat'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className={themeClass("", "text-gray-600", "text-gray-300")}>{t.promotions.model}:</span>
+              <span className={themeClass("font-medium", "text-gray-900", "text-white")}>Onix (2024)</span>
+            </div>
+            <div className="flex justify-between">
+              <span className={themeClass("", "text-gray-600", "text-gray-300")}>{t.promotions.downPayment}:</span>
+              <span className="text-blue-400 font-bold">30%</span>
+            </div>
+          </div>
+        </div>
 
-       {/* Рассрочка для "Ватанпарвар" */}
-       <div className="p-4 bg-gray-700 rounded-lg border-l-4 border-purple-400">
-         <h4 className="text-lg font-medium text-purple-400 mb-2">{t.promotions.corporateProgram}</h4>
-         <div className="space-y-2 text-sm">
-           <div className="flex justify-between">
-             <span className="text-gray-300">{t.promotions.organization}:</span>
-             <span className="text-white font-medium">{currentLocale === 'ru' ? 'Ватанпарвар' : 'Vatanparvar'}</span>
-           </div>
-           <div className="flex justify-between">
-             <span className="text-gray-300">{t.promotions.model}:</span>
-             <span className="text-white font-medium">Onix (2024)</span>
-           </div>
-           <div className="flex justify-between">
-             <span className="text-gray-300">{t.promotions.downPayment}:</span>
-             <span className="text-purple-400 font-bold">30%</span>
-           </div>
-         </div>
-       </div>
-     </div>
-
-     {/* <h3 className="text-xl font-semibold mb-4">{t.promotions.effectiveness}</h3> */}
-     {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-       <div className="p-4 bg-gray-700 rounded-lg">
-         <div className="flex items-center justify-between mb-2">
-           <span className="text-gray-300">{t.promotions.viewsConversion}</span>
-           <span className="text-green-400 font-bold">24.8%</span>
-         </div>
-         <div className="w-full bg-gray-600 h-2 rounded-full">
-           <div className="bg-green-400 h-2 rounded-full" style={{ width: '24.8%' }}></div>
-         </div>
-       </div>
-       
-       <div className="p-4 bg-gray-700 rounded-lg">
-         <div className="flex items-center justify-between mb-2">
-           <span className="text-gray-300">{t.promotions.averageDiscount}</span>
-           <span className="text-blue-400 font-bold">15.3%</span>
-         </div>
-         <div className="w-full bg-gray-600 h-2 rounded-full">
-           <div className="bg-blue-400 h-2 rounded-full" style={{ width: '15.3%' }}></div>
-         </div>
-       </div>
-       
-       <div className="p-4 bg-gray-700 rounded-lg">
-         <div className="flex items-center justify-between mb-2">
-           <span className="text-gray-300">{t.promotions.promotionsROI}</span>
-           <span className="text-purple-400 font-bold">132%</span>
-         </div>
-         <div className="w-full bg-gray-600 h-2 rounded-full">
-           <div className="bg-purple-400 h-2 rounded-full" style={{ width: '100%' }}></div>
-         </div>
-       </div>
-     </div> */}
-   </div>
- </>
+        {/* Рассрочка для "Ватанпарвар" */}
+        <div className={themeClass(
+          "p-4 rounded-lg border-l-4 border-purple-400",
+          "bg-gray-100",
+          "bg-gray-700"
+        )}>
+          <h4 className="text-lg font-medium text-purple-400 mb-2">{t.promotions.corporateProgram}</h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className={themeClass("", "text-gray-600", "text-gray-300")}>{t.promotions.organization}:</span>
+              <span className={themeClass("font-medium", "text-gray-900", "text-white")}>{currentLocale === 'ru' ? 'Ватанпарвар' : 'Vatanparvar'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className={themeClass("", "text-gray-600", "text-gray-300")}>{t.promotions.model}:</span>
+              <span className={themeClass("font-medium", "text-gray-900", "text-white")}>Onix (2024)</span>
+            </div>
+            <div className="flex justify-between">
+              <span className={themeClass("", "text-gray-600", "text-gray-300")}>{t.promotions.downPayment}:</span>
+              <span className="text-purple-400 font-bold">30%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </>
 )}
 
  
     
     {/* График возврата денежных средств */}
- <div className="bg-gray-800 p-5 rounded-lg shadow-lg mb-8">
-  <h3 className="text-xl font-semibold mb-4">{t.moneyReturn.title}</h3>
+<div className={themeClass(
+  "p-5 rounded-lg shadow-lg mb-8",
+  "bg-white border border-gray-200",
+  "bg-gray-800"
+)}>
+  <h3 className={themeClass(
+    "text-xl font-semibold mb-4",
+    "text-gray-900",
+    "text-white"
+  )}>{t.moneyReturn.title}</h3>
   <div className="flex items-center mb-3">
-    <div className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm mr-2">{t.moneyReturn.financialAnalytics}</div>
-    <div className="text-sm text-gray-400">{t.moneyReturn.subtitle}</div>
+    <div className={themeClass(
+      "px-3 py-1 rounded-full text-sm mr-2",
+      "bg-blue-500/10 text-blue-600",
+      "bg-blue-500/20 text-blue-400"
+    )}>{t.moneyReturn.financialAnalytics}</div>
+    <div className={themeClass(
+      "text-sm",
+      "text-gray-600",
+      "text-gray-400"
+    )}>{t.moneyReturn.subtitle}</div>
   </div>
   <div 
     ref={moneyReturnChartRef} 
