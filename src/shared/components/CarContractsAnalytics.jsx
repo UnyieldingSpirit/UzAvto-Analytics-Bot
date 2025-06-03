@@ -4781,40 +4781,68 @@ const stats = getStats();
 )}
       </div>
     ) : (
-      <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-        {carModels.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 divide-gray-700">
-            {carModels.map((model, index) => (
-              <div 
-                key={model.id}
-                className={`py-2 px-3 border-b border-gray-700 sm:border-r transition-colors duration-200 ${
-                  selectedModel === model.id 
-                    ? 'bg-blue-600/20 border-l-2 border-l-blue-500' 
-                    : 'hover:bg-gray-700/30'
-                }`}
-                onClick={() => setSelectedModel(model.id)}
-              >
-                <div className="flex items-center cursor-pointer truncate">
-                  <span className="text-gray-500 text-xs mr-2 w-5 flex-shrink-0">{index + 1}.</span>
-                  <span className="text-sm font-medium text-white truncate">{model.name}</span>
-                  
-                  {selectedModel === model.id && (
-                    <span className="ml-auto pl-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
+     <div className={themeClass(
+  "rounded-lg border overflow-hidden",
+  "bg-white border-gray-200",
+  "bg-gray-800 border-gray-700"
+)}>
+  {carModels.length > 0 ? (
+    <div className={themeClass(
+      "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0",
+      "divide-gray-200",
+      "divide-gray-700"
+    )}>
+      {carModels.map((model, index) => (
+        <div 
+          key={model.id}
+          className={`py-2 px-3 border-b ${themeClass(
+            "sm:border-r transition-colors duration-200",
+            "border-gray-200",
+            "border-gray-700"
+          )} ${
+            selectedModel === model.id 
+              ? 'bg-blue-600/20 border-l-2 border-l-blue-500' 
+              : themeClass(
+                  "",
+                  "hover:bg-gray-50",
+                  "hover:bg-gray-700/30"
+                )
+          }`}
+          onClick={() => setSelectedModel(model.id)}
+        >
+          <div className="flex items-center cursor-pointer truncate">
+            <span className={themeClass(
+              "text-xs mr-2 w-5 flex-shrink-0",
+              "text-gray-500",
+              "text-gray-500"
+            )}>{index + 1}.</span>
+            <span className={themeClass(
+              "text-sm font-medium truncate",
+              "text-gray-900",
+              "text-white"
+            )}>{model.name}</span>
+            
+            {selectedModel === model.id && (
+              <span className="ml-auto pl-1">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </span>
+            )}
           </div>
-        ) : (
-          <div className="p-4 text-center">
-            <p className="text-gray-400 text-sm">{t.modelRange.noModelsAvailable}</p>
-          </div>
-        )}
-      </div>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <div className="p-4 text-center">
+      <p className={themeClass(
+        "text-sm",
+        "text-gray-600",
+        "text-gray-400"
+      )}>{t.modelRange.noModelsAvailable}</p>
+    </div>
+  )}
+</div>
     )}
   </div>
 )}
