@@ -5,6 +5,7 @@ import ContentReadyLoader from '../../shared/layout/ContentReadyLoader';
 import { useTranslation } from '../../hooks/useTranslation';
 import { modelTrackingTranslations } from '../../shared/components/locales/ModelTracking';
 import { useThemeStore } from '../../store/theme';
+import { useAuth } from '../../hooks/useAuth';
 
 const ModelTrackingDashboard = () => {
   const { t, currentLocale } = useTranslation(modelTrackingTranslations);
@@ -30,7 +31,10 @@ const ModelTrackingDashboard = () => {
   
   // Добавляем состояние для переключения между графиком и таблицей
   const [statusView, setStatusView] = useState('chart');
-
+  const { checkAuth } = useAuth();
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
   // Функция для загрузки данных
   const fetchData = async (isWholesale) => {
     setIsLoading(true);

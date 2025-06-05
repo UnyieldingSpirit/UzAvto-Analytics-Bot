@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { motion, AnimatePresence } from 'framer-motion';
 import { carModels, regions } from '../mocks/mock-data';
+import { useAuth } from '../../hooks/useAuth';
 
 const WarehouseAnalytics = () => {
  // Refs для графиков
@@ -13,7 +14,10 @@ const WarehouseAnalytics = () => {
  const modelInventoryChartRef = useRef(null);
  const detailsChartRef = useRef(null);
  const colorDistributionRef = useRef(null);
- 
+     const { checkAuth } = useAuth();
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
  // Состояния
  const [selectedMonth, setSelectedMonth] = useState('Апрель');
  const [selectedView, setSelectedView] = useState('общий');

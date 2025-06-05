@@ -8,13 +8,15 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { warehouseAnalyticsTranslations } from './locales/WarehouseAnalytics';
 import ContentReadyLoader from '../layout/ContentReadyLoader';
 import { useThemeStore } from '../../store/theme';
+import { useAuth } from '../../hooks/useAuth';
 
 const CarWarehouseAnalytics = () => {
-  // Получаем текущую тему
   const { mode } = useThemeStore();
   const isDark = mode === 'dark';
-  
-  // Инициализация переводов
+    const { checkAuth } = useAuth();
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
   const { t } = useTranslation(warehouseAnalyticsTranslations);
   const [lastUpdateDate, setLastUpdateDate] = useState(null);
   // Refs для графиков

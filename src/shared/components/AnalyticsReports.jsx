@@ -23,6 +23,7 @@ import {
   Pie, Cell, BarChart, Bar, Treemap, Legend, ComposedChart
 } from 'recharts';
 import { useSpring, animated } from '@react-spring/web';
+import { useAuth } from '../../hooks/useAuth';
 
 const D3CarVisualization = ({ data, selectedModel }) => {
   const svgRef = useRef();
@@ -717,7 +718,10 @@ const AnalyticsReports = () => {
   const [activeView, setActiveView] = useState('overview');
   const [selectedModel, setSelectedModel] = useState(null);
   const containerRef = useRef();
-  
+    const { checkAuth } = useAuth();
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
   // Загрузка данных
   useEffect(() => {
     const fetchData = async () => {

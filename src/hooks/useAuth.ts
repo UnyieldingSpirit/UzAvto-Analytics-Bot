@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import axios from 'axios';
 
 interface UseAuthReturn {
@@ -19,6 +19,7 @@ export function useAuth(): UseAuthReturn {
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const router = useRouter();
+    const pathname = usePathname();
 
     useEffect(() => {
         // Проверяем статус авторизации при инициализации
@@ -28,9 +29,15 @@ export function useAuth(): UseAuthReturn {
             setIsAuthenticated(true);
             // Устанавливаем токен в axios по умолчанию
             axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+        } else {
+            // Если нет токена и мы не на странице авторизации - редиректим
+            const publicPaths = ['/auth', '/onboarding'];
+            if (!publicPaths.includes(pathname)) {
+                router.push('/auth');
+            }
         }
         setLoading(false);
-    }, []);
+    }, [pathname, router]);
 
     const login = async (username: string, password: string): Promise<boolean> => {
         setLoading(true);
@@ -77,8 +84,12 @@ export function useAuth(): UseAuthReturn {
     const checkAuth = () => {
         const storedToken = localStorage.getItem('authToken');
         if (!storedToken) {
-            logout();
-            return false;
+            // Если нет токена и мы не на публичной странице - делаем logout
+            const publicPaths = ['/auth', '/onboarding'];
+            if (!publicPaths.includes(pathname)) {
+                logout();
+                return false;
+            }
         }
         return true;
     };

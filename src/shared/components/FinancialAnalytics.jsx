@@ -8,6 +8,7 @@ import { useThemeStore } from '../../store/theme';
 
 import { useTranslation } from '../../hooks/useTranslation';
 import { financialAnalyticsLocale } from '../components/locales/financialAnalytics';
+import { useAuth } from '../../hooks/useAuth';
 
 // Массив месяцев для отображения
 
@@ -42,7 +43,11 @@ export default function EnhancedFinancialAnalytics() {
   all: [],
   retail: [],
   wholesale: []
-});
+  });
+    const { checkAuth } = useAuth();
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
 const [isLoadingDailySales, setIsLoadingDailySales] = useState(false);
 const [tableDateStart, setTableDateStart] = useState(apiStartDate);
 const [tableDateEnd, setTableDateEnd] = useState(apiEndDate);

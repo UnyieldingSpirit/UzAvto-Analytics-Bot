@@ -17,14 +17,17 @@ import ContentReadyLoader from '../../layout/ContentReadyLoader';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { contractsAnalyticsTranslations } from '../locales/ContractsAnalyticsDashboard';
 import { useThemeStore } from '../../../store/theme';
+import { useAuth } from '../../../hooks/useAuth';
 
 function ContractsAnalyticsDashboard() {
-  // Инициализация переводов и темы
   const { t, currentLocale } = useTranslation(contractsAnalyticsTranslations);
   const { mode } = useThemeStore();
   const isDark = mode === 'dark';
+  const { checkAuth } = useAuth();
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
   
-  // Основные состояния
   const [selectedPeriod, setSelectedPeriod] = useState('year');
   const [periodData, setPeriodData] = useState([]);
   const [selectedModel, setSelectedModel] = useState('all');

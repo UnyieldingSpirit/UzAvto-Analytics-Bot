@@ -76,19 +76,19 @@ export default function AuthForm() {
       <div className={`absolute inset-0 transition-colors duration-300 ${
         isDark 
           ? 'bg-gradient-to-br from-gray-900 to-gray-800' 
-          : 'bg-gradient-to-br from-slate-900 to-blue-900'
+          : 'bg-gradient-to-br from-blue-50 to-indigo-100'
       } -z-10`}></div>
       
       {/* Декоративные элементы фона */}
       <div className="absolute inset-0 overflow-hidden -z-5">
         <div className={`absolute top-[10%] right-[20%] w-64 h-64 ${
-          isDark ? 'bg-blue-800/10' : 'bg-blue-600/10'
+          isDark ? 'bg-blue-800/10' : 'bg-blue-500/10'
         } rounded-full blur-3xl`}></div>
         <div className={`absolute bottom-[30%] left-[10%] w-72 h-72 ${
-          isDark ? 'bg-indigo-800/10' : 'bg-indigo-600/10'
+          isDark ? 'bg-indigo-800/10' : 'bg-indigo-500/10'
         } rounded-full blur-3xl`}></div>
         <div className={`absolute top-[40%] left-[25%] w-80 h-80 ${
-          isDark ? 'bg-indigo-700/10' : 'bg-indigo-500/10'
+          isDark ? 'bg-indigo-700/10' : 'bg-indigo-400/10'
         } rounded-full blur-3xl`}></div>
       </div>
       
@@ -98,29 +98,29 @@ export default function AuthForm() {
         <motion.div 
           className={`${
             isDark 
-              ? 'bg-gray-800/50' 
-              : 'bg-white/5'
-          } backdrop-blur-md p-8 sm:p-10 rounded-3xl shadow-2xl border ${
-            isDark 
-              ? 'border-gray-700/50' 
-              : 'border-white/10'
-          } overflow-hidden relative`}
+              ? 'bg-gray-800/50 border-gray-700/50' 
+              : 'bg-white/90 border-gray-200'
+          } backdrop-blur-md p-8 sm:p-10 rounded-3xl shadow-2xl border overflow-hidden relative`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
           {/* Декоративный элемент */}
           <div className={`absolute -right-20 -top-20 w-40 h-40 ${
-            isDark ? 'bg-blue-800/20' : 'bg-blue-600/20'
+            isDark ? 'bg-blue-800/20' : 'bg-blue-500/20'
           } rounded-full blur-2xl`}></div>
           <div className={`absolute -left-20 -bottom-20 w-40 h-40 ${
-            isDark ? 'bg-indigo-800/20' : 'bg-indigo-600/20'
+            isDark ? 'bg-indigo-800/20' : 'bg-indigo-500/20'
           } rounded-full blur-2xl`}></div>
           
           {/* Логотип */}
           <div className="mb-8 flex justify-center">
             <div className="relative w-16 h-16 flex items-center justify-center">
-              <div className="absolute inset-0 bg-gradient-to-tr from-blue-600 to-indigo-700 rounded-xl rotate-45"></div>
+              <div className={`absolute inset-0 ${
+                isDark 
+                  ? 'bg-gradient-to-tr from-blue-600 to-indigo-700' 
+                  : 'bg-gradient-to-tr from-blue-500 to-indigo-600'
+              } rounded-xl rotate-45`}></div>
               <svg 
                 className="relative z-10" 
                 width="32" 
@@ -139,10 +139,10 @@ export default function AuthForm() {
           {/* Заголовок */}
           <div className="text-center mb-8">
             <h1 className={`text-2xl font-bold ${
-              isDark ? 'text-gray-100' : 'text-white'
+              isDark ? 'text-gray-100' : 'text-gray-900'
             } mb-1`}>Вход в UzAvtoAnalytics</h1>
             <p className={`${
-              isDark ? 'text-gray-400' : 'text-blue-200/60'
+              isDark ? 'text-gray-400' : 'text-gray-600'
             } text-sm`}>Введите данные для доступа к системе</p>
           </div>
           
@@ -152,11 +152,9 @@ export default function AuthForm() {
               <motion.div 
                 className={`py-3 px-4 ${
                   isDark 
-                    ? 'bg-red-900/20 border-red-800/30' 
-                    : 'bg-red-500/10 border-red-500/30'
-                } border rounded-xl ${
-                  isDark ? 'text-red-400' : 'text-red-200'
-                } text-sm flex items-start`}
+                    ? 'bg-red-900/20 border-red-800/30 text-red-400' 
+                    : 'bg-red-50 border-red-200 text-red-700'
+                } border rounded-xl text-sm flex items-start`}
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 transition={{ duration: 0.3 }}
@@ -174,8 +172,18 @@ export default function AuthForm() {
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" stroke={isDark ? "#60a5fa" : "#93C5FD"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M20.5899 22C20.5899 18.13 16.7399 15 11.9999 15C7.25991 15 3.40991 18.13 3.40991 22" stroke={isDark ? "#60a5fa" : "#93C5FD"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" 
+                      stroke={isDark ? "#60a5fa" : "#3B82F6"} 
+                      strokeWidth="1.5" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                    />
+                    <path d="M20.5899 22C20.5899 18.13 16.7399 15 11.9999 15C7.25991 15 3.40991 18.13 3.40991 22" 
+                      stroke={isDark ? "#60a5fa" : "#3B82F6"} 
+                      strokeWidth="1.5" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </div>
                 <input
@@ -185,13 +193,9 @@ export default function AuthForm() {
                   required
                   className={`block w-full pl-12 pr-4 py-3.5 ${
                     isDark 
-                      ? 'bg-gray-700/50 border-gray-600 text-gray-100 placeholder-gray-400' 
-                      : 'bg-white/5 border-white/10 text-white placeholder-blue-200/50'
-                  } border rounded-xl focus:outline-none focus:ring-2 ${
-                    isDark 
-                      ? 'focus:ring-blue-600/50' 
-                      : 'focus:ring-blue-500/50'
-                  } focus:border-transparent transition-all duration-200`}
+                      ? 'bg-gray-700/50 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600/50' 
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500'
+                  } border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200`}
                   placeholder="Имя пользователя (латиница)"
                   value={username}
                   onChange={handleUsernameChange}
@@ -209,10 +213,15 @@ export default function AuthForm() {
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M19.0198 6.92999L19.0198 6.92999C19.6498 7.55999 20.0098 8.40999 20.0098 9.33999V14.67C20.0098 16.99 17.9998 18.83 15.5198 18.52L15.5198 18.52C14.5398 18.38 13.4598 18.52 12.5398 18.97L12.5398 18.97C12.2098 19.13 11.7898 19.13 11.4598 18.97L11.4598 18.97C10.5398 18.52 9.45976 18.38 8.47976 18.52L8.47976 18.52C6.00976 18.83 3.98975 16.99 3.98975 14.67V9.33999C3.98975 8.40999 4.34976 7.55999 4.97976 6.92999L4.97976 6.92999C6.60976 5.29999 9.38975 5.29999 11.0198 6.92999L11.0198 6.92999C11.5898 7.49999 12.4098 7.49999 12.9798 6.92999L12.9798 6.92999C14.6098 5.29999 17.3898 5.29999 19.0198 6.92999Z" stroke={isDark ? "#60a5fa" : "#93C5FD"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M9.05078 11.87V14.75" stroke={isDark ? "#60a5fa" : "#93C5FD"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M12 10.5V14.75" stroke={isDark ? "#60a5fa" : "#93C5FD"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M14.9492 11.87V14.75" stroke={isDark ? "#60a5fa" : "#93C5FD"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M19.0198 6.92999L19.0198 6.92999C19.6498 7.55999 20.0098 8.40999 20.0098 9.33999V14.67C20.0098 16.99 17.9998 18.83 15.5198 18.52L15.5198 18.52C14.5398 18.38 13.4598 18.52 12.5398 18.97L12.5398 18.97C12.2098 19.13 11.7898 19.13 11.4598 18.97L11.4598 18.97C10.5398 18.52 9.45976 18.38 8.47976 18.52L8.47976 18.52C6.00976 18.83 3.98975 16.99 3.98975 14.67V9.33999C3.98975 8.40999 4.34976 7.55999 4.97976 6.92999L4.97976 6.92999C6.60976 5.29999 9.38975 5.29999 11.0198 6.92999L11.0198 6.92999C11.5898 7.49999 12.4098 7.49999 12.9798 6.92999L12.9798 6.92999C14.6098 5.29999 17.3898 5.29999 19.0198 6.92999Z" 
+                      stroke={isDark ? "#60a5fa" : "#3B82F6"} 
+                      strokeWidth="1.5" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                    />
+                    <path d="M9.05078 11.87V14.75" stroke={isDark ? "#60a5fa" : "#3B82F6"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 10.5V14.75" stroke={isDark ? "#60a5fa" : "#3B82F6"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M14.9492 11.87V14.75" stroke={isDark ? "#60a5fa" : "#3B82F6"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
                 <input
@@ -222,13 +231,9 @@ export default function AuthForm() {
                   required
                   className={`block w-full pl-12 pr-12 py-3.5 ${
                     isDark 
-                      ? 'bg-gray-700/50 border-gray-600 text-gray-100 placeholder-gray-400' 
-                      : 'bg-white/5 border-white/10 text-white placeholder-blue-200/50'
-                  } border rounded-xl focus:outline-none focus:ring-2 ${
-                    isDark 
-                      ? 'focus:ring-blue-600/50' 
-                      : 'focus:ring-blue-500/50'
-                  } focus:border-transparent transition-all duration-200`}
+                      ? 'bg-gray-700/50 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600/50' 
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500'
+                  } border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200`}
                   placeholder="Пароль"
                   value={password}
                   onChange={handlePasswordChange}
@@ -242,7 +247,7 @@ export default function AuthForm() {
                 <button
                   type="button"
                   className={`absolute inset-y-0 right-0 pr-3 flex items-center ${
-                    isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-300 hover:text-blue-200'
+                    isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
                   } transition-colors`}
                   onClick={togglePasswordVisibility}
                 >
@@ -263,7 +268,7 @@ export default function AuthForm() {
                   )}
                 </button>
               </div>
-              <p className={`mt-2 text-xs ${isDark ? 'text-gray-400' : 'text-blue-200/60'}`}>
+              <p className={`mt-2 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                 Используйте только латинские буквы и цифры
               </p>
             </div>
@@ -277,11 +282,11 @@ export default function AuthForm() {
                   className={`h-4 w-4 rounded ${
                     isDark 
                       ? 'bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-600/50' 
-                      : 'bg-white/5 border-blue-300/30 text-blue-500 focus:ring-blue-500/50'
+                      : 'bg-white border-gray-300 text-blue-600 focus:ring-blue-500'
                   }`}
                 />
                 <label htmlFor="remember-me" className={`ml-2 block text-sm ${
-                  isDark ? 'text-gray-300' : 'text-blue-200'
+                  isDark ? 'text-gray-300' : 'text-gray-700'
                 }`}>
                   Запомнить меня
                 </label>
@@ -291,7 +296,13 @@ export default function AuthForm() {
             <motion.button
               type="submit"
               disabled={isLoading || loading}
-              className="relative w-full flex justify-center items-center py-3 px-4 mt-6 rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70 transition-all duration-200 overflow-hidden group"
+              className={`relative w-full flex justify-center items-center py-3 px-4 mt-6 rounded-xl text-white ${
+                isDark 
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800' 
+                  : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700'
+              } focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                isDark ? 'focus:ring-blue-500' : 'focus:ring-blue-500 focus:ring-offset-gray-50'
+              } disabled:opacity-70 transition-all duration-200 overflow-hidden group`}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
@@ -313,19 +324,19 @@ export default function AuthForm() {
           
           {/* Разделитель */}
           <div className="mt-6 mb-4 flex items-center justify-center">
-            <hr className={`w-full border-t ${isDark ? 'border-gray-600' : 'border-white/10'}`} />
+            <hr className={`w-full border-t ${isDark ? 'border-gray-600' : 'border-gray-300'}`} />
             <Link href="/onboarding" className={`mx-4 text-xs ${
-              isDark ? 'text-gray-400 hover:text-gray-300' : 'text-blue-200 hover:text-blue-300'
+              isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-700'
             } whitespace-nowrap transition-colors flex items-center`}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-1">
                 <path d="M8.5 5L15.5 12L8.5 19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
               Информация о системе
             </Link>
-            <hr className={`w-full border-t ${isDark ? 'border-gray-600' : 'border-white/10'}`} />
+            <hr className={`w-full border-t ${isDark ? 'border-gray-600' : 'border-gray-300'}`} />
           </div>
           
-          <p className={`text-center ${isDark ? 'text-gray-500' : 'text-blue-200/40'} text-xs`}>
+          <p className={`text-center ${isDark ? 'text-gray-500' : 'text-gray-400'} text-xs`}>
             © 2025 UzAvtoAnalytics • Защищено шифрованием
           </p>
         </motion.div>

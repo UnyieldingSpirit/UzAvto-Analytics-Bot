@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { motion, AnimatePresence } from 'framer-motion';
 import { carModels, regions } from '../mocks/mock-data';
+import { useAuth } from '../../hooks/useAuth';
 
 const WarehouseDashboard = () => {
   // Refs для графиков
@@ -11,7 +12,10 @@ const WarehouseDashboard = () => {
   const modelDistributionRef = useRef(null);
   const colorDistributionRef = useRef(null);
   const configDistributionRef = useRef(null);
-  
+      const { checkAuth } = useAuth();
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
   // Состояния
   const [selectedModel, setSelectedModel] = useState(null);
   const [selectedRegion, setSelectedRegion] = useState('all');

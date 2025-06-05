@@ -2,13 +2,17 @@ import React, { useRef, useEffect, useState } from 'react';
 import * as d3 from 'd3';
 import axios from 'axios';
 import { contractsYearlyComparisonTranslations } from './locales/ContractsYearlyComparison';
+import { useAuth } from '../../hooks/useAuth';
 
 const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab, currentLocale }) => {
   const chartRef = useRef(null);
   const [chartData, setChartData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+    const { checkAuth } = useAuth();
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
   // Получаем переводы
   const t = contractsYearlyComparisonTranslations[currentLocale];
   

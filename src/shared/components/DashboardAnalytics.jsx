@@ -4,6 +4,7 @@ import {
   AlertTriangle, RefreshCcw, ArrowRight, MapPin, Car, 
   LineChart, BarChart3, Calendar 
 } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 const DashboardAnalytics = ({ selectedModel = null }) => {
   const [loading, setLoading] = useState(true);
@@ -23,7 +24,10 @@ const DashboardAnalytics = ({ selectedModel = null }) => {
     start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   });
-  
+    const { checkAuth } = useAuth();
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
   // Флаг для предотвращения повторных запросов
   const dataLoaded = useRef(false);
   

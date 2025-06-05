@@ -9,7 +9,7 @@ import ContentReadyLoader from '../../shared/layout/ContentReadyLoader';
 import { useTranslation } from "../../hooks/useTranslation";
 import { statisticsTranslations } from '../../shared/components/locales/Statistics';
 import { useThemeStore } from '../../store/theme';
-
+import { useAuth } from '../../hooks/useAuth';
 export default function Statistics() {
   // State variables
   const [isLoading, setIsLoading] = useState(true);
@@ -20,7 +20,10 @@ export default function Statistics() {
   const [animateCards, setAnimateCards] = useState(true);
   const [showAllSalespeople, setShowAllSalespeople] = useState(false);
   const [hoveredSalesperson, setHoveredSalesperson] = useState(null);
-  
+    const { checkAuth } = useAuth();
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
   const [data, setData] = useState({
     modelData: [],
     dealerData: [],

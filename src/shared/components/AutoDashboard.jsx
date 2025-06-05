@@ -13,13 +13,17 @@ import { productionDashboardTranslations } from './locales/ProductionDashboard';
 import { useTranslation } from '../../hooks/useTranslation';
 import ContentReadyLoader from '../layout/ContentReadyLoader';
 import { useThemeStore } from '../../store/theme';
+import { useAuth } from '../../hooks/useAuth';
 
 const ProductionDashboard = () => {
   // Инициализация переводов и темы
   const { t, currentLocale } = useTranslation(productionDashboardTranslations);
   const { mode } = useThemeStore();
   const isDark = mode === 'dark';
-  
+    const { checkAuth } = useAuth();
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
   // Состояния для управления фильтрами
   const [period, setPeriod] = useState('year');
   const [year, setYear] = useState('2025'); // Установлен 2025 год по умолчанию

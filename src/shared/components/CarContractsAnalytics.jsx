@@ -9,6 +9,7 @@ import ContractsYearlyComparison from './ContractsYearlyComparison';
 import { useLanguageStore } from '../../store/language';
 import { carContractsAnalyticsTranslations } from './locales/CarContractsAnalytics';
 import { useThemeStore } from '../../store/theme';
+import { useAuth } from '../../hooks/useAuth';
 
 const CarContractsAnalytics = () => {
   const [activeTab, setActiveTab] = useState('contracts');
@@ -41,6 +42,10 @@ const CarContractsAnalytics = () => {
   const [yearlyDataLoading, setYearlyDataLoading] = useState(false);
   const carColors = ['Белый', 'Черный', 'Серебряный', 'Красный', 'Синий', 'Зеленый'];
   const carModifications = ['Стандарт', 'Комфорт', 'Люкс', 'Премиум', 'Спорт'];
+    const { checkAuth } = useAuth();
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
   const getYearDateRange = (year) => {
     return {
      beginDate: `01.01.${year}`,

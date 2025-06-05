@@ -10,13 +10,17 @@ import DashboardAnalytics from './DashboardAnalytics';
 import { useTranslation } from '../../hooks/useTranslation';
 import { dashboardTranslations } from '../../shared/components/locales/SalesDashboard';
 import { useThemeStore } from '../../store/theme';
+import { useAuth } from '../../hooks/useAuth';
 
 const SalesDashboard = () => {
   // Инициализация переводов и темы
   const { t, currentLocale } = useTranslation(dashboardTranslations);
   const { mode } = useThemeStore();
   const isDark = mode === 'dark';
-  
+    const { checkAuth } = useAuth();
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
   const [activeDetailLevel, setActiveDetailLevel] = useState(0);
   const [selectedStatus, setSelectedStatus] = useState(null);
   const [selectedRegion, setSelectedRegion] = useState(null);

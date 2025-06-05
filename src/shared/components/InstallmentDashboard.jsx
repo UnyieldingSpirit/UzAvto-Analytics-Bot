@@ -6,6 +6,7 @@ import ContentReadyLoader from '../../shared/layout/ContentReadyLoader';
 import { useTranslation } from '../../hooks/useTranslation';
 import { installmentDashboardTranslations } from '../../shared/components/locales/InstallmentDashboard';
 import { useThemeStore } from '../../store/theme';
+import { useAuth } from '../../hooks/useAuth';
 
 const InstallmentDashboard = () => {
   // Получаем текущую тему
@@ -19,7 +20,10 @@ const InstallmentDashboard = () => {
   const monthlyTrendsRef = useRef(null);
   const regionChartRef = useRef(null);
   const overdueHistoryRef = useRef(null); // Новый ref для графика истории просрочек
-
+  const { checkAuth } = useAuth();
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
   // Используем хук локализации
   const { t } = useTranslation(installmentDashboardTranslations);
 
