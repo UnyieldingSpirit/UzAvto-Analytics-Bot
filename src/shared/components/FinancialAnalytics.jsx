@@ -105,21 +105,9 @@ const fetchDailySalesData = async () => {
   setIsLoadingDailySales(true);
   
   try {
-    // Получаем первое число текущего месяца и текущую дату
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const currentDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    // Форматируем даты в формат DD.MM.YYYY для API
-    const formatDate = (date) => {
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      return `${day}.${month}.${year}`;
-    };
-    
-    const startDateFormatted = formatDate(firstDayOfMonth);
-    const endDateFormatted = formatDate(currentDay);
+    // Используем даты из полей таблицы, если они установлены
+    const startDateFormatted = tableDateStart || apiStartDate;
+    const endDateFormatted = tableDateEnd || apiEndDate;
     
     console.log(`Загрузка данных с ${startDateFormatted} по ${endDateFormatted}`);
     
@@ -324,9 +312,13 @@ const fetchDailySalesData = async () => {
       wholesale: Array.isArray(wholesaleSalesData) ? wholesaleSalesData : []
     });
     
-    // Также обновляем значения для полей ввода дат
-    setTableDateStart(startDateFormatted);
-    setTableDateEnd(endDateFormatted);
+    // Обновляем значения полей дат, если они не были установлены
+    if (!tableDateStart) {
+      setTableDateStart(startDateFormatted);
+    }
+    if (!tableDateEnd) {
+      setTableDateEnd(endDateFormatted);
+    }
     
   } catch (error) {
     console.error('Ошибка при загрузке данных о продажах:', error);
@@ -1686,57 +1678,233 @@ const renderPeriodComparisonTable = () => {
     .text(t('title'));
  
   // Функция для обновления графика по выбранному месяцу (показывает все дни месяца)
-  const updateChartByMonth = (monthKey) => {
-    if (!monthKey) {
-      updateChart(); // Показываем все данные
-      return;
+// Функция для обновления графика по выбранному месяцу (показывает реальные данные по дням)
+const updateChartByMonth = async (monthKey) => {
+  if (!monthKey) {
+    updateChart(); // Показываем все данные
+    return;
+  }
+  
+  const [year, month] = monthKey.split('-').map(Number);
+  
+  // Обновляем бейдж периода
+  const periodBadge = d3.select('#period-badge')
+    .style('display', 'block')
+    .html(`${t('filters.period')} ${MONTHS[month-1]} ${year}`);
+  
+  // Обновляем заголовок
+  d3.select('.chart-title')
+    .text(`${t('title')} - ${MONTHS[month-1]} ${year}`);
+  
+  // Показываем индикатор загрузки
+  const chartContainer = d3.select(mainChartRef.current);
+  const loader = chartContainer.append('div')
+    .attr('class', 'month-data-loader')
+    .style('position', 'absolute')
+    .style('top', '50%')
+    .style('left', '50%')
+    .style('transform', 'translate(-50%, -50%)')
+    .style('display', 'flex')
+    .style('align-items', 'center')
+    .style('justify-content', 'center')
+    .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.9)' : 'rgba(255, 255, 255, 0.9)')
+    .style('padding', '20px')
+    .style('border-radius', '8px')
+    .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.1)')
+    .html(`
+      <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mr-3"></div>
+      <span>${t('filters.loadingMonthData')}</span>
+    `);
+  
+  try {
+    // Определяем первый и последний день месяца
+    const firstDay = new Date(year, month - 1, 1);
+    const lastDay = new Date(year, month, 0);
+    
+    // Форматируем даты для API
+    const formatDate = (date) => {
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}.${month}.${year}`;
+    };
+    
+    const startDate = formatDate(firstDay);
+    const endDate = formatDate(lastDay);
+    
+    console.log(`Загрузка данных за ${MONTHS[month-1]} ${year}: ${startDate} - ${endDate}`);
+    
+    // Определяем эндпоинт в зависимости от выбранной категории
+    let endpoint = '';
+    switch(focusCategory) {
+      case 'retail':
+        endpoint = 'get_roz_payment_by_day';
+        break;
+      case 'wholesale':
+        endpoint = 'get_opt_payment_by_day';
+        break;
+      case 'all':
+      default:
+        endpoint = 'get_all_payment_by_day';
+        break;
     }
     
-    const [year, month] = monthKey.split('-').map(Number);
+    // Загружаем данные с API
+    const response = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `begin_date=${startDate}&end_date=${endDate}`
+    });
     
-    // Находим данные месяца
-    const monthData = filteredData.find(item => 
-      item.year === year && item.month === month
-    );
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
     
-    if (!monthData) return;
+    const apiData = await response.json();
+    console.log('Данные по дням месяца:', apiData);
     
-    // Обновляем бейдж периода
-    const periodBadge = d3.select('#period-badge')
-      .style('display', 'block')
-      .html(`${t('filters.period')} ${MONTHS[month-1]} ${year}`);
-    
-    // Обновляем заголовок
-    d3.select('.chart-title')
-      .text(`${t('title')} - ${MONTHS[month-1]} ${year}`);
-    
-    // Генерируем данные по дням месяца
-    const daysInMonth = new Date(year, month, 0).getDate();
+    // Преобразуем данные API в формат для графика
     const daysData = [];
     
-    for (let day = 1; day <= daysInMonth; day++) {
-      // Создаем вариативность данных на основе дня
-      const dayFactor = 0.7 + Math.sin(day / 30 * Math.PI * 2) * 0.3;
-      // Уменьшаем показатели для выходных
-      const date = new Date(year, month - 1, day);
-      const weekendFactor = (date.getDay() === 0 || date.getDay() === 6) ? 0.6 : 1;
+    // Обработка данных в зависимости от структуры ответа
+    let dailyData = [];
+    
+    if (Array.isArray(apiData)) {
+      // Если это массив (для розницы - массив моделей)
+      if (focusCategory === 'retail' && apiData.length > 0 && apiData[0].filter_by_region) {
+        // Объединяем данные по всем моделям
+        const dayMap = new Map();
+        
+        apiData.forEach(model => {
+          if (model.filter_by_region && Array.isArray(model.filter_by_region)) {
+            model.filter_by_region.forEach(dayData => {
+              if (dayData.day) {
+                if (!dayMap.has(dayData.day)) {
+                  dayMap.set(dayData.day, {
+                    day: dayData.day,
+                    amount: 0,
+                    count: 0
+                  });
+                }
+                
+                const dayEntry = dayMap.get(dayData.day);
+                
+                // Суммируем данные по регионам
+                if (Array.isArray(dayData.regions)) {
+                  dayData.regions.forEach(region => {
+                    dayEntry.amount += parseFloat(region.amount) || 0;
+                    dayEntry.count += parseInt(region.all_count) || 0;
+                  });
+                }
+              }
+            });
+          }
+        });
+        
+        dailyData = Array.from(dayMap.values());
+      } else if (apiData[0] && apiData[0].day) {
+        // Если это уже массив дней
+        dailyData = apiData;
+      }
+    } else if (apiData.filter_by_region && Array.isArray(apiData.filter_by_region)) {
+      // Если это объект с filter_by_region
+      dailyData = apiData.filter_by_region;
+    }
+    
+    // Преобразуем данные для отображения
+    dailyData.forEach(dayData => {
+      if (!dayData || !dayData.day) return;
+      
+      // Парсим дату из формата YYYY-MM-DD
+      const [yearStr, monthStr, dayStr] = dayData.day.split('-');
+      const dayNum = parseInt(dayStr);
+      
+      // Проверяем, что это нужный месяц
+      if (parseInt(yearStr) !== year || parseInt(monthStr) !== month) return;
+      
+      let dayTotal = 0;
+      let dayCount = 0;
+      
+      // Если есть регионы, суммируем их данные
+      if (Array.isArray(dayData.regions)) {
+        dayData.regions.forEach(region => {
+          dayTotal += parseFloat(region.amount) || 0;
+          dayCount += parseInt(region.all_count) || 0;
+        });
+      } else {
+        // Иначе берем данные напрямую
+        dayTotal = parseFloat(dayData.amount) || 0;
+        dayCount = parseInt(dayData.all_count) || 0;
+      }
       
       daysData.push({
         year: year,
         month: month,
-        day: day,
-        name: day.toString(), // Используем день как название
-        label: `${day}`,
-        retail: Math.round(monthData.retail / daysInMonth * dayFactor * weekendFactor),
-        wholesale: Math.round(monthData.wholesale / daysInMonth * dayFactor * weekendFactor),
-        promo: Math.round(monthData.promo / daysInMonth * dayFactor * weekendFactor),
-        total: Math.round(monthData.total / daysInMonth * dayFactor * weekendFactor)
+        day: dayNum,
+        name: dayNum.toString(),
+        label: `${dayNum}`,
+        retail: focusCategory === 'retail' ? dayTotal : 0,
+        wholesale: focusCategory === 'wholesale' ? dayTotal : 0,
+        promo: 0,
+        total: dayTotal
       });
+    });
+    
+    // Сортируем по дням
+    daysData.sort((a, b) => a.day - b.day);
+    
+    console.log(`Загружено ${daysData.length} дней с данными`);
+    
+    // Удаляем индикатор загрузки
+    loader.remove();
+    
+    // Если данных нет, показываем сообщение
+    if (daysData.length === 0) {
+      const noDataMsg = chartContainer.append('div')
+        .style('position', 'absolute')
+        .style('top', '50%')
+        .style('left', '50%')
+        .style('transform', 'translate(-50%, -50%)')
+        .style('text-align', 'center')
+        .style('color', isDarkMode ? '#9ca3af' : '#64748b')
+        .html(`
+          <div style="font-size: 1.2rem; margin-bottom: 10px;">Нет данных за ${MONTHS[month-1]} ${year}</div>
+          <div style="font-size: 0.9rem;">Попробуйте выбрать другой период</div>
+        `);
+      
+      setTimeout(() => noDataMsg.remove(), 3000);
+      return;
     }
     
-    // Обновляем график с данными по дням
+    // Обновляем график с реальными данными по дням
     updateChart(daysData, false, true);
-  };
+    
+  } catch (error) {
+    console.error('Ошибка при загрузке данных месяца:', error);
+    
+    // Удаляем индикатор загрузки
+    d3.select('.month-data-loader').remove();
+    
+    // Показываем сообщение об ошибке
+    const errorMsg = chartContainer.append('div')
+      .style('position', 'absolute')
+      .style('top', '50%')
+      .style('left', '50%')
+      .style('transform', 'translate(-50%, -50%)')
+      .style('text-align', 'center')
+      .style('color', '#ef4444')
+      .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.9)' : 'rgba(255, 255, 255, 0.9)')
+      .style('padding', '20px')
+      .style('border-radius', '8px')
+      .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.1)')
+      .html(`
+        <div style="font-size: 1.1rem; margin-bottom: 10px;">Ошибка загрузки данных</div>
+        <div style="font-size: 0.9rem;">${error.message}</div>
+      `);
+    
+    setTimeout(() => errorMsg.remove(), 5000);
+  }
+};
   
   // Функция для обновления графика по выбранному дню
   const updateChartByDay = (monthKey, day) => {
