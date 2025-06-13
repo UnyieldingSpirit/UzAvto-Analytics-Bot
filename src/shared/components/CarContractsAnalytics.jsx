@@ -10,6 +10,7 @@ import { useLanguageStore } from '../../store/language';
 import { carContractsAnalyticsTranslations } from './locales/CarContractsAnalytics';
 import { useThemeStore } from '../../store/theme';
 import { useAuth } from '../../hooks/useAuth';
+import { axiosInstance } from '../../utils/axiosConfig';
 
 const CarContractsAnalytics = () => {
   const [activeTab, setActiveTab] = useState('contracts');
@@ -197,7 +198,7 @@ const fetchAutoReturnData = async () => {
     
     console.log(`Отправка запроса auto_return за ${selectedYear} год:`, requestData);
     
-    const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
+    const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
       headers: {
         'X-Auth': `Bearer ${token}`
       }
@@ -427,7 +428,7 @@ const fetchData = async (apiUrl) => {
     };
     
     // Выполняем запрос через прокси
-    const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
+    const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
       headers: {
         'X-Auth': `Bearer ${token}`
       }
@@ -560,7 +561,7 @@ const fetchYearlyData = async (year) => {
       end_date: endDate,
     };
     
-    const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
+    const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
       headers: {
         'X-Auth': `Bearer ${token}`
       }
@@ -2992,7 +2993,7 @@ const loadMoneyReturnData = (year) => {
     console.log(`Отправка запроса возврата за ${year}:`, requestData);
     
     // Отправляем запрос через прокси
-    axios.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
+    axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
       headers: {
         'X-Auth': `Bearer ${token}`
       }
@@ -3498,7 +3499,7 @@ const fetchYearData = (year) => {
       }
     });
     
-    axios.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
+    axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
       headers: {
         'X-Auth': `Bearer ${token}`
       }

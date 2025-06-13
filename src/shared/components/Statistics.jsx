@@ -10,6 +10,7 @@ import { useTranslation } from "../../hooks/useTranslation";
 import { statisticsTranslations } from '../../shared/components/locales/Statistics';
 import { useThemeStore } from '../../store/theme';
 import { useAuth } from '../../hooks/useAuth';
+import { axiosInstance } from '../../utils/axiosConfig';
 export default function Statistics() {
   // State variables
   const [isLoading, setIsLoading] = useState(true);
@@ -119,17 +120,10 @@ export default function Statistics() {
 
     const token = localStorage.getItem('authToken');
 
-const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-Auth': `Bearer ${token}`
-  },
-  body: JSON.stringify({
+const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
     url: '/b/dashboard/infos&auto_statistics',
     begin_date: formatDateForApi(startDate),
     end_date: formatDateForApi(endDate)
-  })
 });
 
       if (!response.ok) {

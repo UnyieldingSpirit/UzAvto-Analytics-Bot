@@ -9,6 +9,7 @@ import { warehouseAnalyticsTranslations } from './locales/WarehouseAnalytics';
 import ContentReadyLoader from '../layout/ContentReadyLoader';
 import { useThemeStore } from '../../store/theme';
 import { useAuth } from '../../hooks/useAuth';
+import { axiosInstance } from '../../utils/axiosConfig';
 
 const CarWarehouseAnalytics = () => {
   const { mode } = useThemeStore();
@@ -112,7 +113,7 @@ const CarWarehouseAnalytics = () => {
         
         const token = localStorage.getItem('authToken');
 
-const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
   url: '/b/dashboard/infos&get_stock'
 }, {
   headers: {

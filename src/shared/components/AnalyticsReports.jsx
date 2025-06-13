@@ -24,6 +24,7 @@ import {
 } from 'recharts';
 import { useSpring, animated } from '@react-spring/web';
 import { useAuth } from '../../hooks/useAuth';
+import { axiosInstance } from '../../utils/axiosConfig';
 
 const D3CarVisualization = ({ data, selectedModel }) => {
   const svgRef = useRef();
@@ -347,7 +348,7 @@ const YearComparison = ({ currentData, onYearSelect }) => {
       const dataPromises = selectedYears.map(async (year) => {
         try {
           const token = localStorage.getItem('authToken');
-         const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+         const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
   url: '/b/dashboard/infos&get_modif_color',
   begin_date: `01.01.${year}`,
   end_date: `31.12.${year}`
@@ -735,7 +736,7 @@ const AnalyticsReports = () => {
         setLoading(true);
       const token = localStorage.getItem('authToken');
 
-const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
   url: '/b/dashboard/infos&get_modif_color',
   begin_date: selectedPeriod.start,
   end_date: selectedPeriod.end

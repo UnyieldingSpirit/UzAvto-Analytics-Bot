@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import TelegramWebAppInitializer from './TelegramWebAppInitializer';
 import ResponsiveNav from './ResponsiveNav';
 import ContentReadyLoader from './ContentReadyLoader';
-import { setupAxiosInterceptors } from '../../utils/axiosConfig';
+// import { setupAxiosInterceptors } from '../../utils/axiosConfig.js';
 import { useAuth } from '../../hooks/useAuth';
 import { useThemeStore } from '../../store/theme';
 
@@ -32,11 +32,11 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
   const isOnboardingPage = pathname === '/onboarding';
 
   // Настройка axios перехватчиков при монтировании
-useEffect(() => {
-    setupAxiosInterceptors(() => {
-        router.push('/auth');
-    });
-}, [router]);
+// useEffect(() => {
+//     setupAxiosInterceptors(() => {
+//         router.push('/auth');
+//     });
+// }, [router]);
 
   // Проверка авторизации
   useEffect(() => {

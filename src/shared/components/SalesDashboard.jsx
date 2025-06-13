@@ -11,6 +11,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { dashboardTranslations } from '../../shared/components/locales/SalesDashboard';
 import { useThemeStore } from '../../store/theme';
 import { useAuth } from '../../hooks/useAuth';
+import { axiosInstance } from '../../utils/axiosConfig';
 
 const SalesDashboard = () => {
   // Инициализация переводов и темы
@@ -43,67 +44,48 @@ const SalesDashboard = () => {
       return;
     }
 
+
 const fetchAllData = async () => {
   setLoading(true);
-  const token = localStorage.getItem('authToken');
   
   try {
     const [inMovementResponse, frozenResponse, notShippedResponse, deliveredResponse] = 
       await Promise.all([
-        fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "X-Auth": `Bearer ${token}`
-          },
-          body: JSON.stringify({ url: "/b/dashboard/infos&auto_movment" })
+        axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+          url: "/b/dashboard/infos&auto_movment"
         }),
-        fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "X-Auth": `Bearer ${token}`
-          },
-          body: JSON.stringify({ url: "/b/dashboard/infos&auto_frozen" })
+        axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+          url: "/b/dashboard/infos&auto_frozen"
         }),
-        fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "X-Auth": `Bearer ${token}`
-          },
-          body: JSON.stringify({ url: "/b/dashboard/infos&auto_shipped" })
+        axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+          url: "/b/dashboard/infos&auto_shipped"
         }),
-        fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "X-Auth": `Bearer ${token}`
-          },
-          body: JSON.stringify({ url: "/b/dashboard/infos&auto_delivered" })
+        axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+          url: "/b/dashboard/infos&auto_delivered"
         })
       ]);
-        
-        const inMovementData = await inMovementResponse.json();
-        const frozenData = await frozenResponse.json();
-        const notShippedData = await notShippedResponse.json();
-        const deliveredData = await deliveredResponse.json();
-        
-        setInMovementData(inMovementData);
-        setFrozenData(frozenData);
-        setNotShippedData(notShippedData);
-        setDeliveredData(deliveredData);
-        
-        console.log(t('logs.dataLoaded'));
-        
-        // Отмечаем, что данные загружены
-        dataLoaded.current = true;
-      } catch (error) {
-        console.error(t('logs.dataLoadError'), error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    
+    // С axios данные уже распарсены и находятся в .data
+    const inMovementData = inMovementResponse.data;
+    const frozenData = frozenResponse.data;
+    const notShippedData = notShippedResponse.data;
+    const deliveredData = deliveredResponse.data;
+    
+    setInMovementData(inMovementData);
+    setFrozenData(frozenData);
+    setNotShippedData(notShippedData);
+    setDeliveredData(deliveredData);
+    
+    console.log(t('logs.dataLoaded'));
+    
+    // Отмечаем, что данные загружены
+    dataLoaded.current = true;
+  } catch (error) {
+    console.error(t('logs.dataLoadError'), error);
+  } finally {
+    setLoading(false);
+  }
+};
     
     // Запускаем загрузку данных
     fetchAllData();

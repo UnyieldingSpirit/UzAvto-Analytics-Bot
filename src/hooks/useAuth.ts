@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import axios from 'axios';
+import { axiosInstance } from '../utils/axiosConfig';
 
 interface UseAuthReturn {
     isAuthenticated: boolean;
@@ -42,7 +43,7 @@ export function useAuth(): UseAuthReturn {
     const login = async (username: string, password: string): Promise<boolean> => {
         setLoading(true);
         try {
-            const response = await axios.post('https://uzavtoanalytics.uz/dashboard/auth', {
+            const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/auth', {
                 username,
                 password
             });

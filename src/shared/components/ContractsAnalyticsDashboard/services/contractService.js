@@ -1,27 +1,15 @@
+import { axiosInstance } from "../../../../utils/axiosConfig";
+
 // Функция для получения данных о контрактах
 export const fetchContractData = async (beginDate, endDate) => {
     try {
-        const token = localStorage.getItem('authToken');
-
-        const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Auth': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                url: '/b/dashboard/infos&get_all_contract_by_month',
-                begin_date: beginDate,
-                end_date: endDate
-            })
+        const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+            url: '/b/dashboard/infos&get_all_contract_by_month',
+            begin_date: beginDate,
+            end_date: endDate
         });
 
-        if (!response.ok) {
-            throw new Error(`Ошибка при получении данных: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data;
+        return response.data;
     } catch (error) {
         console.error('Ошибка при запросе данных о контрактах:', error);
         throw error;
@@ -31,32 +19,19 @@ export const fetchContractData = async (beginDate, endDate) => {
 // Функция для получения данных о контрактах по датам
 export const fetchContractDataByDate = async (beginDate, endDate) => {
     try {
-        const token = localStorage.getItem('authToken');
-
-        const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Auth': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                url: '/b/dashboard/infos&get_all_contract_by_date',
-                begin_date: beginDate,
-                end_date: endDate
-            })
+        const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+            url: '/b/dashboard/infos&get_all_contract_by_date',
+            begin_date: beginDate,
+            end_date: endDate
         });
 
-        if (!response.ok) {
-            throw new Error(`Ошибка при получении данных: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data;
+        return response.data;
     } catch (error) {
         console.error('Ошибка при запросе данных о контрактах по датам:', error);
         throw error;
     }
 };
+
 
 // Функция для обработки и подготовки данных по контрактам
 export const processContractData = (data, modelId, regionId, period) => {

@@ -6,6 +6,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { modelTrackingTranslations } from '../../shared/components/locales/ModelTracking';
 import { useThemeStore } from '../../store/theme';
 import { useAuth } from '../../hooks/useAuth';
+import { axiosInstance } from '../../utils/axiosConfig';
 
 const ModelTrackingDashboard = () => {
   const { t, currentLocale } = useTranslation(modelTrackingTranslations);
@@ -47,13 +48,8 @@ const url = isWholesale
   ? '/b/dashboard/infos&contract_state_wholesale' 
   : '/b/dashboard/infos&contract_state';
 
-const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
-  method: 'POST',
-  headers: { 
-    'Content-Type': 'application/json',
-    'X-Auth': `Bearer ${token}`
-  },
-  body: JSON.stringify({ url })
+const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+  url
 });
       const jsonData = await response.json();
       setData(jsonData);

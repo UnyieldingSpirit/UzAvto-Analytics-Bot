@@ -14,6 +14,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import ContentReadyLoader from '../layout/ContentReadyLoader';
 import { useThemeStore } from '../../store/theme';
 import { useAuth } from '../../hooks/useAuth';
+import { axiosInstance } from '../../utils/axiosConfig';
 
 const ProductionDashboard = () => {
   // Инициализация переводов и темы
@@ -83,7 +84,7 @@ const ProductionDashboard = () => {
       
      const token = localStorage.getItem('authToken');
 
-const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
   url: '/b/dashboard/infos&get_market_by_month',
   begin_date: `01.01.${year}`,
   end_date: `31.12.${year}`

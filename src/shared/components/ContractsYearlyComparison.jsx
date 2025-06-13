@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import axios from 'axios';
 import { contractsYearlyComparisonTranslations } from './locales/ContractsYearlyComparison';
 import { useAuth } from '../../hooks/useAuth';
+import { axiosInstance } from '../../utils/axiosConfig';
 
 const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab, currentLocale }) => {
   const chartRef = useRef(null);
@@ -116,7 +117,7 @@ const fetchYearData = async (year) => {
     
     try {
       console.log(t.console.requestData.replace('{{year}}', year), requestData);
-      const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
+      const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
         headers: {
           'X-Auth': `Bearer ${token}`
         }

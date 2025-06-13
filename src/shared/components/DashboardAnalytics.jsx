@@ -5,6 +5,7 @@ import {
   LineChart, BarChart3, Calendar 
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { axiosInstance } from '../../utils/axiosConfig';
 
 const DashboardAnalytics = ({ selectedModel = null }) => {
   const [loading, setLoading] = useState(true);
@@ -139,19 +140,11 @@ const DashboardAnalytics = ({ selectedModel = null }) => {
       
       // Добавляем параметр модели к запросу, если она выбрана
       const modelParam = selectedModel ? `&model_id=${selectedModel}` : '';
-      const token = localStorage.getItem('authToken');
 
-    const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-Auth': `Bearer ${token}`
-  },
-  body: JSON.stringify({
-    url: `/b/dashboard/infos&auto_analytics${modelParam}`,
-    begin_date: startDate,
-    end_date: endDate
-  })
+const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+  url: `/b/dashboard/infos&auto_analytics${modelParam}`,
+  begin_date: startDate,
+  end_date: endDate
 });
       
       if (!response.ok) {
@@ -191,17 +184,10 @@ const DashboardAnalytics = ({ selectedModel = null }) => {
       // Добавляем параметр модели к запросу, если она выбрана
       const modelParam = selectedModel ? `&model_id=${selectedModel}` : '';
       const token = localStorage.getItem('authToken');
-  const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-Auth': `Bearer ${token}`
-  },
-  body: JSON.stringify({
-    url: `/b/dashboard/infos&auto_analytics${modelParam}`,
-    begin_date: startOfYear,
-    end_date: endOfYear
-  })
+const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+  url: `/b/dashboard/infos&auto_analytics${modelParam}`,
+  begin_date: startOfYear,
+  end_date: endOfYear
 });
       
       if (!response.ok) {

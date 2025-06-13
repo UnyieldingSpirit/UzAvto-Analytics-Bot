@@ -9,6 +9,7 @@ import { useThemeStore } from '../../store/theme';
 import { useTranslation } from '../../hooks/useTranslation';
 import { financialAnalyticsLocale } from '../components/locales/financialAnalytics';
 import { useAuth } from '../../hooks/useAuth';
+import { axiosInstance } from '../../utils/axiosConfig';
 
 // Массив месяцев для отображения
 
@@ -119,6 +120,7 @@ const [tableDateEnd, setTableDateEnd] = useState(currentMonthDates.end);
     };
   };
   
+
 const fetchDailySalesData = async () => {
   setIsLoadingDailySales(true);
   
@@ -128,56 +130,39 @@ const fetchDailySalesData = async () => {
     const endDateFormatted = tableDateEnd || apiEndDate;
     
     console.log(`Загрузка данных с ${startDateFormatted} по ${endDateFormatted}`);
-    const token = localStorage.getItem('authToken');
+    
     // Загружаем данные из всех трех API-эндпоинтов параллельно
-const [allSalesResponse, retailSalesResponse, wholesaleSalesResponse] = await Promise.all([
-  fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "X-Auth": `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      url: "/b/dashboard/infos&get_all_payment_by_day",
-      begin_date: startDateFormatted,
-      end_date: endDateFormatted
-    })
-  }),
-  fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "X-Auth": `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      url: "/b/dashboard/infos&get_roz_payment_by_day",
-      begin_date: startDateFormatted,
-      end_date: endDateFormatted
-    })
-  }),
-  fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "X-Auth": `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      url: "/b/dashboard/infos&get_opt_payment_by_day",
-      begin_date: startDateFormatted,
-      end_date: endDateFormatted
-    })
-  })
-]);
+    const [allSalesResponse, retailSalesResponse, wholesaleSalesResponse] = await Promise.all([
+      axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+        url: "/b/dashboard/infos&get_all_payment_by_day",
+        begin_date: startDateFormatted,
+        end_date: endDateFormatted
+      }),
+      axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+        url: "/b/dashboard/infos&get_roz_payment_by_day",
+        begin_date: startDateFormatted,
+        end_date: endDateFormatted
+      }),
+      axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+        url: "/b/dashboard/infos&get_opt_payment_by_day",
+        begin_date: startDateFormatted,
+        end_date: endDateFormatted
+      })
+    ]);
     
-    // Проверяем успешность запросов
-    if (!allSalesResponse.ok || !retailSalesResponse.ok || !wholesaleSalesResponse.ok) {
-      throw new Error('Ошибка при получении данных от API');
+    let allSalesJsonData = allSalesResponse.data;
+    let retailSalesJsonData = retailSalesResponse.data;
+    let wholesaleSalesJsonData = wholesaleSalesResponse.data;
+    
+    if (allSalesJsonData && typeof allSalesJsonData === 'object' && 'data' in allSalesJsonData) {
+      allSalesJsonData = allSalesJsonData.data;
     }
-    
-    // Парсим ответы
-    const allSalesJsonData = await allSalesResponse.json();
-    const retailSalesJsonData = await retailSalesResponse.json();
-    const wholesaleSalesJsonData = await wholesaleSalesResponse.json();
+    if (retailSalesJsonData && typeof retailSalesJsonData === 'object' && 'data' in retailSalesJsonData) {
+      retailSalesJsonData = retailSalesJsonData.data;
+    }
+    if (wholesaleSalesJsonData && typeof wholesaleSalesJsonData === 'object' && 'data' in wholesaleSalesJsonData) {
+      wholesaleSalesJsonData = wholesaleSalesJsonData.data;
+    }
     
     console.log('Исходные данные:', { allSalesJsonData, retailSalesJsonData, wholesaleSalesJsonData });
     
@@ -186,13 +171,19 @@ const [allSalesResponse, retailSalesResponse, wholesaleSalesResponse] = await Pr
       console.log(`Обработка данных для типа: ${type}`);
       console.log("Структура данных:", data);
       
+      // Проверка на null/undefined
+      if (!data) {
+        console.warn(`Данные для типа ${type} отсутствуют`);
+        return [];
+      }
+      
       // Для общих продаж и оптовых продаж
       if (type === 'all' || type === 'wholesale') {
         // Проверяем структуру данных
         let dailyData = [];
         
         // Если данные уже представлены как массив с filter_by_region
-        if (Array.isArray(data.filter_by_region)) {
+        if (data.filter_by_region && Array.isArray(data.filter_by_region)) {
           dailyData = data.filter_by_region;
           console.log(`Используем data.filter_by_region для ${type}`);
         }
@@ -202,9 +193,21 @@ const [allSalesResponse, retailSalesResponse, wholesaleSalesResponse] = await Pr
           console.log(`Используем массив дней для ${type}`);
         }
         // Если данные представлены как массив с filter_by_region внутри первого элемента
-        else if (Array.isArray(data) && data.length > 0 && Array.isArray(data[0].filter_by_region)) {
+        else if (Array.isArray(data) && data.length > 0 && data[0].filter_by_region && Array.isArray(data[0].filter_by_region)) {
           dailyData = data[0].filter_by_region;
           console.log(`Используем data[0].filter_by_region для ${type}`);
+        }
+        // Дополнительная проверка для объекта с массивом внутри
+        else if (typeof data === 'object' && !Array.isArray(data)) {
+          // Ищем массив в объекте
+          const possibleKeys = ['filter_by_region', 'data', 'items', 'results', 'days'];
+          for (const key of possibleKeys) {
+            if (data[key] && Array.isArray(data[key])) {
+              dailyData = data[key];
+              console.log(`Используем data.${key} для ${type}`);
+              break;
+            }
+          }
         }
         
         // Обрабатываем каждый день
@@ -321,6 +324,16 @@ const [allSalesResponse, retailSalesResponse, wholesaleSalesResponse] = await Pr
           console.log(`Обработано ${allDaysData.length} дней для retail`);
           return allDaysData;
         }
+        // Дополнительная проверка для объекта с массивом моделей
+        else if (typeof data === 'object' && !Array.isArray(data)) {
+          const possibleKeys = ['models', 'data', 'items', 'results'];
+          for (const key of possibleKeys) {
+            if (data[key] && Array.isArray(data[key])) {
+              console.log(`Используем data.${key} для retail`);
+              return transformData(data[key], type);
+            }
+          }
+        }
       }
       
       // Если не сработали известные шаблоны, возвращаем пустой массив
@@ -361,6 +374,12 @@ const [allSalesResponse, retailSalesResponse, wholesaleSalesResponse] = await Pr
     
   } catch (error) {
     console.error('Ошибка при загрузке данных о продажах:', error);
+    
+    // Дополнительное логирование для отладки
+    if (error.response) {
+      console.error('Ошибка ответа:', error.response.data);
+      console.error('Статус:', error.response.status);
+    }
   } finally {
     setIsLoadingDailySales(false);
   }

@@ -7,6 +7,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { installmentDashboardTranslations } from '../../shared/components/locales/InstallmentDashboard';
 import { useThemeStore } from '../../store/theme';
 import { useAuth } from '../../hooks/useAuth';
+import { axiosInstance } from '../../utils/axiosConfig';
 
 const InstallmentDashboard = () => {
   // Получаем текущую тему
@@ -79,13 +80,8 @@ const InstallmentDashboard = () => {
       try {
       const token = localStorage.getItem('authToken');
 
-const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
-  method: 'POST',
-  headers: { 
-    'Content-Type': 'application/json',
-    'X-Auth': `Bearer ${token}`
-  },
-  body: JSON.stringify({ url: '/b/dashboard/infos&auto_installments' })
+const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+  url: '/b/dashboard/infos&auto_installments'
 });
         if (!response.ok) {
           throw new Error('Ошибка получения данных');
