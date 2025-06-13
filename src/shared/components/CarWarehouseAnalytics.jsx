@@ -110,7 +110,15 @@ const CarWarehouseAnalytics = () => {
       try {
         setLoading(true);
         
-        const response = await axios.get('https://uzavtosalon.uz/b/dashboard/infos&get_stock');
+        const token = localStorage.getItem('authToken');
+
+const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+  url: '/b/dashboard/infos&get_stock'
+}, {
+  headers: {
+    'X-Auth': `Bearer ${token}`
+  }
+});
         
         console.log('Полный ответ API:', response.data);
         

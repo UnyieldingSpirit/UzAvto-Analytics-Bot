@@ -81,10 +81,17 @@ const ProductionDashboard = () => {
         end_date: `31.12.${year}`
       });
       
-      const response = await axios.post('https://uzavtosalon.uz/b/dashboard/infos&get_market_by_month', {
-        begin_date: `01.01.${year}`,
-        end_date: `31.12.${year}`
-      });
+     const token = localStorage.getItem('authToken');
+
+const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+  url: '/b/dashboard/infos&get_market_by_month',
+  begin_date: `01.01.${year}`,
+  end_date: `31.12.${year}`
+}, {
+  headers: {
+    'X-Auth': `Bearer ${token}`
+  }
+});
       
       console.log('Получен ответ API:', response.data);
       

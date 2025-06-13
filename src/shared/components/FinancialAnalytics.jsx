@@ -128,25 +128,46 @@ const fetchDailySalesData = async () => {
     const endDateFormatted = tableDateEnd || apiEndDate;
     
     console.log(`Загрузка данных с ${startDateFormatted} по ${endDateFormatted}`);
-    
+    const token = localStorage.getItem('authToken');
     // Загружаем данные из всех трех API-эндпоинтов параллельно
-    const [allSalesResponse, retailSalesResponse, wholesaleSalesResponse] = await Promise.all([
-      fetch(`https://uzavtosalon.uz/b/dashboard/infos&get_all_payment_by_day`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `begin_date=${startDateFormatted}&end_date=${endDateFormatted}`
-      }),
-      fetch(`https://uzavtosalon.uz/b/dashboard/infos&get_roz_payment_by_day`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `begin_date=${startDateFormatted}&end_date=${endDateFormatted}`
-      }),
-      fetch(`https://uzavtosalon.uz/b/dashboard/infos&get_opt_payment_by_day`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `begin_date=${startDateFormatted}&end_date=${endDateFormatted}`
-      })
-    ]);
+const [allSalesResponse, retailSalesResponse, wholesaleSalesResponse] = await Promise.all([
+  fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "X-Auth": `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      url: "/b/dashboard/infos&get_all_payment_by_day",
+      begin_date: startDateFormatted,
+      end_date: endDateFormatted
+    })
+  }),
+  fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "X-Auth": `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      url: "/b/dashboard/infos&get_roz_payment_by_day",
+      begin_date: startDateFormatted,
+      end_date: endDateFormatted
+    })
+  }),
+  fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "X-Auth": `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      url: "/b/dashboard/infos&get_opt_payment_by_day",
+      begin_date: startDateFormatted,
+      end_date: endDateFormatted
+    })
+  })
+]);
     
     // Проверяем успешность запросов
     if (!allSalesResponse.ok || !retailSalesResponse.ok || !wholesaleSalesResponse.ok) {
@@ -415,13 +436,21 @@ const fetchDataForCategory = async (category, endpoint, dataType) => {
     // Добавляем логирование для отслеживания параметров запроса
     console.log(`Параметры запроса: begin_date=${apiStartDate}, end_date=${apiEndDate}`);
     
-    const response = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: `begin_date=${apiStartDate}&end_date=${apiEndDate}`
-    });
+  const token = localStorage.getItem('authToken');
+
+// Выполняем запрос к API
+const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-Auth": `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    url: `/b/dashboard/infos&${endpoint}`,
+    begin_date: apiStartDate,
+    end_date: apiEndDate
+  })
+});
     
     if (!response.ok) {
       throw new Error(`Ошибка HTTP: ${response.status}`);
@@ -1767,11 +1796,22 @@ const updateChartByMonth = async (monthKey) => {
     }
     
     // Загружаем данные с API
-    const response = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `begin_date=${startDate}&end_date=${endDate}`
-    });
+ const token = localStorage.getItem('authToken');
+
+// Загружаем данные с API
+const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
+  method: "POST",
+  headers: { 
+    "Content-Type": "application/json",
+    "X-Auth": `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    url: `/b/dashboard/infos&${endpoint}`,
+    begin_date: startDate,
+    end_date: endDate
+  })
+});
+
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -3660,13 +3700,22 @@ const showRegionDetails = async (year, month, monthName) => {
       console.log(`Выполняется запрос к API: ${endpoint} с датами ${startDate}-${endDate}`);
       
       // Выполняем запрос к API
-      const response = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: `begin_date=${startDate}&end_date=${endDate}`
-      });
+   const token = localStorage.getItem('authToken');
+
+// Загружаем данные с API
+const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
+  method: "POST",
+  headers: { 
+    "Content-Type": "application/json",
+    "X-Auth": `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    url: `/b/dashboard/infos&${endpoint}`,
+    begin_date: startDate,
+    end_date: endDate
+  })
+});
+
       
       if (!response.ok) {
         throw new Error(t('errors.httpError', { status: response.status }));
@@ -4560,30 +4609,39 @@ const showRegionDetails = async (year, month, monthName) => {
       
       // Получаем данные для начального периода
       console.log(`Запрос к API для начального периода: ${endpoint}`);
-      const startPeriodResponse = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: `begin_date=${startPeriodStartDate}&end_date=${startPeriodEndDate}`
-      });
-      
+    const token = localStorage.getItem('authToken');
+
+// Получаем данные для начального периода
+const startPeriodResponse = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-Auth": `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    url: `/b/dashboard/infos&${endpoint}`,
+    begin_date: startPeriodStartDate,
+    end_date: startPeriodEndDate
+  })
+});
       if (!startPeriodResponse.ok) {
         throw new Error(t('errors.httpError', { status: startPeriodResponse.status }));
       }
       
       const startPeriodData = await startPeriodResponse.json();
-      console.log("Данные начального периода:", startPeriodData);
       
-      // Получаем данные для конечного периода
-      console.log(`Запрос к API для конечного периода: ${endpoint}`);
-      const endPeriodResponse = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&${endpoint}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: `begin_date=${endPeriodStartDate}&end_date=${endPeriodEndDate}`
-      });
+    const endPeriodResponse = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-Auth": `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    url: `/b/dashboard/infos&${endpoint}`,
+    begin_date: endPeriodStartDate,
+    end_date: endPeriodEndDate
+  })
+});
       
       if (!endPeriodResponse.ok) {
         throw new Error(t('errors.httpError', { status: endPeriodResponse.status }));

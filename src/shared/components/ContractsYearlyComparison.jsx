@@ -68,37 +68,39 @@ const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab, c
   };
   
   // Получение данных по API
-  const fetchYearData = async (year) => {
+const fetchYearData = async (year) => {
+    const token = localStorage.getItem('authToken');
+    
     // Формируем диапазон дат
     const beginDate = formatDateForAPI(`${year}-01-01`);
     const endDate = formatDateForAPI(`${year}-12-31`);
     
     // Формируем URL API в зависимости от активного таба
-    const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
     let apiUrl;
     
     switch(activeTab) {
       case 'sales':
-        apiUrl = `${baseUrl}&auto_reazlization`;
+        apiUrl = '/b/dashboard/infos&auto_reazlization';
         break;
       case 'stock':
-        apiUrl = `${baseUrl}&auto_stock`;
+        apiUrl = '/b/dashboard/infos&auto_stock';
         break;
       case 'retail':
-        apiUrl = `${baseUrl}&auto_retail`;
+        apiUrl = '/b/dashboard/infos&auto_retail';
         break;
       case 'wholesale':
-        apiUrl = `${baseUrl}&auto_wholesale`;
+        apiUrl = '/b/dashboard/infos&auto_wholesale';
         break;
       case 'promotions':
-        apiUrl = `${baseUrl}&auto_promotions`;
+        apiUrl = '/b/dashboard/infos&auto_promotions';
         break;
       case 'contracts':
       default:
-        apiUrl = `${baseUrl}&auto_analytics`;
+        apiUrl = '/b/dashboard/infos&auto_analytics';
     }
     
     const requestData = {
+      url: apiUrl,
       begin_date: beginDate,
       end_date: endDate,
     };
@@ -114,7 +116,11 @@ const ContractsYearlyComparison = ({ selectedRegion, selectedModel, activeTab, c
     
     try {
       console.log(t.console.requestData.replace('{{year}}', year), requestData);
-      const response = await axios.post(apiUrl, requestData);
+      const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
+        headers: {
+          'X-Auth': `Bearer ${token}`
+        }
+      });
       return response.data;
     } catch (error) {
       console.error(t.console.errorLoadingYear.replace('{{year}}', year), error);

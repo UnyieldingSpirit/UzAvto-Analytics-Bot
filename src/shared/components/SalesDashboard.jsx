@@ -43,18 +43,46 @@ const SalesDashboard = () => {
       return;
     }
 
-    const fetchAllData = async () => {
-      setLoading(true);
-      try {
-        const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
-        
-        const [inMovementResponse, frozenResponse, notShippedResponse, deliveredResponse] = 
-          await Promise.all([
-            fetch(`${baseUrl}&auto_movment`),
-            fetch(`${baseUrl}&auto_frozen`),
-            fetch(`${baseUrl}&auto_shipped`),
-            fetch(`${baseUrl}&auto_delivered`)
-          ]);
+const fetchAllData = async () => {
+  setLoading(true);
+  const token = localStorage.getItem('authToken');
+  
+  try {
+    const [inMovementResponse, frozenResponse, notShippedResponse, deliveredResponse] = 
+      await Promise.all([
+        fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "X-Auth": `Bearer ${token}`
+          },
+          body: JSON.stringify({ url: "/b/dashboard/infos&auto_movment" })
+        }),
+        fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "X-Auth": `Bearer ${token}`
+          },
+          body: JSON.stringify({ url: "/b/dashboard/infos&auto_frozen" })
+        }),
+        fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "X-Auth": `Bearer ${token}`
+          },
+          body: JSON.stringify({ url: "/b/dashboard/infos&auto_shipped" })
+        }),
+        fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "X-Auth": `Bearer ${token}`
+          },
+          body: JSON.stringify({ url: "/b/dashboard/infos&auto_delivered" })
+        })
+      ]);
         
         const inMovementData = await inMovementResponse.json();
         const frozenData = await frozenResponse.json();

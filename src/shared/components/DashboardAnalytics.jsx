@@ -139,17 +139,20 @@ const DashboardAnalytics = ({ selectedModel = null }) => {
       
       // Добавляем параметр модели к запросу, если она выбрана
       const modelParam = selectedModel ? `&model_id=${selectedModel}` : '';
-      
-      const response = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&auto_analytics${modelParam}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          begin_date: startDate,
-          end_date: endDate
-        })
-      });
+      const token = localStorage.getItem('authToken');
+
+    const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Auth': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    url: `/b/dashboard/infos&auto_analytics${modelParam}`,
+    begin_date: startDate,
+    end_date: endDate
+  })
+});
       
       if (!response.ok) {
         throw new Error(`Ошибка загрузки данных: ${response.status}`);
@@ -187,17 +190,19 @@ const DashboardAnalytics = ({ selectedModel = null }) => {
       
       // Добавляем параметр модели к запросу, если она выбрана
       const modelParam = selectedModel ? `&model_id=${selectedModel}` : '';
-      
-      const response = await fetch(`https://uzavtosalon.uz/b/dashboard/infos&auto_analytics${modelParam}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          begin_date: startOfYear,
-          end_date: endOfYear
-        })
-      });
+      const token = localStorage.getItem('authToken');
+  const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Auth': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    url: `/b/dashboard/infos&auto_analytics${modelParam}`,
+    begin_date: startOfYear,
+    end_date: endOfYear
+  })
+});
       
       if (!response.ok) {
         throw new Error(`Ошибка загрузки данных: ${response.status}`);

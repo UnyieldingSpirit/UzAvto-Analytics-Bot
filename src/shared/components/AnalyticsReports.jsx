@@ -346,10 +346,16 @@ const YearComparison = ({ currentData, onYearSelect }) => {
       setLoading(true);
       const dataPromises = selectedYears.map(async (year) => {
         try {
-          const response = await axios.post('https://uzavtosalon.uz/b/dashboard/infos&get_modif_color', {
-            begin_date: `01.01.${year}`,
-            end_date: `31.12.${year}`
-          });
+          const token = localStorage.getItem('authToken');
+         const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+  url: '/b/dashboard/infos&get_modif_color',
+  begin_date: `01.01.${year}`,
+  end_date: `31.12.${year}`
+}, {
+  headers: {
+    'X-Auth': `Bearer ${token}`
+  }
+});
           return { year, data: response.data };
         } catch (error) {
           console.error(`Error fetching data for ${year}:`, error);
@@ -727,20 +733,27 @@ const AnalyticsReports = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await axios.post('https://uzavtosalon.uz/b/dashboard/infos&get_modif_color', {
-          begin_date: selectedPeriod.start,
-          end_date: selectedPeriod.end
-        });
+      const token = localStorage.getItem('authToken');
+
+const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+  url: '/b/dashboard/infos&get_modif_color',
+  begin_date: selectedPeriod.start,
+  end_date: selectedPeriod.end
+}, {
+  headers: {
+    'X-Auth': `Bearer ${token}`
+  }
+});
         setApiData(response.data);
         
-        setTimeout(() => {
-          confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors: ['#3b82f6', '#8b5cf6', '#ec4899']
-          });
-        }, 500);
+        // setTimeout(() => {
+        //   confetti({
+        //     particleCount: 100,
+        //     spread: 70,
+        //     origin: { y: 0.6 },
+        //     colors: ['#3b82f6', '#8b5cf6', '#ec4899']
+        //   });
+        // }, 500);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {

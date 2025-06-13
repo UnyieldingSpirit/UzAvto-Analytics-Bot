@@ -77,7 +77,16 @@ const InstallmentDashboard = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch('https://uzavtosalon.uz/b/dashboard/infos&auto_installments');
+      const token = localStorage.getItem('authToken');
+
+const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
+  method: 'POST',
+  headers: { 
+    'Content-Type': 'application/json',
+    'X-Auth': `Bearer ${token}`
+  },
+  body: JSON.stringify({ url: '/b/dashboard/infos&auto_installments' })
+});
         if (!response.ok) {
           throw new Error('Ошибка получения данных');
         }

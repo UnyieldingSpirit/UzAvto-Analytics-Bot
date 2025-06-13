@@ -32,11 +32,11 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
   const isOnboardingPage = pathname === '/onboarding';
 
   // Настройка axios перехватчиков при монтировании
-  useEffect(() => {
+useEffect(() => {
     setupAxiosInterceptors(() => {
-      router.push('/auth');
+        router.push('/auth');
     });
-  }, [router]);
+}, [router]);
 
   // Проверка авторизации
   useEffect(() => {

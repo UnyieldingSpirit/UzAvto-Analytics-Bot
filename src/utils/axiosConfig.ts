@@ -1,13 +1,12 @@
-// src/utils/axiosConfig.ts
 import axios from 'axios';
 
 export const setupAxiosInterceptors = (onUnauthorized: () => void) => {
-    // Перехватчик запросов - добавляем токен если он есть
+    // Перехватчик для запросов
     axios.interceptors.request.use(
         (config) => {
             const token = localStorage.getItem('authToken');
             if (token) {
-                config.headers.Authorization = `Bearer ${token}`;
+                config.headers['X-Auth'] = `Bearer ${token}`;
             }
             return config;
         },
@@ -16,17 +15,21 @@ export const setupAxiosInterceptors = (onUnauthorized: () => void) => {
         }
     );
 
-    // Перехватчик ответов - обрабатываем 401
+    // Перехватчик для ответов
     axios.interceptors.response.use(
         (response) => {
             return response;
         },
         (error) => {
-            if (error.response && error.response.status === 401) {
-                // Очищаем токен и перенаправляем на авторизацию
+            if (error.response?.status === 401) {
+                // Удаляем все данные авторизации
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('isAuthenticated');
-                delete axios.defaults.headers.common['Authorization'];
+
+                // Удаляем заголовок авторизации из дефолтных настроек axios
+                delete axios.defaults.headers.common['X-Auth'];
+
+                // Вызываем callback для редиректа
                 onUnauthorized();
             }
             return Promise.reject(error);

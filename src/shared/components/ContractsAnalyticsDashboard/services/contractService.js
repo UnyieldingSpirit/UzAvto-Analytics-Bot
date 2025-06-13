@@ -1,12 +1,16 @@
 // Функция для получения данных о контрактах
 export const fetchContractData = async (beginDate, endDate) => {
     try {
-        const response = await fetch('https://uzavtosalon.uz/b/dashboard/infos&get_all_contract_by_month', {
+        const token = localStorage.getItem('authToken');
+
+        const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-Auth': `Bearer ${token}`
             },
             body: JSON.stringify({
+                url: '/b/dashboard/infos&get_all_contract_by_month',
                 begin_date: beginDate,
                 end_date: endDate
             })
@@ -27,12 +31,16 @@ export const fetchContractData = async (beginDate, endDate) => {
 // Функция для получения данных о контрактах по датам
 export const fetchContractDataByDate = async (beginDate, endDate) => {
     try {
-        const response = await fetch('https://uzavtosalon.uz/b/dashboard/infos&get_all_contract_by_date', {
+        const token = localStorage.getItem('authToken');
+
+        const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-Auth': `Bearer ${token}`
             },
             body: JSON.stringify({
+                url: '/b/dashboard/infos&get_all_contract_by_date',
                 begin_date: beginDate,
                 end_date: endDate
             })

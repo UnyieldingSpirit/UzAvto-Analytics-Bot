@@ -169,14 +169,17 @@ const fetchAutoReturnData = async () => {
   try {
     setLoadingComponent(true);
     
-    const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
-    const autoReturnUrl = `${baseUrl}&auto_return`;
+    // Получаем токен
+    const token = localStorage.getItem('authToken');
+    
+    const autoReturnUrl = '/b/dashboard/infos&auto_return';
     
     // Формируем даты начала и конца года
     const beginDate = formatDateForAPI(`${selectedYear}-01-01`);
     const endDate = formatDateForAPI(`${selectedYear}-12-31`);
     
     const requestData = {
+      url: autoReturnUrl,
       begin_date: beginDate,
       end_date: endDate,
     };
@@ -194,7 +197,11 @@ const fetchAutoReturnData = async () => {
     
     console.log(`Отправка запроса auto_return за ${selectedYear} год:`, requestData);
     
-    const response = await axios.post(autoReturnUrl, requestData);
+    const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
+      headers: {
+        'X-Auth': `Bearer ${token}`
+      }
+    });
     
     console.log('Получены данные о возврате автомобилей за год:', response.data);
     
@@ -324,25 +331,23 @@ const calculateStats = useCallback((filteredData, activeTab) => {
     }
   }, [activeTab, selectedRegion, selectedModel]);
   
-  const getApiUrlForTab = (tab) => {
-    const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
-    
-    switch(tab) {
-      case 'sales':
-        return `${baseUrl}&auto_reazlization`;
-      case 'stock':
-        return `${baseUrl}&auto_stock`;
-      case 'retail':
-        return `${baseUrl}&auto_retail`;
-      case 'wholesale':
-        return `${baseUrl}&auto_wholesale`;
-      case 'promotions':
-        return `${baseUrl}&auto_promotions`;
-      case 'contracts':
-      default:
-        return `${baseUrl}&auto_analytics`;
-    }
-  };
+const getApiUrlForTab = (tab) => {
+  switch(tab) {
+    case 'sales':
+      return '/b/dashboard/infos&auto_reazlization';
+    case 'stock':
+      return '/b/dashboard/infos&auto_stock';
+    case 'retail':
+      return '/b/dashboard/infos&auto_retail';
+    case 'wholesale':
+      return '/b/dashboard/infos&auto_wholesale';
+    case 'promotions':
+      return '/b/dashboard/infos&auto_promotions';
+    case 'contracts':
+    default:
+      return '/b/dashboard/infos&auto_analytics';
+  }
+};
   
 
 const formatDateForAPI = (dateString) => {
@@ -395,6 +400,9 @@ const fetchData = async (apiUrl) => {
     setLoading(true);
     setLoadingComponent(true);
     
+    // Получаем токен
+    const token = localStorage.getItem('authToken');
+    
     // Минимальное время показа лоадера (в миллисекундах)
     const MIN_LOADER_DISPLAY_TIME = 4000; // 4 секунды минимум
     
@@ -413,12 +421,17 @@ const fetchData = async (apiUrl) => {
     const formattedEndDate = formatDateForAPI(endDate);
     
     const requestData = {
+      url: apiUrl,
       begin_date: formattedStartDate,
       end_date: formattedEndDate,
     };
     
-    // Выполняем запрос
-    const response = await axios.post(apiUrl, requestData);
+    // Выполняем запрос через прокси
+    const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
+      headers: {
+        'X-Auth': `Bearer ${token}`
+      }
+    });
     
     // Вычисляем, сколько времени занял запрос
     const requestEndTime = Date.now();
@@ -531,6 +544,9 @@ const fetchYearlyData = async (year) => {
   try {
     setYearlyDataLoading(true);
     
+    // Получаем токен
+    const token = localStorage.getItem('authToken');
+    
     // Получаем диапазон дат для года
     const { beginDate, endDate } = getYearDateRange(year);
     
@@ -539,11 +555,16 @@ const fetchYearlyData = async (year) => {
     
     // Подготавливаем данные запроса
     const requestData = {
+      url: apiUrl,
       begin_date: beginDate,
       end_date: endDate,
     };
     
-    const response = await axios.post(apiUrl, requestData);
+    const response = await axios.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
+      headers: {
+        'X-Auth': `Bearer ${token}`
+      }
+    });
     
     if (response.data && Array.isArray(response.data)) {
       // Преобразуем данные в формат для графика
@@ -2933,7 +2954,10 @@ const renderMoneyReturnChart = () => {
   container.appendChild(chartDiv);
   
   // Функция загрузки данных
-  const loadMoneyReturnData = (year) => {
+const loadMoneyReturnData = (year) => {
+    // Получаем токен
+    const token = localStorage.getItem('authToken');
+    
     // Показываем загрузку
     chartDiv.innerHTML = `
       <div class="flex flex-col items-center justify-center h-64">
@@ -2942,14 +2966,14 @@ const renderMoneyReturnChart = () => {
       </div>
     `;
     
-    const baseUrl = 'https://uzavtosalon.uz/b/dashboard/infos';
-    const autoReturnUrl = `${baseUrl}&auto_return`;
+    const autoReturnUrl = '/b/dashboard/infos&auto_return';
     
     // Формируем даты начала и конца года
     const beginDate = formatDateForAPI(`${year}-01-01`);
     const endDate = formatDateForAPI(`${year}-12-31`);
     
     const requestData = {
+      url: autoReturnUrl,
       begin_date: beginDate,
       end_date: endDate,
     };
@@ -2967,28 +2991,32 @@ const renderMoneyReturnChart = () => {
     
     console.log(`Отправка запроса возврата за ${year}:`, requestData);
     
-    // Отправляем запрос
-    axios.post(autoReturnUrl, requestData)
+    // Отправляем запрос через прокси
+    axios.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
+      headers: {
+        'X-Auth': `Bearer ${token}`
+      }
+    })
       .then(response => {
         console.log('Получены данные о возврате:', response.data);
         
         // Проверяем наличие данных
         if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
-      chartDiv.innerHTML = `
-  <div class="flex flex-col items-center justify-center h-64">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    </svg>
-    <p class="text-gray-400 text-center mb-3">${t.moneyReturn.noDataPeriod}</p>
-    <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm flex items-center" 
-      id="reload-data-btn">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-      </svg>
-      ${t.moneyReturn.reloadData}
-    </button>
-  </div>
-`;
+          chartDiv.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-64">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <p class="text-gray-400 text-center mb-3">${t.moneyReturn.noDataPeriod}</p>
+              <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm flex items-center" 
+                id="reload-data-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                ${t.moneyReturn.reloadData}
+              </button>
+            </div>
+          `;
           
           // Добавляем обработчик для кнопки повторного запроса
           const reloadBtn = chartDiv.querySelector('#reload-data-btn');
@@ -3031,21 +3059,21 @@ const renderMoneyReturnChart = () => {
       .catch(error => {
         console.error('Ошибка при запросе данных о возврате:', error);
         
-     chartDiv.innerHTML = `
-  <div class="flex flex-col items-center justify-center h-64">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-    <p class="text-gray-400 text-center mb-3">${t.moneyReturn.loadError}</p>
-    <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm flex items-center" 
-      id="retry-btn">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-      </svg>
-      ${t.moneyReturn.retryLoad}
-    </button>
-  </div>
-`;
+        chartDiv.innerHTML = `
+          <div class="flex flex-col items-center justify-center h-64">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p class="text-gray-400 text-center mb-3">${t.moneyReturn.loadError}</p>
+            <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm flex items-center" 
+              id="retry-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              ${t.moneyReturn.retryLoad}
+            </button>
+          </div>
+        `;
         
         // Добавляем обработчик для кнопки повторного запроса
         const retryBtn = chartDiv.querySelector('#retry-btn');
@@ -3443,38 +3471,53 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
  };
  
  // Загрузка данных за конкретный год
- const fetchYearData = (year) => {
-   return new Promise((resolve) => {
-     // Получаем диапазон дат для года
-     const { beginDate, endDate } = getYearDateRange(year);
-     
-     // Формируем URL в зависимости от активного таба
-     const apiUrl = getApiUrlForTab(activeTab);
-     
-     // Подготавливаем данные запроса
-     const requestData = {
-       begin_date: beginDate,
-       end_date: endDate,
-       model_id: selectedModel !== 'all' ? selectedModel : undefined,
-       region_id: selectedRegion !== 'all' ? selectedRegion : undefined
-     };
-     
-     axios.post(apiUrl, requestData)
-       .then(response => {
-         if (response.data && Array.isArray(response.data)) {
-           // Преобразуем данные в формат для графика
-           const monthlyData = prepareMonthlyDataFromResponse(response.data, year);
-           resolve({ year, data: monthlyData });
-         } else {
-           resolve({ year, data: [] });
-         }
-       })
-       .catch(error => {
-         console.error(`${t.errors.loadingError} ${year}:`, error);
-         resolve({ year, data: [] });
-       });
-   });
- };
+const fetchYearData = (year) => {
+  return new Promise((resolve) => {
+    // Получаем токен
+    const token = localStorage.getItem('authToken');
+    
+    // Получаем диапазон дат для года
+    const { beginDate, endDate } = getYearDateRange(year);
+    
+    // Формируем URL в зависимости от активного таба
+    const apiUrl = getApiUrlForTab(activeTab);
+    
+    // Подготавливаем данные запроса
+    const requestData = {
+      url: apiUrl,
+      begin_date: beginDate,
+      end_date: endDate,
+      model_id: selectedModel !== 'all' ? selectedModel : undefined,
+      region_id: selectedRegion !== 'all' ? selectedRegion : undefined
+    };
+    
+    // Убираем undefined значения из объекта
+    Object.keys(requestData).forEach(key => {
+      if (requestData[key] === undefined) {
+        delete requestData[key];
+      }
+    });
+    
+    axios.post('https://uzavtoanalytics.uz/dashboard/proxy', requestData, {
+      headers: {
+        'X-Auth': `Bearer ${token}`
+      }
+    })
+      .then(response => {
+        if (response.data && Array.isArray(response.data)) {
+          // Преобразуем данные в формат для графика
+          const monthlyData = prepareMonthlyDataFromResponse(response.data, year);
+          resolve({ year, data: monthlyData });
+        } else {
+          resolve({ year, data: [] });
+        }
+      })
+      .catch(error => {
+        console.error(`${t.errors.loadingError} ${year}:`, error);
+        resolve({ year, data: [] });
+      });
+  });
+};
  
  // Функция для отображения пустого состояния
  function showEmptyState(container) {

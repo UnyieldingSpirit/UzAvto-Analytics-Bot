@@ -42,7 +42,7 @@ export function useAuth(): UseAuthReturn {
     const login = async (username: string, password: string): Promise<boolean> => {
         setLoading(true);
         try {
-            const response = await axios.post('https://uzavtosalon.uz/dashboard/auth', {
+            const response = await axios.post('https://uzavtoanalytics.uz/dashboard/auth', {
                 username,
                 password
             });

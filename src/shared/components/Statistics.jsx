@@ -117,13 +117,20 @@ export default function Statistics() {
 
       console.log('Отправляем запрос с данными:', requestBody);
 
-      const response = await fetch('https://uzavtosalon.uz/b/dashboard/infos&auto_statistics', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
-      });
+    const token = localStorage.getItem('authToken');
+
+const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Auth': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    url: '/b/dashboard/infos&auto_statistics',
+    begin_date: formatDateForApi(startDate),
+    end_date: formatDateForApi(endDate)
+  })
+});
 
       if (!response.ok) {
         throw new Error(`Ошибка запроса: ${response.status}`);

@@ -40,11 +40,21 @@ const ModelTrackingDashboard = () => {
     setIsLoading(true);
     try {
       // URL для загрузки данных
-      const url = isWholesale 
-        ? 'https://uzavtosalon.uz/b/dashboard/infos&contract_state_wholesale' 
-        : 'https://uzavtosalon.uz/b/dashboard/infos&contract_state';
-      
-      const response = await fetch(url);
+    const token = localStorage.getItem('authToken');
+
+// URL для загрузки данных
+const url = isWholesale 
+  ? '/b/dashboard/infos&contract_state_wholesale' 
+  : '/b/dashboard/infos&contract_state';
+
+const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
+  method: 'POST',
+  headers: { 
+    'Content-Type': 'application/json',
+    'X-Auth': `Bearer ${token}`
+  },
+  body: JSON.stringify({ url })
+});
       const jsonData = await response.json();
       setData(jsonData);
     } catch (error) {
