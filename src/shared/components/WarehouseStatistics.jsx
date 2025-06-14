@@ -58,10 +58,11 @@ export default function ProductionStatistics() {
     
     // Данные по дням как на фото
     const dailyValues = [1389, 1359, 1345, 0, 0, 1103, 0, 1373, 1388, 1401, 1362, 0, 0, 786, 799];
-    const currentDate = new Date(2025, 5, 13); // 13 июня 2025
+    const currentDate = new Date();
     const currentMonth = currentDate.getMonth();
     const currentYear = currentDate.getFullYear();
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const today = currentDate.getDate();
     
     const monthNames = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
     const currentMonthName = monthNames[currentMonth];
@@ -76,8 +77,8 @@ export default function ProductionStatistics() {
         date: new Date(currentYear, currentMonth, i),
         plan: 1300,
         fact: factValue,
-        isToday: i === 13,
-        isFuture: i > 13
+        isToday: i === today,
+        isFuture: i > today
       });
     }
     
@@ -92,8 +93,8 @@ export default function ProductionStatistics() {
         monthIndex: i,
         plan: 33000,
         fact: monthlyValues[i],
-        isCurrent: i === 5, // Июнь
-        isFuture: i > 5
+        isCurrent: i === currentMonth,
+        isFuture: i > currentMonth
       });
     }
     
@@ -117,9 +118,9 @@ export default function ProductionStatistics() {
     const container = dailyChartRef.current;
     container.innerHTML = '';
     
-    const margin = { top: 30, right: 20, bottom: 60, left: 50 };
+    const margin = { top: 50, right: 20, bottom: 60, left: 50 };
     const width = container.clientWidth - margin.left - margin.right;
-    const height = 280 - margin.top - margin.bottom;
+    const height = 350 - margin.top - margin.bottom;
     
     const svg = d3.select(container)
       .append('svg')
@@ -128,6 +129,23 @@ export default function ProductionStatistics() {
     
     const g = svg.append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Градиент для столбцов
+    const gradient = svg.append('defs')
+      .append('linearGradient')
+      .attr('id', 'bar-gradient')
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '0%')
+      .attr('y2', '100%');
+    
+    gradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', '#60a5fa');
+    
+    gradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', '#3b82f6');
     
     // Шкалы
     const x = d3.scaleBand()
@@ -148,21 +166,22 @@ export default function ProductionStatistics() {
       .attr('width', x.bandwidth())
       .attr('y', d => d.fact > 0 ? y(d.fact) : height)
       .attr('height', d => d.fact > 0 ? height - y(d.fact) : 0)
-      .attr('fill', '#64748b')
-      .attr('rx', 2);
+      .attr('fill', 'url(#bar-gradient)')
+      .attr('rx', 4)
+      .style('opacity', 0.9);
     
-    // Значения на столбцах (под наклоном)
+    // Значения на столбцах (вертикально)
     g.selectAll('.bar-text')
       .data(dailyData.filter(d => !d.isFuture && d.fact > 0))
       .enter().append('text')
       .attr('class', 'bar-text')
       .attr('x', d => x(d.day) + x.bandwidth() / 2)
-      .attr('y', d => y(d.fact) - 5)
-      .attr('text-anchor', 'start')
-      .attr('transform', d => `rotate(-45, ${x(d.day) + x.bandwidth() / 2}, ${y(d.fact) - 5})`)
-      .style('fill', isDark ? '#e2e8f0' : '#1e293b')
-      .style('font-size', '9px')
-      .style('font-weight', '500')
+      .attr('y', d => y(d.fact) - 25)
+      .attr('text-anchor', 'middle')
+      .attr('transform', d => `rotate(-90, ${x(d.day) + x.bandwidth() / 2}, ${y(d.fact) - 25})`)
+      .style('fill', isDark ? '#f3f4f6' : '#1e293b')
+      .style('font-size', '10px')
+      .style('font-weight', '600')
       .text(d => d.fact.toLocaleString());
     
     // Пунктирные линии
@@ -183,15 +202,15 @@ export default function ProductionStatistics() {
       .attr('transform', `translate(0,${height})`)
       .call(d3.axisBottom(x).tickFormat(''));
     
-    // Подписи дней и месяцев под наклоном
+    // Подписи дней и месяцев под наклоном влево
     g.selectAll('.x-label')
       .data(dailyData)
       .enter().append('text')
       .attr('class', 'x-label')
       .attr('x', d => x(d.day) + x.bandwidth() / 2)
       .attr('y', height + 15)
-      .attr('text-anchor', 'start')
-      .attr('transform', d => `rotate(45, ${x(d.day) + x.bandwidth() / 2}, ${height + 15})`)
+      .attr('text-anchor', 'end')
+      .attr('transform', d => `rotate(-45, ${x(d.day) + x.bandwidth() / 2}, ${height + 15})`)
       .style('fill', isDark ? '#9ca3af' : '#4b5563')
       .style('font-size', '10px')
       .text(d => `${d.day} ${d.monthName}`);
@@ -211,7 +230,7 @@ export default function ProductionStatistics() {
     
     const margin = { top: 30, right: 20, bottom: 50, left: 60 };
     const width = container.clientWidth - margin.left - margin.right;
-    const height = 280 - margin.top - margin.bottom;
+    const height = 350 - margin.top - margin.bottom;
     
     const svg = d3.select(container)
       .append('svg')
@@ -220,6 +239,23 @@ export default function ProductionStatistics() {
     
     const g = svg.append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Градиент для столбцов
+    const gradient = svg.append('defs')
+      .append('linearGradient')
+      .attr('id', 'month-gradient')
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '0%')
+      .attr('y2', '100%');
+    
+    gradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', '#34d399');
+    
+    gradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', '#10b981');
     
     // Шкалы
     const x = d3.scaleBand()
@@ -240,8 +276,9 @@ export default function ProductionStatistics() {
       .attr('width', x.bandwidth())
       .attr('y', d => d.fact > 0 ? y(d.fact) : height)
       .attr('height', d => d.fact > 0 ? height - y(d.fact) : 0)
-      .attr('fill', d => d.fact === 0 ? '#e2e8f0' : '#5b7c99')
-      .attr('rx', 2);
+      .attr('fill', d => d.fact === 0 ? (isDark ? '#374151' : '#e5e7eb') : 'url(#month-gradient)')
+      .attr('rx', 4)
+      .style('opacity', d => d.fact === 0 ? 0.3 : 0.9);
     
     // Значения на столбцах
     g.selectAll('.text')
@@ -250,7 +287,7 @@ export default function ProductionStatistics() {
       .attr('x', d => x(d.month) + x.bandwidth() / 2)
       .attr('y', d => y(d.fact) - 5)
       .attr('text-anchor', 'middle')
-      .style('fill', isDark ? '#e2e8f0' : '#1e293b')
+      .style('fill', isDark ? '#f3f4f6' : '#1e293b')
       .style('font-size', '11px')
       .style('font-weight', '600')
       .text(d => d.fact.toLocaleString());
@@ -269,13 +306,13 @@ export default function ProductionStatistics() {
   };
   
   // Компонент ячейки таблицы
-  const TableCell = ({ label, value, color, large = false }) => {
+  const TableCell = ({ label, value, color, large = false, colSpan = 1 }) => {
     const getBgColor = () => {
       if (color === 'orange') return isDark ? 'bg-orange-900/20' : 'bg-orange-50';
       if (color === 'blue') return isDark ? 'bg-blue-900/20' : 'bg-blue-50';
       if (color === 'green') return isDark ? 'bg-green-900/20' : 'bg-green-50';
       if (color === 'red') return isDark ? 'bg-red-900/20' : 'bg-red-50';
-      return '';
+      return isDark ? 'bg-gray-800' : 'bg-gray-100';
     };
     
     const getTextColor = () => {
@@ -286,15 +323,25 @@ export default function ProductionStatistics() {
       return isDark ? 'text-gray-900' : 'text-gray-900';
     };
     
+    const getLabelColor = () => {
+      if (color === 'orange') return 'text-orange-600';
+      return isDark ? 'text-gray-500' : 'text-gray-600';
+    };
+    
     return (
-      <td className={`p-3 border ${isDark ? 'border-gray-700' : 'border-gray-300'} ${getBgColor()}`}>
-        {label && (
-          <div className={`text-xs ${color === 'orange' ? 'text-orange-600' : isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>
-            {label}
+      <td 
+        colSpan={colSpan}
+        className={`border ${isDark ? 'border-gray-700' : 'border-gray-300'} ${getBgColor()}`}
+      >
+        <div className="p-4 h-full flex flex-col justify-between">
+          {label && (
+            <div className={`text-xs font-medium ${getLabelColor()} mb-2 leading-tight`}>
+              {label}
+            </div>
+          )}
+          <div className={`${large ? 'text-2xl' : 'text-xl'} font-bold ${getTextColor()}`}>
+            {value}
           </div>
-        )}
-        <div className={`${large ? 'text-2xl' : 'text-xl'} font-bold ${getTextColor()}`}>
-          {value}
         </div>
       </td>
     );
@@ -316,8 +363,8 @@ export default function ProductionStatistics() {
           <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
             Асака ва Хоразм ишлаб чиқариш ҳисоботи
           </h1>
-          <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-            13 июн 2025
+          <p className={`${isDark ? 'text-gray-300' : 'text-gray-800'} text-base font-semibold`}>
+            {new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
       </motion.div>
@@ -363,7 +410,7 @@ export default function ProductionStatistics() {
           <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>
             Ойлик ишлаб чиқариш #630 Event
           </h2>
-          <div ref={dailyChartRef} className="w-full" />
+          <div ref={dailyChartRef} className="w-full" style={{ height: '400px' }} />
         </motion.div>
         
         {/* Таблица месячных показателей */}
@@ -372,69 +419,84 @@ export default function ProductionStatistics() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
           className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-xl shadow-lg`}
+          style={{ height: '464px' }}
         >
-          <table className="w-full border-collapse">
-            <tbody>
-              {/* Первая строка */}
-              <tr>
-                <TableCell 
-                  label="Ойлик РЕЖА" 
-                  value="33 000" 
-                  color="orange"
-                  large
-                />
-                <TableCell 
-                  label="Ойлик РЕЖА (шу кунгача)" 
-                  value="12 195" 
-                  color="orange"
-                  large
-                />
-                <TableCell 
-                  label="Ойлик РЕЖА Шу кунгача (фойзда)" 
-                  value="37%" 
-                  color="blue"
-                  large
-                />
-              </tr>
-              
-              {/* Вторая строка */}
-              <tr>
-                <TableCell 
-                  label="Ойлик ФАКТ" 
-                  value="12 285" 
-                  color="orange"
-                />
-                <TableCell 
-                  label="Ўртача иш. чиқариш (бир кунлик)" 
-                  value="1 229" 
-                  color="orange"
-                />
-                <TableCell 
-                  label="Ойлик ФАКТ Шу кунгача (фойзда)" 
-                  value="37%" 
-                  color="blue"
-                />
-              </tr>
-              
-              {/* Третья строка */}
-              <tr>
-                <TableCell 
-                  label="Ойлик РЕЖАга нисбатан ФАРҚ" 
-                  value="-20 715" 
-                  color="red"
-                />
-                <TableCell 
-                  label="Ойлик РЕЖАга нисбатан ФАРҚ (Шу кунгача)" 
-                  value="90" 
-                  color="orange"
-                />
-                <TableCell 
-                  label="Фойзда ФАРҚ Шу кунгача" 
-                  value="0%" 
-                />
-              </tr>
-            </tbody>
-          </table>
+          <div className="h-full flex flex-col">
+            <table className="w-full border-collapse flex-grow">
+              <tbody className="h-full">
+                {/* Первая строка - занимает 33% высоты */}
+                <tr className="h-1/3">
+                  <TableCell 
+                    label="Ойлик РЕЖА" 
+                    value="33 000" 
+                    color="orange"
+                    large
+                  />
+                  <TableCell 
+                    label="Ойлик РЕЖА
+(шу кунгача)" 
+                    value="12 195" 
+                    color="orange"
+                    large
+                  />
+                  <TableCell 
+                    label="Ойлик РЕЖА
+Шу кунгача
+(фойзда)" 
+                    value="37%" 
+                    color="blue"
+                    large
+                  />
+                </tr>
+                
+                {/* Вторая строка - занимает 33% высоты */}
+                <tr className="h-1/3">
+                  <TableCell 
+                    label="Ойлик ФАКТ" 
+                    value="12 285" 
+                    color="orange"
+                  />
+                  <TableCell 
+                    label="Ўртача
+иш. чиқариш
+(бир кунлик)" 
+                    value="1 229" 
+                    color="orange"
+                  />
+                  <TableCell 
+                    label="Ойлик ФАКТ
+Шу кунгача
+(фойзда)" 
+                    value="37%" 
+                    color="blue"
+                  />
+                </tr>
+                
+                {/* Третья строка - занимает 33% высоты */}
+                <tr className="h-1/3">
+                  <TableCell 
+                    label="Ойлик РЕЖАга
+нисбатан ФАРҚ" 
+                    value="-20 715" 
+                    color="red"
+                  />
+                  <TableCell 
+                    label="Ойлик РЕЖАга
+нисбатан ФАРҚ
+(Шу кунгача)" 
+                    value="90" 
+                    color="orange"
+                  />
+                  <TableCell 
+                    label="Фойзда ФАРҚ
+Шу кунгача" 
+                    value="0%" 
+                    color=""
+                  />
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </motion.div>
       </div>
       
@@ -450,7 +512,7 @@ export default function ProductionStatistics() {
           <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>
             Йиллик ишлаб чиқариш #630 Event
           </h2>
-          <div ref={monthlyChartRef} className="w-full" />
+          <div ref={monthlyChartRef} className="w-full" style={{ height: '400px' }} />
         </motion.div>
         
         {/* Таблица годовых показателей */}
@@ -459,102 +521,119 @@ export default function ProductionStatistics() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5 }}
           className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-xl shadow-lg`}
+          style={{ minHeight: '464px' }}
         >
-          <table className="w-full border-collapse mb-4">
-            <tbody>
-              {/* Первая строка */}
-              <tr>
-                <TableCell 
-                  label="Йиллик РЕЖА" 
-                  value="376 000" 
-                  color="green"
-                  large
-                />
-                <TableCell 
-                  label="Йиллик РЕЖА (Шу кунгача - 630)" 
-                  value="159 193" 
-                  color="green"
-                  large
-                />
-                <TableCell 
-                  label="Йиллик РЕЖА Шу кунгача (фойзда)" 
-                  value="42%" 
-                  color="blue"
-                  large
-                />
-              </tr>
-              
-              {/* Вторая строка */}
-              <tr>
-                <td colSpan="2" className={`p-3 border ${isDark ? 'border-gray-700' : 'border-gray-300'} ${isDark ? 'bg-green-900/20' : 'bg-green-50'}`}>
-                  <div className="text-xs text-orange-600 mb-1">
-                    Йиллик ФАКТ
-                  </div>
-                  <div className="text-xl font-bold text-green-600">
-                    159 283
-                  </div>
-                </td>
-                <td className={`p-3 border ${isDark ? 'border-gray-700' : 'border-gray-300'} ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
-                  <div className="text-xs text-orange-600 mb-1">
-                    Йиллик ФАКТ Шу кунгача (фойзда)
-                  </div>
-                  <div className="text-xl font-bold text-blue-600">42%</div>
-                </td>
-              </tr>
-              
-              {/* Третья строка */}
-              <tr>
-                <TableCell 
-                  label="Йиллик РЕЖАга нисбатан ФАРҚ" 
-                  value="-216 717" 
-                  color="red"
-                />
-                <TableCell 
-                  label="Йиллик РЕЖАга нисбатан ФАРҚ (Шу кунгача)" 
-                  value="90" 
-                  color="orange"
-                />
-                <TableCell 
-                  label="Фойдаги ФАРҚ Шу кунгача" 
-                  value="0%" 
-                />
-              </tr>
-            </tbody>
-          </table>
-          
-          {/* Дополнительная информация */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className={`p-3 text-center border ${isDark ? 'border-gray-700 bg-gray-700/50' : 'border-gray-200 bg-gray-50'} rounded-lg`}>
-              <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>
-                Ўтган йили шу кунда
+          <div className="h-full flex flex-col">
+            <table className="w-full border-collapse flex-grow mb-4">
+              <tbody className="h-full">
+                {/* Первая строка */}
+                <tr className="h-1/3">
+                  <TableCell 
+                    label="Йиллик РЕЖА" 
+                    value="376 000" 
+                    color="green"
+                    large
+                  />
+                  <TableCell 
+                    label="Йиллик РЕЖА
+(Шу кунгача - 630)" 
+                    value="159 193" 
+                    color="green"
+                    large
+                  />
+                  <TableCell 
+                    label="Йиллик РЕЖА
+Шу кунгача
+(фойзда)" 
+                    value="42%" 
+                    color="blue"
+                    large
+                  />
+                </tr>
+                
+                {/* Вторая строка с объединенными ячейками */}
+                <tr className="h-1/3">
+                  <td colSpan="2" className={`border ${isDark ? 'border-gray-700' : 'border-gray-300'}`}>
+                    <div className={`p-4 h-full ${isDark ? 'bg-green-900/20' : 'bg-green-50'}`}>
+                      <div className="text-xs font-medium text-orange-600 mb-2">
+                        Йиллик ФАКТ
+                      </div>
+                      <div className="text-xl font-bold text-green-600">
+                        159 283
+                      </div>
+                    </div>
+                  </td>
+                  <td className={`border ${isDark ? 'border-gray-700' : 'border-gray-300'}`}>
+                    <div className={`p-4 h-full ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
+                      <div className="text-xs font-medium text-orange-600 mb-2">
+                        Йиллик ФАКТ
+Шу кунгача
+(фойзда)
+                      </div>
+                      <div className="text-xl font-bold text-blue-600">42%</div>
+                    </div>
+                  </td>
+                </tr>
+                
+                {/* Третья строка */}
+                <tr className="h-1/3">
+                  <TableCell 
+                    label="Йиллик РЕЖАга
+нисбатан ФАРҚ" 
+                    value="-216 717" 
+                    color="red"
+                  />
+                  <TableCell 
+                    label="Йиллик РЕЖАга
+нисбатан ФАРҚ
+(Шу кунгача)" 
+                    value="90" 
+                    color="orange"
+                  />
+                  <TableCell 
+                    label="Фойзда ФАРҚ
+Шу кунгача" 
+                    value="0%" 
+                    color=""
+                  />
+                </tr>
+              </tbody>
+            </table>
+            
+            {/* Дополнительная информация */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className={`p-4 text-center border ${isDark ? 'border-gray-700 bg-gray-700/50' : 'border-gray-200 bg-gray-50'} rounded-lg`}>
+                <div className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>
+                  Ўтган йили шу кунда
+                </div>
+                <div className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  157 101
+                </div>
               </div>
-              <div className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                157 101
+              <div className={`p-4 text-center border ${isDark ? 'border-gray-700 bg-gray-700/50' : 'border-gray-200 bg-gray-50'} rounded-lg`}>
+                <div className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>
+                  Фарқи
+                </div>
+                <div className="text-lg font-bold text-green-500 flex items-center justify-center gap-1">
+                  <span>↑</span>
+                  <span>2 182</span>
+                </div>
               </div>
-            </div>
-            <div className={`p-3 text-center border ${isDark ? 'border-gray-700 bg-gray-700/50' : 'border-gray-200 bg-gray-50'} rounded-lg`}>
-              <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>
-                Фарқи
+              <div className={`p-4 text-center border ${isDark ? 'border-gray-700 bg-gray-700/50' : 'border-gray-200 bg-gray-50'} rounded-lg`}>
+                <div className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>
+                  Йиллик ФАКТ #700 (шу кунгача)
+                </div>
+                <div className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  161 189
+                </div>
               </div>
-              <div className="text-lg font-bold text-green-500 flex items-center justify-center gap-1">
-                <span>↑</span>
-                <span>2 182</span>
-              </div>
-            </div>
-            <div className={`p-3 text-center border ${isDark ? 'border-gray-700 bg-gray-700/50' : 'border-gray-200 bg-gray-50'} rounded-lg`}>
-              <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>
-                Йиллик ФАКТ #700 (шу кунгача)
-              </div>
-              <div className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                161 189
-              </div>
-            </div>
-            <div className={`p-3 text-center border ${isDark ? 'border-gray-700 bg-gray-700/50' : 'border-gray-200 bg-gray-50'} rounded-lg`}>
-              <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>
-                % брака
-              </div>
-              <div className="text-lg font-bold text-green-500">
-                0.8%
+              <div className={`p-4 text-center border ${isDark ? 'border-gray-700 bg-gray-700/50' : 'border-gray-200 bg-gray-50'} rounded-lg`}>
+                <div className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>
+                  % брака
+                </div>
+                <div className="text-lg font-bold text-green-500">
+                  0.8%
+                </div>
               </div>
             </div>
           </div>
