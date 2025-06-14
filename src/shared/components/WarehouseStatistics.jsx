@@ -112,115 +112,272 @@ export default function ProductionStatistics() {
     }
   }, [loading, dailyData, monthlyData, isDark]);
   
-  const renderDailyChart = () => {
-    if (!dailyChartRef.current) return;
-    
-    const container = dailyChartRef.current;
-    container.innerHTML = '';
-    
-    const margin = { top: 50, right: 20, bottom: 60, left: 50 };
-    const width = container.clientWidth - margin.left - margin.right;
-    const height = 350 - margin.top - margin.bottom;
-    
-    const svg = d3.select(container)
-      .append('svg')
-      .attr('width', width + margin.left + margin.right)
-      .attr('height', height + margin.top + margin.bottom);
-    
-    const g = svg.append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`);
-    
-    // Градиент для столбцов
-    const gradient = svg.append('defs')
-      .append('linearGradient')
-      .attr('id', 'bar-gradient')
-      .attr('x1', '0%')
-      .attr('y1', '0%')
-      .attr('x2', '0%')
-      .attr('y2', '100%');
-    
-    gradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#60a5fa');
-    
-    gradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#3b82f6');
-    
-    // Шкалы
-    const x = d3.scaleBand()
-      .domain(dailyData.map(d => d.day))
-      .range([0, width])
-      .padding(0.1);
-    
-    const y = d3.scaleLinear()
-      .domain([0, 2000])
-      .range([height, 0]);
-    
-    // Столбцы
-    g.selectAll('.bar')
-      .data(dailyData.filter(d => !d.isFuture))
-      .enter().append('rect')
-      .attr('class', 'bar')
-      .attr('x', d => x(d.day))
-      .attr('width', x.bandwidth())
-      .attr('y', d => d.fact > 0 ? y(d.fact) : height)
-      .attr('height', d => d.fact > 0 ? height - y(d.fact) : 0)
-      .attr('fill', 'url(#bar-gradient)')
-      .attr('rx', 4)
-      .style('opacity', 0.9);
-    
-    // Значения на столбцах (вертикально)
-    g.selectAll('.bar-text')
-      .data(dailyData.filter(d => !d.isFuture && d.fact > 0))
-      .enter().append('text')
-      .attr('class', 'bar-text')
-      .attr('x', d => x(d.day) + x.bandwidth() / 2)
-      .attr('y', d => y(d.fact) - 25)
-      .attr('text-anchor', 'middle')
-      .attr('transform', d => `rotate(-90, ${x(d.day) + x.bandwidth() / 2}, ${y(d.fact) - 25})`)
-      .style('fill', isDark ? '#f3f4f6' : '#1e293b')
-      .style('font-size', '10px')
-      .style('font-weight', '600')
-      .text(d => d.fact.toLocaleString());
-    
-    // Пунктирные линии
-    dailyData.filter((d, i) => i % 5 === 0).forEach(d => {
-      g.append('line')
-        .attr('x1', x(d.day) + x.bandwidth() / 2)
-        .attr('x2', x(d.day) + x.bandwidth() / 2)
-        .attr('y1', height)
-        .attr('y2', 0)
-        .attr('stroke', isDark ? '#374151' : '#e5e7eb')
-        .attr('stroke-width', 1)
-        .attr('stroke-dasharray', '3,3')
-        .style('opacity', 0.5);
+const renderDailyChart = () => {
+  if (!dailyChartRef.current) return;
+  
+  const container = dailyChartRef.current;
+  container.innerHTML = '';
+  
+  const margin = { top: 50, right: 20, bottom: 60, left: 50 };
+  const width = container.clientWidth - margin.left - margin.right;
+  const height = 350 - margin.top - margin.bottom;
+  
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', height + margin.top + margin.bottom);
+  
+  const g = svg.append('g')
+    .attr('transform', `translate(${margin.left},${margin.top})`);
+  
+  // Создаем два градиента - синий и зеленый
+  const defs = svg.append('defs');
+  
+  // Синий градиент
+  const blueGradient = defs.append('linearGradient')
+    .attr('id', 'blue-gradient')
+    .attr('x1', '0%')
+    .attr('y1', '0%')
+    .attr('x2', '0%')
+    .attr('y2', '100%');
+  
+  blueGradient.append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', '#60a5fa');
+  
+  blueGradient.append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', '#3b82f6');
+  
+  // Зеленый градиент
+  const greenGradient = defs.append('linearGradient')
+    .attr('id', 'green-gradient')
+    .attr('x1', '0%')
+    .attr('y1', '0%')
+    .attr('x2', '0%')
+    .attr('y2', '100%');
+  
+  greenGradient.append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', '#4ade80');
+  
+  greenGradient.append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', '#22c55e');
+  
+  // Шкалы
+  const x = d3.scaleBand()
+    .domain(dailyData.map(d => d.day))
+    .range([0, width])
+    .padding(0.1);
+  
+  const y = d3.scaleLinear()
+    .domain([0, 2000])
+    .range([height, 0]);
+  
+  // Создаем линию для плана
+  const planLine = d3.line()
+    .x(d => x(d.day) + x.bandwidth() / 2)
+    .y(d => y(d.plan))
+    .curve(d3.curveMonotoneX);
+  
+  // Добавляем область под линией плана для красивого эффекта
+  const planArea = d3.area()
+    .x(d => x(d.day) + x.bandwidth() / 2)
+    .y0(height)
+    .y1(d => y(d.plan))
+    .curve(d3.curveMonotoneX);
+  
+  // Градиент для области плана
+  const planGradient = defs.append('linearGradient')
+    .attr('id', 'plan-gradient')
+    .attr('x1', '0%')
+    .attr('y1', '0%')
+    .attr('x2', '0%')
+    .attr('y2', '100%');
+  
+  planGradient.append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', '#ef4444')
+    .attr('stop-opacity', 0.3);
+  
+  planGradient.append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', '#ef4444')
+    .attr('stop-opacity', 0.05);
+  
+  // Рисуем область под линией плана
+  g.append('path')
+    .datum(dailyData)
+    .attr('fill', 'url(#plan-gradient)')
+    .attr('d', planArea);
+  
+  // Рисуем линию плана
+  g.append('path')
+    .datum(dailyData)
+    .attr('fill', 'none')
+    .attr('stroke', '#ef4444')
+    .attr('stroke-width', 3)
+    .attr('stroke-dasharray', '8,4')
+    .attr('d', planLine)
+    .style('filter', 'drop-shadow(0 2px 4px rgba(239, 68, 68, 0.3))');
+  
+  // Добавляем точки на линии плана
+  g.selectAll('.plan-dot')
+    .data(dailyData)
+    .enter().append('circle')
+    .attr('class', 'plan-dot')
+    .attr('cx', d => x(d.day) + x.bandwidth() / 2)
+    .attr('cy', d => y(d.plan))
+    .attr('r', 4)
+    .attr('fill', '#ef4444')
+    .attr('stroke', isDark ? '#1f2937' : '#ffffff')
+    .attr('stroke-width', 2);
+  
+  // Столбцы с чередующимися цветами
+  g.selectAll('.bar')
+    .data(dailyData.filter(d => !d.isFuture))
+    .enter().append('rect')
+    .attr('class', 'bar')
+    .attr('x', d => x(d.day))
+    .attr('width', x.bandwidth())
+    .attr('y', d => d.fact > 0 ? y(d.fact) : height)
+    .attr('height', d => d.fact > 0 ? height - y(d.fact) : 0)
+    .attr('fill', (d, i) => i % 2 === 0 ? 'url(#blue-gradient)' : 'url(#green-gradient)')
+    .attr('rx', 4)
+    .style('opacity', 0.9)
+    .style('filter', d => d.fact < d.plan ? 'brightness(0.8)' : 'brightness(1)');
+  
+  // Добавляем индикаторы выполнения плана на столбцах
+  g.selectAll('.performance-indicator')
+    .data(dailyData.filter(d => !d.isFuture && d.fact > 0))
+    .enter().append('text')
+    .attr('class', 'performance-indicator')
+    .attr('x', d => x(d.day) + x.bandwidth() / 2)
+    .attr('y', d => y(d.fact) - 35)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '10px')
+    .style('font-weight', '600')
+    .style('fill', d => d.fact >= d.plan ? '#22c55e' : '#ef4444')
+    .text(d => {
+      const percentage = Math.round((d.fact / d.plan) * 100);
+      return percentage >= 100 ? '✓' : `${percentage}%`;
     });
-    
-    // Ось X
-    const xAxis = g.append('g')
-      .attr('transform', `translate(0,${height})`)
-      .call(d3.axisBottom(x).tickFormat(''));
-    
-    // Подписи дней и месяцев под наклоном влево
-    g.selectAll('.x-label')
-      .data(dailyData)
-      .enter().append('text')
-      .attr('class', 'x-label')
-      .attr('x', d => x(d.day) + x.bandwidth() / 2)
-      .attr('y', height + 15)
-      .attr('text-anchor', 'end')
-      .attr('transform', d => `rotate(-45, ${x(d.day) + x.bandwidth() / 2}, ${height + 15})`)
-      .style('fill', isDark ? '#9ca3af' : '#4b5563')
-      .style('font-size', '10px')
-      .text(d => `${d.day} ${d.monthName}`);
-    
-    // Ось Y
-    g.append('g')
-      .call(d3.axisLeft(y).ticks(5))
-      .selectAll('text')
-      .style('fill', isDark ? '#9ca3af' : '#4b5563');
-  };
+  
+  // Значения на столбцах - делаем жирнее
+  g.selectAll('.bar-text')
+    .data(dailyData.filter(d => !d.isFuture && d.fact > 0))
+    .enter().append('text')
+    .attr('class', 'bar-text')
+    .attr('x', d => x(d.day) + x.bandwidth() / 2)
+    .attr('y', d => y(d.fact) - 15)
+    .attr('text-anchor', 'middle')
+    .attr('transform', d => `rotate(-90, ${x(d.day) + x.bandwidth() / 2}, ${y(d.fact) - 15})`)
+    .style('fill', isDark ? '#ffffff' : '#1e293b')
+    .style('font-size', '12px')
+    .style('font-weight', '700')
+    .text(d => d.fact.toLocaleString());
+  
+  // Пунктирные линии для ориентира
+  dailyData.filter((d, i) => i % 5 === 0).forEach(d => {
+    g.append('line')
+      .attr('x1', x(d.day) + x.bandwidth() / 2)
+      .attr('x2', x(d.day) + x.bandwidth() / 2)
+      .attr('y1', height)
+      .attr('y2', 0)
+      .attr('stroke', isDark ? '#374151' : '#e5e7eb')
+      .attr('stroke-width', 1)
+      .attr('stroke-dasharray', '3,3')
+      .style('opacity', 0.5);
+  });
+  
+  // Добавляем легенду
+  const legend = g.append('g')
+    .attr('transform', `translate(${width - 150}, 10)`);
+  
+  // Легенда для плана
+  legend.append('line')
+    .attr('x1', 0)
+    .attr('x2', 30)
+    .attr('y1', 0)
+    .attr('y2', 0)
+    .attr('stroke', '#ef4444')
+    .attr('stroke-width', 3)
+    .attr('stroke-dasharray', '8,4');
+  
+  legend.append('text')
+    .attr('x', 35)
+    .attr('y', 4)
+    .style('font-size', '12px')
+    .style('fill', isDark ? '#d1d5db' : '#4b5563')
+    .text('План (1300 шт/день)');
+  
+  // Легенда для факта
+  legend.append('rect')
+    .attr('x', 0)
+    .attr('y', 15)
+    .attr('width', 30)
+    .attr('height', 15)
+    .attr('fill', 'url(#blue-gradient)')
+    .attr('rx', 2);
+  
+  legend.append('text')
+    .attr('x', 35)
+    .attr('y', 27)
+    .style('font-size', '12px')
+    .style('fill', isDark ? '#d1d5db' : '#4b5563')
+    .text('Факт');
+  
+  // Добавляем среднюю линию выполнения плана
+  const avgPerformance = d3.mean(
+    dailyData.filter(d => !d.isFuture && d.fact > 0),
+    d => (d.fact / d.plan) * 100
+  );
+  
+  // Текст с общим процентом выполнения плана
+  g.append('text')
+    .attr('x', 10)
+    .attr('y', -10)
+    .style('font-size', '14px')
+    .style('font-weight', '600')
+    .style('fill', avgPerformance >= 95 ? '#22c55e' : '#ef4444')
+    .text(`Среднее выполнение плана: ${avgPerformance.toFixed(1)}%`);
+  
+  // Ось X
+  const xAxis = g.append('g')
+    .attr('transform', `translate(0,${height})`)
+    .call(d3.axisBottom(x).tickFormat(''));
+  
+  // Подписи дней и месяцев под наклоном
+  g.selectAll('.x-label')
+    .data(dailyData)
+    .enter().append('text')
+    .attr('class', 'x-label')
+    .attr('x', d => x(d.day) + x.bandwidth() / 2)
+    .attr('y', height + 15)
+    .attr('text-anchor', 'end')
+    .attr('transform', d => `rotate(-45, ${x(d.day) + x.bandwidth() / 2}, ${height + 15})`)
+    .style('fill', isDark ? '#9ca3af' : '#4b5563')
+    .style('font-size', '10px')
+    .text(d => `${d.day} ${d.monthName}`);
+  
+  // Ось Y
+  g.append('g')
+    .call(d3.axisLeft(y).ticks(5))
+    .selectAll('text')
+    .style('fill', isDark ? '#9ca3af' : '#4b5563');
+  
+  // Метка для оси Y
+  g.append('text')
+    .attr('transform', 'rotate(-90)')
+    .attr('y', 0 - margin.left)
+    .attr('x', 0 - (height / 2))
+    .attr('dy', '1em')
+    .style('text-anchor', 'middle')
+    .style('fill', isDark ? '#9ca3af' : '#4b5563')
+    .style('font-size', '12px')
+    .text('Количество (шт)');
+};
   
   const renderMonthlyChart = () => {
     if (!monthlyChartRef.current) return;
@@ -306,46 +463,66 @@ export default function ProductionStatistics() {
   };
   
   // Компонент ячейки таблицы
-  const TableCell = ({ label, value, color, large = false, colSpan = 1 }) => {
-    const getBgColor = () => {
-      if (color === 'orange') return isDark ? 'bg-orange-900/20' : 'bg-orange-50';
-      if (color === 'blue') return isDark ? 'bg-blue-900/20' : 'bg-blue-50';
-      if (color === 'green') return isDark ? 'bg-green-900/20' : 'bg-green-50';
-      if (color === 'red') return isDark ? 'bg-red-900/20' : 'bg-red-50';
-      return isDark ? 'bg-gray-800' : 'bg-gray-100';
-    };
-    
-    const getTextColor = () => {
-      if (color === 'orange') return 'text-orange-600';
-      if (color === 'blue') return 'text-blue-600';
-      if (color === 'green') return 'text-green-600';
-      if (color === 'red') return 'text-red-600';
-      return isDark ? 'text-gray-900' : 'text-gray-900';
-    };
-    
-    const getLabelColor = () => {
-      if (color === 'orange') return 'text-orange-600';
-      return isDark ? 'text-gray-500' : 'text-gray-600';
-    };
-    
-    return (
-      <td 
-        colSpan={colSpan}
-        className={`border ${isDark ? 'border-gray-700' : 'border-gray-300'} ${getBgColor()}`}
-      >
-        <div className="p-4 h-full flex flex-col justify-between">
-          {label && (
-            <div className={`text-xs font-medium ${getLabelColor()} mb-2 leading-tight`}>
-              {label}
-            </div>
-          )}
-          <div className={`${large ? 'text-2xl' : 'text-xl'} font-bold ${getTextColor()}`}>
-            {value}
-          </div>
-        </div>
-      </td>
+const highlightKeywords = (text) => {
+  const keywords = ['РЕЖА', 'ФАКТ', 'ФАРҚ', 'фойзда', 'Ойлик', 'Йиллик', 'Ўртача'];
+  let highlightedText = text;
+  
+  keywords.forEach(keyword => {
+    highlightedText = highlightedText.replace(
+      new RegExp(keyword, 'g'),
+      `<span class="font-extrabold text-current">${keyword}</span>`
     );
+  });
+  
+  return highlightedText;
+};
+
+// Обновленный компонент TableCell
+const TableCell = ({ label, value, color, large = false, colSpan = 1 }) => {
+  const getBgColor = () => {
+    if (color === 'orange') return isDark ? 'bg-orange-900/20' : 'bg-orange-50';
+    if (color === 'blue') return isDark ? 'bg-blue-900/20' : 'bg-blue-50';
+    if (color === 'green') return isDark ? 'bg-green-900/20' : 'bg-green-50';
+    if (color === 'red') return isDark ? 'bg-red-900/20' : 'bg-red-50';
+    return isDark ? 'bg-gray-800' : 'bg-gray-100';
   };
+  
+  const getTextColor = () => {
+    if (color === 'orange') return 'text-orange-600';
+    if (color === 'blue') return 'text-blue-600';
+    if (color === 'green') return 'text-green-600';
+    if (color === 'red') return 'text-red-600';
+    return isDark ? 'text-gray-900' : 'text-gray-900';
+  };
+  
+  const getLabelColor = () => {
+    return isDark ? 'text-gray-400' : 'text-gray-600';
+  };
+  
+  return (
+    <td 
+      colSpan={colSpan}
+      className={`border ${isDark ? 'border-gray-700' : 'border-gray-300'} ${getBgColor()}`}
+    >
+      <div className="p-4 h-full flex flex-col justify-center items-center text-center">
+        {label && (
+          <div className={`text-xs font-medium ${getLabelColor()} mb-2 leading-tight`}>
+            {label.split('\n').map((line, i) => (
+              <div 
+                key={i} 
+                dangerouslySetInnerHTML={{ __html: highlightKeywords(line) }}
+              />
+            ))}
+          </div>
+        )}
+        <div className="border-t border-gray-300 w-full my-2"></div>
+        <div className={`${large ? 'text-3xl' : 'text-2xl'} font-extrabold ${getTextColor()}`}>
+          {value}
+        </div>
+      </div>
+    </td>
+  );
+};
   
   if (loading) {
     return <ContentReadyLoader />;
