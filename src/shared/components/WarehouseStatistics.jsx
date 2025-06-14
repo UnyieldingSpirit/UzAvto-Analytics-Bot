@@ -42,7 +42,7 @@ export default function ProductionStatistics() {
   
   // Список заводов
   const factories = [
-    { key: 'all', label: 'Все заводы', icon: '🏭' },
+    { key: 'all', label: 'Все производство', icon: '🏭' },
     { key: 'asaka', label: 'Асака', icon: '🚗' },
     { key: 'khorezm', label: 'Хорезм', icon: '🚙' },
     { key: 'scd', label: 'SCD', icon: '🚐' }
@@ -314,15 +314,6 @@ g.selectAll('.performance-indicator')
     .style('font-size', '10px')
     .text(d => `${d.day} ${d.monthName}`);
   
-  // Заголовок графика
-  g.append('text')
-    .attr('x', width / 2)
-    .attr('y', -20)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '16px')
-    .style('font-weight', '600')
-    .style('fill', isDark ? '#f3f4f6' : '#1e293b')
-    .text('Ойлик ишлаб чиқариш #630 Event');
   
   // Легенда
   const legend = g.append('g')
@@ -542,7 +533,7 @@ const TableCell = ({ label1, label2, label3, value, color, large = false, colSpa
           <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
             Асака ва Хоразм ишлаб чиқариш ҳисоботи
           </h1>
-          <p className={`${isDark ? 'text-gray-300' : 'text-gray-800'} text-base font-semibold`}>
+          <p className={`${isDark ? 'text-gray-300' : 'text-gray-800'} text-2xl font-semibold`}>
             {new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
