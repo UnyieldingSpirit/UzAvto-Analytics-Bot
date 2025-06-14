@@ -53,34 +53,48 @@ export default function ProductionStatistics() {
     generateMockData();
   }, [selectedFactory]);
   
-  const generateMockData = () => {
-    setLoading(true);
+ const generateMockData = () => {
+  setLoading(true);
+  
+  // Данные по дням как на фото
+  const dailyValues = [1389, 1359, 1345, 0, 0, 1103, 0, 1373, 1388, 1401, 1362, 0, 0, 786, 799];
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const today = currentDate.getDate();
+  
+  const monthNames = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+  const currentMonthName = monthNames[currentMonth];
+  
+  const daily = [];
+  for (let i = 1; i <= daysInMonth; i++) {
+    const date = new Date(currentYear, currentMonth, i);
+    const dayOfWeek = date.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     
-    // Данные по дням как на фото
-    const dailyValues = [1389, 1359, 1345, 0, 0, 1103, 0, 1373, 1388, 1401, 1362, 0, 0, 786, 799];
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const today = currentDate.getDate();
+    const factValue = i < dailyValues.length ? dailyValues[i - 1] : 0;
     
-    const monthNames = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-    const currentMonthName = monthNames[currentMonth];
-    
-    const daily = [];
-    for (let i = 1; i <= daysInMonth; i++) {
-      const factValue = i < dailyValues.length ? dailyValues[i - 1] : 0;
-      
-      daily.push({
-        day: i,
-        monthName: currentMonthName,
-        date: new Date(currentYear, currentMonth, i),
-        plan: 1300,
-        fact: factValue,
-        isToday: i === today,
-        isFuture: i > today
-      });
+    // Определяем план с учетом выходных и возможных остановок производства
+    let planValue = 1300;
+    if (isWeekend) {
+      planValue = 0; // Выходные
+    } else if (i === 4 || i === 5) {
+      planValue = 0; // Плановая остановка производства
+    } else if (i === 12 || i === 13) {
+      planValue = 0; // Еще одна плановая остановка производства 
     }
+    
+    daily.push({
+      day: i,
+      monthName: currentMonthName,
+      date: date,
+      plan: planValue,
+      fact: factValue,
+      isToday: i === today,
+      isFuture: i > today
+    });
+  }
     
     // Данные по месяцам как на фото
     const monthlyValues = [9375, 37379, 35612, 32573, 32059, 12285, 0, 0, 0, 0, 0, 0];
@@ -130,7 +144,7 @@ const renderDailyChart = () => {
   const g = svg.append('g')
     .attr('transform', `translate(${margin.left},${margin.top})`);
   
-  // Создаем два градиента - синий и зеленый
+  // Градиенты
   const defs = svg.append('defs');
   
   // Синий градиент
@@ -175,64 +189,38 @@ const renderDailyChart = () => {
     .domain([0, 2000])
     .range([height, 0]);
   
-  // Создаем линию для плана
-  const planLine = d3.line()
-    .x(d => x(d.day) + x.bandwidth() / 2)
-    .y(d => y(d.plan))
-    .curve(d3.curveMonotoneX);
+  // Оси
+  g.append('g')
+    .attr('transform', `translate(0,${height})`)
+    .call(d3.axisBottom(x).tickFormat(''))
+    .select('.domain')
+    .style('stroke', isDark ? '#4b5563' : '#d1d5db');
   
-  // Добавляем область под линией плана для красивого эффекта
-  const planArea = d3.area()
-    .x(d => x(d.day) + x.bandwidth() / 2)
-    .y0(height)
-    .y1(d => y(d.plan))
-    .curve(d3.curveMonotoneX);
+  g.append('g')
+    .call(d3.axisLeft(y).ticks(5))
+    .select('.domain')
+    .style('stroke', isDark ? '#4b5563' : '#d1d5db');
   
-  // Градиент для области плана
-  const planGradient = defs.append('linearGradient')
-    .attr('id', 'plan-gradient')
-    .attr('x1', '0%')
-    .attr('y1', '0%')
-    .attr('x2', '0%')
-    .attr('y2', '100%');
+  // Стиль для осей
+  g.selectAll('.tick line')
+    .style('stroke', isDark ? '#4b5563' : '#d1d5db');
   
-  planGradient.append('stop')
-    .attr('offset', '0%')
-    .attr('stop-color', '#ef4444')
-    .attr('stop-opacity', 0.3);
+  g.selectAll('.tick text')
+    .style('fill', isDark ? '#9ca3af' : '#4b5563');
   
-  planGradient.append('stop')
-    .attr('offset', '100%')
-    .attr('stop-color', '#ef4444')
-    .attr('stop-opacity', 0.05);
-  
-  // Рисуем область под линией плана
-  g.append('path')
-    .datum(dailyData)
-    .attr('fill', 'url(#plan-gradient)')
-    .attr('d', planArea);
-  
-  // Рисуем линию плана
-  g.append('path')
-    .datum(dailyData)
-    .attr('fill', 'none')
-    .attr('stroke', '#ef4444')
-    .attr('stroke-width', 3)
-    .attr('stroke-dasharray', '8,4')
-    .attr('d', planLine)
-    .style('filter', 'drop-shadow(0 2px 4px rgba(239, 68, 68, 0.3))');
-  
-  // Добавляем точки на линии плана
-  g.selectAll('.plan-dot')
-    .data(dailyData)
-    .enter().append('circle')
-    .attr('class', 'plan-dot')
-    .attr('cx', d => x(d.day) + x.bandwidth() / 2)
-    .attr('cy', d => y(d.plan))
-    .attr('r', 4)
-    .attr('fill', '#ef4444')
-    .attr('stroke', isDark ? '#1f2937' : '#ffffff')
-    .attr('stroke-width', 2);
+  // Горизонтальные линии сетки
+  g.selectAll('.grid-line')
+    .data(y.ticks(5))
+    .enter().append('line')
+    .attr('class', 'grid-line')
+    .attr('x1', 0)
+    .attr('x2', width)
+    .attr('y1', d => y(d))
+    .attr('y2', d => y(d))
+    .attr('stroke', isDark ? '#374151' : '#e5e7eb')
+    .attr('stroke-width', 0.5)
+    .attr('stroke-dasharray', '2,2')
+    .style('opacity', 0.5);
   
   // Столбцы с чередующимися цветами
   g.selectAll('.bar')
@@ -241,114 +229,79 @@ const renderDailyChart = () => {
     .attr('class', 'bar')
     .attr('x', d => x(d.day))
     .attr('width', x.bandwidth())
-    .attr('y', d => d.fact > 0 ? y(d.fact) : height)
-    .attr('height', d => d.fact > 0 ? height - y(d.fact) : 0)
+    .attr('y', height)
+    .attr('height', 0)
     .attr('fill', (d, i) => i % 2 === 0 ? 'url(#blue-gradient)' : 'url(#green-gradient)')
     .attr('rx', 4)
     .style('opacity', 0.9)
-    .style('filter', d => d.fact < d.plan ? 'brightness(0.8)' : 'brightness(1)');
+    .transition()
+    .duration(500)
+    .delay((d, i) => i * 30)
+    .attr('y', d => d.fact > 0 ? y(d.fact) : height)
+    .attr('height', d => d.fact > 0 ? height - y(d.fact) : 0);
   
-  // Добавляем индикаторы выполнения плана на столбцах
-  g.selectAll('.performance-indicator')
-    .data(dailyData.filter(d => !d.isFuture && d.fact > 0))
-    .enter().append('text')
-    .attr('class', 'performance-indicator')
-    .attr('x', d => x(d.day) + x.bandwidth() / 2)
-    .attr('y', d => y(d.fact) - 35)
-    .attr('text-anchor', 'middle')
-    .style('font-size', '10px')
-    .style('font-weight', '600')
-    .style('fill', d => d.fact >= d.plan ? '#22c55e' : '#ef4444')
-    .text(d => {
-      const percentage = Math.round((d.fact / d.plan) * 100);
-      return percentage >= 100 ? '✓' : `${percentage}%`;
-    });
-  
-  // Значения на столбцах - делаем жирнее
-  g.selectAll('.bar-text')
-    .data(dailyData.filter(d => !d.isFuture && d.fact > 0))
-    .enter().append('text')
-    .attr('class', 'bar-text')
-    .attr('x', d => x(d.day) + x.bandwidth() / 2)
-    .attr('y', d => y(d.fact) - 15)
-    .attr('text-anchor', 'middle')
-    .attr('transform', d => `rotate(-90, ${x(d.day) + x.bandwidth() / 2}, ${y(d.fact) - 15})`)
-    .style('fill', isDark ? '#ffffff' : '#1e293b')
-    .style('font-size', '12px')
-    .style('font-weight', '700')
-    .text(d => d.fact.toLocaleString());
-  
-  // Пунктирные линии для ориентира
-  dailyData.filter((d, i) => i % 5 === 0).forEach(d => {
-    g.append('line')
-      .attr('x1', x(d.day) + x.bandwidth() / 2)
-      .attr('x2', x(d.day) + x.bandwidth() / 2)
-      .attr('y1', height)
-      .attr('y2', 0)
-      .attr('stroke', isDark ? '#374151' : '#e5e7eb')
-      .attr('stroke-width', 1)
-      .attr('stroke-dasharray', '3,3')
-      .style('opacity', 0.5);
+  // Значения на столбцах
+// Значения на столбцах (вертикально) с большим отступом
+g.selectAll('.bar-text')
+  .data(dailyData.filter(d => !d.isFuture && d.fact > 0))
+  .enter().append('text')
+  .attr('class', 'bar-text')
+  .attr('x', d => x(d.day) + x.bandwidth() / 2)
+  .attr('y', d => y(d.fact) - 20) // Увеличен отступ с -15 до -25
+  .attr('text-anchor', 'middle')
+  .attr('transform', d => `rotate(-90, ${x(d.day) + x.bandwidth() / 2}, ${y(d.fact) - 25})`)
+  .style('fill', isDark ? '#ffffff' : '#1e293b')
+  .style('font-size', '12px')
+  .style('font-weight', '700')
+  .style('opacity', 0)
+  .transition()
+  .duration(500)
+  .delay((d, i) => i * 30 + 200)
+  .style('opacity', 1)
+  .text(d => d.fact.toLocaleString());
+
+// Индикаторы выполнения плана тоже сдвигаем
+g.selectAll('.performance-indicator')
+  .data(dailyData.filter(d => !d.isFuture && d.fact > 0 && d.plan > 0))
+  .enter().append('text')
+  .attr('class', 'performance-indicator')
+  .attr('x', d => x(d.day) + x.bandwidth() / 2)
+  .attr('y', d => y(d.fact) - 45) // Увеличен отступ с -35 до -45
+  .attr('text-anchor', 'middle')
+  .style('font-size', '9px')
+  .style('font-weight', '600')
+  .style('fill', d => d.fact >= d.plan ? '#22c55e' : '#ef4444')
+  .style('opacity', 0)
+  .transition()
+  .duration(500)
+  .delay((d, i) => i * 30 + 400)
+  .style('opacity', 1)
+  .text(d => {
+    const percentage = Math.round((d.fact / d.plan) * 100);
+    return percentage >= 100 ? '✓' : `${percentage}%`;
   });
   
-  // Добавляем легенду
-  const legend = g.append('g')
-    .attr('transform', `translate(${width - 150}, 10)`);
+  // Линия плана - оранжевая пунктирная как на фото
+  const planLine = d3.line()
+    .x(d => x(d.day) + x.bandwidth() / 2)
+    .y(d => y(d.plan))
+    .curve(d3.curveLinear);
   
-  // Легенда для плана
-  legend.append('line')
-    .attr('x1', 0)
-    .attr('x2', 30)
-    .attr('y1', 0)
-    .attr('y2', 0)
-    .attr('stroke', '#ef4444')
-    .attr('stroke-width', 3)
-    .attr('stroke-dasharray', '8,4');
+  // Рисуем линию плана
+  g.append('path')
+    .datum(dailyData)
+    .attr('fill', 'none')
+    .attr('stroke', '#f97316')
+    .attr('stroke-width', 2)
+    .attr('stroke-dasharray', '6,3')
+    .attr('d', planLine)
+    .style('opacity', 0)
+    .transition()
+    .duration(800)
+    .delay(500)
+    .style('opacity', 1);
   
-  legend.append('text')
-    .attr('x', 35)
-    .attr('y', 4)
-    .style('font-size', '12px')
-    .style('fill', isDark ? '#d1d5db' : '#4b5563')
-    .text('План (1300 шт/день)');
-  
-  // Легенда для факта
-  legend.append('rect')
-    .attr('x', 0)
-    .attr('y', 15)
-    .attr('width', 30)
-    .attr('height', 15)
-    .attr('fill', 'url(#blue-gradient)')
-    .attr('rx', 2);
-  
-  legend.append('text')
-    .attr('x', 35)
-    .attr('y', 27)
-    .style('font-size', '12px')
-    .style('fill', isDark ? '#d1d5db' : '#4b5563')
-    .text('Факт');
-  
-  // Добавляем среднюю линию выполнения плана
-  const avgPerformance = d3.mean(
-    dailyData.filter(d => !d.isFuture && d.fact > 0),
-    d => (d.fact / d.plan) * 100
-  );
-  
-  // Текст с общим процентом выполнения плана
-  g.append('text')
-    .attr('x', 10)
-    .attr('y', -10)
-    .style('font-size', '14px')
-    .style('font-weight', '600')
-    .style('fill', avgPerformance >= 95 ? '#22c55e' : '#ef4444')
-    .text(`Среднее выполнение плана: ${avgPerformance.toFixed(1)}%`);
-  
-  // Ось X
-  const xAxis = g.append('g')
-    .attr('transform', `translate(0,${height})`)
-    .call(d3.axisBottom(x).tickFormat(''));
-  
-  // Подписи дней и месяцев под наклоном
+  // Подписи дней под наклоном
   g.selectAll('.x-label')
     .data(dailyData)
     .enter().append('text')
@@ -361,23 +314,86 @@ const renderDailyChart = () => {
     .style('font-size', '10px')
     .text(d => `${d.day} ${d.monthName}`);
   
-  // Ось Y
-  g.append('g')
-    .call(d3.axisLeft(y).ticks(5))
-    .selectAll('text')
-    .style('fill', isDark ? '#9ca3af' : '#4b5563');
+  // Заголовок графика
+  g.append('text')
+    .attr('x', width / 2)
+    .attr('y', -20)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '16px')
+    .style('font-weight', '600')
+    .style('fill', isDark ? '#f3f4f6' : '#1e293b')
+    .text('Ойлик ишлаб чиқариш #630 Event');
+  
+  // Легенда
+  const legend = g.append('g')
+    .attr('transform', `translate(${width - 150}, -15)`);
+  
+  // План
+  legend.append('line')
+    .attr('x1', 0)
+    .attr('x2', 25)
+    .attr('y1', 0)
+    .attr('y2', 0)
+    .attr('stroke', '#f97316')
+    .attr('stroke-width', 2)
+    .attr('stroke-dasharray', '6,3');
+  
+  legend.append('text')
+    .attr('x', 30)
+    .attr('y', 4)
+    .style('font-size', '11px')
+    .style('fill', isDark ? '#d1d5db' : '#4b5563')
+    .text('План');
+  
+  // Факт
+  legend.append('rect')
+    .attr('x', 0)
+    .attr('y', 12)
+    .attr('width', 25)
+    .attr('height', 12)
+    .attr('fill', 'url(#blue-gradient)')
+    .attr('rx', 2);
+  
+  legend.append('text')
+    .attr('x', 30)
+    .attr('y', 22)
+    .style('font-size', '11px')
+    .style('fill', isDark ? '#d1d5db' : '#4b5563')
+    .text('Факт');
   
   // Метка для оси Y
   g.append('text')
     .attr('transform', 'rotate(-90)')
-    .attr('y', 0 - margin.left)
+    .attr('y', 0 - margin.left + 10)
     .attr('x', 0 - (height / 2))
     .attr('dy', '1em')
     .style('text-anchor', 'middle')
     .style('fill', isDark ? '#9ca3af' : '#4b5563')
     .style('font-size', '12px')
     .text('Количество (шт)');
+  
+  // Индикаторы выполнения плана (только если план > 0)
+  g.selectAll('.performance-indicator')
+    .data(dailyData.filter(d => !d.isFuture && d.fact > 0 && d.plan > 0))
+    .enter().append('text')
+    .attr('class', 'performance-indicator')
+    .attr('x', d => x(d.day) + x.bandwidth() / 2)
+    .attr('y', d => y(d.fact) - 20)
+    .attr('text-anchor', 'middle')
+    .style('font-size', '9px')
+    .style('font-weight', '600')
+    .style('fill', d => d.fact >= d.plan ? '#22c55e' : '#ef4444')
+    .style('opacity', 0)
+    .transition()
+    .duration(500)
+    .delay((d, i) => i * 30 + 400)
+    .style('opacity', 1)
+    .text(d => {
+      const percentage = Math.round((d.fact / d.plan) * 100);
+      return percentage >= 100 ? '✓' : `${percentage}%`;
+    });
 };
+  
   
   const renderMonthlyChart = () => {
     if (!monthlyChartRef.current) return;
@@ -462,23 +478,8 @@ const renderDailyChart = () => {
       .style('fill', isDark ? '#9ca3af' : '#4b5563');
   };
   
-  // Компонент ячейки таблицы
-const highlightKeywords = (text) => {
-  const keywords = ['РЕЖА', 'ФАКТ', 'ФАРҚ', 'фойзда', 'Ойлик', 'Йиллик', 'Ўртача'];
-  let highlightedText = text;
-  
-  keywords.forEach(keyword => {
-    highlightedText = highlightedText.replace(
-      new RegExp(keyword, 'g'),
-      `<span class="font-extrabold text-current">${keyword}</span>`
-    );
-  });
-  
-  return highlightedText;
-};
 
-// Обновленный компонент TableCell
-const TableCell = ({ label, value, color, large = false, colSpan = 1 }) => {
+const TableCell = ({ label1, label2, label3, value, color, large = false, colSpan = 1 }) => {
   const getBgColor = () => {
     if (color === 'orange') return isDark ? 'bg-orange-900/20' : 'bg-orange-50';
     if (color === 'blue') return isDark ? 'bg-blue-900/20' : 'bg-blue-50';
@@ -496,27 +497,28 @@ const TableCell = ({ label, value, color, large = false, colSpan = 1 }) => {
   };
   
   const getLabelColor = () => {
-    return isDark ? 'text-gray-400' : 'text-gray-600';
+    return 'text-orange-600';
   };
   
   return (
     <td 
       colSpan={colSpan}
-      className={`border ${isDark ? 'border-gray-700' : 'border-gray-300'} ${getBgColor()}`}
+      className={`border-2 border-dotted ${isDark ? 'border-gray-600' : 'border-gray-400'} ${getBgColor()}`}
     >
-      <div className="p-4 h-full flex flex-col justify-center items-center text-center">
-        {label && (
-          <div className={`text-xs font-medium ${getLabelColor()} mb-2 leading-tight`}>
-            {label.split('\n').map((line, i) => (
-              <div 
-                key={i} 
-                dangerouslySetInnerHTML={{ __html: highlightKeywords(line) }}
-              />
-            ))}
+      <div className="p-2 h-full flex flex-col justify-center items-center">
+        {(label1 || label2 || label3) && (
+          <div className={`text-xs font-semibold ${getLabelColor()} text-center leading-tight`}>
+            {label1 && <div>{label1}</div>}
+            {label2 && <div>{label2}</div>}
+            {label3 && <div>{label3}</div>}
           </div>
         )}
-        <div className="border-t border-gray-300 w-full my-2"></div>
-        <div className={`${large ? 'text-3xl' : 'text-2xl'} font-extrabold ${getTextColor()}`}>
+        
+        <div className="w-full my-2">
+            <div className="border-t-2 border-dotted border-gray-400"></div>
+          </div>
+        
+        <div className={`${large ? 'text-3xl' : 'text-2xl'} font-black ${getTextColor()} text-center`}>
           {value}
         </div>
       </div>
@@ -591,90 +593,81 @@ const TableCell = ({ label, value, color, large = false, colSpan = 1 }) => {
         </motion.div>
         
         {/* Таблица месячных показателей */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3 }}
-          className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-xl shadow-lg`}
-          style={{ height: '464px' }}
-        >
-          <div className="h-full flex flex-col">
-            <table className="w-full border-collapse flex-grow">
-              <tbody className="h-full">
-                {/* Первая строка - занимает 33% высоты */}
-                <tr className="h-1/3">
-                  <TableCell 
-                    label="Ойлик РЕЖА" 
-                    value="33 000" 
-                    color="orange"
-                    large
-                  />
-                  <TableCell 
-                    label="Ойлик РЕЖА
-(шу кунгача)" 
-                    value="12 195" 
-                    color="orange"
-                    large
-                  />
-                  <TableCell 
-                    label="Ойлик РЕЖА
-Шу кунгача
-(фойзда)" 
-                    value="37%" 
-                    color="blue"
-                    large
-                  />
-                </tr>
-                
-                {/* Вторая строка - занимает 33% высоты */}
-                <tr className="h-1/3">
-                  <TableCell 
-                    label="Ойлик ФАКТ" 
-                    value="12 285" 
-                    color="orange"
-                  />
-                  <TableCell 
-                    label="Ўртача
-иш. чиқариш
-(бир кунлик)" 
-                    value="1 229" 
-                    color="orange"
-                  />
-                  <TableCell 
-                    label="Ойлик ФАКТ
-Шу кунгача
-(фойзда)" 
-                    value="37%" 
-                    color="blue"
-                  />
-                </tr>
-                
-                {/* Третья строка - занимает 33% высоты */}
-                <tr className="h-1/3">
-                  <TableCell 
-                    label="Ойлик РЕЖАга
-нисбатан ФАРҚ" 
-                    value="-20 715" 
-                    color="red"
-                  />
-                  <TableCell 
-                    label="Ойлик РЕЖАга
-нисбатан ФАРҚ
-(Шу кунгача)" 
-                    value="90" 
-                    color="orange"
-                  />
-                  <TableCell 
-                    label="Фойзда ФАРҚ
-Шу кунгача" 
-                    value="0%" 
-                    color=""
-                  />
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
+{/* Таблица месячных показателей */}
+<table className="w-full border-collapse flex-grow">
+  <tbody className="h-full">
+    {/* Первая строка */}
+    <tr className="h-1/3">
+      <TableCell 
+        label1="Ойлик РЕЖА" 
+        value="33 000" 
+        color="orange"
+        large
+      />
+      <TableCell 
+        label1="Ойлик РЕЖА"
+        label2="(шу кунгача)"
+        value="12 195" 
+        color="orange"
+        large
+      />
+      <TableCell 
+        label1="Ойлик РЕЖА"
+        label2="Шу кунгача"
+        label3="(фойзда)"
+        value="37%" 
+        color="blue"
+        large
+      />
+    </tr>
+    
+    {/* Вторая строка */}
+    <tr className="h-1/3">
+      <TableCell 
+        label1="Ойлик ФАКТ" 
+        value="12 285" 
+        color="green"
+      />
+      <TableCell 
+        label1="Ўртача"
+        label2="иш. чиқариш"
+        label3="(бир кунлик)"
+        value="1 229" 
+        color="orange"
+      />
+      <TableCell 
+        label1="Ойлик ФАКТ"
+        label2="Шу кунгача"
+        label3="(фойзда)"
+        value="37%" 
+        color="blue"
+      />
+    </tr>
+    
+    {/* Третья строка */}
+    <tr className="h-1/3">
+      <TableCell 
+        label1="Ойлик РЕЖАга"
+        label2="нисбатан ФАРҚ"
+        value="-20 715" 
+        color="red"
+      />
+      <TableCell 
+        label1="Ойлик РЕЖАга"
+        label2="нисбатан ФАРҚ"
+        label3="(Шу кунгача)"
+        value="90" 
+        color="orange"
+      />
+      <TableCell 
+        label1="Фойзда ФАРҚ"
+        label2="Шу кунгача"
+        value="0%" 
+        color=""
+      />
+    </tr>
+  </tbody>
+</table>
       </div>
       
       {/* График по месяцам и таблица годовых показателей */}
@@ -701,81 +694,79 @@ const TableCell = ({ label, value, color, large = false, colSpan = 1 }) => {
           style={{ minHeight: '464px' }}
         >
           <div className="h-full flex flex-col">
-            <table className="w-full border-collapse flex-grow mb-4">
-              <tbody className="h-full">
-                {/* Первая строка */}
-                <tr className="h-1/3">
-                  <TableCell 
-                    label="Йиллик РЕЖА" 
-                    value="376 000" 
-                    color="green"
-                    large
-                  />
-                  <TableCell 
-                    label="Йиллик РЕЖА
-(Шу кунгача - 630)" 
-                    value="159 193" 
-                    color="green"
-                    large
-                  />
-                  <TableCell 
-                    label="Йиллик РЕЖА
-Шу кунгача
-(фойзда)" 
-                    value="42%" 
-                    color="blue"
-                    large
-                  />
-                </tr>
-                
-                {/* Вторая строка с объединенными ячейками */}
-                <tr className="h-1/3">
-                  <td colSpan="2" className={`border ${isDark ? 'border-gray-700' : 'border-gray-300'}`}>
-                    <div className={`p-4 h-full ${isDark ? 'bg-green-900/20' : 'bg-green-50'}`}>
-                      <div className="text-xs font-medium text-orange-600 mb-2">
-                        Йиллик ФАКТ
-                      </div>
-                      <div className="text-xl font-bold text-green-600">
-                        159 283
-                      </div>
-                    </div>
-                  </td>
-                  <td className={`border ${isDark ? 'border-gray-700' : 'border-gray-300'}`}>
-                    <div className={`p-4 h-full ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
-                      <div className="text-xs font-medium text-orange-600 mb-2">
-                        Йиллик ФАКТ
-Шу кунгача
-(фойзда)
-                      </div>
-                      <div className="text-xl font-bold text-blue-600">42%</div>
-                    </div>
-                  </td>
-                </tr>
-                
-                {/* Третья строка */}
-                <tr className="h-1/3">
-                  <TableCell 
-                    label="Йиллик РЕЖАга
-нисбатан ФАРҚ" 
-                    value="-216 717" 
-                    color="red"
-                  />
-                  <TableCell 
-                    label="Йиллик РЕЖАга
-нисбатан ФАРҚ
-(Шу кунгача)" 
-                    value="90" 
-                    color="orange"
-                  />
-                  <TableCell 
-                    label="Фойзда ФАРҚ
-Шу кунгача" 
-                    value="0%" 
-                    color=""
-                  />
-                </tr>
-              </tbody>
-            </table>
+          {/* Таблица годовых показателей */}
+<table className="w-full border-collapse flex-grow mb-4">
+  <tbody className="h-full">
+    {/* Первая строка */}
+    <tr className="h-1/3">
+      <TableCell 
+        label1="Йиллик РЕЖА" 
+        value="376 000" 
+        color="green"
+        large
+      />
+      <TableCell 
+        label1="Йиллик РЕЖА"
+        label2="(Шу кунгача - 630)"
+        value="159 193" 
+        color="green"
+        large
+      />
+      <TableCell 
+        label1="Йиллик РЕЖА"
+        label2="Шу кунгача"
+        label3="(фойзда)"
+        value="42%" 
+        color="blue"
+        large
+      />
+    </tr>
+    
+    {/* Вторая строка */}
+    <tr className="h-1/3">
+      <td colSpan="2" className={`border ${isDark ? 'border-gray-700' : 'border-gray-300'}`}>
+        <div className={`p-4 h-full ${isDark ? 'bg-green-900/20' : 'bg-green-50'}`}>
+          <div className="text-xs font-medium text-orange-600 mb-2">
+            Йиллик ФАКТ
+          </div>
+          <div className="text-xl font-bold text-green-600">
+            159 283
+          </div>
+        </div>
+      </td>
+      <TableCell
+        label1="Йиллик ФАКТ"
+        label2="Шу кунгача"
+        label3="(фойзда)"
+        value="42%"
+        color="blue"
+      />
+    </tr>
+    
+    {/* Третья строка */}
+    <tr className="h-1/3">
+      <TableCell 
+        label1="Йиллик РЕЖАга"
+        label2="нисбатан ФАРҚ"
+        value="-216 717" 
+        color="red"
+      />
+      <TableCell 
+        label1="Йиллик РЕЖАга"
+        label2="нисбатан ФАРҚ"
+        label3="(Шу кунгача)"
+        value="90" 
+        color="orange"
+      />
+      <TableCell 
+        label1="Фойзда ФАРҚ"
+        label2="Шу кунгача"
+        value="0%" 
+        color=""
+      />
+    </tr>
+  </tbody>
+</table>
             
             {/* Дополнительная информация */}
             <div className="grid grid-cols-2 gap-3">
