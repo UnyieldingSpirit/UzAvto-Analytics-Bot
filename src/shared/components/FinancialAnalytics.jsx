@@ -50,7 +50,7 @@ export default function EnhancedFinancialAnalytics() {
         checkAuth();
     }, [checkAuth]);
   const [isLoadingDailySales, setIsLoadingDailySales] = useState(false);
-  const getCurrentMonthDates = () => {
+const getCurrentMonthDates = () => {
   const now = new Date();
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const currentDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -118,8 +118,8 @@ const [tableDateEnd, setTableDateEnd] = useState(currentMonthDates.end);
       month: now.getMonth() + 1,
       year: now.getFullYear()
     };
-  };
-  
+  }; 
+ 
 
 const fetchDailySalesData = async () => {
   setIsLoadingDailySales(true);

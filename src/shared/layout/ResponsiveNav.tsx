@@ -26,6 +26,7 @@ const navTranslations = {
     installments: 'Рассрочки',
     carWarehouse: 'Автомобильный склад',
     systemSettings: 'Настройки системы',
+    warehouseStatistics: 'Статистика складов',
     documentation: 'Документация и поддержка',
     selectLanguage: 'Выбрать язык',
     appTitle: 'UzAvtoAnalytics',
@@ -58,6 +59,7 @@ const navTranslations = {
     production: 'Ishlab chiqarish',
     financialAnalytics: 'Moliyaviy tahlil',
     contracts: 'Shartnomalar',
+    warehouseStatistics: 'Ombor statistikasi',
     installments: 'Bo\'lib to\'lash',
     carWarehouse: 'Avtomobil ombori',
     systemSettings: 'Tizim sozlamalari',
@@ -93,6 +95,7 @@ const navTranslations = {
     production: 'Production',
     financialAnalytics: 'Financial Analytics',
     contracts: 'Contracts',
+    warehouseStatistics: 'Warehouse Statistics',
     installments: 'Installments',
     carWarehouse: 'Car Warehouse',
     systemSettings: 'System Settings',
@@ -284,14 +287,21 @@ export default function ResponsiveNav() {
       category: 'finance',
       icon: <HandCoins size={22} strokeWidth={1.5} color={categoryColors.finance} />
     },
-    {
-      path: '/car-warehouse',
-      label: t('carWarehouse'),
-      translationKey: 'carWarehouse',
-      category: 'warehouse',
-      icon: <Car size={22} strokeWidth={1.5} color={categoryColors.warehouse} />,
-      notification: 3
-    }
+     {
+    path: '/car-warehouse',
+    label: t('carWarehouse'),
+    translationKey: 'carWarehouse',
+    category: 'warehouse',
+    icon: <Car size={22} strokeWidth={1.5} color={categoryColors.warehouse} />,
+    notification: 3
+  },
+  {
+    path: '/warehouse-statistics',
+    label: t('warehouseStatistics'),
+    translationKey: 'warehouseStatistics',
+    category: 'warehouse',
+    icon: <BarChart3 size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
+  }
   ];
 
   // Компонент навигационного элемента
