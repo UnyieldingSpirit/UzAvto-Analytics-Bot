@@ -597,146 +597,7 @@ export default function ProductionStatistics() {
       .remove();
   };
   
-// Улучшенный компонент MetricCard с полными описаниями
-const MetricCard = ({ title, value, subValue, percentage, trend, color = 'blue', description, fullDescription, icon }) => {
-  const colorSchemes = {
-    blue: {
-      gradient: 'from-blue-500 to-blue-600',
-      bg: isDark ? 'bg-blue-900/10' : 'bg-blue-50',
-      text: isDark ? 'text-blue-400' : 'text-blue-600',
-      border: isDark ? 'border-blue-800/50' : 'border-blue-200'
-    },
-    green: {
-      gradient: 'from-green-500 to-green-600',
-      bg: isDark ? 'bg-green-900/10' : 'bg-green-50',
-      text: isDark ? 'text-green-400' : 'text-green-600',
-      border: isDark ? 'border-green-800/50' : 'border-green-200'
-    },
-    yellow: {
-      gradient: 'from-yellow-500 to-yellow-600',
-      bg: isDark ? 'bg-yellow-900/10' : 'bg-yellow-50',
-      text: isDark ? 'text-yellow-400' : 'text-yellow-600',
-      border: isDark ? 'border-yellow-800/50' : 'border-yellow-200'
-    },
-    purple: {
-      gradient: 'from-purple-500 to-purple-600',
-      bg: isDark ? 'bg-purple-900/10' : 'bg-purple-50',
-      text: isDark ? 'text-purple-400' : 'text-purple-600',
-      border: isDark ? 'border-purple-800/50' : 'border-purple-200'
-    },
-    red: {
-      gradient: 'from-red-500 to-red-600',
-      bg: isDark ? 'bg-red-900/10' : 'bg-red-50',
-      text: isDark ? 'text-red-400' : 'text-red-600',
-      border: isDark ? 'border-red-800/50' : 'border-red-200'
-    },
-    indigo: {
-      gradient: 'from-indigo-500 to-indigo-600',
-      bg: isDark ? 'bg-indigo-900/10' : 'bg-indigo-50',
-      text: isDark ? 'text-indigo-400' : 'text-indigo-600',
-      border: isDark ? 'border-indigo-800/50' : 'border-indigo-200'
-    }
-  };
-  
-  const colors = colorSchemes[color] || colorSchemes.blue;
-  
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      className={`relative ${isDark ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border ${isDark ? 'border-gray-700/50' : 'border-gray-200'}`}
-    >
-      {/* Градиентная линия сверху */}
-      <div className={`h-1 bg-gradient-to-r ${colors.gradient}`} />
-      
-      <div className="p-5">
-        {/* Заголовок с иконкой */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3 flex-1">
-            <div className={`w-12 h-12 rounded-xl ${colors.bg} ${colors.text} flex items-center justify-center text-xl flex-shrink-0 border ${colors.border}`}>
-              {icon}
-            </div>
-            <div className="flex-1">
-              <h3 className={`text-sm font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'} mb-1`}>
-                {title}
-              </h3>
-              <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'} leading-relaxed`}>
-                {fullDescription}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        {/* Значение */}
-        <div className="mb-3">
-          <div className="flex items-end justify-between">
-            <div>
-              <div className="flex items-baseline gap-2">
-                <span className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {typeof value === 'number' ? value.toLocaleString() : value}
-                </span>
-                {subValue && (
-                  <span className={`text-sm font-medium ${colors.text}`}>
-                    {subValue}
-                  </span>
-                )}
-              </div>
-              {description && (
-                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'} mt-1`}>
-                  {description}
-                </p>
-              )}
-            </div>
-            {trend && (
-              <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${
-                trend === 'up' ? 'bg-green-500/10 text-green-500' : 
-                trend === 'down' ? 'bg-red-500/10 text-red-500' : 
-                'bg-gray-500/10 text-gray-500'
-              }`}>
-                <span className="text-sm font-bold">
-                  {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'}
-                </span>
-                {percentage && trend && (
-                  <span className="text-xs font-medium">
-                    {trend === 'up' ? '+' : ''}{Math.abs(percentage - 100).toFixed(1)}%
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {/* Прогресс бар */}
-        {percentage !== undefined && (
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                Прогресс выполнения
-              </span>
-              <span className={`text-xs font-bold ${colors.text}`}>
-                {percentage}%
-              </span>
-            </div>
-            <div className={`relative w-full h-2 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.min(percentage, 100)}%` }}
-                transition={{ duration: 1.5, ease: "easeOut" }}
-                className={`absolute h-full bg-gradient-to-r ${colors.gradient} rounded-full`}
-              />
-            </div>
-            {percentage > 100 && (
-              <p className={`text-xs ${colors.text} mt-1 font-medium`}>
-                Перевыполнено на {(percentage - 100).toFixed(1)}%
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-};
+
     
   const factories = [
   { key: 'all', label: 'Все заводы', icon: '🏭' },
@@ -748,279 +609,348 @@ const MetricCard = ({ title, value, subValue, percentage, trend, color = 'blue',
   if (loading) {
     return <ContentReadyLoader />;
   }
+const MetricCard = ({ title, value, subValue, percentage, trend, color = 'blue', icon }) => {
+  const colorSchemes = {
+    blue: {
+      bg: isDark ? 'from-blue-900/20 to-blue-800/20' : 'from-blue-50 to-blue-100',
+      border: isDark ? 'border-blue-800/30' : 'border-blue-200',
+      text: isDark ? 'text-blue-400' : 'text-blue-600',
+      icon: isDark ? 'bg-blue-900/30' : 'bg-blue-100'
+    },
+    green: {
+      bg: isDark ? 'from-green-900/20 to-green-800/20' : 'from-green-50 to-green-100',
+      border: isDark ? 'border-green-800/30' : 'border-green-200',
+      text: isDark ? 'text-green-400' : 'text-green-600',
+      icon: isDark ? 'bg-green-900/30' : 'bg-green-100'
+    },
+    yellow: {
+      bg: isDark ? 'from-yellow-900/20 to-yellow-800/20' : 'from-yellow-50 to-yellow-100',
+      border: isDark ? 'border-yellow-800/30' : 'border-yellow-200',
+      text: isDark ? 'text-yellow-400' : 'text-yellow-600',
+      icon: isDark ? 'bg-yellow-900/30' : 'bg-yellow-100'
+    },
+    purple: {
+      bg: isDark ? 'from-purple-900/20 to-purple-800/20' : 'from-purple-50 to-purple-100',
+      border: isDark ? 'border-purple-800/30' : 'border-purple-200',
+      text: isDark ? 'text-purple-400' : 'text-purple-600',
+      icon: isDark ? 'bg-purple-900/30' : 'bg-purple-100'
+    },
+    red: {
+      bg: isDark ? 'from-red-900/20 to-red-800/20' : 'from-red-50 to-red-100',
+      border: isDark ? 'border-red-800/30' : 'border-red-200',
+      text: isDark ? 'text-red-400' : 'text-red-600',
+      icon: isDark ? 'bg-red-900/30' : 'bg-red-100'
+    }
+  };
+  
+  const scheme = colorSchemes[color];
   
   return (
-    <div className={`p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      className={`relative bg-gradient-to-br ${scheme.bg} backdrop-blur-sm rounded-xl p-4 border ${scheme.border} h-full flex flex-col`}
+    >
+      {/* Иконка в углу */}
+      {icon && (
+        <div className={`absolute top-3 right-3 w-8 h-8 ${scheme.icon} rounded-lg flex items-center justify-center ${scheme.text} text-sm`}>
+          {icon}
+        </div>
+      )}
+      
       {/* Заголовок */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`mb-6 ${isDark ? 'bg-gray-800' : 'bg-white'} p-6 rounded-xl shadow-lg`}
-      >
-        <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
-          {t('title')}
-        </h1>
-        <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-          {t('subtitle')}
-        </p>
-      </motion.div>
+      <h4 className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-2`}>
+        {title}
+      </h4>
       
-      {/* Табы для выбора завода */}
-   <motion.div 
-  initial={{ opacity: 0, y: -20 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ delay: 0.1 }}
-  className={`mb-6 ${isDark ? 'bg-gray-800' : 'bg-white'} p-2 rounded-xl shadow-lg`}
->
-  <div className="flex flex-wrap gap-2">
-    {factories.map((factory) => (
-      <motion.button
-        key={factory.key}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        onClick={() => setSelectedFactory(factory.key)}
-        className={`px-6 py-3 rounded-lg font-medium transition-all ${
-          selectedFactory === factory.key
-            ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'
-            : isDark 
-              ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-        }`}
-      >
-        <span className="flex items-center gap-2">
-          <div>{factory.icon}</div>
-          {factory.label}
-        </span>
-      </motion.button>
-    ))}
-  </div>
-</motion.div>
-      
-      {/* Метрики за месяц */}
-<motion.div 
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ delay: 0.2 }}
-  className="mb-8"
->
-  <div className={`flex items-center gap-4 mb-6 p-4 ${isDark ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-xl`}>
-    <div className={`p-3 rounded-xl ${isDark ? 'bg-gray-700' : 'bg-white'} shadow-md`}>
-      <span className="text-3xl">📊</span>
-    </div>
-    <div>
-      <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-        Показатели текущего месяца
-      </h2>
-      <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
-        Детальная статистика производства за {new Date().toLocaleString('ru', { month: 'long' })} {new Date().getFullYear()} года
-      </p>
-    </div>
-  </div>
-  
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-    <MetricCard
-      title="План на месяц"
-      value={metrics.monthPlan}
-      subValue="автомобилей"
-      description="запланировано к производству"
-      fullDescription="Общее количество автомобилей, которое должно быть произведено в текущем месяце согласно производственному плану"
-      color="blue"
-      icon="📋"
-    />
-    <MetricCard
-      title="План на текущую дату"
-      value={metrics.monthPlanToday}
-      subValue="автомобилей"
-      percentage={37}
-      description="должно быть выполнено на сегодня"
-      fullDescription="Количество автомобилей, которое должно быть произведено с начала месяца до текущей даты для соблюдения графика"
-      color="indigo"
-      icon="📅"
-    />
-    <MetricCard
-      title="Фактически произведено"
-      value={metrics.monthFact}
-      subValue="автомобилей"
-      percentage={37}
-      trend="up"
-      description="выпущено с начала месяца"
-      fullDescription="Реальное количество автомобилей, произведенных с первого числа текущего месяца по сегодняшний день"
-      color="green"
-      icon="✅"
-    />
-    <MetricCard
-      title="Осталось произвести"
-      value={metrics.monthRemaining}
-      subValue="автомобилей"
-      percentage={63}
-      description="до выполнения месячного плана"
-      fullDescription="Количество автомобилей, которое необходимо произвести до конца месяца для полного выполнения производственного плана"
-      color="yellow"
-      icon="⏳"
-    />
-    <MetricCard
-      title="Отклонение от плана"
-      value={`+${metrics.monthDeviation}`}
-      subValue={`автомобилей (+${metrics.monthDeviationPercent}%)`}
-      trend="up"
-      description="перевыполнение на текущую дату"
-      fullDescription="Разница между фактическим производством и планом на текущую дату. Положительное значение означает опережение графика"
-      color="green"
-      icon="📈"
-    />
-    <MetricCard
-      title="Средний дневной выпуск"
-      value={metrics.monthAverage}
-      subValue="авто/день"
-      description="среднее производство за рабочий день"
-      fullDescription="Среднее количество автомобилей, производимых за один рабочий день в текущем месяце на основе фактических данных"
-      color="purple"
-      icon="⚡"
-    />
-  </div>
-</motion.div>
-
-
-      
-      {/* График по дням */}
-      <motion.div 
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.3 }}
-        className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-6 rounded-xl shadow-lg mb-6`}
-      >
-        <div className="mb-4">
-          <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {t('charts.daily')}
-          </h2>
-          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
-            {t('charts.dailySubtitle')}
-          </p>
+      {/* Значение */}
+      <div className="flex-1 flex flex-col justify-center">
+        <div className="flex items-baseline gap-2">
+          <span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            {typeof value === 'number' ? value.toLocaleString() : value}
+          </span>
+          {trend && (
+            <span className={`text-sm font-bold ${
+              trend === 'up' ? 'text-green-500' : 
+              trend === 'down' ? 'text-red-500' : 
+              'text-gray-500'
+            }`}>
+              {trend === 'up' ? '↑' : '↓'}
+            </span>
+          )}
         </div>
-        <div ref={dailyChartRef} className="w-full" style={{ height: '400px' }} />
-      </motion.div>
+        {subValue && (
+          <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'} mt-1`}>
+            {subValue}
+          </span>
+        )}
+      </div>
       
-      {/* Метрики за год */}
-<motion.div
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ delay: 0.4 }}
-  className="mb-8"
->
-  <div className={`flex items-center gap-4 mb-6 p-4 ${isDark ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-xl`}>
-    <div className={`p-3 rounded-xl ${isDark ? 'bg-gray-700' : 'bg-white'} shadow-md`}>
-      <span className="text-3xl">📈</span>
-    </div>
-    <div>
-      <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-        Годовые показатели
-      </h2>
-      <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
-        Комплексная статистика производства за {new Date().getFullYear()} год с начала января по текущую дату
-      </p>
-    </div>
-  </div>
-  
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-    <MetricCard
-      title="Годовой план производства"
-      value={metrics.yearPlan}
-      subValue="автомобилей"
-      description="запланировано на весь год"
-      fullDescription="Общее количество автомобилей, запланированное к производству в текущем году согласно утвержденному годовому плану"
-      color="purple"
-      icon="🎯"
-    />
-    <MetricCard
-      title="План на текущую дату года"
-      value={metrics.yearPlanToday}
-      subValue="автомобилей"
-      percentage={42}
-      description="должно быть произведено к сегодня"
-      fullDescription="Количество автомобилей, которое должно быть произведено с начала года до текущей даты для соблюдения годового графика"
-      color="indigo"
-      icon="📆"
-    />
-    <MetricCard
-      title="Фактически произведено за год"
-      value={metrics.yearFact}
-      subValue="автомобилей"
-      percentage={42}
-      trend="up"
-      description="выпущено с начала года"
-      fullDescription="Общее количество автомобилей, фактически произведенных с 1 января текущего года по сегодняшний день"
-      color="green"
-      icon="✅"
-    />
-    <MetricCard
-      title="Сравнение с прошлым годом"
-      value={metrics.yearLastYear}
-      subValue={`авто (+${metrics.yearDifference.toLocaleString()})`}
-      trend="up"
-      description="за аналогичный период прошлого года"
-      fullDescription="Количество автомобилей, произведенных за аналогичный период прошлого года. Показывает динамику роста производства"
-      color="blue"
-      icon="📊"
-    />
-    <MetricCard
-      title="До конца года осталось"
-      value={metrics.yearRemaining}
-      subValue="автомобилей"
-      percentage={58}
-      description="необходимо произвести"
-      fullDescription="Количество автомобилей, которое необходимо произвести с текущей даты до 31 декабря для выполнения годового плана"
-      color="yellow"
-      icon="⏰"
-    />
-    <MetricCard
-      title="Годовое отклонение"
-      value={`+${metrics.yearDeviation}`}
-      subValue={`авто (+${metrics.yearDeviationPercent}%)`}
-      trend="up"
-      description="опережение годового плана"
-      fullDescription="Разница между фактическим производством и планом на текущую дату года. Показывает эффективность выполнения годового плана"
-      color="green"
-      icon="📈"
-    />
-    <MetricCard
-      title="Прошло контроль качества"
-      value={metrics.yearChecked}
-      subValue="автомобилей"
-      description="успешно прошли ОТК"
-      fullDescription="Количество автомобилей, которые прошли все этапы контроля качества ОТК и готовы к реализации с начала года"
-      color="blue"
-      icon="🔍"
-    />
-    <MetricCard
-      title="Процент брака"
-      value="0.8"
-      subValue="%"
-      trend="down"
-      description="от общего производства"
-      fullDescription="Процент автомобилей, не прошедших контроль качества. Низкий показатель свидетельствует о высоком качестве производства"
-      color="red"
-      icon="⚠️"
-    />
-  </div>
-</motion.div>
-      
-      {/* График по месяцам */}
-      <motion.div 
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.5 }}
-        className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-6 rounded-xl shadow-lg`}
-      >
-        <div className="mb-4">
-          <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {t('charts.monthly')}
-          </h2>
-          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
-            {t('charts.monthlySubtitle')}
-          </p>
+      {/* Процент с прогресс-баром */}
+      {percentage !== undefined && (
+        <div className="mt-3">
+          <div className="flex justify-between items-center mb-1">
+            <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>Выполнено</span>
+            <span className={`text-sm font-bold ${scheme.text}`}>{percentage}%</span>
+          </div>
+          <div className={`w-full h-1.5 ${isDark ? 'bg-gray-700/50' : 'bg-gray-300/50'} rounded-full overflow-hidden`}>
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(percentage, 100)}%` }}
+              transition={{ duration: 1, ease: "easeOut" }}
+              className={`h-full ${scheme.text.replace('text-', 'bg-')} rounded-full`}
+            />
+          </div>
         </div>
-        <div ref={monthlyChartRef} className="w-full" style={{ height: '400px' }} />
-      </motion.div>
-    </div>
+      )}
+    </motion.div>
   );
+};
+
+return (
+  <div className={`p-4 lg:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
+    {/* Заголовок */}
+    <motion.div 
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`mb-6 ${isDark ? 'bg-gray-800' : 'bg-white'} p-4 lg:p-6 rounded-xl shadow-lg`}
+    >
+      <h1 className={`text-2xl lg:text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
+        {t('title')}
+      </h1>
+      <p className={`text-sm lg:text-base ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+        {t('subtitle')}
+      </p>
+    </motion.div>
+    
+    {/* Табы для выбора завода */}
+    <motion.div 
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+      className={`mb-6 ${isDark ? 'bg-gray-800' : 'bg-white'} p-2 rounded-xl shadow-lg`}
+    >
+      <div className="flex flex-wrap gap-2">
+        {factories.map((factory) => (
+          <motion.button
+            key={factory.key}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setSelectedFactory(factory.key)}
+            className={`px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-all text-sm lg:text-base ${
+              selectedFactory === factory.key
+                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'
+                : isDark 
+                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              {factory.icon}
+              <span className="hidden sm:inline">{factory.label}</span>
+            </span>
+          </motion.button>
+        ))}
+      </div>
+    </motion.div>
+
+    {/* МЕСЯЧНАЯ СТАТИСТИКА */}
+    <div className="mb-6">
+      {/* На мобильных - вертикально, на десктопе - горизонтально */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        {/* График по дням */}
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+          className={`xl:col-span-8 ${isDark ? 'bg-gray-800' : 'bg-white'} p-4 lg:p-6 rounded-xl shadow-lg`}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+            <div>
+              <h2 className={`text-lg lg:text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {t('charts.daily')}
+              </h2>
+              <p className={`text-xs lg:text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                {t('charts.dailySubtitle')}
+              </p>
+            </div>
+          </div>
+          <div ref={dailyChartRef} className="w-full h-[300px] lg:h-[400px]" />
+        </motion.div>
+
+        {/* Метрики за месяц */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+          className={`xl:col-span-4 ${isDark ? 'bg-gray-800' : 'bg-white'} p-4 lg:p-6 rounded-xl shadow-lg`}
+        >
+          <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-4 flex items-center gap-2`}>
+            <span className="text-xl">📊</span> 
+            <span>Показатели месяца</span>
+          </h3>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-2 gap-3">
+            <MetricCard
+              title="План месяца"
+              value={metrics.monthPlan}
+              subValue="ед."
+              color="blue"
+              icon="📋"
+            />
+            
+            <MetricCard
+              title="План на сегодня"
+              value={metrics.monthPlanToday}
+              percentage={37}
+              color="blue"
+              icon="📅"
+            />
+            
+            <MetricCard
+              title="Выполнено"
+              value={metrics.monthFact}
+              percentage={37}
+              trend="up"
+              color="green"
+              icon="✅"
+            />
+            
+            <MetricCard
+              title="Осталось"
+              value={metrics.monthRemaining}
+              percentage={63}
+              color="yellow"
+              icon="⏳"
+            />
+            
+            <MetricCard
+              title="Сверх плана"
+              value={`+${metrics.monthDeviation}`}
+              subValue={`+${metrics.monthDeviationPercent}%`}
+              trend="up"
+              color="green"
+              icon="📈"
+            />
+            
+            <MetricCard
+              title="В среднем"
+              value={metrics.monthAverage}
+              subValue="ед./день"
+              color="purple"
+              icon="⚡"
+            />
+          </div>
+        </motion.div>
+      </div>
+    </div>
+
+    {/* ГОДОВАЯ СТАТИСТИКА */}
+    <div>
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        {/* График по месяцам */}
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.4 }}
+          className={`xl:col-span-7 ${isDark ? 'bg-gray-800' : 'bg-white'} p-4 lg:p-6 rounded-xl shadow-lg`}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+            <div>
+              <h2 className={`text-lg lg:text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {t('charts.monthly')}
+              </h2>
+              <p className={`text-xs lg:text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                {t('charts.monthlySubtitle')}
+              </p>
+            </div>
+          </div>
+          <div ref={monthlyChartRef} className="w-full h-[300px] lg:h-[400px]" />
+        </motion.div>
+
+        {/* Метрики за год */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.5 }}
+          className={`xl:col-span-5 ${isDark ? 'bg-gray-800' : 'bg-white'} p-4 lg:p-6 rounded-xl shadow-lg`}
+        >
+          <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-4 flex items-center gap-2`}>
+            <span className="text-xl">📈</span>
+            <span>Годовые показатели</span>
+          </h3>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-2 gap-3">
+            <MetricCard
+              title="План года"
+              value={metrics.yearPlan}
+              subValue="ед."
+              color="purple"
+              icon="🎯"
+            />
+            
+            <MetricCard
+              title="План на сегодня"
+              value={metrics.yearPlanToday}
+              percentage={42}
+              color="purple"
+              icon="📆"
+            />
+            
+            <MetricCard
+              title="Выполнено"
+              value={metrics.yearFact}
+              percentage={42}
+              trend="up"
+              color="green"
+              icon="✅"
+            />
+            
+            <MetricCard
+              title="Прошлый год"
+              value={metrics.yearLastYear}
+              subValue={`+${metrics.yearDifference.toLocaleString()}`}
+              trend="up"
+              color="blue"
+              icon="📊"
+            />
+            
+            <MetricCard
+              title="Осталось"
+              value={metrics.yearRemaining}
+              percentage={58}
+              color="yellow"
+              icon="⏰"
+            />
+            
+            <MetricCard
+              title="Сверх плана"
+              value={`+${metrics.yearDeviation}`}
+              subValue={`+${metrics.yearDeviationPercent}%`}
+              trend="up"
+              color="green"
+              icon="📈"
+            />
+            
+            <MetricCard
+              title="Проверено ОТК"
+              value={metrics.yearChecked}
+              subValue="ед."
+              color="blue"
+              icon="🔍"
+            />
+            
+            <MetricCard
+              title="Процент брака"
+              value="0.8"
+              subValue="%"
+              trend="down"
+              color="red"
+              icon="⚠️"
+            />
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  </div>
+);
 }
