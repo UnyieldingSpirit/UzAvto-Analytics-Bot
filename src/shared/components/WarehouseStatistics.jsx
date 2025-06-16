@@ -46,7 +46,7 @@ export default function ProductionStatistics() {
   const [selectedFactory, setSelectedFactory] = useState('all');
   const [dailyData, setDailyData] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
-  
+  const trendsChartRef = useRef(null);
   // Refs для графиков
   const dailyChartRef = useRef(null);
   const monthlyChartRef = useRef(null);
@@ -1487,20 +1487,442 @@ const renderMonthlyChart = () => {
      </motion.div>
    </div>
  );
- 
+const renderTrendsChart = () => {
+  if (!trendsChartRef.current) return;
+  
+  const container = trendsChartRef.current;
+  d3.select(container).selectAll("*").remove();
+  
+  const chartData = [
+    { date: '1 май', value: 54691, topValue: 8332, showRedArrow: true },
+    { date: '1 июн', value: 60771, topValue: 6080, showRedArrow: true },
+    { date: '5 июн', value: 61200, topValue: 0 },
+    { date: '6 июн', value: 61200, topValue: 0 },
+    { date: '7 июн', value: 61200, topValue: 0 },
+    { date: '8 июн', value: 61200, topValue: 0 },
+    { date: '9 июн', value: 62206, topValue: 1006, showRedArrow: true },
+    { date: '10 июн', value: 62233, topValue: 27, showRedArrow: true },
+    { date: '11 июн', value: 62270, topValue: 37, showRedArrow: true },
+    { date: '12 июн', value: 62184, topValue: 86, showGreenArrow: true },
+    { date: '13 июн', value: 62100, topValue: 84, showGreenArrow: true }
+  ];
+  
+  const margin = { top: 60, right: 30, bottom: 80, left: 70 };
+  const width = container.clientWidth - margin.left - margin.right;
+  const height = 450 - margin.top - margin.bottom;
+  
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', height + margin.top + margin.bottom);
+  
+  const g = svg.append('g')
+    .attr('transform', `translate(${margin.left},${margin.top})`);
+  
+  // Шкалы
+  const x = d3.scaleBand()
+    .domain(chartData.map(d => d.date))
+    .range([0, width])
+    .padding(0.15);
+  
+  const y = d3.scaleLinear()
+    .domain([0, 70000])
+    .range([height, 0]);
+  
+  // Рисуем столбцы
+  chartData.forEach((d, i) => {
+    const barX = x(d.date);
+    const barWidth = x.bandwidth();
+    const totalValue = d.value + (d.topValue || 0);
+    
+    // Основной столбец
+    const barColor = i < 2 ? '#8b9dc3' : '#4a90e2';
+    const barStroke = i < 2 ? '#5b7aa8' : '#2c5aa0';
+    
+    g.append('rect')
+      .attr('x', barX)
+      .attr('width', barWidth)
+      .attr('y', y(totalValue))
+      .attr('height', height - y(totalValue))
+      .attr('fill', barColor)
+      .attr('stroke', barStroke)
+      .attr('stroke-width', 1);
+    
+    // Верхняя часть столбца (красная или зеленая)
+    if (d.topValue > 0) {
+      const topColor = d.showGreenArrow ? '#70ad47' : '#e74c3c';
+      const topStroke = d.showGreenArrow ? '#548235' : '#c0392b';
+      
+      g.append('rect')
+        .attr('x', barX)
+        .attr('width', barWidth)
+        .attr('y', y(totalValue))
+        .attr('height', height - y(d.value))
+        .attr('fill', topColor)
+        .attr('stroke', topStroke)
+        .attr('stroke-width', 1);
+    }
+    
+    // Значение над столбцом
+    g.append('text')
+      .attr('x', barX + barWidth / 2)
+      .attr('y', y(totalValue) - 8)
+      .attr('text-anchor', 'middle')
+      .style('fill', '#333')
+      .style('font-size', '16px')
+      .style('font-weight', 'bold')
+      .text(totalValue.toLocaleString('ru-RU'));
+    
+    // Стрелка и значение ВНУТРИ столбца
+    if (d.topValue > 0) {
+      const arrowX = barX + barWidth / 2;
+      const arrowCenterY = y(d.value) + (height - y(d.value)) / 2;
+      
+      // Значение изменения
+      g.append('text')
+        .attr('x', arrowX)
+        .attr('y', arrowCenterY - 40)
+        .attr('text-anchor', 'middle')
+        .style('fill', 'white')
+        .style('font-size', '14px')
+        .style('font-weight', 'bold')
+        .text(d.topValue.toLocaleString());
+      
+      if (d.showRedArrow) {
+        // Красная стрелка вверх
+        g.append('path')
+          .attr('d', `
+            M ${arrowX} ${arrowCenterY - 25}
+            L ${arrowX - 15} ${arrowCenterY}
+            L ${arrowX - 5} ${arrowCenterY}
+            L ${arrowX - 5} ${arrowCenterY + 20}
+            L ${arrowX + 5} ${arrowCenterY + 20}
+            L ${arrowX + 5} ${arrowCenterY}
+            L ${arrowX + 15} ${arrowCenterY}
+            Z
+          `)
+          .attr('fill', '#ffffff')
+          .attr('stroke', '#e74c3c')
+          .attr('stroke-width', 2);
+      } else if (d.showGreenArrow) {
+        // Зеленая стрелка вниз
+        g.append('path')
+          .attr('d', `
+            M ${arrowX} ${arrowCenterY + 20}
+            L ${arrowX - 15} ${arrowCenterY - 5}
+            L ${arrowX - 5} ${arrowCenterY - 5}
+            L ${arrowX - 5} ${arrowCenterY - 25}
+            L ${arrowX + 5} ${arrowCenterY - 25}
+            L ${arrowX + 5} ${arrowCenterY - 5}
+            L ${arrowX + 15} ${arrowCenterY - 5}
+            Z
+          `)
+          .attr('fill', '#ffffff')
+          .attr('stroke', '#70ad47')
+          .attr('stroke-width', 2);
+      }
+    }
+  });
+  
+  // Оси
+  g.append('g')
+    .attr('transform', `translate(0,${height})`)
+    .call(d3.axisBottom(x))
+    .selectAll('text')
+    .style('font-size', '12px')
+    .style('font-weight', '500');
+  
+  g.append('g')
+    .call(d3.axisLeft(y)
+      .ticks(7)
+      .tickFormat(d => d.toLocaleString('ru-RU')))
+    .selectAll('text')
+    .style('font-size', '12px');
+  
+  // Сетка
+  g.selectAll('.grid-line-y')
+    .data(y.ticks(7))
+    .enter().append('line')
+    .attr('class', 'grid-line-y')
+    .attr('x1', 0)
+    .attr('x2', width)
+    .attr('y1', d => y(d))
+    .attr('y2', d => y(d))
+    .attr('stroke', isDark ? '#374151' : '#e5e7eb')
+    .attr('stroke-width', 0.5)
+    .style('opacity', 0.7);
+};
  // Заглушки для других табов
- const renderTrendsContent = () => (
-   <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-8 rounded-xl shadow-lg`}>
-     <div className="flex items-center justify-center h-96">
-       <div className="text-center">
-         <span className="text-6xl mb-4 block">📈</span>
-         <p className={`text-xl ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-           Контент для "Тренды" будет добавлен здесь
-         </p>
-       </div>
-     </div>
-   </div>
- );
+const renderTrendsContent = () => {
+  // Исправленные данные для таблицы с правильным форматированием
+  const tableData = [
+    { 
+      model: 'COBALT', 
+      may13: '846', 
+      may1: '198', 
+      june1: '44', 
+      asaka: '-', 
+      khorezm: '121', 
+      angren: '53', 
+      tashkent: '-', 
+      asakaCity: '-', 
+      sergeli: '4', 
+      yuldash: '36', 
+      dealers: '258', 
+      total: '+37',
+      isPositive: true
+    },
+    { 
+      model: 'LACETTI', 
+      may13: '1', 
+      may1: '0', 
+      june1: '-', 
+      asaka: '-', 
+      khorezm: '-', 
+      angren: '-', 
+      tashkent: '-', 
+      asakaCity: '-', 
+      sergeli: '-', 
+      yuldash: '-', 
+      dealers: '-', 
+      total: '+0',
+      isPositive: true
+    },
+    { 
+      model: 'ONIX', 
+      may13: '21451', 
+      may1: '21013', 
+      june1: '1 090', 
+      asaka: '-', 
+      khorezm: '2 025', 
+      angren: '6', 
+      tashkent: '11 910', 
+      asakaCity: '2', 
+      sergeli: '236', 
+      yuldash: '6 156', 
+      dealers: '21 425', 
+      total: '-46',
+      isPositive: false
+    },
+    { 
+      model: 'TRACKER', 
+      may13: '15979', 
+      may1: '16689', 
+      june1: '2 106', 
+      asaka: '-', 
+      khorezm: '916', 
+      angren: '4', 
+      tashkent: '8 245', 
+      asakaCity: '-', 
+      sergeli: '311', 
+      yuldash: '4 901', 
+      dealers: '16 483', 
+      total: '+116',
+      isPositive: true
+    },
+    { 
+      model: 'Nexia / Spark', 
+      may13: '0', 
+      may1: '0', 
+      june1: '-', 
+      asaka: '-', 
+      khorezm: '-', 
+      angren: '-', 
+      tashkent: '-', 
+      asakaCity: '-', 
+      sergeli: '-', 
+      yuldash: '-', 
+      dealers: '-', 
+      total: '+0',
+      isPositive: true
+    },
+    { 
+      model: 'Damas / Labo', 
+      may13: '16023', 
+      may1: '22500', 
+      june1: '-', 
+      asaka: '18 849', 
+      khorezm: '3', 
+      angren: '20', 
+      tashkent: '-', 
+      asakaCity: '-', 
+      sergeli: '637', 
+      yuldash: '4 085', 
+      dealers: '23 594', 
+      total: '-154',
+      isPositive: false
+    },
+    { 
+      model: 'SUP', 
+      may13: '391', 
+      may1: '371', 
+      june1: '-', 
+      asaka: '1', 
+      khorezm: '37', 
+      angren: '121', 
+      tashkent: '-', 
+      asakaCity: '-', 
+      sergeli: '2', 
+      yuldash: '179', 
+      dealers: '340', 
+      total: '-31',
+      isPositive: false
+    }
+  ];
+
+  const totals = {
+    may13: '54691',
+    may1: '60771',
+    june1: '3 240',
+    asaka: '18 850',
+    khorezm: '3 102',
+    angren: '204',
+    tashkent: '20 155',
+    asakaCity: '2',
+    sergeli: '1 190',
+    yuldash: '15 357',
+    dealers: '62 100',
+    total: '-84'
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Заголовок */}
+      <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-6 rounded-xl shadow-lg`}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            Эғасиз(<span className="text-orange-500">Free</span>) турган автомобиллар
+          </h2>
+          <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            13 июнь 2025
+          </span>
+        </div>
+
+        {/* Таблица */}
+        <div className="overflow-x-auto mb-6">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className={`text-left p-3 font-medium ${isDark ? 'text-gray-300 bg-gray-700' : 'text-gray-700 bg-gray-100'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`} rowSpan={2}>
+                  
+                </th>
+                <th className={`text-center p-3 font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} bg-blue-100 dark:bg-blue-900/30 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`} rowSpan={2}>
+                  13 июн
+                </th>
+                <th className={`text-center p-3 font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} bg-yellow-100 dark:bg-yellow-900/30 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`} rowSpan={2}>
+                  1 май
+                </th>
+                <th className={`text-center p-3 font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} bg-yellow-100 dark:bg-yellow-900/30 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`} rowSpan={2}>
+                  1 июн
+                </th>
+                <th colSpan={7} className={`text-center p-3 font-medium ${isDark ? 'text-gray-300 bg-gray-700' : 'text-gray-700 bg-gray-100'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  
+                </th>
+                <th className={`text-center p-3 font-medium ${isDark ? 'text-gray-300 bg-gray-700' : 'text-gray-700 bg-gray-100'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`} rowSpan={2}>
+                  Диллерда
+                </th>
+                <th className={`text-center p-3 font-medium ${isDark ? 'text-gray-300 bg-gray-700' : 'text-gray-700 bg-gray-100'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`} rowSpan={2}>
+                  Жами:
+                </th>
+                <th className={`text-center p-3 font-medium ${isDark ? 'text-gray-300 bg-gray-700' : 'text-gray-700 bg-gray-100'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`} rowSpan={2}>
+                  Кунлик<br/>Фарқ
+                </th>
+              </tr>
+              <tr>
+                <th className={`text-center p-2 text-xs ${isDark ? 'text-gray-400 bg-gray-700' : 'text-gray-600 bg-gray-100'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  Асака<br/>(Корхона)
+                </th>
+                <th className={`text-center p-2 text-xs ${isDark ? 'text-gray-400 bg-gray-700' : 'text-gray-600 bg-gray-100'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  Хоразм<br/>(Корхона)
+                </th>
+                <th className={`text-center p-2 text-xs ${isDark ? 'text-gray-400 bg-gray-700' : 'text-gray-600 bg-gray-100'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  Ангрен<br/>(Терминал)
+                </th>
+                <th className={`text-center p-2 text-xs ${isDark ? 'text-gray-400 bg-gray-700' : 'text-gray-600 bg-gray-100'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  Тошкент<br/>(Филиал)
+                </th>
+                <th className={`text-center p-2 text-xs ${isDark ? 'text-gray-400 bg-gray-700' : 'text-gray-600 bg-gray-100'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  Асака (Сити)/<br/>Андижон/<br/>Фаргона
+                </th>
+                <th className={`text-center p-2 text-xs ${isDark ? 'text-gray-400 bg-gray-700' : 'text-gray-600 bg-gray-100'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  Сергели<br/>(Склад)
+                </th>
+                <th className={`text-center p-2 text-xs ${isDark ? 'text-gray-400 bg-gray-700' : 'text-gray-600 bg-gray-100'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  Йўлдош
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {tableData.map((row, index) => (
+                <tr key={index} className={`${isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}`}>
+                  <td className={`p-3 font-medium ${isDark ? 'text-white' : 'text-gray-900'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                    {row.model}
+                  </td>
+                  <td className={`text-center p-3 ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                    {row.may13}
+                  </td>
+                  <td className={`text-center p-3 ${isDark ? 'bg-yellow-900/20' : 'bg-yellow-50'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                    {row.may1}
+                  </td>
+                  <td className={`text-center p-3 ${isDark ? 'bg-yellow-900/20' : 'bg-yellow-50'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                    {row.june1}
+                  </td>
+                  <td className={`text-center p-3 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.asaka}</td>
+                  <td className={`text-center p-3 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.khorezm}</td>
+                  <td className={`text-center p-3 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.angren}</td>
+                  <td className={`text-center p-3 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.tashkent}</td>
+                  <td className={`text-center p-3 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.asakaCity}</td>
+                  <td className={`text-center p-3 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.sergeli}</td>
+                  <td className={`text-center p-3 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.yuldash}</td>
+                  <td className={`text-center p-3 font-bold border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                    {row.dealers}
+                  </td>
+                  <td className={`text-center p-3 font-bold border ${isDark ? 'border-gray-600' : 'border-gray-300'} ${
+                    row.isPositive ? 'text-red-600' : 'text-green-600'
+                  }`}>
+                    {row.total}
+                  </td>
+                </tr>
+              ))}
+              <tr className={`font-bold ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                <td className={`p-3 ${isDark ? 'text-white' : 'text-gray-900'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  Жами:
+                </td>
+                <td className={`text-center p-3 ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.may13}
+                </td>
+                <td className={`text-center p-3 ${isDark ? 'bg-yellow-900/20' : 'bg-yellow-50'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.may1}
+                </td>
+                <td className={`text-center p-3 ${isDark ? 'bg-yellow-900/20' : 'bg-yellow-50'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.june1}
+                </td>
+                <td className={`text-center p-3 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{totals.asaka}</td>
+                <td className={`text-center p-3 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{totals.khorezm}</td>
+                <td className={`text-center p-3 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{totals.angren}</td>
+                <td className={`text-center p-3 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{totals.tashkent}</td>
+                <td className={`text-center p-3 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{totals.asakaCity}</td>
+                <td className={`text-center p-3 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{totals.sergeli}</td>
+                <td className={`text-center p-3 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{totals.yuldash}</td>
+                <td className={`text-center p-3 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.dealers}
+                </td>
+                <td className={`text-center p-3 text-green-600 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.total}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* График */}
+        <div className={`${isDark ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-lg`}>
+          <div ref={trendsChartRef} className="w-full" style={{ height: '450px' }} />
+        </div>
+      </div>
+    </div>
+  );
+};
  
  const renderAnalyticsContent = () => (
    <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-8 rounded-xl shadow-lg`}>
@@ -1520,12 +1942,14 @@ const handleTabChange = (tabId) => {
   
   // Принудительная перерисовка графиков после смены таба
   setTimeout(() => {
-    if (tabId === 'current') {
+  if (tabId === 'current') {
       if (dailyChartRef.current) renderDailyChart();
       if (monthlyChartRef.current) renderMonthlyChart();
     } else if (tabId === 'ready') {
       if (eventChartRef.current) renderEventChart();
       if (realizationChartRef.current) renderRealizationChart();
+    } else if (tabId === 'trends') {
+      if (trendsChartRef.current) renderTrendsChart(); // Добавьте эту строку
     }
   }, 100);
 };
