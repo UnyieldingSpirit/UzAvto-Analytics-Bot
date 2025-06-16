@@ -75,36 +75,39 @@ const InstallmentDashboard = () => {
 
   // Загрузка данных API
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-      const token = localStorage.getItem('authToken');
+ const fetchData = async () => {
+  setIsLoading(true);
+  try {
+    const token = localStorage.getItem('authToken');
 
-const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
-  url: '/b/dashboard/infos&auto_installments'
-});
-        if (!response.ok) {
-          throw new Error('Ошибка получения данных');
-        }
-        const data = await response.json();
-        
-        // Фильтрация моделей с контрактами
-        const modelsWithContracts = data.filter(model => {
-          return model.filter_by_region && model.filter_by_region.some(region => 
-            parseInt(region.contract_count || 0) > 0
-          );
-        });
-        
-        setApiData(modelsWithContracts);
-      } catch (error) {
-        console.error('Ошибка загрузки данных:', error);
-      } finally {
-        // Даем время для загрузки изображений и расчетов
-        setTimeout(() => {
-          setIsLoading(false);
-        }, 1000);
+    const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+      url: '/b/dashboard/infos&auto_installments'
+    }, {
+      headers: {
+        'X-Auth': `Bearer ${token}`
       }
-    };
+    });
+    
+    // В axios не нужно проверять response.ok и использовать response.json()
+    const data = response.data;
+    
+    // Фильтрация моделей с контрактами
+    const modelsWithContracts = data.filter(model => {
+      return model.filter_by_region && model.filter_by_region.some(region => 
+        parseInt(region.contract_count || 0) > 0
+      );
+    });
+    
+    setApiData(modelsWithContracts);
+  } catch (error) {
+    console.error('Ошибка загрузки данных:', error);
+  } finally {
+    // Даем время для загрузки изображений и расчетов
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+  }
+};
     
     fetchData();
   }, [t]);

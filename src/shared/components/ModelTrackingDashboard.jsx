@@ -37,28 +37,34 @@ const ModelTrackingDashboard = () => {
         checkAuth();
     }, [checkAuth]);
   // Функция для загрузки данных
-  const fetchData = async (isWholesale) => {
-    setIsLoading(true);
-    try {
-      // URL для загрузки данных
+const fetchData = async (isWholesale) => {
+  setIsLoading(true);
+  try {
     const token = localStorage.getItem('authToken');
 
-// URL для загрузки данных
-const url = isWholesale 
-  ? '/b/dashboard/infos&contract_state_wholesale' 
-  : '/b/dashboard/infos&contract_state';
+    // URL для загрузки данных
+    const url = isWholesale 
+      ? '/b/dashboard/infos&contract_state_wholesale' 
+      : '/b/dashboard/infos&contract_state';
 
-const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
-  url
-});
-      const jsonData = await response.json();
-      setData(jsonData);
-    } catch (error) {
-      console.error(`${currentLocale === 'ru' ? 'Ошибка при загрузке данных:' : 'Ma\'lumotlarni yuklashda xatolik:'} ${error}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
+      url
+    }, {
+      headers: {
+        'X-Auth': `Bearer ${token}`
+      }
+    });
+
+    // В axios используем response.data вместо response.json()
+    const jsonData = response.data;
+    setData(jsonData);
+    
+  } catch (error) {
+    console.error(`${currentLocale === 'ru' ? 'Ошибка при загрузке данных:' : 'Ma\'lumotlarni yuklashda xatolik:'} ${error}`);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // Переключение между оптом и розницей
   const toggleWholesale = (wholesale) => {

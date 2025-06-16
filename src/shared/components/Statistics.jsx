@@ -9,8 +9,8 @@ import ContentReadyLoader from '../../shared/layout/ContentReadyLoader';
 import { useTranslation } from "../../hooks/useTranslation";
 import { statisticsTranslations } from '../../shared/components/locales/Statistics';
 import { useThemeStore } from '../../store/theme';
-import { useAuth } from '../../hooks/useAuth';
 import { axiosInstance } from '../../utils/axiosConfig';
+
 export default function Statistics() {
   // State variables
   const [isLoading, setIsLoading] = useState(true);
@@ -21,10 +21,7 @@ export default function Statistics() {
   const [animateCards, setAnimateCards] = useState(true);
   const [showAllSalespeople, setShowAllSalespeople] = useState(false);
   const [hoveredSalesperson, setHoveredSalesperson] = useState(null);
-    const { checkAuth } = useAuth();
-    useEffect(() => {
-        checkAuth();
-    }, [checkAuth]);
+  
   const [data, setData] = useState({
     modelData: [],
     dealerData: [],
@@ -100,55 +97,52 @@ export default function Statistics() {
   });
 
   // Получаем данные за выбранный период
-  const fetchMarketData = async (startDate, endDate) => {
-    setIsLoading(true);
-    
-    try {
-      const formatDateForApi = (date) => {
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}.${month}.${year}`;
-      };
+const fetchMarketData = async (startDate, endDate) => {
+  setIsLoading(true);
+  
+  try {
+    const formatDateForApi = (date) => {
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}.${month}.${year}`;
+    };
 
-      const requestBody = {
-        begin_date: formatDateForApi(startDate),
-        end_date: formatDateForApi(endDate)
-      };
+    const requestBody = {
+      url: '/b/dashboard/infos&auto_statistics',
+      begin_date: formatDateForApi(startDate),
+      end_date: formatDateForApi(endDate)
+    };
 
-      console.log('Отправляем запрос с данными:', requestBody);
+    console.log('Отправляем запрос с данными:', requestBody);
 
     const token = localStorage.getItem('authToken');
 
-const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', {
-    url: '/b/dashboard/infos&auto_statistics',
-    begin_date: formatDateForApi(startDate),
-    end_date: formatDateForApi(endDate)
-});
-
-      if (!response.ok) {
-        throw new Error(`Ошибка запроса: ${response.status}`);
+    const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/proxy', requestBody, {
+      headers: {
+        'X-Auth': `Bearer ${token}`
       }
+    });
 
-      const apiData = await response.json();
-      console.log('Получены данные с сервера:', apiData);
-      
-      window.originalApiData = apiData;
-      
-      const transformedData = transformApiData(apiData);
-      
-      setData(transformedData);
-      setIsLoading(false);
-      
-      return apiData;
-    } catch (error) {
-      console.error('Ошибка при получении данных рынка:', error);
-      const fallbackData = generateDemoData(dateRange.startDate, dateRange.endDate);
-      setData(fallbackData);
-      setIsLoading(false);
-      return null;
-    }
-  };
+    const apiData = response.data;
+    console.log('Получены данные с сервера:', apiData);
+    
+    window.originalApiData = apiData;
+    
+    const transformedData = transformApiData(apiData);
+    
+    setData(transformedData);
+    setIsLoading(false);
+    
+    return apiData;
+  } catch (error) {
+    console.error('Ошибка при получении данных рынка:', error);
+    const fallbackData = generateDemoData(dateRange.startDate, dateRange.endDate);
+    setData(fallbackData);
+    setIsLoading(false);
+    return null;
+  }
+};
   
   const transformApiData = (apiData) => {
     const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'];

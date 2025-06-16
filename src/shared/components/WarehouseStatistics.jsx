@@ -523,19 +523,39 @@ const TableCell = ({ label1, label2, label3, value, color, large = false, colSpa
   
   return (
     <div className={`p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
-      {/* Заголовок с датой справа */}
+      {/* Заголовок с датой справа и уведомлением о тестовых данных */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className={`mb-6 ${isDark ? 'bg-gray-800' : 'bg-white'} p-6 rounded-xl shadow-lg`}
       >
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-4">
           <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
             Асака ва Хоразм ишлаб чиқариш ҳисоботи
           </h1>
           <p className={`${isDark ? 'text-gray-300' : 'text-gray-800'} text-2xl font-semibold`}>
             {new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
+        </div>
+        
+        {/* Уведомление о тестовых данных */}
+        <div className={`mt-4 p-4 rounded-lg ${isDark ? 'bg-yellow-900/20 border-yellow-600/30' : 'bg-yellow-50 border-yellow-300'} border-2 border-dashed`}>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div className="flex-1">
+              <p className={`text-sm font-semibold ${isDark ? 'text-yellow-400' : 'text-yellow-800'}`}>
+                ВНИМАНИЕ: Тестовые данные / ДИҚҚАТ: Тест маълумотлари
+              </p>
+              <p className={`text-xs mt-1 ${isDark ? 'text-yellow-300/80' : 'text-yellow-700'}`}>
+                Все отображаемые данные являются демонстрационными и не отражают реальную статистику производства. 
+                Реальные данные будут доступны после интеграции с производственными системами.
+              </p>
+              <p className={`text-xs mt-1 ${isDark ? 'text-yellow-300/80' : 'text-yellow-700'}`}>
+                Барча кўрсатилган маълумотлар намойиш учун бўлиб, ҳақиқий ишлаб чиқариш статистикасини акс эттирмайди.
+                Ҳақиқий маълумотлар ишлаб чиқариш тизимлари билан интеграциядан сўнг мавжуд бўлади.
+              </p>
+            </div>
+          </div>
         </div>
       </motion.div>
       
