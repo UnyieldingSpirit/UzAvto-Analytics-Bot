@@ -1924,19 +1924,271 @@ const renderTrendsContent = () => {
   );
 };
  
- const renderAnalyticsContent = () => (
-   <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-8 rounded-xl shadow-lg`}>
-     <div className="flex items-center justify-center h-96">
-       <div className="text-center">
-         <span className="text-6xl mb-4 block">📉</span>
-         <p className={`text-xl ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-           Контент для "Аналитика" будет добавлен здесь
-         </p>
-       </div>
-     </div>
-   </div>
- );
-  // Добавьте эту функцию после объявления состояний
+const renderAnalyticsContent = () => {
+  // Данные для таблицы
+  const analyticsData = [
+    { date: '1-Jun', cobalt: { plan: 0, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 0, actual: 0, diff: 0 }, totalAsaka: { plan: 0, actual: 0, diff: 0 }, totalKhorezm: { plan: 0, actual: 0, diff: 0 }, grandTotal: { plan: 0, actual: 0, diff: 0 } },
+    { date: '2-Jun', cobalt: { plan: 624, actual: 639, diff: 15 }, onix: { plan: 200, actual: 155, diff: -45 }, tracker: { plan: 75, actual: 130, diff: 55 }, totalAsaka: { plan: 899, actual: 924, diff: 25 }, totalKhorezm: { plan: 460, actual: 465, diff: 5 }, grandTotal: { plan: 1359, actual: 1389, diff: 30 } },
+    { date: '3-Jun', cobalt: { plan: 624, actual: 641, diff: 32 }, onix: { plan: 200, actual: 175, diff: -70 }, tracker: { plan: 75, actual: 103, diff: 83 }, totalAsaka: { plan: 899, actual: 919, diff: 45 }, totalKhorezm: { plan: 460, actual: 440, diff: -15 }, grandTotal: { plan: 1359, actual: 1359, diff: 30 } },
+    { date: '4-Jun', cobalt: { plan: 624, actual: 634, diff: 42 }, onix: { plan: 200, actual: 196, diff: -74 }, tracker: { plan: 75, actual: 79, diff: 87 }, totalAsaka: { plan: 899, actual: 909, diff: 55 }, totalKhorezm: { plan: 460, actual: 436, diff: -39 }, grandTotal: { plan: 1359, actual: 1345, diff: 16 } },
+    { date: '5-Jun', cobalt: { plan: 228, actual: 217, diff: 31 }, onix: { plan: 100, actual: 87, diff: -87 }, tracker: { plan: 38, actual: 52, diff: 101 }, totalAsaka: { plan: 366, actual: 356, diff: -45 }, totalKhorezm: { plan: 460, actual: 430, diff: -69 }, grandTotal: { plan: 826, actual: 786, diff: -24 } },
+    { date: '6-Jun', cobalt: { plan: 0, actual: 0, diff: 31 }, onix: { plan: 0, actual: 0, diff: -87 }, tracker: { plan: 0, actual: 0, diff: 101 }, totalAsaka: { plan: 0, actual: 0, diff: -45 }, totalKhorezm: { plan: 0, actual: 0, diff: -69 }, grandTotal: { plan: 0, actual: 0, diff: -24 } },
+    { date: '7-Jun', cobalt: { plan: 312, actual: 329, diff: 48 }, onix: { plan: 0, actual: 0, diff: -87 }, tracker: { plan: 0, actual: 0, diff: 101 }, totalAsaka: { plan: 312, actual: 329, diff: 62 }, totalKhorezm: { plan: 460, actual: 470, diff: -59 }, grandTotal: { plan: 772, actual: 799, diff: 3 } },
+    { date: '8-Jun', cobalt: { plan: 624, actual: 633, diff: 57 }, onix: { plan: 0, actual: 0, diff: -87 }, tracker: { plan: 0, actual: 0, diff: 101 }, totalAsaka: { plan: 624, actual: 633, diff: 71 }, totalKhorezm: { plan: 460, actual: 470, diff: -49 }, grandTotal: { plan: 1084, actual: 1103, diff: 22 } },
+    { date: '9-Jun', cobalt: { plan: 624, actual: 622, diff: 55 }, onix: { plan: 200, actual: 188, diff: -99 }, tracker: { plan: 75, actual: 93, diff: 119 }, totalAsaka: { plan: 899, actual: 903, diff: 75 }, totalKhorezm: { plan: 460, actual: 470, diff: -39 }, grandTotal: { plan: 1359, actual: 1373, diff: 36 } },
+    { date: '10-Jun', cobalt: { plan: 624, actual: 644, diff: 75 }, onix: { plan: 100, actual: 170, diff: -29 }, tracker: { plan: 175, actual: 111, diff: 55 }, totalAsaka: { plan: 899, actual: 925, diff: 101 }, totalKhorezm: { plan: 460, actual: 463, diff: -36 }, grandTotal: { plan: 1359, actual: 1388, diff: 65 } },
+    { date: '11-Jun', cobalt: { plan: 624, actual: 639, diff: 90 }, onix: { plan: 0, actual: 34, diff: 5 }, tracker: { plan: 275, actual: 258, diff: 38 }, totalAsaka: { plan: 899, actual: 931, diff: 133 }, totalKhorezm: { plan: 460, actual: 470, diff: -26 }, grandTotal: { plan: 1359, actual: 1401, diff: 107 } },
+    { date: '12-Jun', cobalt: { plan: 624, actual: 600, diff: 66 }, onix: { plan: 0, actual: 1, diff: 6 }, tracker: { plan: 275, actual: 271, diff: 34 }, totalAsaka: { plan: 899, actual: 872, diff: 106 }, totalKhorezm: { plan: 460, actual: 470, diff: -16 }, grandTotal: { plan: 1359, actual: 1342, diff: 90 } },
+    { date: '13-Jun', cobalt: { plan: 624, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 275, actual: 0, diff: 0 }, totalAsaka: { plan: 899, actual: 0, diff: 0 }, totalKhorezm: { plan: 460, actual: 0, diff: 0 }, grandTotal: { plan: 1359, actual: 0, diff: 0 } },
+    { date: '14-Jun', cobalt: { plan: 624, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 275, actual: 0, diff: 0 }, totalAsaka: { plan: 899, actual: 0, diff: 0 }, totalKhorezm: { plan: 460, actual: 0, diff: 0 }, grandTotal: { plan: 1359, actual: 0, diff: 0 } },
+    { date: '15-Jun', cobalt: { plan: 0, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 0, actual: 0, diff: 0 }, totalAsaka: { plan: 0, actual: 0, diff: 0 }, totalKhorezm: { plan: 460, actual: 0, diff: 0 }, grandTotal: { plan: 460, actual: 0, diff: 0 } },
+    { date: '16-Jun', cobalt: { plan: 624, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 275, actual: 0, diff: 0 }, totalAsaka: { plan: 899, actual: 0, diff: 0 }, totalKhorezm: { plan: 460, actual: 0, diff: 0 }, grandTotal: { plan: 1359, actual: 0, diff: 0 } },
+    { date: '17-Jun', cobalt: { plan: 624, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 275, actual: 0, diff: 0 }, totalAsaka: { plan: 899, actual: 0, diff: 0 }, totalKhorezm: { plan: 460, actual: 0, diff: 0 }, grandTotal: { plan: 1359, actual: 0, diff: 0 } },
+    { date: '18-Jun', cobalt: { plan: 624, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 275, actual: 0, diff: 0 }, totalAsaka: { plan: 899, actual: 0, diff: 0 }, totalKhorezm: { plan: 460, actual: 0, diff: 0 }, grandTotal: { plan: 1359, actual: 0, diff: 0 } },
+    { date: '19-Jun', cobalt: { plan: 624, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 275, actual: 0, diff: 0 }, totalAsaka: { plan: 899, actual: 0, diff: 0 }, totalKhorezm: { plan: 470, actual: 0, diff: 0 }, grandTotal: { plan: 1369, actual: 0, diff: 0 } },
+    { date: '20-Jun', cobalt: { plan: 624, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 275, actual: 0, diff: 0 }, totalAsaka: { plan: 899, actual: 0, diff: 0 }, totalKhorezm: { plan: 470, actual: 0, diff: 0 }, grandTotal: { plan: 1369, actual: 0, diff: 0 } },
+    { date: '21-Jun', cobalt: { plan: 624, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 275, actual: 0, diff: 0 }, totalAsaka: { plan: 899, actual: 0, diff: 0 }, totalKhorezm: { plan: 470, actual: 0, diff: 0 }, grandTotal: { plan: 1369, actual: 0, diff: 0 } },
+    { date: '22-Jun', cobalt: { plan: 0, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 0, actual: 0, diff: 0 }, totalAsaka: { plan: 0, actual: 0, diff: 0 }, totalKhorezm: { plan: 470, actual: 0, diff: 0 }, grandTotal: { plan: 470, actual: 0, diff: 0 } },
+    { date: '23-Jun', cobalt: { plan: 624, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 275, actual: 0, diff: 0 }, totalAsaka: { plan: 899, actual: 0, diff: 0 }, totalKhorezm: { plan: 470, actual: 0, diff: 0 }, grandTotal: { plan: 1369, actual: 0, diff: 0 } },
+    { date: '24-Jun', cobalt: { plan: 624, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 275, actual: 0, diff: 0 }, totalAsaka: { plan: 899, actual: 0, diff: 0 }, totalKhorezm: { plan: 470, actual: 0, diff: 0 }, grandTotal: { plan: 1369, actual: 0, diff: 0 } },
+    { date: '25-Jun', cobalt: { plan: 624, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 275, actual: 0, diff: 0 }, totalAsaka: { plan: 899, actual: 0, diff: 0 }, totalKhorezm: { plan: 470, actual: 0, diff: 0 }, grandTotal: { plan: 1369, actual: 0, diff: 0 } },
+    { date: '26-Jun', cobalt: { plan: 624, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 275, actual: 0, diff: 0 }, totalAsaka: { plan: 899, actual: 0, diff: 0 }, totalKhorezm: { plan: 470, actual: 0, diff: 0 }, grandTotal: { plan: 1369, actual: 0, diff: 0 } },
+    { date: '27-Jun', cobalt: { plan: 624, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 137, actual: 0, diff: 0 }, totalAsaka: { plan: 761, actual: 0, diff: 0 }, totalKhorezm: { plan: 470, actual: 0, diff: 0 }, grandTotal: { plan: 1231, actual: 0, diff: 0 } },
+    { date: '28-Jun', cobalt: { plan: 624, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 0, actual: 0, diff: 0 }, totalAsaka: { plan: 624, actual: 0, diff: 0 }, totalKhorezm: { plan: 470, actual: 0, diff: 0 }, grandTotal: { plan: 1094, actual: 0, diff: 0 } },
+    { date: '29-Jun', cobalt: { plan: 232, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 0, actual: 0, diff: 0 }, totalAsaka: { plan: 232, actual: 0, diff: 0 }, totalKhorezm: { plan: 470, actual: 0, diff: 0 }, grandTotal: { plan: 702, actual: 0, diff: 0 } },
+    { date: '30-Jun', cobalt: { plan: 0, actual: 0, diff: 0 }, onix: { plan: 0, actual: 0, diff: 0 }, tracker: { plan: 0, actual: 0, diff: 0 }, totalAsaka: { plan: 0, actual: 0, diff: 0 }, totalKhorezm: { plan: 470, actual: 0, diff: 0 }, grandTotal: { plan: 470, actual: 0, diff: 0 } },
+  ];
+
+  const totals = {
+    cobalt: { plan: 14500, actual: 5598, diff: -8902 },
+    onix: { plan: 1000, actual: 1006, diff: 6 },
+    tracker: { plan: 4500, actual: 1097, diff: -3403 },
+    totalAsaka: { plan: 20000, actual: 7701, diff: -12299 },
+    totalKhorezm: { plan: 13000, actual: 4584, diff: -8416 },
+    grandTotal: { plan: 33000, actual: 12285, diff: -20715 }
+  };
+
+  const columnHeaders = ['Cobalt', 'Onix', 'Tracker', 'Total (Asaka)', 'Total (Khorezm)', 'Grand total (CKD)'];
+  const columnColors = ['blue', 'green', 'purple', 'yellow', 'orange', 'gray'];
+
+  return (
+    <div className="space-y-6">
+      {/* Заголовок */}
+      <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-6 rounded-xl shadow-lg`}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            Детальная аналитика производства по моделям
+          </h2>
+          <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            Июнь 2025
+          </span>
+        </div>
+
+        {/* Таблица */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr>
+                <th rowSpan={2} className={`p-2 text-left font-medium ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  
+                </th>
+                {columnHeaders.map((header, index) => (
+                  <th 
+                    key={`header-${index}`}
+                    colSpan={3} 
+                    className={`p-2 text-center font-medium border ${isDark ? 'border-gray-600' : 'border-gray-300'} ${
+                      columnColors[index] === 'blue' ? 'bg-blue-50 dark:bg-blue-900/20' :
+                      columnColors[index] === 'green' ? 'bg-green-50 dark:bg-green-900/20' :
+                      columnColors[index] === 'purple' ? 'bg-purple-50 dark:bg-purple-900/20' :
+                      columnColors[index] === 'yellow' ? 'bg-yellow-50 dark:bg-yellow-900/20' :
+                      columnColors[index] === 'orange' ? 'bg-orange-50 dark:bg-orange-900/20' :
+                      'bg-gray-200 dark:bg-gray-700'
+                    } ${isDark ? 'text-gray-300' : 'text-gray-700'}`}
+                  >
+                    {header}
+                  </th>
+                ))}
+              </tr>
+              <tr>
+                {columnHeaders.map((_, colIndex) => (
+                  <>
+                    <th key={`plan-${colIndex}`} className={`p-2 text-center text-xs ${isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-50 text-gray-600'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                      Plan
+                    </th>
+                    <th key={`actual-${colIndex}`} className={`p-2 text-center text-xs ${isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-50 text-gray-600'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                      Actual
+                    </th>
+                    <th key={`diff-${colIndex}`} className={`p-2 text-center text-xs ${isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-50 text-gray-600'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                      Diff
+                    </th>
+                  </>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {analyticsData.map((row, index) => (
+                <tr key={`row-${index}`} className={`${isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}`}>
+                  <td className={`p-2 font-medium ${isDark ? 'text-white' : 'text-gray-900'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                    {row.date}
+                  </td>
+                  {/* Cobalt */}
+                  <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.cobalt.plan}</td>
+                  <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.cobalt.actual}</td>
+                  <td className={`p-2 text-center font-semibold border ${isDark ? 'border-gray-600' : 'border-gray-300'} ${row.cobalt.diff < 0 ? 'text-red-600 bg-red-50 dark:bg-red-900/20' : row.cobalt.diff > 0 ? 'text-green-600' : ''}`}>
+                    {row.cobalt.diff}
+                  </td>
+                  {/* Onix */}
+                  <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.onix.plan}</td>
+                  <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.onix.actual}</td>
+                  <td className={`p-2 text-center font-semibold border ${isDark ? 'border-gray-600' : 'border-gray-300'} ${row.onix.diff < 0 ? 'text-red-600 bg-red-50 dark:bg-red-900/20' : row.onix.diff > 0 ? 'text-green-600' : ''}`}>
+                    {row.onix.diff}
+                  </td>
+                  {/* Tracker */}
+                  <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.tracker.plan}</td>
+                  <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.tracker.actual}</td>
+                  <td className={`p-2 text-center font-semibold border ${isDark ? 'border-gray-600' : 'border-gray-300'} ${row.tracker.diff < 0 ? 'text-red-600 bg-red-50 dark:bg-red-900/20' : row.tracker.diff > 0 ? 'text-green-600' : ''}`}>
+                    {row.tracker.diff}
+                  </td>
+                  {/* Total Asaka */}
+                  <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.totalAsaka.plan}</td>
+                  <td className={`p-2 text-center font-semibold border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.totalAsaka.actual}</td>
+                  <td className={`p-2 text-center font-semibold border ${isDark ? 'border-gray-600' : 'border-gray-300'} ${row.totalAsaka.diff < 0 ? 'text-red-600 bg-red-50 dark:bg-red-900/20' : row.totalAsaka.diff > 0 ? 'text-green-600' : ''}`}>
+                    {row.totalAsaka.diff}
+                  </td>
+                  {/* Total Khorezm */}
+                  <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.totalKhorezm.plan}</td>
+                  <td className={`p-2 text-center font-semibold border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.totalKhorezm.actual}</td>
+                  <td className={`p-2 text-center font-semibold border ${isDark ? 'border-gray-600' : 'border-gray-300'} ${row.totalKhorezm.diff < 0 ? 'text-red-600 bg-red-50 dark:bg-red-900/20' : row.totalKhorezm.diff > 0 ? 'text-green-600' : ''}`}>
+                    {row.totalKhorezm.diff}
+                  </td>
+                  {/* Grand Total */}
+                  <td className={`p-2 text-center font-bold border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.grandTotal.plan}</td>
+                  <td className={`p-2 text-center font-bold border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>{row.grandTotal.actual}</td>
+                  <td className={`p-2 text-center font-bold border ${isDark ? 'border-gray-600' : 'border-gray-300'} ${row.grandTotal.diff < 0 ? 'text-red-600 bg-red-50 dark:bg-red-900/20' : row.grandTotal.diff > 0 ? 'text-green-600' : ''}`}>
+                    {row.grandTotal.diff}
+                  </td>
+                </tr>
+              ))}
+              
+              {/* Итоговая строка */}
+              <tr className={`font-bold ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                <td className={`p-2 ${isDark ? 'text-white' : 'text-gray-900'} border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  Total
+                </td>
+                {/* Cobalt Total */}
+                <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.cobalt.plan.toLocaleString()}
+                </td>
+                <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.cobalt.actual.toLocaleString()}
+                </td>
+                <td className={`p-2 text-center text-red-600 bg-red-50 dark:bg-red-900/20 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.cobalt.diff.toLocaleString()}
+                </td>
+                {/* Onix Total */}
+                <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.onix.plan.toLocaleString()}
+                </td>
+                <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.onix.actual.toLocaleString()}
+                </td>
+                <td className={`p-2 text-center text-green-600 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.onix.diff}
+                </td>
+                {/* Tracker Total */}
+                <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.tracker.plan.toLocaleString()}
+                </td>
+                <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.tracker.actual.toLocaleString()}
+                </td>
+                <td className={`p-2 text-center text-red-600 bg-red-50 dark:bg-red-900/20 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.tracker.diff.toLocaleString()}
+                </td>
+                {/* Total Asaka */}
+                <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.totalAsaka.plan.toLocaleString()}
+                </td>
+                <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.totalAsaka.actual.toLocaleString()}
+                </td>
+                <td className={`p-2 text-center text-red-600 bg-red-50 dark:bg-red-900/20 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.totalAsaka.diff.toLocaleString()}
+                </td>
+                {/* Total Khorezm */}
+                <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.totalKhorezm.plan.toLocaleString()}
+                </td>
+                <td className={`p-2 text-center border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.totalKhorezm.actual.toLocaleString()}
+                </td>
+                <td className={`p-2 text-center text-red-600 bg-red-50 dark:bg-red-900/20 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.totalKhorezm.diff.toLocaleString()}
+                </td>
+                {/* Grand Total */}
+                <td className={`p-2 text-center text-lg border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.grandTotal.plan.toLocaleString()}
+                </td>
+                <td className={`p-2 text-center text-lg border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.grandTotal.actual.toLocaleString()}
+                </td>
+                <td className={`p-2 text-center text-lg text-red-600 bg-red-50 dark:bg-red-900/20 border ${isDark ? 'border-gray-600' : 'border-gray-300'}`}>
+                  {totals.grandTotal.diff.toLocaleString()}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Легенда */}
+        <div className="mt-4 flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-red-50 border border-red-300 rounded"></div>
+            <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>Недовыполнение плана</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-50 border border-green-300 rounded"></div>
+            <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>Перевыполнение плана</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-gray-100 border border-gray-300 rounded"></div>
+            <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>План = Факт</span>
+          </div>
+        </div>
+
+        {/* Сводная информация */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className={`p-4 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+            <h3 className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'} mb-2`}>
+              Общий план на июнь
+            </h3>
+            <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              33,000 единиц
+            </p>
+          </div>
+          <div className={`p-4 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+            <h3 className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'} mb-2`}>
+              Фактически произведено
+            </h3>
+            <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              12,285 единиц
+            </p>
+          </div>
+          <div className={`p-4 rounded-lg ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
+            <h3 className={`text-sm font-medium ${isDark ? 'text-red-400' : 'text-red-700'} mb-2`}>
+              Отклонение от плана
+            </h3>
+            <p className={`text-2xl font-bold text-red-600`}>
+              -20,715 единиц (-62.7%)
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+  
+  
 const handleTabChange = (tabId) => {
   setActiveTab(tabId);
   
