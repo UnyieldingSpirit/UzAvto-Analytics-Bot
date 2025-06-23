@@ -27,6 +27,7 @@ const navTranslations = {
     carWarehouse: 'Автомобильный склад',
     systemSettings: 'Настройки системы',
     warehouseStatistics: 'Производство авто',
+    sapClosing: 'SAP закрытие месяца', // Новый перевод
     documentation: 'Документация и поддержка',
     selectLanguage: 'Выбрать язык',
     appTitle: 'UzAvtoAnalytics',
@@ -60,6 +61,7 @@ const navTranslations = {
     financialAnalytics: 'Moliyaviy tahlil',
     contracts: 'Shartnomalar',
     warehouseStatistics: 'Ishlab chiqarish statistikasi',
+    sapClosing: 'SAP oyni yopish', // Новый перевод
     installments: 'Bo\'lib to\'lash',
     carWarehouse: 'Avtomobil ombori',
     systemSettings: 'Tizim sozlamalari',
@@ -96,6 +98,7 @@ const navTranslations = {
     financialAnalytics: 'Financial Analytics',
     contracts: 'Contracts',
     warehouseStatistics: 'Warehouse Statistics',
+    sapClosing: 'SAP Month Closing', // Новый перевод
     installments: 'Installments',
     carWarehouse: 'Car Warehouse',
     systemSettings: 'System Settings',
@@ -208,7 +211,8 @@ export default function ResponsiveNav() {
     Check,
     Sun,
     Moon,
-    Monitor
+    Monitor,
+    Calendar
   } = LucideIcons;
 
   // Цвета по категориям
@@ -234,7 +238,6 @@ export default function ResponsiveNav() {
       translationKey: 'salesAnalytics',
       category: 'analytics',
       icon: <AreaChart size={22} strokeWidth={1.5} color={categoryColors.analytics} />,
-      notification: 3
     },
     {
       path: '/sales-dashboard',
@@ -242,7 +245,6 @@ export default function ResponsiveNav() {
       translationKey: 'salesMonitoring',
       category: 'analytics',
       icon: <TrendingUp size={22} strokeWidth={1.5} color={categoryColors.analytics} />,
-      notification: 8
     },
     {
       path: '/model-tracking',
@@ -271,7 +273,6 @@ export default function ResponsiveNav() {
       translationKey: 'financialAnalytics',
       category: 'finance',
       icon: <FileSpreadsheet size={22} strokeWidth={1.5} color={categoryColors.finance} />,
-      notification: 5
     },
     {
       path: '/car-contracts',
@@ -293,7 +294,6 @@ export default function ResponsiveNav() {
     translationKey: 'carWarehouse',
     category: 'warehouse',
     icon: <Car size={22} strokeWidth={1.5} color={categoryColors.warehouse} />,
-    notification: 3
   },
   {
     path: '/warehouse-statistics',
@@ -301,6 +301,13 @@ export default function ResponsiveNav() {
     translationKey: 'warehouseStatistics',
     category: 'warehouse',
     icon: <BarChart3 size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
+  },
+  {
+    path: '/sap-closing',
+    label: t('sapClosing'), // Используем новый ключ перевода
+    translationKey: 'sapClosing',
+    category: 'finance', // Помещаем в категорию финансы, так как это связано с закрытием периода
+    icon: <Calendar size={22} strokeWidth={1.5} color={categoryColors.finance} />,
   }
   ];
 

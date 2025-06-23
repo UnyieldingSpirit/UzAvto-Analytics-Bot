@@ -55,7 +55,6 @@ const fetchData = async (isWholesale) => {
       }
     });
 
-    // В axios используем response.data вместо response.json()
     const jsonData = response.data;
     setData(jsonData);
     

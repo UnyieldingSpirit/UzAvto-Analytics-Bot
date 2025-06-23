@@ -11,8 +11,6 @@ import { financialAnalyticsLocale } from '../components/locales/financialAnalyti
 import { useAuth } from '../../hooks/useAuth';
 import { axiosInstance } from '../../utils/axiosConfig';
 
-// Массив месяцев для отображения
-
 
 // Константы типов продаж
 const SALE_TYPES = {
