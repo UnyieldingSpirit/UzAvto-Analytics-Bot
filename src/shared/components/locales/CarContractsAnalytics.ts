@@ -120,19 +120,19 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
 
         // Возврат денежных средств
         moneyReturn: {
-            title: 'Возврат денежных средств',
-            subtitle: 'Отслеживание фактических и ожидаемых возвратов',
-            financialAnalytics: 'Финансовая аналитика',
+            title: 'Возврат контрактов',
+            subtitle: 'Отслеживание фактических и ожидаемых возвратов контрактов',
+            financialAnalytics: 'Аналитика контрактов',
             analysisReturns: 'Анализ возвратов',
             regionLabel: 'Регион',
             modelLabel: 'Модель',
-            dynamicsTitle: 'Динамика возврата денежных средств {{year}}',
-            noDataPeriod: 'Нет данных о возврате для выбранного периода',
+            dynamicsTitle: 'Динамика возврата контрактов {{year}}',
+            noDataPeriod: 'Нет данных о возврате контрактов для выбранного периода',
             loadError: 'Ошибка при загрузке данных о возврате',
             retryLoad: 'Повторить попытку',
             reloadData: 'Повторить запрос',
             currentMonthOnly: '* Данные доступны только по текущий месяц',
-            returnAmount: 'Сумма возврата'
+            returnContracts: 'Количество возвратов' // Изменено с returnAmount
         },
 
         // Акции и промо
@@ -310,19 +310,19 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
 
         // Возврат денежных средств
         moneyReturn: {
-            title: 'Pul mablag\'larini qaytarish',
-            subtitle: 'Haqiqiy va kutilayotgan qaytarishlarni kuzatish',
-            financialAnalytics: 'Moliyaviy analitika',
+            title: 'Shartnomalarni qaytarish',
+            subtitle: 'Haqiqiy va kutilayotgan shartnoma qaytarishlarini kuzatish',
+            financialAnalytics: 'Shartnomalar analitikasi',
             analysisReturns: 'Qaytarishlar tahlili',
             regionLabel: 'Viloyat',
             modelLabel: 'Model',
-            dynamicsTitle: 'Pul mablag\'larini qaytarish dinamikasi {{year}}',
-            noDataPeriod: 'Tanlangan davr uchun qaytarish haqida ma\'lumot yo\'q',
+            dynamicsTitle: 'Shartnomalarni qaytarish dinamikasi {{year}}',
+            noDataPeriod: 'Tanlangan davr uchun shartnoma qaytarishlari haqida ma\'lumot yo\'q',
             loadError: 'Qaytarish ma\'lumotlarini yuklashda xatolik',
             retryLoad: 'Qayta urinib ko\'ring',
             reloadData: 'So\'rovni takrorlash',
             currentMonthOnly: '* Ma\'lumotlar faqat joriy oygacha mavjud',
-            returnAmount: 'Qaytarish summasi'
+            returnAmount: 'Qaytarishlar soni'
         },
 
         // Акции и промо
@@ -500,19 +500,19 @@ export const carContractsAnalyticsTranslations: LocaleMessages = {
 
         // Возврат денежных средств
         moneyReturn: {
-            title: 'Money Returns',
-            subtitle: 'Tracking actual and expected returns',
-            financialAnalytics: 'Financial Analytics',
+            title: 'Contract Returns',
+            subtitle: 'Tracking actual and expected contract returns',
+            financialAnalytics: 'Contract Analytics',
             analysisReturns: 'Returns Analysis',
             regionLabel: 'Region',
             modelLabel: 'Model',
-            dynamicsTitle: 'Money returns dynamics {{year}}',
-            noDataPeriod: 'No return data for selected period',
+            dynamicsTitle: 'Contract returns dynamics {{year}}',
+            noDataPeriod: 'No contract return data for selected period',
             loadError: 'Error loading return data',
             retryLoad: 'Try again',
             reloadData: 'Retry request',
             currentMonthOnly: '* Data available only up to current month',
-            returnAmount: 'Return amount'
+            returnAmount: 'Returns count'
         },
 
         // Акции и промо

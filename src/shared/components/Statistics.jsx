@@ -3426,7 +3426,7 @@ const fetchMarketData = async (startDate, endDate) => {
          animate={{ opacity: 1, y: 0 }}
          className={`text-2xl sm:text-3xl md:text-4xl font-bold ${isDark ? 'text-transparent bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text' : 'text-transparent bg-gradient-to-r from-blue-600 to-purple-700 bg-clip-text'}`}
        >
-         {t('title', { defaultValue: 'Интерактивная панель продаж автомобилей' })}
+         {t('title', { defaultValue: 'Интерактивная панель контрактов автомобилей' })}
        </motion.h1>
        <motion.p 
          initial={{ opacity: 0 }}

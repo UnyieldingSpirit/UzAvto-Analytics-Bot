@@ -11,6 +11,8 @@ import { financialAnalyticsLocale } from '../components/locales/financialAnalyti
 import { useAuth } from '../../hooks/useAuth';
 import { axiosInstance } from '../../utils/axiosConfig';
 
+// Массив месяцев для отображения
+
 
 // Константы типов продаж
 const SALE_TYPES = {
@@ -70,7 +72,8 @@ const [tableDateStart, setTableDateStart] = useState(currentMonthDates.start);
 const [tableDateEnd, setTableDateEnd] = useState(currentMonthDates.end);
  const { t } = useTranslation(financialAnalyticsLocale);
     const { mode: themeMode } = useThemeStore();
-  const isDarkMode = themeMode === 'dark';
+  const isDarkMode = themeMode !== 'dark';
+  
     const MONTHS = useMemo(() => [
     t('months.january'),
     t('months.february'),

@@ -65,20 +65,20 @@ const themeClass = (baseClasses, lightSpecific = '', darkSpecific = '') => {
 };
 
 const extractMonthlyReturnData = (apiData, year) => {
-const months = [
-  { month: t.charts.monthData.january, value: 0 },
-  { month: t.charts.monthData.february, value: 0 },
-  { month: t.charts.monthData.march, value: 0 },
-  { month: t.charts.monthData.april, value: 0 },
-  { month: t.charts.monthData.may, value: 0 },
-  { month: t.charts.monthData.june, value: 0 },
-  { month: t.charts.monthData.july, value: 0 },
-  { month: t.charts.monthData.august, value: 0 },
-  { month: t.charts.monthData.september, value: 0 },
-  { month: t.charts.monthData.october, value: 0 },
-  { month: t.charts.monthData.november, value: 0 },
-  { month: t.charts.monthData.december, value: 0 }
-];
+  const months = [
+    { month: t.charts.monthData.january, value: 0 },
+    { month: t.charts.monthData.february, value: 0 },
+    { month: t.charts.monthData.march, value: 0 },
+    { month: t.charts.monthData.april, value: 0 },
+    { month: t.charts.monthData.may, value: 0 },
+    { month: t.charts.monthData.june, value: 0 },
+    { month: t.charts.monthData.july, value: 0 },
+    { month: t.charts.monthData.august, value: 0 },
+    { month: t.charts.monthData.september, value: 0 },
+    { month: t.charts.monthData.october, value: 0 },
+    { month: t.charts.monthData.november, value: 0 },
+    { month: t.charts.monthData.december, value: 0 }
+  ];
   
   // Отметка будущих месяцев
   const currentDate = new Date();
@@ -132,21 +132,22 @@ const months = [
           // Если выбран конкретный регион, ищем его данные
           const regionData = monthData.regions.find(r => r.region_id === selectedRegion);
           if (regionData) {
-            // Проверяем наличие поля amount
-            if (regionData.amount !== undefined) {
-              const amount = parseInt(regionData.amount || 0);
-              if (!isNaN(amount)) {
-                monthlyTotals[monthIndex] += amount;
+            // ИЗМЕНЕНИЕ: Считаем контракты вместо суммы
+            if (regionData.count !== undefined) {
+              const count = parseInt(regionData.count || 0);
+              if (!isNaN(count)) {
+                monthlyTotals[monthIndex] += count;
               }
             }
           }
         } else {
           // Если не выбран конкретный регион, суммируем по всем
           monthData.regions.forEach(region => {
-            if (region.amount !== undefined) {
-              const amount = parseInt(region.amount || 0);
-              if (!isNaN(amount)) {
-                monthlyTotals[monthIndex] += amount;
+            // ИЗМЕНЕНИЕ: Считаем контракты вместо суммы
+            if (region.count !== undefined) {
+              const count = parseInt(region.count || 0);
+              if (!isNaN(count)) {
+                monthlyTotals[monthIndex] += count;
               }
             }
           });
@@ -4439,7 +4440,7 @@ const CarModelThumbnail = ({ model, isSelected, onClick }) => {
           </div>
       </div>
       
-      <div className="bg-gradient-to-r from-gray-700/50 to-gray-700/30 rounded-md p-3 transition-all duration-300 hover:from-gray-700/70 hover:to-gray-700/50">
+      {/* <div className="bg-gradient-to-r from-gray-700/50 to-gray-700/30 rounded-md p-3 transition-all duration-300 hover:from-gray-700/70 hover:to-gray-700/50">
         <div className="text-center">
    <p className="text-gray-400 text-xs mb-1 uppercase tracking-wider">{t.modelRange.totalAmount}</p>
             <p className={`font-bold text-transparent bg-clip-text bg-gradient-to-r ${getTabColor()} text-lg`}>
@@ -4453,7 +4454,7 @@ const CarModelThumbnail = ({ model, isSelected, onClick }) => {
               }
           </p>
         </div>
-      </div>
+      </div> */}
     </div>
   </div>
 </div>
