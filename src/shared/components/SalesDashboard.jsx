@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Clock, Check, AlertTriangle, ChevronDown, Truck, MapPin, 
- Archive, ChevronLeft, BarChart3, Users, Activity, ChevronRight, Zap, Calendar, Car, X } from 'lucide-react';
+ Archive, ChevronLeft, BarChart3, Users, Activity, ChevronRight, Zap, Calendar, Car, X, Package, ArrowRight } from 'lucide-react';
 import { carModels, regions } from '../../shared/mocks/mock-data';
 import { useTelegram } from '../../hooks/useTelegram';
 import ContentReadyLoader from '../../shared/layout/ContentReadyLoader';
@@ -29,10 +29,13 @@ const SalesDashboard = () => {
  const [showSidebar, setShowSidebar] = useState(false);
  const [selectedModel, setSelectedModel] = useState(null);
  const [loading, setLoading] = useState(true);
+ const [selectedWarehouse, setSelectedWarehouse] = useState(null);
+ const [showWarehouseDetails, setShowWarehouseDetails] = useState(false);
  const { hapticFeedback } = useTelegram();
  
  const dataLoaded = useRef(false);
  const sidebarRef = useRef(null);
+ const warehouseDetailsRef = useRef(null);
  
  // Данные для API
  const [inMovementData, setInMovementData] = useState([]);
@@ -46,16 +49,19 @@ const SalesDashboard = () => {
      if (sidebarRef.current && !sidebarRef.current.contains(event.target) && showSidebar) {
        setShowSidebar(false);
      }
+     if (warehouseDetailsRef.current && !warehouseDetailsRef.current.contains(event.target) && showWarehouseDetails) {
+       setShowWarehouseDetails(false);
+     }
    };
 
-   if (showSidebar) {
+   if (showSidebar || showWarehouseDetails) {
      document.addEventListener('mousedown', handleClickOutside);
    }
 
    return () => {
      document.removeEventListener('mousedown', handleClickOutside);
    };
- }, [showSidebar]);
+ }, [showSidebar, showWarehouseDetails]);
 
  useEffect(() => {
    if (dataLoaded.current) {
@@ -686,6 +692,13 @@ const getDealerData = (status, regionName, selectedModelId) => {
    }
  };
 
+ // Функция для обработки клика по складу
+ const handleWarehouseClick = (warehouse) => {
+   if (hapticFeedback) hapticFeedback('selection');
+   setSelectedWarehouse(warehouse);
+   setShowWarehouseDetails(true);
+ };
+
  // Эффект для обновления заголовка при смене модели
  useEffect(() => {
    const titleElement = document.getElementById('dashboard-title');
@@ -729,6 +742,129 @@ const getDealerData = (status, regionName, selectedModelId) => {
           notShippedData.length > 0 && 
           notShippedData[0].name && 
           notShippedData[0].models;
+ };
+
+ // Обработка данных складов
+ const warehouseData = useMemo(() => {
+   if (!isWarehouseData()) return [];
+   
+   return notShippedData.map(warehouse => {
+     // Считаем общее количество автомобилей на складе
+     let totalCount = 0;
+     let modelsMap = {};
+     
+     if (warehouse.models && Array.isArray(warehouse.models)) {
+       warehouse.models.forEach(model => {
+         if (!selectedModel || model.model === selectedModel) {
+           const count = parseInt(model.sold || 0);
+           totalCount += count;
+           
+           // Группируем по моделям
+           if (!modelsMap[model.model]) {
+             modelsMap[model.model] = {
+               id: model.model,
+               name: carModelMap[model.model]?.name || model.model,
+               count: 0,
+               img: model.photo_sha 
+                 ? `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400`
+                 : (carModelMap[model.model]?.img || '')
+             };
+           }
+           modelsMap[model.model].count += count;
+         }
+       });
+     }
+     
+     return {
+       name: warehouse.name,
+       totalCount,
+       models: Object.values(modelsMap).sort((a, b) => b.count - a.count)
+     };
+   })
+   .filter(warehouse => warehouse.totalCount > 0)
+   .sort((a, b) => b.totalCount - a.totalCount);
+ }, [notShippedData, selectedModel]);
+
+ // Отображение деталей склада
+ const renderWarehouseDetails = () => {
+   if (!selectedWarehouse) return null;
+   
+   return (
+     <div className="h-full flex flex-col">
+       {/* Заголовок с кнопкой закрытия */}
+       <div className={`flex items-center gap-3 p-4 pt-14 border-b ${isDark ? 'border-gray-700 bg-gray-800/90' : 'border-gray-200 bg-white'}`}>
+         <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-blue-900/40 text-blue-400`}>
+           <Package size={20} />
+         </div>
+         <div className="flex-1">
+           <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+             {selectedWarehouse.name}
+           </h3>
+           <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+             Всего автомобилей: {selectedWarehouse.totalCount}
+           </div>
+         </div>
+       </div>
+       
+       {/* Список моделей */}
+       <div className="flex-1 overflow-y-auto p-3">
+         <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-3 px-2 flex items-center gap-2`}>
+           <Car size={14} />
+           <span>Модели на складе:</span>
+         </div>
+         
+         {selectedWarehouse.models.length === 0 ? (
+           <div className={`p-6 text-center ${isDark ? 'text-gray-400 bg-gray-800/40 border-gray-700/50' : 'text-gray-600 bg-gray-50 border-gray-200'} rounded-lg border`}>
+             <AlertTriangle size={24} className={`mx-auto mb-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+             <p>Нет данных</p>
+           </div>
+         ) : (
+           <div className="space-y-2.5">
+             {selectedWarehouse.models.map((model, index) => (
+               <div 
+                 key={index}
+                 className={`p-3.5 rounded-lg border ${
+                   isDark 
+                     ? 'bg-gray-800/60 border-gray-700'
+                     : 'bg-white border-gray-200'
+                 }`}
+               >
+                 <div className="flex items-center gap-3">
+                   <div className={`w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 ${
+                     isDark ? 'bg-gray-700' : 'bg-gray-200'
+                   }`}>
+                     <img 
+                       src={model.img}
+                       alt={model.name} 
+                       className="w-full h-full object-contain"
+                       onError={(e) => {
+                         e.target.onerror = null;
+                         e.target.src = '/placeholder-car.png';
+                       }}
+                     />
+                   </div>
+                   <div className="flex-1">
+                     <div className="flex items-center gap-2">
+                       <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium text-base`}>
+                         {model.name}
+                       </span>
+                     </div>
+                     <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+                       ID: {model.id}
+                     </div>
+                   </div>
+                   <div className={`px-3 py-2 rounded-lg bg-blue-900/40 text-blue-300 flex flex-col items-center border border-blue-800/30`}>
+                     <span className="text-lg font-bold">{model.count}</span>
+                     <span className="text-xs">единиц</span>
+                   </div>
+                 </div>
+               </div>
+             ))}
+           </div>
+         )}
+       </div>
+     </div>
+   );
  };
 
  // Содержимое боковой панели
@@ -1149,441 +1285,554 @@ const getDealerData = (status, regionName, selectedModelId) => {
            if (totalValue > 0) {
              dealer = {
                name: dealerData.name.replace(/^"(.*)".*$/, '$1'),
-               value: totalValue,
-               models: filteredModels
-             };
-           }
-         }
-       }
-     } else if (sourceData && sourceData.dealers && Array.isArray(sourceData.dealers)) {
-       // Альтернативный формат данных
-       const dealerData = sourceData.dealers.find(d => 
-         d.dealer_name === selectedDealer && d.region_name === selectedRegion
-       );
-       
-       if (dealerData) {
-         const modelList = [];
-           
-         if (selectedModel) {
-           // Если выбрана модель, добавляем только ее
-           const model = carModels.find(m => m.id === selectedModel);
-           if (model) {
-             modelList.push({
-               id: model.id,
-               name: model.name,
-               count: parseInt(dealerData.total_count || 0),
-               img: model.img
-             });
-           }
-         } else if (dealerData.models && Array.isArray(dealerData.models)) {
-           // Иначе добавляем все модели дилера
-           dealerData.models.forEach(model => {
-             modelList.push({
-               id: model.model_id,
-               name: model.model_name || t('unknown.model'),
-               count: parseInt(model.count || 0),
-               img: model.photo_sha ? `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400` : ''
-             });
-           });
-         }
-         
-         dealer = {
-           name: dealerData.dealer_name,
-           value: parseInt(dealerData.total_count || 0),
-           models: modelList
-         };
-       }
-     } else {
-       // Для других статусов используем имеющиеся данные
-       const dealers = dealerData[selectedStatus][selectedRegion] || [];
-       dealer = dealers.find(d => d.name === selectedDealer);
-     }
-     
-     if (!dealer) return null;
-     
-     return (
-       <div className="h-full flex flex-col">
-         {/* Улучшенный заголовок с навигацией */}
-         <div className={`p-4 pt-14 border-b ${isDark ? 'border-gray-700 bg-gray-800/90' : 'border-gray-200 bg-white'}`}>
-           <div className="flex items-center gap-3 mb-2">
-             <button 
-               onClick={handleBack}
-               className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                 isDark 
-                   ? 'hover:bg-gray-700/80 text-gray-400 hover:text-white' 
-                   : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-               }`}
-             >
-               <ChevronLeft size={20} />
-             </button>
-             <div className="flex-1 min-w-0">
-               <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} truncate`}>{selectedDealer}</h3>
-             </div>
-           </div>
-           <div className={`flex items-center text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} pl-10`}>
-             <div className="flex items-center gap-1">
-               <MapPin size={14} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
-               <span>{selectedRegion}</span>
-             </div>
-             <span className="mx-1.5">•</span>
-             <div className="flex items-center gap-1">
-               <span className={`text-${statusColor}-400`}>{statusTitle}</span>
-             </div>
-             {selectedModel && (
-               <>
-                 <span className="mx-1.5">•</span>
-                 <div className="flex items-center gap-1">
-                   <Car size={14} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
-                   <span>{carModels.find(m => m.id === selectedModel)?.name}</span>
-                 </div>
-               </>
-             )}
-           </div>
-         </div>
-         
-         <div className="flex-1 overflow-y-auto p-3">
-           {/* Карточка с общей информацией */}
-           <div className={`rounded-lg p-4 mb-4 border shadow-md ${
-             isDark 
-               ? 'bg-gray-800/70 border-gray-700' 
-               : 'bg-white border-gray-200'
-           }`}>
-             <div className="flex items-center gap-3 mb-3">
-               <div className="flex-1">
-                 <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>{t('dealer.totalCars')}:</div>
-                 <div className="flex items-baseline gap-1.5">
-                   <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{dealer.value}</div>
-                   <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('dealer.units')}</div>
-                 </div>
-               </div>
-               <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                 isDark 
-                   ? 'bg-gray-750 border-gray-700' 
-                   : 'bg-gray-100 border-gray-200'
-               } border`}>
-                 {statusIcon}
-               </div>
-             </div>
-             
-             <div className="mb-3 flex items-center gap-2">
-               <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('dealer.modelDistribution')}:</div>
-               <div className={`text-xs px-2 py-0.5 rounded-full ${
-                 isDark 
-                   ? 'bg-gray-700 text-gray-300 border-gray-600' 
-                   : 'bg-gray-100 text-gray-700 border-gray-200'
-               } border`}>
-                 {dealer.models.length} {getModelWord(dealer.models.length)}
-               </div>
-             </div>
-             
-             {dealer.models.length === 0 ? (
-               <div className={`p-4 text-center rounded-lg border ${
-                 isDark 
-                   ? 'text-gray-400 bg-gray-800/40 border-gray-700/50' 
-                   : 'text-gray-600 bg-gray-50 border-gray-200'
-               }`}>
-                 <AlertTriangle size={24} className={`mx-auto mb-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
-                 <p>{t('table.noData')}</p>
-               </div>
-             ) : (
-               <div className="space-y-3">
-                {dealer.models.map((model, idx) => (
-                 <div key={idx} className={`rounded-lg p-3 border transition-colors ${
-                   isDark 
-                     ? 'bg-gray-700/50 border-gray-600/50 hover:bg-gray-700/80' 
-                     : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                 }`}>
-                   <div className="flex justify-between items-center">
-                     <div className="flex items-center gap-3 min-w-0 w-3/4">
-                       <div className={`w-10 h-10 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center ${
-                         isDark ? 'bg-gray-600/30' : 'bg-gray-200'
-                       }`}>
-                         <img 
-                           src={model.img}
-                           alt={model.name} 
-                           className="w-full h-full object-contain"
-                           onError={(e) => {
-                             e.target.onerror = null;
-                             e.target.src = carModelMap[model.id]?.img || '';
-                           }}
-                         />
-                       </div>
-                       <div className="flex flex-col min-w-0">
-                         <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium truncate`}>{model.name}</span>
-                         <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{carModelMap[model.id]?.category || t('car')}</span>
-                       </div>
-                     </div>
-                     <div className={`px-2.5 py-1 rounded-md bg-${statusColor}-900/40 text-${statusColor}-300 flex items-center gap-1.5 border border-${statusColor}-800/30 whitespace-nowrap`}>
-                       <Car size={14} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
-                       <span className="text-sm font-semibold">{model.count}</span>
-                     </div>
-                   </div>
-                 </div>
-               ))}
-               </div>
-             )}
-           </div>
-         </div>
-       </div>
-     );
-   }
-   
-   return null;
- };
+              value: totalValue,
+              models: filteredModels
+            };
+          }
+        }
+      }
+    } else if (sourceData && sourceData.dealers && Array.isArray(sourceData.dealers)) {
+      // Альтернативный формат данных
+      const dealerData = sourceData.dealers.find(d => 
+        d.dealer_name === selectedDealer && d.region_name === selectedRegion
+      );
+      
+      if (dealerData) {
+        const modelList = [];
+          
+        if (selectedModel) {
+          // Если выбрана модель, добавляем только ее
+          const model = carModels.find(m => m.id === selectedModel);
+          if (model) {
+            modelList.push({
+              id: model.id,
+              name: model.name,
+              count: parseInt(dealerData.total_count || 0),
+              img: model.img
+            });
+          }
+        } else if (dealerData.models && Array.isArray(dealerData.models)) {
+          // Иначе добавляем все модели дилера
+          dealerData.models.forEach(model => {
+            modelList.push({
+              id: model.model_id,
+              name: model.model_name || t('unknown.model'),
+              count: parseInt(model.count || 0),
+              img: model.photo_sha ? `https://uzavtosalon.uz/b/core/m$load_image?sha=${model.photo_sha}&width=400&height=400` : ''
+            });
+          });
+        }
+        
+        dealer = {
+          name: dealerData.dealer_name,
+          value: parseInt(dealerData.total_count || 0),
+          models: modelList
+        };
+      }
+    } else {
+      // Для других статусов используем имеющиеся данные
+      const dealers = dealerData[selectedStatus][selectedRegion] || [];
+      dealer = dealers.find(d => d.name === selectedDealer);
+    }
+    
+    if (!dealer) return null;
+    
+    return (
+      <div className="h-full flex flex-col">
+        {/* Улучшенный заголовок с навигацией */}
+        <div className={`p-4 pt-14 border-b ${isDark ? 'border-gray-700 bg-gray-800/90' : 'border-gray-200 bg-white'}`}>
+          <div className="flex items-center gap-3 mb-2">
+            <button 
+              onClick={handleBack}
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                isDark 
+                  ? 'hover:bg-gray-700/80 text-gray-400 hover:text-white' 
+                  : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <div className="flex-1 min-w-0">
+              <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} truncate`}>{selectedDealer}</h3>
+            </div>
+          </div>
+          <div className={`flex items-center text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} pl-10`}>
+            <div className="flex items-center gap-1">
+              <MapPin size={14} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
+              <span>{selectedRegion}</span>
+            </div>
+            <span className="mx-1.5">•</span>
+            <div className="flex items-center gap-1">
+              <span className={`text-${statusColor}-400`}>{statusTitle}</span>
+            </div>
+            {selectedModel && (
+              <>
+                <span className="mx-1.5">•</span>
+                <div className="flex items-center gap-1">
+                  <Car size={14} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
+                  <span>{carModels.find(m => m.id === selectedModel)?.name}</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-3">
+          {/* Карточка с общей информацией */}
+          <div className={`rounded-lg p-4 mb-4 border shadow-md ${
+            isDark 
+              ? 'bg-gray-800/70 border-gray-700' 
+              : 'bg-white border-gray-200'
+          }`}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex-1">
+                <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>{t('dealer.totalCars')}:</div>
+                <div className="flex items-baseline gap-1.5">
+                  <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{dealer.value}</div>
+                  <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('dealer.units')}</div>
+                </div>
+              </div>
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                isDark 
+                  ? 'bg-gray-750 border-gray-700' 
+                  : 'bg-gray-100 border-gray-200'
+              } border`}>
+                {statusIcon}
+              </div>
+            </div>
+            
+            <div className="mb-3 flex items-center gap-2">
+              <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('dealer.modelDistribution')}:</div>
+              <div className={`text-xs px-2 py-0.5 rounded-full ${
+                isDark 
+                  ? 'bg-gray-700 text-gray-300 border-gray-600' 
+                  : 'bg-gray-100 text-gray-700 border-gray-200'
+              } border`}>
+                {dealer.models.length} {getModelWord(dealer.models.length)}
+              </div>
+            </div>
+            
+            {dealer.models.length === 0 ? (
+              <div className={`p-4 text-center rounded-lg border ${
+                isDark 
+                  ? 'text-gray-400 bg-gray-800/40 border-gray-700/50' 
+                  : 'text-gray-600 bg-gray-50 border-gray-200'
+              }`}>
+                <AlertTriangle size={24} className={`mx-auto mb-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                <p>{t('table.noData')}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+               {dealer.models.map((model, idx) => (
+                <div key={idx} className={`rounded-lg p-3 border transition-colors ${
+                  isDark 
+                    ? 'bg-gray-700/50 border-gray-600/50 hover:bg-gray-700/80' 
+                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                }`}>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3 min-w-0 w-3/4">
+                      <div className={`w-10 h-10 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center ${
+                        isDark ? 'bg-gray-600/30' : 'bg-gray-200'
+                      }`}>
+                        <img 
+                          src={model.img}
+                          alt={model.name} 
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = carModelMap[model.id]?.img || '';
+                          }}
+                        />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium truncate`}>{model.name}</span>
+                        <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{carModelMap[model.id]?.category || t('car')}</span>
+                      </div>
+                    </div>
+                    <div className={`px-2.5 py-1 rounded-md bg-${statusColor}-900/40 text-${statusColor}-300 flex items-center gap-1.5 border border-${statusColor}-800/30 whitespace-nowrap`}>
+                      <Car size={14} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
+                      <span className="text-sm font-semibold">{model.count}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  return null;
+};
 
- // Общий шаблон с интерактивной боковой панелью
- return (
-   <div className={`${isDark ? 'bg-gradient-to-br from-gray-900 to-gray-950' : 'bg-gray-50'} p-4 font-sans ${isDark ? 'text-gray-300' : 'text-gray-700'} min-h-screen relative`}>
-     {/* Индикатор загрузки */}
-     {loading && <ContentReadyLoader isLoading={loading} timeout={3000} />}
+// Общий шаблон с интерактивной боковой панелью
+return (
+  <div className={`${isDark ? 'bg-gradient-to-br from-gray-900 to-gray-950' : 'bg-gray-50'} p-4 font-sans ${isDark ? 'text-gray-300' : 'text-gray-700'} min-h-screen relative`}>
+    {/* Индикатор загрузки */}
+    {loading && <ContentReadyLoader isLoading={loading} timeout={3000} />}
 
-     {/* Оверлей для затемнения фона */}
-     {showSidebar && (
-       <div 
-         className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
-         onClick={() => setShowSidebar(false)}
-       />
-     )}
+    {/* Оверлей для затемнения фона */}
+    {showSidebar && (
+      <div 
+        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+        onClick={() => setShowSidebar(false)}
+      />
+    )}
 
-     {/* Плавающая боковая панель */}
-     <div 
-       ref={sidebarRef}
-       className={`fixed top-0 right-0 h-full ${isDark ? 'bg-gray-850' : 'bg-white'} backdrop-blur-sm border-l ${isDark ? 'border-gray-700' : 'border-gray-200'} shadow-xl transform transition-transform duration-300 z-50 ${showSidebar ? 'translate-x-0' : 'translate-x-full'}`}
-       style={{ 
-         backgroundColor: isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-         width: '400px'
-       }}
-     >
-       {/* Кнопка закрытия */}
-       <button 
-         onClick={() => setShowSidebar(false)}
-         className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors z-10 ${
-           isDark 
-             ? 'hover:bg-gray-700/80 text-gray-400 hover:text-white' 
-             : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-         }`}
-       >
-         <X size={20} />
-       </button>
-       
-       {renderSidebarContent()}
-     </div>
-     
-     {/* Плавающая кнопка для возврата к сайдбару */}
-     {!showSidebar && activeDetailLevel > 0 && (
-       <button 
-         className={`fixed top-1/2 right-0 transform -translate-y-1/2 ${isDark ? 'bg-gray-800 text-gray-400 border-gray-700' : 'bg-white text-gray-600 border-gray-200'} p-2 rounded-l-lg border border-r-0 z-50`}
-         onClick={() => setShowSidebar(true)}
-       >
-         <ChevronLeft size={18} />
-       </button>
-     )}
-     
-     {/* Главная панель - обновленный дизайн */}
-     <div className="">
-       {/* Шапка с индикатором пути */}
-       <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} backdrop-blur-sm rounded-lg p-3 mb-5 border ${isDark ? 'border-gray-700/50' : 'border-gray-200'} shadow-md flex justify-between items-center`}>
-         <div className="flex items-center gap-2">
-           <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
-             <BarChart3 size={20} className="text-white" />
-           </div>
-           <div>
-             <h1 id="dashboard-title" className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-               {selectedModel 
-                 ? t('titleWithModel', { modelName: carModels.find(m => m.id === selectedModel)?.name }) 
-                 : t('title')}
-             </h1>
-             <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-1`}>
-               <span>{t('dealerCenter')}</span>
-               <span>•</span>
-               <span>Ташкент</span>
-             </div>
-           </div>
-         </div>
-         
-         <div className="flex items-center gap-2">
-           <div className={`px-3 py-1.5 ${isDark ? 'bg-gray-700/70' : 'bg-gray-100'} rounded-lg text-sm ${isDark ? 'text-white' : 'text-gray-900'} flex items-center gap-1.5`}>
-             <Calendar size={14} />
-             <span>{new Date().toLocaleDateString(
-               currentLocale === 'ru' ? 'ru-RU' : 
-               currentLocale === 'en' ? 'en-US' : 
-               'uz-UZ', 
-               { day: 'numeric', month: 'long', year: 'numeric' }
-             )}</span>
-           </div>
-         </div>
-       </div>
-       
-       {/* Информационная панель - переименовано в "Задолженность по общим контрактам" */}
-       <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} backdrop-blur-sm rounded-lg mb-5 border ${isDark ? 'border-gray-700/50' : 'border-gray-200'} shadow-md overflow-hidden`}>
-         <div className={`flex justify-between items-center p-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-           <h2 className={`text-base font-medium ${isDark ? 'text-white' : 'text-gray-900'} flex items-center gap-2`}>
-             <Activity size={18} className="text-blue-400" />
-             {t('carsStatus')}
-             {selectedModel && (
-               <span className={`ml-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                 • {carModels.find(m => m.id === selectedModel)?.name}
-               </span>
-             )}
-           </h2>
-         </div>
-         
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
-           <div 
-             onClick={() => handleStatusSelect('notShipped')}
-             className={`relative p-4 border-r ${isDark ? 'border-gray-700' : 'border-gray-200'} cursor-pointer ${isDark ? 'hover:bg-gray-700/30' : 'hover:bg-gray-50'} transition-colors group`}
-           >
-             <div className={`absolute bottom-0 left-0 w-full h-1 ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}></div>
-             <div className="absolute bottom-0 left-0 h-1 bg-blue-600" 
-                  style={{ width: `${(contractDebtData.notShipped / (contractDebtData.notShipped + contractDebtData.inTransit + contractDebtData.delivered)) * 100}%` }}></div>
-             
-             <div className="flex items-start gap-3">
-               <div className={`w-12 h-12 rounded-full ${isDark ? 'bg-blue-900/40' : 'bg-blue-100'} flex items-center justify-center`}>
-                 <Archive size={22} className="text-blue-400" />
-               </div>
-               <div className="flex-1">
-                 <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>{contractDebtData.notShipped}</div>
-                 <div className="text-sm text-blue-300 flex items-center justify-between">
-                   <span>{t('notShipped.title')}</span>
-                   <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                 </div>
-               </div>
-             </div>
-           </div>
-           
-           <div 
-             onClick={() => handleStatusSelect('inTransit')}
-             className={`relative p-4 border-r ${isDark ? 'border-gray-700' : 'border-gray-200'} cursor-pointer ${isDark ? 'hover:bg-gray-700/30' : 'hover:bg-gray-50'} transition-colors group`}
+    {/* Оверлей для панели деталей склада */}
+    {showWarehouseDetails && (
+      <div 
+        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+        onClick={() => setShowWarehouseDetails(false)}
+      />
+    )}
+
+    {/* Плавающая боковая панель */}
+    <div 
+      ref={sidebarRef}
+      className={`fixed top-0 right-0 h-full ${isDark ? 'bg-gray-850' : 'bg-white'} backdrop-blur-sm border-l ${isDark ? 'border-gray-700' : 'border-gray-200'} shadow-xl transform transition-transform duration-300 z-50 ${showSidebar ? 'translate-x-0' : 'translate-x-full'}`}
+      style={{ 
+        backgroundColor: isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        width: '400px'
+      }}
+    >
+      {/* Кнопка закрытия */}
+      <button 
+        onClick={() => setShowSidebar(false)}
+        className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors z-10 ${
+          isDark 
+            ? 'hover:bg-gray-700/80 text-gray-400 hover:text-white' 
+            : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+        }`}
+      >
+        <X size={20} />
+      </button>
+      
+      {renderSidebarContent()}
+    </div>
+
+    {/* Плавающая панель деталей склада */}
+    <div 
+      ref={warehouseDetailsRef}
+      className={`fixed top-0 right-0 h-full ${isDark ? 'bg-gray-850' : 'bg-white'} backdrop-blur-sm border-l ${isDark ? 'border-gray-700' : 'border-gray-200'} shadow-xl transform transition-transform duration-300 z-50 ${showWarehouseDetails ? 'translate-x-0' : 'translate-x-full'}`}
+      style={{ 
+        backgroundColor: isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        width: '400px'
+      }}
+    >
+      {/* Кнопка закрытия */}
+      <button 
+        onClick={() => setShowWarehouseDetails(false)}
+        className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors z-10 ${
+          isDark 
+            ? 'hover:bg-gray-700/80 text-gray-400 hover:text-white' 
+            : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+        }`}
+      >
+        <X size={20} />
+      </button>
+      
+      {renderWarehouseDetails()}
+    </div>
+    
+    {/* Плавающая кнопка для возврата к сайдбару */}
+    {!showSidebar && activeDetailLevel > 0 && (
+      <button 
+        className={`fixed top-1/2 right-0 transform -translate-y-1/2 ${isDark ? 'bg-gray-800 text-gray-400 border-gray-700' : 'bg-white text-gray-600 border-gray-200'} p-2 rounded-l-lg border border-r-0 z-50`}
+        onClick={() => setShowSidebar(true)}
+      >
+        <ChevronLeft size={18} />
+      </button>
+    )}
+    
+    {/* Главная панель - обновленный дизайн */}
+    <div className="">
+      {/* Шапка с индикатором пути */}
+      <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} backdrop-blur-sm rounded-lg p-3 mb-5 border ${isDark ? 'border-gray-700/50' : 'border-gray-200'} shadow-md flex justify-between items-center`}>
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
+            <BarChart3 size={20} className="text-white" />
+          </div>
+          <div>
+            <h1 id="dashboard-title" className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              {selectedModel 
+                ? t('titleWithModel', { modelName: carModels.find(m => m.id === selectedModel)?.name }) 
+                : t('title')}
+            </h1>
+            <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-1`}>
+              <span>{t('dealerCenter')}</span>
+              <span>•</span>
+              <span>Ташкент</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <div className={`px-3 py-1.5 ${isDark ? 'bg-gray-700/70' : 'bg-gray-100'} rounded-lg text-sm ${isDark ? 'text-white' : 'text-gray-900'} flex items-center gap-1.5`}>
+            <Calendar size={14} />
+            <span>{new Date().toLocaleDateString(
+              currentLocale === 'ru' ? 'ru-RU' : 
+              currentLocale === 'en' ? 'en-US' : 
+              'uz-UZ', 
+              { day: 'numeric', month: 'long', year: 'numeric' }
+            )}</span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Информационная панель - переименовано в "Задолженность по общим контрактам" */}
+      <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} backdrop-blur-sm rounded-lg mb-5 border ${isDark ? 'border-gray-700/50' : 'border-gray-200'} shadow-md overflow-hidden`}>
+        <div className={`flex justify-between items-center p-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+          <h2 className={`text-base font-medium ${isDark ? 'text-white' : 'text-gray-900'} flex items-center gap-2`}>
+            <Activity size={18} className="text-blue-400" />
+            {t('carsStatus')}
+            {selectedModel && (
+              <span className={`ml-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                • {carModels.find(m => m.id === selectedModel)?.name}
+              </span>
+            )}
+          </h2>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
+          <div 
+            onClick={() => handleStatusSelect('notShipped')}
+            className={`relative p-4 border-r ${isDark ? 'border-gray-700' : 'border-gray-200'} cursor-pointer ${isDark ? 'hover:bg-gray-700/30' : 'hover:bg-gray-50'} transition-colors group`}
           >
-            <div className={`absolute bottom-0 left-0 w-full h-1 ${isDark ? 'bg-yellow-900/30' : 'bg-yellow-100'}`}></div>
-            <div className="absolute bottom-0 left-0 h-1 bg-yellow-600" 
-                 style={{ width: `${(contractDebtData.inTransit / (contractDebtData.notShipped + contractDebtData.inTransit + contractDebtData.delivered)) * 100}%` }}></div>
+            <div className={`absolute bottom-0 left-0 w-full h-1 ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}></div>
+            <div className="absolute bottom-0 left-0 h-1 bg-blue-600" 
+                 style={{ width: `${(contractDebtData.notShipped / (contractDebtData.notShipped + contractDebtData.inTransit + contractDebtData.delivered)) * 100}%` }}></div>
             
             <div className="flex items-start gap-3">
-              <div className={`w-12 h-12 rounded-full ${isDark ? 'bg-yellow-900/40' : 'bg-yellow-100'} flex items-center justify-center`}>
-                <Truck size={22} className="text-yellow-400" />
+              <div className={`w-12 h-12 rounded-full ${isDark ? 'bg-blue-900/40' : 'bg-blue-100'} flex items-center justify-center`}>
+                <Archive size={22} className="text-blue-400" />
               </div>
               <div className="flex-1">
-                <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>{contractDebtData.inTransit}</div>
-                <div className="text-sm text-yellow-300 flex items-center justify-between">
-                  <span>{t('inTransit.title')}</span>
+                <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>{contractDebtData.notShipped}</div>
+                <div className="text-sm text-blue-300 flex items-center justify-between">
+                  <span>{t('notShipped.title')}</span>
                   <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               </div>
             </div>
           </div>
           
-          <div className={`relative p-4 ${isDark ? 'border-l-0 border-gray-700' : 'border-l-0 border-gray-200'}`}>
-            <div className={`absolute bottom-0 left-0 w-full h-1 ${isDark ? 'bg-green-900/30' : 'bg-green-100'}`}></div>
-            <div className="absolute bottom-0 left-0 h-1 bg-green-600" 
-                 style={{ width: `${(contractDebtData.delivered / (contractDebtData.notShipped + contractDebtData.inTransit + contractDebtData.delivered)) * 100}%` }}></div>
-            
-            <div className="flex items-start gap-3">
-              <div className={`w-12 h-12 rounded-full ${isDark ? 'bg-green-900/40' : 'bg-green-100'} flex items-center justify-center`}>
-                <Check size={22} className="text-green-400" />
-              </div>
-              <div>
-                <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>{contractDebtData.delivered}</div>
-                <div className="text-sm text-green-300">{t('delivered')}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-5 mb-5">
-        {/* Компонент аналитики */}
-        {/* {renderAnalyticsDashboard()} */}
-        
-        {/* ТАБЛИЦА ЗАДОЛЖЕННОСТИ ПО КОНТРАКТАМ */}
-        <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} backdrop-blur-sm rounded-lg border ${isDark ? 'border-gray-700/50' : 'border-gray-200'} shadow-md overflow-hidden`}>
-          <div className={`flex justify-between items-center p-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-            <h3 className={`text-base font-medium ${isDark ? 'text-white' : 'text-gray-900'} flex items-center gap-2`}>
-              <AlertTriangle size={18} className="text-yellow-400" />
-              {t('frozenContracts')} 
-              {selectedModel && (
-                <span className={`ml-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  • {carModels.find(m => m.id === selectedModel)?.name}
-                </span>
-              )}
-            </h3>
-            <div className="text-[16px] text-yellow-300">
-              {t('total')}: <span className="font-bold">{totalFrozenCount}</span>
-            </div>
-          </div>
-          
-          <div className="p-3">
-            <div className={`rounded-lg overflow-hidden border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-              <table className="w-full text-sm">
-                <thead className={isDark ? 'bg-gray-900/80' : 'bg-gray-50'}>
-                  <tr>
-                    <th className={`px-3 py-2 text-left ${isDark ? 'text-gray-400' : 'text-gray-600'} font-medium`}>{t('table.modelName')}</th>
-                    <th className={`px-3 py-2 text-center ${isDark ? 'text-gray-400' : 'text-gray-600'} font-medium`}>{t('table.image')}</th>
-                    <th className={`px-3 py-2 text-right ${isDark ? 'text-gray-400' : 'text-gray-600'} font-medium`}>{t('table.quantity')}</th>
-                    <th className={`px-3 py-2 text-center ${isDark ? 'text-gray-400' : 'text-gray-600'} font-medium`}>{t('table.status')}</th>
-                  </tr>
-                </thead>
-                <tbody className={`divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                  {debtData.length === 0 ? (
-                    <tr>
-                      <td colSpan="4" className={`px-3 py-4 text-center ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        <AlertTriangle size={20} className="mx-auto mb-2 text-yellow-500" />
-                        {t('table.noData')}
-                      </td>
-                    </tr>
-                  ) : (
-                    debtData.map((item, index) => (
-                      <tr key={index} className={`${
-                        index % 2 === 0 
-                          ? isDark ? 'bg-gray-800/60' : 'bg-gray-50' 
-                          : isDark ? 'bg-gray-850/70' : 'bg-white'
-                      } ${isDark ? 'hover:bg-gray-700/70' : 'hover:bg-gray-100'}`}>
-                        <td className={`px-3 py-2 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{item.modelName}</td>
-                        <td className="px-3 py-2 text-center">
-                          <div className={`w-12 h-12 mx-auto rounded-md overflow-hidden ${isDark ? 'bg-gray-700/70' : 'bg-gray-200'} flex items-center justify-center`}>
-                            <img 
-                              src={item.modelImg} 
-                              alt={item.modelName} 
-                              className="h-full w-auto object-contain"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = carModelMap[item.modelId]?.img || '';
-                              }}
-                            />
-                          </div>
-                        </td>
-                        <td className={`px-3 py-2 text-right ${isDark ? 'text-gray-300' : 'text-gray-700'} font-medium`}>{item.total_count}</td>
-                        <td className="px-3 py-2 text-center">
-                          <span className={`inline-block px-2 py-1 rounded-full text-xs ${
-                            isDark 
-                              ? 'bg-red-900/30 text-red-400 border-red-800/50' 
-                              : 'bg-red-100 text-red-700 border-red-200'
-                          } border`}>
-                            &gt; {item.days || 5} {getDayWord(item.days || 5)}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-                <tfoot className={isDark ? 'bg-gray-900/80' : 'bg-gray-50'}>
-                  <tr>
-                    <td className={`px-3 py-2 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`} colSpan="2">{t('table.total')}</td>
-                    <td className={`px-3 py-2 text-right font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {totalFrozenCount}
-                    </td>
-                    <td className="px-3 py-2 text-center text-red-400 text-xs font-medium">
-                      {t('table.allDays')}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+          <div 
+            onClick={() => handleStatusSelect('inTransit')}
+            className={`relative p-4 border-r ${isDark ? 'border-gray-700' : 'border-gray-200'} cursor-pointer ${isDark ? 'hover:bg-gray-700/30' : 'hover:bg-gray-50'} transition-colors group`}
+         >
+           <div className={`absolute bottom-0 left-0 w-full h-1 ${isDark ? 'bg-yellow-900/30' : 'bg-yellow-100'}`}></div>
+           <div className="absolute bottom-0 left-0 h-1 bg-yellow-600" 
+                style={{ width: `${(contractDebtData.inTransit / (contractDebtData.notShipped + contractDebtData.inTransit + contractDebtData.delivered)) * 100}%` }}></div>
+           
+           <div className="flex items-start gap-3">
+             <div className={`w-12 h-12 rounded-full ${isDark ? 'bg-yellow-900/40' : 'bg-yellow-100'} flex items-center justify-center`}>
+               <Truck size={22} className="text-yellow-400" />
+             </div>
+             <div className="flex-1">
+               <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>{contractDebtData.inTransit}</div>
+               <div className="text-sm text-yellow-300 flex items-center justify-between">
+                 <span>{t('inTransit.title')}</span>
+                 <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+               </div>
+             </div>
+           </div>
+         </div>
+         
+         <div className={`relative p-4 ${isDark ? 'border-l-0 border-gray-700' : 'border-l-0 border-gray-200'}`}>
+           <div className={`absolute bottom-0 left-0 w-full h-1 ${isDark ? 'bg-green-900/30' : 'bg-green-100'}`}></div>
+           <div className="absolute bottom-0 left-0 h-1 bg-green-600" 
+                style={{ width: `${(contractDebtData.delivered / (contractDebtData.notShipped + contractDebtData.inTransit + contractDebtData.delivered)) * 100}%` }}></div>
+           
+           <div className="flex items-start gap-3">
+             <div className={`w-12 h-12 rounded-full ${isDark ? 'bg-green-900/40' : 'bg-green-100'} flex items-center justify-center`}>
+               <Check size={22} className="text-green-400" />
+             </div>
+             <div>
+               <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>{contractDebtData.delivered}</div>
+               <div className="text-sm text-green-300">{t('delivered')}</div>
+             </div>
+           </div>
+         </div>
+       </div>
+     </div>
+     
+     <div className="grid grid-cols-1 lg:grid-cols-1 gap-5 mb-5">
+       {/* ТАБЛИЦА ЗАДОЛЖЕННОСТИ ПО КОНТРАКТАМ */}
+       <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} backdrop-blur-sm rounded-lg border ${isDark ? 'border-gray-700/50' : 'border-gray-200'} shadow-md overflow-hidden`}>
+         <div className={`flex justify-between items-center p-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+           <h3 className={`text-base font-medium ${isDark ? 'text-white' : 'text-gray-900'} flex items-center gap-2`}>
+             <AlertTriangle size={18} className="text-yellow-400" />
+             {t('frozenContracts')} 
+             {selectedModel && (
+               <span className={`ml-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                 • {carModels.find(m => m.id === selectedModel)?.name}
+               </span>
+             )}
+           </h3>
+           <div className="text-[16px] text-yellow-300">
+             {t('total')}: <span className="font-bold">{totalFrozenCount}</span>
+           </div>
+         </div>
+         
+         <div className="p-3">
+           <div className={`rounded-lg overflow-hidden border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+             <table className="w-full text-sm">
+               <thead className={isDark ? 'bg-gray-900/80' : 'bg-gray-50'}>
+                 <tr>
+                   <th className={`px-3 py-2 text-left ${isDark ? 'text-gray-400' : 'text-gray-600'} font-medium`}>{t('table.modelName')}</th>
+                   <th className={`px-3 py-2 text-center ${isDark ? 'text-gray-400' : 'text-gray-600'} font-medium`}>{t('table.image')}</th>
+                   <th className={`px-3 py-2 text-right ${isDark ? 'text-gray-400' : 'text-gray-600'} font-medium`}>{t('table.quantity')}</th>
+                   <th className={`px-3 py-2 text-center ${isDark ? 'text-gray-400' : 'text-gray-600'} font-medium`}>{t('table.status')}</th>
+                 </tr>
+               </thead>
+               <tbody className={`divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                 {debtData.length === 0 ? (
+                   <tr>
+                     <td colSpan="4" className={`px-3 py-4 text-center ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                       <AlertTriangle size={20} className="mx-auto mb-2 text-yellow-500" />
+                       {t('table.noData')}
+                     </td>
+                   </tr>
+                 ) : (
+                   debtData.map((item, index) => (
+                     <tr key={index} className={`${
+                       index % 2 === 0 
+                         ? isDark ? 'bg-gray-800/60' : 'bg-gray-50' 
+                         : isDark ? 'bg-gray-850/70' : 'bg-white'
+                     } ${isDark ? 'hover:bg-gray-700/70' : 'hover:bg-gray-100'}`}>
+                       <td className={`px-3 py-2 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{item.modelName}</td>
+                       <td className="px-3 py-2 text-center">
+                         <div className={`w-12 h-12 mx-auto rounded-md overflow-hidden ${isDark ? 'bg-gray-700/70' : 'bg-gray-200'} flex items-center justify-center`}>
+                           <img 
+                             src={item.modelImg} 
+                             alt={item.modelName} 
+                             className="h-full w-auto object-contain"
+                             onError={(e) => {
+                               e.target.onerror = null;
+                               e.target.src = carModelMap[item.modelId]?.img || '';
+                             }}
+                           />
+                         </div>
+                       </td>
+                       <td className={`px-3 py-2 text-right ${isDark ? 'text-gray-300' : 'text-gray-700'} font-medium`}>{item.total_count}</td>
+                       <td className="px-3 py-2 text-center">
+                         <span className={`inline-block px-2 py-1 rounded-full text-xs ${
+                           isDark 
+                             ? 'bg-red-900/30 text-red-400 border-red-800/50' 
+                             : 'bg-red-100 text-red-700 border-red-200'
+                         } border`}>
+                           &gt; {item.days || 5} {getDayWord(item.days || 5)}
+                         </span>
+                       </td>
+                     </tr>
+                   ))
+                 )}
+               </tbody>
+               <tfoot className={isDark ? 'bg-gray-900/80' : 'bg-gray-50'}>
+                 <tr>
+                   <td className={`px-3 py-2 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`} colSpan="2">{t('table.total')}</td>
+                   <td className={`px-3 py-2 text-right font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                     {totalFrozenCount}
+                   </td>
+                   <td className="px-3 py-2 text-center text-red-400 text-xs font-medium">
+                     {t('table.allDays')}
+                   </td>
+                 </tr>
+               </tfoot>
+             </table>
+           </div>
+         </div>
+       </div>
+
+       {/* НОВЫЙ БЛОК - СКЛАДЫ */}
+       {isWarehouseData() && warehouseData.length > 0 && (
+         <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} backdrop-blur-sm rounded-lg border ${isDark ? 'border-gray-700/50' : 'border-gray-200'} shadow-md overflow-hidden`}>
+           <div className={`flex justify-between items-center p-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+             <h3 className={`text-base font-medium ${isDark ? 'text-white' : 'text-gray-900'} flex items-center gap-2`}>
+               <Package size={18} className="text-blue-400" />
+               Автомобили на складах
+               {selectedModel && (
+                 <span className={`ml-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                   • {carModels.find(m => m.id === selectedModel)?.name}
+                 </span>
+               )}
+             </h3>
+             <div className="text-[16px] text-blue-300">
+               Складов: <span className="font-bold">{warehouseData.length}</span>
+             </div>
+           </div>
+           
+           <div className="p-3">
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+               {warehouseData.map((warehouse, index) => (
+                 <div 
+                   key={index}
+                   onClick={() => handleWarehouseClick(warehouse)}
+                   className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
+                     isDark 
+                       ? 'bg-gray-800/60 border-gray-700 hover:bg-gray-700/70 hover:border-blue-600' 
+                       : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-blue-400'
+                   }`}
+                 >
+                   <div className="flex items-start justify-between mb-3">
+                     <div className="flex items-center gap-2">
+                       <div className={`w-10 h-10 rounded-lg ${isDark ? 'bg-blue-900/40' : 'bg-blue-100'} flex items-center justify-center`}>
+                         <Package size={20} className="text-blue-400" />
+                       </div>
+                       <div>
+                         <h4 className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                           {warehouse.name}
+                         </h4>
+                         <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                           {warehouse.models.length} {getModelWord(warehouse.models.length)}
+                         </div>
+                       </div>
+                     </div>
+                     <ArrowRight size={16} className={`${isDark ? 'text-gray-500' : 'text-gray-400'} mt-1`} />
+                   </div>
+                   
+                   <div className={`flex items-baseline justify-between ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                     <span className="text-sm">Всего автомобилей:</span>
+                     <span className="text-xl font-bold">{warehouse.totalCount}</span>
+                   </div>
+                   
+                   {/* Мини-превью моделей */}
+                   <div className="mt-3 flex gap-1">
+                     {warehouse.models.slice(0, 3).map((model, idx) => (
+                       <div 
+                         key={idx}
+                         className={`flex-1 p-1.5 rounded text-xs text-center ${
+                           isDark ? 'bg-gray-700/50' : 'bg-gray-100'
+                         }`}
+                       >
+                         <div className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} truncate`}>
+                           {model.name}
+                         </div>
+                         <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                           {model.count}
+                         </div>
+                       </div>
+                     ))}
+                     {warehouse.models.length > 3 && (
+                       <div className={`flex-1 p-1.5 rounded text-xs text-center ${
+                         isDark ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'
+                       }`}>
+                         +{warehouse.models.length - 3}
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               ))}
+             </div>
+           </div>
+         </div>
+       )}
+     </div>
+   </div>
+ </div>
 );
 };
 
