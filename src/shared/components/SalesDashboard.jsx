@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Clock, Check, AlertTriangle, ChevronDown, Truck, MapPin, 
- Archive, ChevronLeft, BarChart3, Users, Activity, ChevronRight, Zap, Calendar, Car, X, Package, ArrowRight } from 'lucide-react';
+ Archive, ChevronLeft, BarChart3, Users, Activity, ChevronRight, Zap, Calendar, Car, X, Package, ArrowRight, 
+ Warehouse} from 'lucide-react';
 import { carModels, regions } from '../../shared/mocks/mock-data';
 import { useTelegram } from '../../hooks/useTelegram';
 import ContentReadyLoader from '../../shared/layout/ContentReadyLoader';
@@ -762,7 +763,7 @@ const getDealerData = (status, regionName, selectedModelId) => {
 
    const statusTitle = selectedStatus === 'notShipped' ? t('notShipped.shortTitle') : t('inTransit.shortTitle');
    const statusColor = selectedStatus === 'notShipped' ? 'blue' : 'yellow';
-   const statusIcon = selectedStatus === 'notShipped' ? <Archive size={20} /> : <Truck size={20} />;
+   const statusIcon = selectedStatus === 'notShipped' ? <Warehouse size={20} /> : <Truck size={20} />;
    
    // Получаем актуальный источник данных в зависимости от выбранного статуса
    const sourceData = selectedStatus === 'notShipped' ? notShippedData : 
@@ -1283,7 +1284,7 @@ const getDealerData = (status, regionName, selectedModelId) => {
             
             <div className="flex items-start gap-3">
               <div className={`w-12 h-12 rounded-full ${isDark ? 'bg-blue-900/40' : 'bg-blue-100'} flex items-center justify-center`}>
-                <Archive size={22} className="text-blue-400" />
+                <Warehouse size={22} className="text-blue-400" />
               </div>
               <div className="flex-1">
                 <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>{contractDebtData.notShipped}</div>
