@@ -2210,72 +2210,132 @@ const handleTabChange = (tabId) => {
    return <ContentReadyLoader />;
  }
  
- return (
-   <div className={`p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
-     {/* Заголовок с датой справа и уведомлением о тестовых данных */}
-{/* Табы в стиле сегментированного контрола */}
-<div className="mb-6">
-  <h3 className={`text-lg font-semibold mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-    Режим просмотра
-  </h3>
-  <div className={`inline-flex rounded-lg ${isDark ? 'bg-gray-800' : 'bg-gray-200'} p-1`}>
-    {tabs.map((tab, index) => (
-      <button
-        key={tab.id}
-        onClick={() => handleTabChange(tab.id)}
-        className={`
-          relative px-6 py-3 rounded-md font-medium transition-all duration-200
-          flex items-center gap-3
-          ${activeTab === tab.id
-            ? isDark
-              ? 'bg-gray-700 text-white shadow-inner' 
-              : 'bg-white text-gray-900 shadow-sm'
-            : isDark 
-              ? 'text-gray-400 hover:text-gray-300' 
-              : 'text-gray-600 hover:text-gray-700'
-          }
-          ${index === 0 ? 'rounded-l-md' : ''}
-          ${index === tabs.length - 1 ? 'rounded-r-md' : ''}
-        `}
-      >
-        <span className="text-xl">{tab.icon}</span>
-        <div className="text-left">
-          <div className="text-sm font-semibold">{tab.label}</div>
-          <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-            {tab.id === 'current' && 'Ежедневная статистика'}
-            {tab.id === 'ready' && 'Готовая продукция'}
-            {tab.id === 'trends' && 'Анализ трендов'}
-            {tab.id === 'analytics' && 'Детальный анализ'}
-          </div>
+return (
+  <div className={`p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
+    {/* Заголовок с предупреждением о тестовой разработке */}
+    <div className="mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            {t('title')}
+          </h1>
+          <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
+            {t('subtitle')}
+          </p>
         </div>
-      </button>
-    ))}
+        
+        {/* Предупреждение о тестовой разработке */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg"
+          style={{
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            border: '2px solid #ef4444',
+            borderStyle: 'dashed'
+          }}
+        >
+          <motion.div
+            animate={{ 
+              scale: [1, 1.2, 1],
+              opacity: [0.7, 1, 0.7] 
+            }}
+            transition={{ 
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut" 
+            }}
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="h-5 w-5" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="#ef4444"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
+              />
+            </svg>
+          </motion.div>
+          <div className="text-center">
+            <p className="text-sm font-bold" style={{ color: '#ef4444' }}>
+              СТРАНИЦА В ТЕСТОВОЙ РАЗРАБОТКЕ
+            </p>
+            <p className="text-xs" style={{ color: '#dc2626' }}>
+              Функционал находится в активной разработке и скоро будет готов
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+
+    {/* Табы в стиле сегментированного контрола */}
+    <div className="mb-6">
+      <h3 className={`text-lg font-semibold mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        Режим просмотра
+      </h3>
+      <div className={`inline-flex rounded-lg ${isDark ? 'bg-gray-800' : 'bg-gray-200'} p-1`}>
+        {tabs.map((tab, index) => (
+          <button
+            key={tab.id}
+            onClick={() => handleTabChange(tab.id)}
+            className={`
+              relative px-6 py-3 rounded-md font-medium transition-all duration-200
+              flex items-center gap-3
+              ${activeTab === tab.id
+                ? isDark
+                  ? 'bg-gray-700 text-white shadow-inner' 
+                  : 'bg-white text-gray-900 shadow-sm'
+                : isDark 
+                  ? 'text-gray-400 hover:text-gray-300' 
+                  : 'text-gray-600 hover:text-gray-700'
+              }
+              ${index === 0 ? 'rounded-l-md' : ''}
+              ${index === tabs.length - 1 ? 'rounded-r-md' : ''}
+            `}
+          >
+            <span className="text-xl">{tab.icon}</span>
+            <div className="text-left">
+              <div className="text-sm font-semibold">{tab.label}</div>
+              <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                {tab.id === 'current' && 'Ежедневная статистика'}
+                {tab.id === 'ready' && 'Готовая продукция'}
+                {tab.id === 'trends' && 'Анализ трендов'}
+                {tab.id === 'analytics' && 'Детальный анализ'}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+    
+    {/* Контент табов - все рендерится сразу */}
+    <div className="relative">
+      {/* Текущее производство */}
+      <div className={`${activeTab === 'current' ? 'block' : 'hidden'}`}>
+        {renderCurrentProductionContent()}
+      </div>
+      
+      {/* Готовая продукция */}
+      <div className={`${activeTab === 'ready' ? 'block' : 'hidden'}`}>
+        {renderReadyProductsContent()}
+      </div>
+      
+      {/* Тренды */}
+      <div className={`${activeTab === 'trends' ? 'block' : 'hidden'}`}>
+        {renderTrendsContent()}
+      </div>
+      
+      {/* Аналитика */}
+      <div className={`${activeTab === 'analytics' ? 'block' : 'hidden'}`}>
+        {renderAnalyticsContent()}
+      </div>
+    </div>
   </div>
-</div>
-     
-     {/* Контент табов */}
-{/* Контент табов - все рендерится сразу */}
-<div className="relative">
-  {/* Текущее производство */}
-  <div className={`${activeTab === 'current' ? 'block' : 'hidden'}`}>
-    {renderCurrentProductionContent()}
-  </div>
-  
-  {/* Готовая продукция */}
-  <div className={`${activeTab === 'ready' ? 'block' : 'hidden'}`}>
-    {renderReadyProductsContent()}
-  </div>
-  
-  {/* Тренды */}
-  <div className={`${activeTab === 'trends' ? 'block' : 'hidden'}`}>
-    {renderTrendsContent()}
-  </div>
-  
-  {/* Аналитика */}
-  <div className={`${activeTab === 'analytics' ? 'block' : 'hidden'}`}>
-    {renderAnalyticsContent()}
-  </div>
-</div>
-   </div>
- );
+);
 }

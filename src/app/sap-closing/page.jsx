@@ -1283,44 +1283,93 @@ export default function SAPClosingPage() {
   
   return (
     <div className="min-h-screen p-4 md:p-6" style={{ backgroundColor: colors.background }}>
-      {/* Заголовок с анимацией */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-6"
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold mb-2 flex items-center gap-3" style={{ color: colors.text }}>
-              {t('title')}
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              >
-                <Activity size={24} style={{ color: colors.primary }} />
-              </motion.div>
-            </h1>
-    <p className="text-sm" style={{ color: colors.textSecondary }}>
-             Мониторинг выполнения задач закрытия периода • {new Date().toLocaleDateString(currentLocale)}
-           </p>
-         </div>
-         
-         <motion.button
-           whileHover={{ scale: 1.05 }}
-           whileTap={{ scale: 0.95 }}
-           onClick={() => setShowStats(!showStats)}
-           className="px-4 py-2 rounded-lg flex items-center gap-2"
-           style={{ 
-             backgroundColor: colors.cardBg,
-             border: `1px solid ${colors.border}`,
-             color: colors.text
-           }}
-         >
-           <BarChart3 size={16} />
-           {showStats ? 'Скрыть статистику' : 'Показать статистику'}
-         </motion.button>
-       </div>
-     </motion.div>
+ // В начало компонента, после заголовка, добавим:
+
+{/* Заголовок с анимацией */}
+<motion.div 
+  initial={{ opacity: 0, y: -20 }}
+  animate={{ opacity: 1, y: 0 }}
+  className="mb-6"
+>
+  <div className="flex items-center justify-between">
+    <div>
+      <h1 className="text-2xl font-bold mb-2 flex items-center gap-3" style={{ color: colors.text }}>
+        {t('title')}
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        >
+          <Activity size={24} style={{ color: colors.primary }} />
+        </motion.div>
+      </h1>
+      <p className="text-sm" style={{ color: colors.textSecondary }}>
+        Мониторинг выполнения задач закрытия периода • {new Date().toLocaleDateString(currentLocale)}
+      </p>
+    </div>
+    
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={() => setShowStats(!showStats)}
+      className="px-4 py-2 rounded-lg flex items-center gap-2"
+      style={{ 
+        backgroundColor: colors.cardBg,
+        border: `1px solid ${colors.border}`,
+        color: colors.text
+      }}
+    >
+      <BarChart3 size={16} />
+      {showStats ? 'Скрыть статистику' : 'Показать статистику'}
+    </motion.button>
+  </div>
+</motion.div>
+
+{/* НОВОЕ: Предупреждение о тестовой разработке */}
+<motion.div
+  initial={{ opacity: 0, scale: 0.95 }}
+  animate={{ opacity: 1, scale: 1 }}
+  transition={{ duration: 0.3 }}
+  className="mb-6 p-4 rounded-lg flex items-center justify-center gap-3"
+  style={{
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    border: '2px solid #ef4444',
+    borderStyle: 'dashed'
+  }}
+>
+  <motion.div
+    animate={{ 
+      scale: [1, 1.2, 1],
+      opacity: [0.7, 1, 0.7] 
+    }}
+    transition={{ 
+      duration: 2,
+      repeat: Infinity,
+      ease: "easeInOut" 
+    }}
+  >
+    <AlertTriangle size={24} style={{ color: '#ef4444' }} />
+  </motion.div>
+  <div className="text-center">
+    <h3 className="text-lg font-bold" style={{ color: '#ef4444' }}>
+      СТРАНИЦА В ТЕСТОВОЙ РАЗРАБОТКЕ
+    </h3>
+    <p className="text-sm mt-1" style={{ color: '#dc2626' }}>
+      Функционал находится в активной разработке и скоро будет готов к использованию
+    </p>
+  </div>
+  <motion.div
+    animate={{ 
+      rotate: [0, 10, -10, 0],
+    }}
+    transition={{ 
+      duration: 4,
+      repeat: Infinity,
+      ease: "easeInOut" 
+    }}
+  >
+    <Cpu size={24} style={{ color: '#ef4444' }} />
+  </motion.div>
+</motion.div>
      
      {/* Метрики производительности */}
      <AnimatePresence>
