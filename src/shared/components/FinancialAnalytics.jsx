@@ -72,7 +72,7 @@ const [tableDateStart, setTableDateStart] = useState(currentMonthDates.start);
 const [tableDateEnd, setTableDateEnd] = useState(currentMonthDates.end);
  const { t } = useTranslation(financialAnalyticsLocale);
     const { mode: themeMode } = useThemeStore();
-  const isDarkMode = themeMode !== 'dark';
+  const isDarkMode = themeMode === 'dark';
   
     const MONTHS = useMemo(() => [
     t('months.january'),

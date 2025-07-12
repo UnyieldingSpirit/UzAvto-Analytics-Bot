@@ -11,6 +11,374 @@ import { useThemeStore } from '../../store/theme';
 import { useAuth } from '../../hooks/useAuth';
 import { axiosInstance } from '../../utils/axiosConfig';
 
+// Компонент графика динамики по месяцам
+const WarehouseMonthlyChart = ({ isDark = false }) => {
+  const svgRef = useRef(null);
+  const containerRef = useRef(null);
+  const [hoveredData, setHoveredData] = useState(null);
+  const [selectedMetric, setSelectedMetric] = useState('total');
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  // Генерация моковых данных
+  const generateMockData = () => {
+    const months = [
+      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+    ];
+    
+    const currentMonth = new Date().getMonth();
+    const baseValue = 2500;
+    
+    return months.slice(0, currentMonth + 1).map((month, index) => {
+      // Генерируем реалистичные данные с трендом роста
+      const seasonalFactor = 1 + (Math.sin((index - 3) * Math.PI / 6) * 0.15);
+      const trendFactor = 1 + (index * 0.02);
+      const randomFactor = 0.9 + Math.random() * 0.2;
+      
+      const total = Math.round(baseValue * seasonalFactor * trendFactor * randomFactor);
+      const available = Math.round(total * (0.35 + Math.random() * 0.1));
+      const reserved = Math.round(total * (0.45 + Math.random() * 0.1));
+      const defective = Math.round(total * (0.05 + Math.random() * 0.05));
+      const defectiveOk = Math.round(total * (0.08 + Math.random() * 0.04));
+      const tradeIn = total - available - reserved - defective - defectiveOk;
+      
+      return {
+        month,
+        monthIndex: index,
+        total,
+        available,
+        reserved,
+        defective,
+        defectiveOk,
+        tradeIn,
+        date: new Date(2025, index, 1)
+      };
+    });
+  };
+
+  const [data] = useState(generateMockData());
+
+  // Цвета для разных метрик
+  const metricColors = {
+    total: '#3b82f6',
+    available: '#10b981',
+    reserved: '#f59e0b',
+    defective: '#ef4444',
+    defectiveOk: '#8b5cf6',
+    tradeIn: '#6366f1'
+  };
+
+  const metricLabels = {
+    total: 'Всего автомобилей',
+    available: 'Доступно',
+    reserved: 'Забронировано',
+    defective: 'Дефектные',
+    defectiveOk: 'Дефект-OK',
+    tradeIn: 'Trade-in'
+  };
+
+  // Обновление размеров при изменении размера окна
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current) {
+        const { width } = containerRef.current.getBoundingClientRect();
+        setDimensions({
+          width: width - 40,
+          height: Math.min(400, width * 0.4)
+        });
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Отрисовка графика
+  useEffect(() => {
+    if (!dimensions.width || !dimensions.height || !data.length) return;
+
+    const margin = { top: 40, right: 80, bottom: 60, left: 70 };
+    const width = dimensions.width - margin.left - margin.right;
+    const height = dimensions.height - margin.top - margin.bottom;
+
+    // Очистка предыдущего графика
+    d3.select(svgRef.current).selectAll('*').remove();
+
+    const svg = d3.select(svgRef.current)
+      .attr('width', dimensions.width)
+      .attr('height', dimensions.height);
+
+    const g = svg.append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    // Масштабы
+    const xScale = d3.scaleTime()
+      .domain(d3.extent(data, d => d.date))
+      .range([0, width]);
+
+    const yScale = d3.scaleLinear()
+      .domain([0, d3.max(data, d => d[selectedMetric]) * 1.1])
+      .range([height, 0]);
+
+    // Генератор линии
+    const line = d3.line()
+      .x(d => xScale(d.date))
+      .y(d => yScale(d[selectedMetric]))
+      .curve(d3.curveMonotoneX);
+
+    // Генератор области под графиком
+    const area = d3.area()
+      .x(d => xScale(d.date))
+      .y0(height)
+      .y1(d => yScale(d[selectedMetric]))
+      .curve(d3.curveMonotoneX);
+
+    // Градиент для заливки
+    const gradient = svg.append('defs')
+      .append('linearGradient')
+      .attr('id', 'areaGradient')
+      .attr('gradientUnits', 'userSpaceOnUse')
+      .attr('x1', 0).attr('y1', 0)
+      .attr('x2', 0).attr('y2', height);
+
+    gradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', metricColors[selectedMetric])
+      .attr('stop-opacity', 0.3);
+
+    gradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', metricColors[selectedMetric])
+      .attr('stop-opacity', 0);
+
+    // Сетка
+    g.append('g')
+      .attr('class', 'grid')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(xScale)
+        .tickSize(-height)
+        .tickFormat('')
+      )
+      .selectAll('line')
+      .style('stroke', isDark ? '#374151' : '#e5e7eb')
+      .style('stroke-dasharray', '3,3')
+      .style('opacity', 0.5);
+
+    g.append('g')
+      .attr('class', 'grid')
+      .call(d3.axisLeft(yScale)
+        .tickSize(-width)
+        .tickFormat('')
+      )
+      .selectAll('line')
+      .style('stroke', isDark ? '#374151' : '#e5e7eb')
+      .style('stroke-dasharray', '3,3')
+      .style('opacity', 0.5);
+
+    // Область под графиком
+    g.append('path')
+      .datum(data)
+      .attr('fill', 'url(#areaGradient)')
+      .attr('d', area);
+
+    // Линия графика
+    g.append('path')
+      .datum(data)
+      .attr('fill', 'none')
+      .attr('stroke', metricColors[selectedMetric])
+      .attr('stroke-width', 2)
+      .attr('d', line);
+
+    // Точки на графике
+    g.selectAll('.dot')
+      .data(data)
+      .enter().append('circle')
+      .attr('class', 'dot')
+      .attr('cx', d => xScale(d.date))
+      .attr('cy', d => yScale(d[selectedMetric]))
+      .attr('r', 4)
+      .attr('fill', metricColors[selectedMetric])
+      .style('cursor', 'pointer')
+      .on('mouseover', function(event, d) {
+        d3.select(this).attr('r', 6);
+        setHoveredData(d);
+      })
+      .on('mouseout', function() {
+        d3.select(this).attr('r', 4);
+        setHoveredData(null);
+      });
+
+    // Оси
+    g.append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(xScale)
+        .tickFormat(d3.timeFormat('%b'))
+      )
+      .selectAll('text')
+      .style('fill', isDark ? '#9ca3af' : '#4b5563');
+
+    g.append('g')
+      .call(d3.axisLeft(yScale))
+      .selectAll('text')
+      .style('fill', isDark ? '#9ca3af' : '#4b5563');
+
+    // Подпись оси Y
+    g.append('text')
+      .attr('transform', 'rotate(-90)')
+      .attr('y', 0 - margin.left)
+      .attr('x', 0 - (height / 2))
+      .attr('dy', '1em')
+      .style('text-anchor', 'middle')
+      .style('fill', isDark ? '#9ca3af' : '#4b5563')
+      .text('Количество автомобилей');
+
+  }, [data, selectedMetric, dimensions, isDark]);
+
+  // Вычисление изменения
+  const calculateChange = () => {
+    if (data.length < 2) return { value: 0, isPositive: true };
+    const lastValue = data[data.length - 1][selectedMetric];
+    const prevValue = data[data.length - 2][selectedMetric];
+    const change = ((lastValue - prevValue) / prevValue) * 100;
+    return {
+      value: Math.abs(change).toFixed(1),
+      isPositive: change >= 0
+    };
+  };
+
+  const change = calculateChange();
+
+  return (
+    <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 shadow-md`}>
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              Динамика складских запасов
+            </h3>
+            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              Изменение количества автомобилей по месяцам
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              2025
+            </span>
+          </div>
+        </div>
+
+        {/* Селектор метрики */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {Object.entries(metricLabels).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setSelectedMetric(key)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                selectedMetric === key
+                  ? `bg-opacity-20 ${isDark ? 'text-white' : 'text-gray-900'}`
+                  : `${isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-800'}`
+              }`}
+              style={{
+                backgroundColor: selectedMetric === key ? metricColors[key] + '33' : 'transparent',
+                borderColor: selectedMetric === key ? metricColors[key] : 'transparent',
+                borderWidth: '1px',
+                borderStyle: 'solid'
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Статистика изменения */}
+        <div className={`flex items-center gap-2 p-3 rounded-lg ${
+          isDark ? 'bg-gray-700' : 'bg-gray-100'
+        }`}>
+          <div className="flex items-center gap-2">
+            {change.isPositive ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+              </svg>
+            )}
+            <span className={`font-semibold ${
+              change.isPositive ? 'text-green-500' : 'text-red-500'
+            }`}>
+              {change.isPositive ? '+' : '-'}{change.value}%
+            </span>
+          </div>
+          <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            по сравнению с прошлым месяцем
+          </span>
+        </div>
+      </div>
+
+      {/* График */}
+      <div ref={containerRef} className="relative">
+        <svg ref={svgRef}></svg>
+        
+        {/* Всплывающая подсказка */}
+        {hoveredData && (
+          <div
+            className={`absolute z-10 p-3 rounded-lg shadow-lg ${
+              isDark ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-gray-200'
+            }`}
+            style={{
+              left: '50%',
+              top: '20px',
+              transform: 'translateX(-50%)'
+            }}
+          >
+            <div className={`font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              {hoveredData.month} 2025
+            </div>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between gap-4">
+                <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>
+                  {metricLabels[selectedMetric]}:
+                </span>
+                <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {hoveredData[selectedMetric].toLocaleString('ru-RU')}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Легенда с общей статистикой */}
+      <div className={`mt-4 pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {data.length > 0 && Object.entries(metricLabels).map(([key, label]) => {
+            const lastValue = data[data.length - 1][key];
+            return (
+              <div key={key} className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: metricColors[key] }}
+                />
+                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {label}:
+                </span>
+                <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {lastValue.toLocaleString('ru-RU')}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const CarWarehouseAnalytics = () => {
   const { mode } = useThemeStore();
   const isDark = mode === 'dark';
@@ -2680,7 +3048,9 @@ if (!isMobile) {
          </motion.div>
        )}
      </AnimatePresence>
-     
+       <div className="mt-6 mb-6">
+       <WarehouseMonthlyChart isDark={isDark} />
+     </div>
      {/* Контейнер уведомлений */}
      <NotificationsContainer />
    </div>
