@@ -14,9 +14,11 @@ import { axiosInstance } from '../../utils/axiosConfig';
 
 const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
   const svgRef = useRef(null);
+  const dailySvgRef = useRef(null);
   const containerRef = useRef(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [selectedModel, setSelectedModel] = useState('all');
+  const [selectedDay, setSelectedDay] = useState(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   const availableModels = enhancedCarModels.length > 0 
@@ -36,7 +38,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
         { id: 'equinox', name: 'EQUINOX', color: '#3b82f6' }
       ];
 
-  // Генерация моковых данных по месяцам с разбивкой по моделям
+  // Генерация моковых данных по месяцам
   const generateMockData = () => {
     const months = [
       'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -87,15 +89,21 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
     const dailyData = [];
     
     for (let day = 1; day <= daysInMonth; day++) {
-      const dayVariation = 0.95 + Math.random() * 0.1;
+      // Создаем более реалистичную волнообразную динамику
+      const weekCycle = Math.sin((day / 7) * Math.PI * 2) * 0.15;
+      const monthCycle = Math.sin((day / daysInMonth) * Math.PI) * 0.1;
+      const randomVariation = (Math.random() - 0.5) * 0.1;
+      const dayVariation = 1 + weekCycle + monthCycle + randomVariation;
+      
       const date = new Date(year, monthIndex, day);
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+      const weekendFactor = isWeekend ? 0.7 : 1;
       
       if (selectedModel === 'all') {
-        // Данные для всех моделей
         const dayModelData = {};
         availableModels.forEach(model => {
           const modelMonthTotal = monthData[model.id] || 0;
-          const modelDayTotal = Math.round((modelMonthTotal / daysInMonth) * dayVariation);
+          const modelDayTotal = Math.round((modelMonthTotal / daysInMonth) * dayVariation * weekendFactor);
           dayModelData[model.name] = modelDayTotal;
         });
         
@@ -106,14 +114,13 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
           date,
           dateStr: `${String(day).padStart(2, '0')}.${String(monthIndex + 1).padStart(2, '0')}.${year}`,
           total: dayTotal,
+          isWeekend,
           ...dayModelData
         });
       } else {
-        // Данные для конкретной модели
         const modelMonthTotal = monthData[selectedModel] || 0;
-        const dayTotal = Math.round((modelMonthTotal / daysInMonth) * dayVariation);
+        const dayTotal = Math.round((modelMonthTotal / daysInMonth) * dayVariation * weekendFactor);
         
-        // Распределяем по статусам
         const available = Math.round(dayTotal * 0.4);
         const reserved = Math.round(dayTotal * 0.35);
         const defective = Math.round(dayTotal * 0.05);
@@ -129,7 +136,8 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
           reserved,
           defective,
           defectiveOk,
-          tradeIn
+          tradeIn,
+          isWeekend
         });
       }
     }
@@ -140,14 +148,13 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
   const [data, setData] = useState(generateMockData());
   const [dailyData, setDailyData] = useState([]);
 
-  // Обновляем данные при изменении выбранной модели
   useEffect(() => {
     setData(generateMockData());
     setSelectedMonth(null);
     setDailyData([]);
+    setSelectedDay(null);
   }, [selectedModel]);
 
-  // Обновление размеров
   useEffect(() => {
     const handleResize = () => {
       if (containerRef.current) {
@@ -164,7 +171,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Отрисовка графика
+  // Отрисовка основного графика по месяцам
   useEffect(() => {
     if (!dimensions.width || !dimensions.height || !data.length) return;
 
@@ -181,7 +188,6 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
     const g = svg.append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
 
-    // Масштабы
     const xScale = d3.scaleBand()
       .domain(data.map(d => d.month))
       .range([0, width])
@@ -192,12 +198,10 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
       .range([height, 0])
       .nice();
 
-    // Цвет для выбранной модели
     const barColor = selectedModel === 'all' 
       ? '#3b82f6' 
       : availableModels.find(m => m.id === selectedModel)?.color || '#3b82f6';
 
-    // Градиент для столбцов
     const gradient = svg.append('defs')
       .append('linearGradient')
       .attr('id', 'barGradient')
@@ -220,7 +224,6 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
       .attr('stop-color', d3.rgb(barColor).brighter(0.5))
       .attr('stop-opacity', 1);
 
-    // Тень для столбцов
     const filter = svg.append('defs')
       .append('filter')
       .attr('id', 'shadow')
@@ -247,7 +250,6 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
     feMerge.append('feMergeNode')
       .attr('in', 'SourceGraphic');
 
-    // Сетка
     g.append('g')
       .attr('class', 'grid')
       .call(d3.axisLeft(yScale)
@@ -260,7 +262,6 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
       .style('stroke-dasharray', '3,3')
       .style('opacity', 0.5);
 
-    // Линия среднего значения
     const avgValue = d3.mean(data, d => d.total);
     g.append('line')
       .attr('x1', 0)
@@ -280,14 +281,12 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
       .style('font-size', '11px')
       .text(`Среднее: ${Math.round(avgValue).toLocaleString('ru-RU')}`);
 
-    // Группы для столбцов
     const barGroups = g.selectAll('.bar-group')
       .data(data)
       .enter().append('g')
       .attr('class', 'bar-group')
       .style('cursor', 'pointer');
 
-    // Столбцы
     barGroups.append('rect')
       .attr('class', 'bar')
       .attr('x', d => xScale(d.month))
@@ -302,6 +301,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
         if (selectedMonth?.monthIndex === d.monthIndex) {
           setSelectedMonth(null);
           setDailyData([]);
+          setSelectedDay(null);
           g.selectAll('.bar')
             .transition()
             .duration(200)
@@ -309,6 +309,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
         } else {
           setSelectedMonth(d);
           setDailyData(generateDailyData(d.monthIndex, d.month, d.year));
+          setSelectedDay(null);
           g.selectAll('.bar')
             .transition()
             .duration(200)
@@ -337,7 +338,6 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
       .attr('y', d => yScale(d.total))
       .attr('height', d => height - yScale(d.total));
 
-    // Значения на столбцах
     barGroups.append('text')
       .attr('class', 'label')
       .attr('x', d => xScale(d.month) + xScale.bandwidth() / 2)
@@ -353,8 +353,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
       .delay((d, i) => i * 60 + 400)
       .style('opacity', 1);
 
-    // Оси
-    const xAxis = g.append('g')
+    g.append('g')
       .attr('transform', `translate(0,${height})`)
       .call(d3.axisBottom(xScale))
       .selectAll('text')
@@ -370,7 +369,6 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
       .style('fill', isDark ? '#9ca3af' : '#4b5563')
       .style('font-size', '12px');
 
-    // Подпись оси Y
     g.append('text')
       .attr('transform', 'rotate(-90)')
       .attr('y', 0 - margin.left + 15)
@@ -383,7 +381,193 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
 
   }, [data, dimensions, isDark, selectedMonth, selectedModel]);
 
-  // Вычисление изменения
+  // Отрисовка графика по дням
+  useEffect(() => {
+    if (!dailyData.length || !selectedMonth) return;
+
+    const margin = { top: 40, right: 40, bottom: 60, left: 70 };
+    const width = dimensions.width - margin.left - margin.right;
+    const height = 300 - margin.top - margin.bottom;
+
+    d3.select(dailySvgRef.current).selectAll('*').remove();
+
+    const svg = d3.select(dailySvgRef.current)
+      .attr('width', dimensions.width)
+      .attr('height', 300);
+
+    const g = svg.append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const xScale = d3.scaleLinear()
+      .domain([1, dailyData.length])
+      .range([0, width]);
+
+    const yScale = d3.scaleLinear()
+      .domain([0, d3.max(dailyData, d => d.total) * 1.1])
+      .range([height, 0])
+      .nice();
+
+    // Градиент для области под линией
+    const areaGradient = svg.append('defs')
+      .append('linearGradient')
+      .attr('id', 'areaGradient')
+      .attr('gradientUnits', 'userSpaceOnUse')
+      .attr('x1', 0).attr('y1', 0)
+      .attr('x2', 0).attr('y2', height);
+
+    const barColor = selectedModel === 'all' 
+      ? '#3b82f6' 
+      : availableModels.find(m => m.id === selectedModel)?.color || '#3b82f6';
+
+    areaGradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', barColor)
+      .attr('stop-opacity', 0.6);
+
+    areaGradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', barColor)
+      .attr('stop-opacity', 0.1);
+
+    // Сетка
+    g.append('g')
+      .attr('class', 'grid')
+      .call(d3.axisLeft(yScale)
+        .ticks(5)
+        .tickSize(-width)
+        .tickFormat('')
+      )
+      .selectAll('line')
+      .style('stroke', isDark ? '#374151' : '#e5e7eb')
+      .style('stroke-dasharray', '3,3')
+      .style('opacity', 0.5);
+
+    // Линия и область
+    const line = d3.line()
+      .x(d => xScale(d.day))
+      .y(d => yScale(d.total))
+      .curve(d3.curveMonotoneX);
+
+    const area = d3.area()
+      .x(d => xScale(d.day))
+      .y0(height)
+      .y1(d => yScale(d.total))
+      .curve(d3.curveMonotoneX);
+
+    // Область под графиком
+    g.append('path')
+      .datum(dailyData)
+      .attr('fill', 'url(#areaGradient)')
+      .attr('opacity', 0)
+      .attr('d', area)
+      .transition()
+      .duration(1000)
+      .attr('opacity', 1);
+
+    // Линия графика
+    const path = g.append('path')
+      .datum(dailyData)
+      .attr('fill', 'none')
+      .attr('stroke', barColor)
+      .attr('stroke-width', 3)
+      .attr('d', line);
+
+    // Анимация отрисовки линии
+    const totalLength = path.node().getTotalLength();
+    path
+      .attr('stroke-dasharray', totalLength)
+      .attr('stroke-dashoffset', totalLength)
+      .transition()
+      .duration(1500)
+      .attr('stroke-dashoffset', 0);
+
+    // Подсветка выходных
+    dailyData.forEach(d => {
+      if (d.isWeekend) {
+        g.append('rect')
+          .attr('x', xScale(d.day) - 10)
+          .attr('y', 0)
+          .attr('width', 20)
+          .attr('height', height)
+          .attr('fill', isDark ? '#ef4444' : '#fee2e2')
+          .attr('opacity', 0.2);
+      }
+    });
+
+    // Точки на графике
+    const dots = g.selectAll('.dot')
+      .data(dailyData)
+      .enter().append('circle')
+      .attr('class', 'dot')
+      .attr('cx', d => xScale(d.day))
+      .attr('cy', d => yScale(d.total))
+      .attr('r', 0)
+      .attr('fill', barColor)
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 2)
+      .style('cursor', 'pointer')
+      .on('mouseover', function(event, d) {
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .attr('r', 6);
+      })
+      .on('mouseout', function(event, d) {
+        if (selectedDay?.day !== d.day) {
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr('r', 4);
+        }
+      })
+      .on('click', function(event, d) {
+        setSelectedDay(d);
+        
+        // Подсвечиваем выбранную точку
+        g.selectAll('.dot')
+          .transition()
+          .duration(200)
+          .attr('r', dot => dot.day === d.day ? 8 : 4)
+          .attr('fill', dot => dot.day === d.day ? d3.rgb(barColor).brighter(0.5) : barColor);
+      });
+
+    dots.transition()
+      .duration(1500)
+      .delay((d, i) => i * 30)
+      .attr('r', 4);
+
+    // Оси
+    g.append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(xScale)
+        .ticks(10)
+        .tickFormat(d => d)
+      )
+      .selectAll('text')
+      .style('fill', isDark ? '#9ca3af' : '#4b5563')
+      .style('font-size', '11px');
+
+    g.append('g')
+      .call(d3.axisLeft(yScale)
+        .ticks(5)
+        .tickFormat(d => d.toLocaleString('ru-RU'))
+      )
+      .selectAll('text')
+      .style('fill', isDark ? '#9ca3af' : '#4b5563')
+      .style('font-size', '11px');
+
+    // Заголовок
+    g.append('text')
+      .attr('x', width / 2)
+      .attr('y', -20)
+      .attr('text-anchor', 'middle')
+      .style('fill', isDark ? '#f3f4f6' : '#1f2937')
+      .style('font-size', '14px')
+      .style('font-weight', '600')
+      .text(`Динамика по дням - ${selectedMonth.month} ${selectedMonth.year}`);
+
+  }, [dailyData, selectedMonth, dimensions, isDark, selectedModel, selectedDay]);
+
   const calculateChange = () => {
     if (data.length < 2) return { value: 0, isPositive: true };
     const lastValue = data[data.length - 1].total;
@@ -504,123 +688,83 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
         </div>
       )}
 
-      {/* Таблица с детализацией по дням */}
+      {/* График по дням */}
       {selectedMonth && dailyData.length > 0 && (
         <div className={`px-6 pb-6`}>
-          <div className={`${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} rounded-lg overflow-hidden`}>
-            <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-              <h4 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                Детализация по дням - {selectedMonth.month} {selectedMonth.year}
-              </h4>
-            </div>
+          <div className={`${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} rounded-lg p-4`}>
+            <svg ref={dailySvgRef}></svg>
             
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className={`text-xs ${isDark ? 'bg-gray-800/50 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>
-                    <th className="text-left p-3 font-medium">Дата</th>
-                    <th className="text-right p-3 font-medium">Всего</th>
-                    {selectedModel === 'all' 
-                      ? availableModels.map(model => (
-                          <th key={model.id} className="text-right p-3 font-medium">{model.name}</th>
-                        ))
-                      : (
-                        <>
-                          <th className="text-right p-3 font-medium">Доступно</th>
-                          <th className="text-right p-3 font-medium">Забронировано</th>
-                          <th className="text-right p-3 font-medium">Брак-ОК</th>
-                          <th className="text-right p-3 font-medium">Брак</th>
-                          <th className="text-right p-3 font-medium">Trade-in</th>
-                        </>
-                      )
-                    }
-                  </tr>
-                </thead>
-                <tbody className={`divide-y ${isDark ? 'divide-gray-800' : 'divide-gray-200'}`}>
-                  {dailyData.map((day) => {
-                    const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6;
-                    return (
-                      <tr 
-                        key={day.day} 
-                        className={`text-sm ${
-                          isWeekend 
-                            ? isDark ? 'bg-gray-800/30' : 'bg-gray-50' 
-                            : ''
-                        } ${isDark ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'} transition-colors`}
-                      >
-                        <td className={`p-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{day.dateStr}</span>
-                          </div>
-                        </td>
-                        <td className={`p-3 text-right font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                          {day.total.toLocaleString('ru-RU')}
-                        </td>
-                        {selectedModel === 'all' 
-                          ? availableModels.map(model => (
-                              <td key={model.id} className={`p-3 text-right ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                {(day[model.name] || 0).toLocaleString('ru-RU')}
-                              </td>
-                            ))
-                          : (
-                            <>
-                              <td className={`p-3 text-right ${isDark ? 'text-green-400' : 'text-green-600'}`}>
-                                {(day.available || 0).toLocaleString('ru-RU')}
-                              </td>
-                              <td className={`p-3 text-right ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                                {(day.reserved || 0).toLocaleString('ru-RU')}
-                              </td>
-                              <td className={`p-3 text-right ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                                {(day.defectiveOk || 0).toLocaleString('ru-RU')}
-                              </td>
-                              <td className={`p-3 text-right ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-                                {(day.defective || 0).toLocaleString('ru-RU')}
-                              </td>
-                              <td className={`p-3 text-right ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
-                                {(day.tradeIn || 0).toLocaleString('ru-RU')}
-                              </td>
-                            </>
-                          )
-                        }
-                      </tr>
-                    );
-                  })}
-                  {/* Итоговая строка */}
-                  <tr className={`font-semibold text-sm ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                    <td className={`p-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>Итого за месяц</td>
-                    <td className={`p-3 text-right ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {dailyData.reduce((sum, day) => sum + day.total, 0).toLocaleString('ru-RU')}
-                    </td>
-                    {selectedModel === 'all' 
-                      ? availableModels.map(model => (
-                          <td key={model.id} className={`p-3 text-right ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                            {dailyData.reduce((sum, day) => sum + (day[model.name] || 0), 0).toLocaleString('ru-RU')}
-                          </td>
-                        ))
-                      : (
-                        <>
-                          <td className={`p-3 text-right ${isDark ? 'text-green-400' : 'text-green-600'}`}>
-                            {dailyData.reduce((sum, day) => sum + (day.available || 0), 0).toLocaleString('ru-RU')}
-                          </td>
-                          <td className={`p-3 text-right ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                            {dailyData.reduce((sum, day) => sum + (day.reserved || 0), 0).toLocaleString('ru-RU')}
-                          </td>
-                          <td className={`p-3 text-right ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                            {dailyData.reduce((sum, day) => sum + (day.defectiveOk || 0), 0).toLocaleString('ru-RU')}
-                          </td>
-                          <td className={`p-3 text-right ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-                            {dailyData.reduce((sum, day) => sum + (day.defective || 0), 0).toLocaleString('ru-RU')}
-                          </td>
-                          <td className={`p-3 text-right ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
-                            {dailyData.reduce((sum, day) => sum + (day.tradeIn || 0), 0).toLocaleString('ru-RU')}
-                          </td>
-                        </>
-                      )
-                    }
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            {/* Мини-список с информацией о выбранном дне */}
+            {selectedDay && (
+              <div className={`mt-4 p-4 rounded-lg ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <h5 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {selectedDay.dateStr} {selectedDay.isWeekend && <span className="text-red-500 text-sm">(выходной)</span>}
+                  </h5>
+                  <button
+                    onClick={() => setSelectedDay(null)}
+                    className={`text-sm ${isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-700'}`}
+                  >
+                    ✕
+                  </button>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className={`flex items-center justify-between py-2 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Всего автомобилей</span>
+                    <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {selectedDay.total.toLocaleString('ru-RU')}
+                    </span>
+                  </div>
+                  
+                  {selectedModel === 'all' ? (
+                    availableModels.map(model => (
+                      <div key={model.id} className="flex items-center justify-between py-1">
+                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {model.name}
+                        </span>
+                        <span className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          {(selectedDay[model.name] || 0).toLocaleString('ru-RU')}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between py-1">
+                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Доступно</span>
+                        <span className="font-medium text-green-500">
+                          {(selectedDay.available || 0).toLocaleString('ru-RU')}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-1">
+                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Забронировано</span>
+                        <span className="font-medium text-blue-500">
+                          {(selectedDay.reserved || 0).toLocaleString('ru-RU')}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-1">
+                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Брак-ОК</span>
+                        <span className="font-medium text-amber-500">
+                          {(selectedDay.defectiveOk || 0).toLocaleString('ru-RU')}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-1">
+                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Брак</span>
+                        <span className="font-medium text-red-500">
+                          {(selectedDay.defective || 0).toLocaleString('ru-RU')}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-1">
+                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Trade-in</span>
+                        <span className="font-medium text-purple-500">
+                          {(selectedDay.tradeIn || 0).toLocaleString('ru-RU')}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
