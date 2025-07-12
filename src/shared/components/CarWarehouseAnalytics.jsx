@@ -16,10 +16,20 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
   const svgRef = useRef(null);
   const dailySvgRef = useRef(null);
   const containerRef = useRef(null);
+  const tooltipRef = useRef(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [selectedModel, setSelectedModel] = useState('all');
   const [selectedDay, setSelectedDay] = useState(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [loading, setLoading] = useState(false);
+  const [dateRange, setDateRange] = useState(() => {
+    const today = new Date();
+    const startOfYear = new Date(today.getFullYear(), 0, 1);
+    return {
+      startDate: startOfYear.toISOString().split('T')[0],
+      endDate: today.toISOString().split('T')[0]
+    };
+  });
 
   const availableModels = enhancedCarModels.length > 0 
     ? enhancedCarModels.slice(0, 6).map(m => ({
@@ -37,6 +47,45 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
         { id: 'tahoe', name: 'TAHOE', color: '#3b82f6' },
         { id: 'equinox', name: 'EQUINOX', color: '#3b82f6' }
       ];
+
+  // Форматирование даты для API
+  const formatDateForAPI = (date) => {
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}.${month}.${year}`;
+  };
+
+  // Функция для загрузки данных с API (только для логирования)
+  const fetchDailyStockData = async (beginDate, endDate) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      
+      const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Auth': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          url: '/b/dashboard/infos&get_stock_by_day',
+          begin_date: beginDate,
+          end_date: endDate
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('API Response (not used, just for logging):', data);
+      
+    } catch (error) {
+      console.error('Error fetching daily stock data:', error);
+    }
+  };
 
   // Генерация моковых данных по месяцам
   const generateMockData = () => {
@@ -148,6 +197,26 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
   const [data, setData] = useState(generateMockData());
   const [dailyData, setDailyData] = useState([]);
 
+  // Загрузка данных при монтировании компонента (только для логирования)
+  useEffect(() => {
+    if (dateRange.startDate && dateRange.endDate) {
+      const formattedStart = formatDateForAPI(dateRange.startDate);
+      const formattedEnd = formatDateForAPI(dateRange.endDate);
+      fetchDailyStockData(formattedStart, formattedEnd);
+    }
+  }, []);
+
+  // Обработчик изменения дат
+  const handleDateRangeChange = (start, end) => {
+    setDateRange({ startDate: start, endDate: end });
+    if (start && end) {
+      const formattedStart = formatDateForAPI(start);
+      const formattedEnd = formatDateForAPI(end);
+      // Делаем запрос только для логирования
+      fetchDailyStockData(formattedStart, formattedEnd);
+    }
+  };
+
   useEffect(() => {
     setData(generateMockData());
     setSelectedMonth(null);
@@ -169,6 +238,15 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Очистка тултипов при размонтировании
+  useEffect(() => {
+    return () => {
+      if (tooltipRef.current) {
+        tooltipRef.current.remove();
+      }
+    };
   }, []);
 
   // Отрисовка основного графика по месяцам
@@ -325,12 +403,57 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
             .duration(100)
             .attr('transform', `translate(0, -5)`);
         }
+
+        // Показываем тултип
+        if (tooltipRef.current) {
+          tooltipRef.current.remove();
+        }
+
+        const tooltip = d3.select('body').append('div')
+          .attr('class', 'chart-tooltip')
+          .style('position', 'absolute')
+          .style('visibility', 'hidden')
+          .style('background-color', isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)')
+          .style('color', isDark ? '#f3f4f6' : '#1f2937')
+          .style('padding', '12px')
+          .style('border-radius', '8px')
+          .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.1)')
+          .style('font-size', '14px')
+          .style('pointer-events', 'none')
+          .style('z-index', 1000);
+
+        tooltipRef.current = tooltip.node();
+
+        tooltip.html(`
+          <div style="font-weight: 600; margin-bottom: 4px;">${d.month} ${d.year}</div>
+          <div>Всего: <span style="font-weight: 600;">${d.total.toLocaleString('ru-RU')}</span></div>
+          <div style="font-size: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'}; margin-top: 4px;">
+            Кликните для просмотра по дням
+          </div>
+        `);
+
+        tooltip
+          .style('visibility', 'visible')
+          .style('left', (event.pageX + 10) + 'px')
+          .style('top', (event.pageY - 10) + 'px');
+      })
+      .on('mousemove', function(event) {
+        if (tooltipRef.current) {
+          d3.select(tooltipRef.current)
+            .style('left', (event.pageX + 10) + 'px')
+            .style('top', (event.pageY - 10) + 'px');
+        }
       })
       .on('mouseout', function(event, d) {
         d3.select(this)
           .transition()
           .duration(100)
           .attr('transform', 'translate(0, 0)');
+
+        if (tooltipRef.current) {
+          tooltipRef.current.remove();
+          tooltipRef.current = null;
+        }
       })
       .transition()
       .duration(800)
@@ -385,15 +508,15 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
   useEffect(() => {
     if (!dailyData.length || !selectedMonth) return;
 
-    const margin = { top: 40, right: 40, bottom: 60, left: 70 };
+    const margin = { top: 40, right: 40, bottom: 100, left: 70 };
     const width = dimensions.width - margin.left - margin.right;
-    const height = 300 - margin.top - margin.bottom;
+    const height = 350 - margin.top - margin.bottom;
 
     d3.select(dailySvgRef.current).selectAll('*').remove();
 
     const svg = d3.select(dailySvgRef.current)
       .attr('width', dimensions.width)
-      .attr('height', 300);
+      .attr('height', 350);
 
     const g = svg.append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
@@ -494,10 +617,14 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
       }
     });
 
-    // Точки на графике
-    const dots = g.selectAll('.dot')
+    // Точки на графике с числами
+    const dots = g.selectAll('.dot-group')
       .data(dailyData)
-      .enter().append('circle')
+      .enter().append('g')
+      .attr('class', 'dot-group');
+
+    // Добавляем круги
+    dots.append('circle')
       .attr('class', 'dot')
       .attr('cx', d => xScale(d.day))
       .attr('cy', d => yScale(d.total))
@@ -511,6 +638,53 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
           .transition()
           .duration(200)
           .attr('r', 6);
+          
+        // Удаляем старый тултип если есть
+        if (tooltipRef.current) {
+          tooltipRef.current.remove();
+        }
+          
+        // Создаем новый тултип
+        const tooltip = d3.select('body').append('div')
+          .attr('class', 'chart-tooltip')
+          .style('position', 'absolute')
+          .style('visibility', 'hidden')
+          .style('background-color', isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)')
+          .style('color', isDark ? '#f3f4f6' : '#1f2937')
+          .style('padding', '12px')
+          .style('border-radius', '8px')
+          .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.1)')
+          .style('font-size', '14px')
+          .style('pointer-events', 'none')
+          .style('z-index', 1000);
+
+        tooltipRef.current = tooltip.node();
+
+        tooltip.html(`
+          <div style="font-weight: 600; margin-bottom: 8px;">${d.dateStr}</div>
+          <div>Всего: <span style="font-weight: 600;">${d.total.toLocaleString('ru-RU')}</span></div>
+          ${selectedModel !== 'all' ? `
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
+              <div style="color: #10b981;">Доступно: ${(d.available || 0).toLocaleString('ru-RU')}</div>
+              <div style="color: #3b82f6;">Забронировано: ${(d.reserved || 0).toLocaleString('ru-RU')}</div>
+              <div style="color: #f59e0b;">Брак-ОК: ${(d.defectiveOk || 0).toLocaleString('ru-RU')}</div>
+              <div style="color: #ef4444;">Брак: ${(d.defective || 0).toLocaleString('ru-RU')}</div>
+              <div style="color: #8b5cf6;">Trade-in: ${(d.tradeIn || 0).toLocaleString('ru-RU')}</div>
+            </div>
+          ` : ''}
+        `);
+
+        tooltip
+          .style('visibility', 'visible')
+          .style('left', (event.pageX + 10) + 'px')
+          .style('top', (event.pageY - 10) + 'px');
+      })
+      .on('mousemove', function(event) {
+        if (tooltipRef.current) {
+          d3.select(tooltipRef.current)
+            .style('left', (event.pageX + 10) + 'px')
+            .style('top', (event.pageY - 10) + 'px');
+        }
       })
       .on('mouseout', function(event, d) {
         if (selectedDay?.day !== d.day) {
@@ -519,9 +693,21 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
             .duration(200)
             .attr('r', 4);
         }
+        
+        // Удаляем тултип
+        if (tooltipRef.current) {
+          tooltipRef.current.remove();
+          tooltipRef.current = null;
+        }
       })
       .on('click', function(event, d) {
         setSelectedDay(d);
+        
+        // Удаляем тултип при клике
+        if (tooltipRef.current) {
+          tooltipRef.current.remove();
+          tooltipRef.current = null;
+        }
         
         // Подсвечиваем выбранную точку
         g.selectAll('.dot')
@@ -529,23 +715,40 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
           .duration(200)
           .attr('r', dot => dot.day === d.day ? 8 : 4)
           .attr('fill', dot => dot.day === d.day ? d3.rgb(barColor).brighter(0.5) : barColor);
-      });
-
-    dots.transition()
+      })
+      .transition()
       .duration(1500)
       .delay((d, i) => i * 30)
       .attr('r', 4);
 
-    // Оси
+    // Добавляем числа над точками
+    dots.append('text')
+      .attr('class', 'dot-label')
+      .attr('x', d => xScale(d.day))
+      .attr('y', d => yScale(d.total) - 15)
+      .attr('text-anchor', 'middle')
+      .style('fill', isDark ? '#f3f4f6' : '#1f2937')
+      .style('font-size', '11px')
+      .style('font-weight', '500')
+      .style('opacity', 0)
+      .text(d => d.total.toLocaleString('ru-RU'))
+      .transition()
+      .duration(1500)
+      .delay((d, i) => i * 30)
+      .style('opacity', 0.8);
+
+    // Оси - показываем ВСЕ дни
     g.append('g')
       .attr('transform', `translate(0,${height})`)
       .call(d3.axisBottom(xScale)
-        .ticks(10)
-        .tickFormat(d => d)
+        .ticks(dailyData.length)
+        .tickFormat(d => Math.floor(d))
       )
       .selectAll('text')
       .style('fill', isDark ? '#9ca3af' : '#4b5563')
-      .style('font-size', '11px');
+      .style('font-size', '10px')
+      .attr('transform', dailyData.length > 20 ? 'rotate(-45)' : null)
+      .style('text-anchor', dailyData.length > 20 ? 'end' : 'middle');
 
     g.append('g')
       .call(d3.axisLeft(yScale)
@@ -565,6 +768,38 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
       .style('font-size', '14px')
       .style('font-weight', '600')
       .text(`Динамика по дням - ${selectedMonth.month} ${selectedMonth.year}`);
+
+    // Легенда для статусов (только если выбрана конкретная модель)
+    if (selectedModel !== 'all') {
+      const legendData = [
+        { label: 'Доступно', color: '#10b981' },
+        { label: 'Забронировано', color: '#3b82f6' },
+        { label: 'Брак-ОК', color: '#f59e0b' },
+        { label: 'Брак', color: '#ef4444' },
+        { label: 'Trade-in', color: '#8b5cf6' }
+      ];
+
+      const legend = g.append('g')
+        .attr('transform', `translate(${width / 2 - 200}, ${height + 60})`);
+
+      legendData.forEach((item, i) => {
+        const legendItem = legend.append('g')
+          .attr('transform', `translate(${i * 80}, 0)`);
+
+        legendItem.append('rect')
+          .attr('width', 12)
+          .attr('height', 12)
+          .attr('fill', item.color)
+          .attr('rx', 2);
+
+        legendItem.append('text')
+          .attr('x', 16)
+          .attr('y', 9)
+          .style('fill', isDark ? '#9ca3af' : '#6b7280')
+          .style('font-size', '11px')
+          .text(item.label);
+      });
+    }
 
   }, [dailyData, selectedMonth, dimensions, isDark, selectedModel, selectedDay]);
 
@@ -625,6 +860,46 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
               </span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Выбор даты */}
+      <div className={`px-6 py-3 ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+              Период:
+            </label>
+            <input
+              type="date"
+              value={dateRange.startDate || ''}
+              onChange={(e) => handleDateRangeChange(e.target.value, dateRange.endDate)}
+              className={`px-3 py-1.5 rounded-lg border ${
+                isDark 
+                  ? 'bg-gray-800 border-gray-600 text-white' 
+                  : 'bg-white border-gray-300 text-gray-900'
+              } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+            />
+            <span className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>—</span>
+            <input
+              type="date"
+              value={dateRange.endDate || ''}
+              onChange={(e) => handleDateRangeChange(dateRange.startDate, e.target.value)}
+              className={`px-3 py-1.5 rounded-lg border ${
+                isDark 
+                  ? 'bg-gray-800 border-gray-600 text-white' 
+                  : 'bg-white border-gray-300 text-gray-900'
+              } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+            />
+          </div>
+          {loading && (
+            <div className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+              <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Загрузка данных...
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -694,7 +969,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
           <div className={`${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} rounded-lg p-4`}>
             <svg ref={dailySvgRef}></svg>
             
-            {/* Мини-список с информацией о выбранном дне */}
+            {/* Детальная информация о выбранном дне */}
             {selectedDay && (
               <div className={`mt-4 p-4 rounded-lg ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
                 <div className="flex items-center justify-between mb-3">
@@ -731,31 +1006,46 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
                   ) : (
                     <>
                       <div className="flex items-center justify-between py-1">
-                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Доступно</span>
+                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-2`}>
+                          <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+                          Доступно
+                        </span>
                         <span className="font-medium text-green-500">
                           {(selectedDay.available || 0).toLocaleString('ru-RU')}
                         </span>
                       </div>
                       <div className="flex items-center justify-between py-1">
-                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Забронировано</span>
+                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-2`}>
+                          <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                          Забронировано
+                        </span>
                         <span className="font-medium text-blue-500">
                           {(selectedDay.reserved || 0).toLocaleString('ru-RU')}
                         </span>
                       </div>
                       <div className="flex items-center justify-between py-1">
-                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Брак-ОК</span>
+                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-2`}>
+                          <span className="w-3 h-3 bg-amber-500 rounded-full"></span>
+                          Брак-ОК
+                        </span>
                         <span className="font-medium text-amber-500">
                           {(selectedDay.defectiveOk || 0).toLocaleString('ru-RU')}
                         </span>
                       </div>
                       <div className="flex items-center justify-between py-1">
-                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Брак</span>
+                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-2`}>
+                          <span className="w-3 h-3 bg-red-500 rounded-full"></span>
+                          Брак
+                        </span>
                         <span className="font-medium text-red-500">
                           {(selectedDay.defective || 0).toLocaleString('ru-RU')}
                         </span>
                       </div>
                       <div className="flex items-center justify-between py-1">
-                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Trade-in</span>
+                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-2`}>
+                          <span className="w-3 h-3 bg-purple-500 rounded-full"></span>
+                          Trade-in
+                        </span>
                         <span className="font-medium text-purple-500">
                           {(selectedDay.tradeIn || 0).toLocaleString('ru-RU')}
                         </span>
