@@ -19,7 +19,6 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
   const [selectedModel, setSelectedModel] = useState('all');
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  // Получаем список моделей для табов
   const availableModels = enhancedCarModels.length > 0 
     ? enhancedCarModels.slice(0, 6).map(m => ({
         id: m.id,
