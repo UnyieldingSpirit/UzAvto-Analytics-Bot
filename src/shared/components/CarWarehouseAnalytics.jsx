@@ -11,15 +11,33 @@ import { useThemeStore } from '../../store/theme';
 import { useAuth } from '../../hooks/useAuth';
 import { axiosInstance } from '../../utils/axiosConfig';
 
-// Компонент графика динамики по месяцам
-const WarehouseMonthlyChart = ({ isDark = false }) => {
+
+const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
-  const [hoveredData, setHoveredData] = useState(null);
-  const [selectedMetric, setSelectedMetric] = useState('total');
+  const [selectedMonth, setSelectedMonth] = useState(null);
+  const [selectedModel, setSelectedModel] = useState('all');
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  // Генерация моковых данных
+  // Получаем список моделей для табов
+  const availableModels = enhancedCarModels.length > 0 
+    ? enhancedCarModels.slice(0, 6).map(m => ({
+        id: m.id,
+        name: m.name,
+        color: m.category === 'suv' ? '#3b82f6' : 
+               m.category === 'sedan' ? '#10b981' : 
+               m.category === 'minivan' ? '#f59e0b' : '#8b5cf6'
+      }))
+    : [
+        { id: 'tracker-2', name: 'TRACKER-2', color: '#3b82f6' },
+        { id: 'cobalt', name: 'COBALT', color: '#10b981' },
+        { id: 'onix', name: 'ONIX', color: '#10b981' },
+        { id: 'malibu-2', name: 'MALIBU-2', color: '#10b981' },
+        { id: 'tahoe', name: 'TAHOE', color: '#3b82f6' },
+        { id: 'equinox', name: 'EQUINOX', color: '#3b82f6' }
+      ];
+
+  // Генерация моковых данных по месяцам с разбивкой по моделям
   const generateMockData = () => {
     const months = [
       'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -27,64 +45,117 @@ const WarehouseMonthlyChart = ({ isDark = false }) => {
     ];
     
     const currentMonth = new Date().getMonth();
-    const baseValue = 2500;
+    const currentYear = 2025;
     
     return months.slice(0, currentMonth + 1).map((month, index) => {
-      // Генерируем реалистичные данные с трендом роста
       const seasonalFactor = 1 + (Math.sin((index - 3) * Math.PI / 6) * 0.15);
       const trendFactor = 1 + (index * 0.02);
       const randomFactor = 0.9 + Math.random() * 0.2;
       
-      const total = Math.round(baseValue * seasonalFactor * trendFactor * randomFactor);
-      const available = Math.round(total * (0.35 + Math.random() * 0.1));
-      const reserved = Math.round(total * (0.45 + Math.random() * 0.1));
-      const defective = Math.round(total * (0.05 + Math.random() * 0.05));
-      const defectiveOk = Math.round(total * (0.08 + Math.random() * 0.04));
-      const tradeIn = total - available - reserved - defective - defectiveOk;
+      // Генерируем данные для каждой модели
+      const modelData = {};
+      let totalForMonth = 0;
+      
+      availableModels.forEach(model => {
+        const baseValue = 
+          model.name === 'TRACKER-2' ? 600 :
+          model.name === 'COBALT' ? 450 :
+          model.name === 'ONIX' ? 400 :
+          model.name === 'MALIBU-2' ? 350 :
+          model.name === 'TAHOE' ? 250 :
+          model.name === 'EQUINOX' ? 300 : 400;
+          
+        const modelTotal = Math.round(baseValue * seasonalFactor * trendFactor * randomFactor);
+        modelData[model.id] = modelTotal;
+        totalForMonth += modelTotal;
+      });
       
       return {
         month,
         monthIndex: index,
-        total,
-        available,
-        reserved,
-        defective,
-        defectiveOk,
-        tradeIn,
-        date: new Date(2025, index, 1)
+        year: currentYear,
+        date: new Date(currentYear, index, 1),
+        total: selectedModel === 'all' ? totalForMonth : modelData[selectedModel] || 0,
+        ...modelData
       };
     });
   };
 
-  const [data] = useState(generateMockData());
-
-  // Цвета для разных метрик
-  const metricColors = {
-    total: '#3b82f6',
-    available: '#10b981',
-    reserved: '#f59e0b',
-    defective: '#ef4444',
-    defectiveOk: '#8b5cf6',
-    tradeIn: '#6366f1'
+  // Генерация данных по дням для выбранного месяца
+  const generateDailyData = (monthIndex, monthName, year) => {
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+    const monthData = data.find(d => d.monthIndex === monthIndex);
+    const dailyData = [];
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dayVariation = 0.95 + Math.random() * 0.1;
+      const date = new Date(year, monthIndex, day);
+      
+      if (selectedModel === 'all') {
+        // Данные для всех моделей
+        const dayModelData = {};
+        availableModels.forEach(model => {
+          const modelMonthTotal = monthData[model.id] || 0;
+          const modelDayTotal = Math.round((modelMonthTotal / daysInMonth) * dayVariation);
+          dayModelData[model.name] = modelDayTotal;
+        });
+        
+        const dayTotal = Object.values(dayModelData).reduce((sum, val) => sum + val, 0);
+        
+        dailyData.push({
+          day,
+          date,
+          dateStr: `${String(day).padStart(2, '0')}.${String(monthIndex + 1).padStart(2, '0')}.${year}`,
+          total: dayTotal,
+          ...dayModelData
+        });
+      } else {
+        // Данные для конкретной модели
+        const modelMonthTotal = monthData[selectedModel] || 0;
+        const dayTotal = Math.round((modelMonthTotal / daysInMonth) * dayVariation);
+        
+        // Распределяем по статусам
+        const available = Math.round(dayTotal * 0.4);
+        const reserved = Math.round(dayTotal * 0.35);
+        const defective = Math.round(dayTotal * 0.05);
+        const defectiveOk = Math.round(dayTotal * 0.1);
+        const tradeIn = Math.round(dayTotal * 0.1);
+        
+        dailyData.push({
+          day,
+          date,
+          dateStr: `${String(day).padStart(2, '0')}.${String(monthIndex + 1).padStart(2, '0')}.${year}`,
+          total: dayTotal,
+          available,
+          reserved,
+          defective,
+          defectiveOk,
+          tradeIn
+        });
+      }
+    }
+    
+    return dailyData;
   };
 
-  const metricLabels = {
-    total: 'Всего автомобилей',
-    available: 'Доступно',
-    reserved: 'Забронировано',
-    defective: 'Дефектные',
-    defectiveOk: 'Дефект-OK',
-    tradeIn: 'Trade-in'
-  };
+  const [data, setData] = useState(generateMockData());
+  const [dailyData, setDailyData] = useState([]);
 
-  // Обновление размеров при изменении размера окна
+  // Обновляем данные при изменении выбранной модели
+  useEffect(() => {
+    setData(generateMockData());
+    setSelectedMonth(null);
+    setDailyData([]);
+  }, [selectedModel]);
+
+  // Обновление размеров
   useEffect(() => {
     const handleResize = () => {
       if (containerRef.current) {
         const { width } = containerRef.current.getBoundingClientRect();
         setDimensions({
           width: width - 40,
-          height: Math.min(400, width * 0.4)
+          height: Math.min(450, width * 0.5)
         });
       }
     };
@@ -98,11 +169,10 @@ const WarehouseMonthlyChart = ({ isDark = false }) => {
   useEffect(() => {
     if (!dimensions.width || !dimensions.height || !data.length) return;
 
-    const margin = { top: 40, right: 80, bottom: 60, left: 70 };
+    const margin = { top: 20, right: 40, bottom: 80, left: 70 };
     const width = dimensions.width - margin.left - margin.right;
     const height = dimensions.height - margin.top - margin.bottom;
 
-    // Очистка предыдущего графика
     d3.select(svgRef.current).selectAll('*').remove();
 
     const svg = d3.select(svgRef.current)
@@ -113,61 +183,76 @@ const WarehouseMonthlyChart = ({ isDark = false }) => {
       .attr('transform', `translate(${margin.left},${margin.top})`);
 
     // Масштабы
-    const xScale = d3.scaleTime()
-      .domain(d3.extent(data, d => d.date))
-      .range([0, width]);
+    const xScale = d3.scaleBand()
+      .domain(data.map(d => d.month))
+      .range([0, width])
+      .padding(0.25);
 
     const yScale = d3.scaleLinear()
-      .domain([0, d3.max(data, d => d[selectedMetric]) * 1.1])
-      .range([height, 0]);
+      .domain([0, d3.max(data, d => d.total) * 1.1])
+      .range([height, 0])
+      .nice();
 
-    // Генератор линии
-    const line = d3.line()
-      .x(d => xScale(d.date))
-      .y(d => yScale(d[selectedMetric]))
-      .curve(d3.curveMonotoneX);
+    // Цвет для выбранной модели
+    const barColor = selectedModel === 'all' 
+      ? '#3b82f6' 
+      : availableModels.find(m => m.id === selectedModel)?.color || '#3b82f6';
 
-    // Генератор области под графиком
-    const area = d3.area()
-      .x(d => xScale(d.date))
-      .y0(height)
-      .y1(d => yScale(d[selectedMetric]))
-      .curve(d3.curveMonotoneX);
-
-    // Градиент для заливки
+    // Градиент для столбцов
     const gradient = svg.append('defs')
       .append('linearGradient')
-      .attr('id', 'areaGradient')
+      .attr('id', 'barGradient')
       .attr('gradientUnits', 'userSpaceOnUse')
-      .attr('x1', 0).attr('y1', 0)
-      .attr('x2', 0).attr('y2', height);
+      .attr('x1', 0).attr('y1', height)
+      .attr('x2', 0).attr('y2', 0);
 
     gradient.append('stop')
       .attr('offset', '0%')
-      .attr('stop-color', metricColors[selectedMetric])
-      .attr('stop-opacity', 0.3);
+      .attr('stop-color', d3.rgb(barColor).darker(0.5))
+      .attr('stop-opacity', 1);
+
+    gradient.append('stop')
+      .attr('offset', '50%')
+      .attr('stop-color', barColor)
+      .attr('stop-opacity', 1);
 
     gradient.append('stop')
       .attr('offset', '100%')
-      .attr('stop-color', metricColors[selectedMetric])
-      .attr('stop-opacity', 0);
+      .attr('stop-color', d3.rgb(barColor).brighter(0.5))
+      .attr('stop-opacity', 1);
+
+    // Тень для столбцов
+    const filter = svg.append('defs')
+      .append('filter')
+      .attr('id', 'shadow')
+      .attr('x', '-50%')
+      .attr('y', '-50%')
+      .attr('width', '200%')
+      .attr('height', '200%');
+
+    filter.append('feGaussianBlur')
+      .attr('in', 'SourceAlpha')
+      .attr('stdDeviation', 3);
+
+    filter.append('feOffset')
+      .attr('dx', 0)
+      .attr('dy', 2);
+
+    filter.append('feComponentTransfer')
+      .append('feFuncA')
+      .attr('type', 'linear')
+      .attr('slope', 0.2);
+
+    const feMerge = filter.append('feMerge');
+    feMerge.append('feMergeNode');
+    feMerge.append('feMergeNode')
+      .attr('in', 'SourceGraphic');
 
     // Сетка
     g.append('g')
       .attr('class', 'grid')
-      .attr('transform', `translate(0,${height})`)
-      .call(d3.axisBottom(xScale)
-        .tickSize(-height)
-        .tickFormat('')
-      )
-      .selectAll('line')
-      .style('stroke', isDark ? '#374151' : '#e5e7eb')
-      .style('stroke-dasharray', '3,3')
-      .style('opacity', 0.5);
-
-    g.append('g')
-      .attr('class', 'grid')
       .call(d3.axisLeft(yScale)
+        .ticks(5)
         .tickSize(-width)
         .tickFormat('')
       )
@@ -176,70 +261,134 @@ const WarehouseMonthlyChart = ({ isDark = false }) => {
       .style('stroke-dasharray', '3,3')
       .style('opacity', 0.5);
 
-    // Область под графиком
-    g.append('path')
-      .datum(data)
-      .attr('fill', 'url(#areaGradient)')
-      .attr('d', area);
-
-    // Линия графика
-    g.append('path')
-      .datum(data)
-      .attr('fill', 'none')
-      .attr('stroke', metricColors[selectedMetric])
+    // Линия среднего значения
+    const avgValue = d3.mean(data, d => d.total);
+    g.append('line')
+      .attr('x1', 0)
+      .attr('x2', width)
+      .attr('y1', yScale(avgValue))
+      .attr('y2', yScale(avgValue))
+      .attr('stroke', isDark ? '#6b7280' : '#9ca3af')
       .attr('stroke-width', 2)
-      .attr('d', line);
+      .attr('stroke-dasharray', '5,5')
+      .attr('opacity', 0.7);
 
-    // Точки на графике
-    g.selectAll('.dot')
+    g.append('text')
+      .attr('x', width - 5)
+      .attr('y', yScale(avgValue) - 5)
+      .attr('text-anchor', 'end')
+      .style('fill', isDark ? '#6b7280' : '#9ca3af')
+      .style('font-size', '11px')
+      .text(`Среднее: ${Math.round(avgValue).toLocaleString('ru-RU')}`);
+
+    // Группы для столбцов
+    const barGroups = g.selectAll('.bar-group')
       .data(data)
-      .enter().append('circle')
-      .attr('class', 'dot')
-      .attr('cx', d => xScale(d.date))
-      .attr('cy', d => yScale(d[selectedMetric]))
-      .attr('r', 4)
-      .attr('fill', metricColors[selectedMetric])
-      .style('cursor', 'pointer')
-      .on('mouseover', function(event, d) {
-        d3.select(this).attr('r', 6);
-        setHoveredData(d);
+      .enter().append('g')
+      .attr('class', 'bar-group')
+      .style('cursor', 'pointer');
+
+    // Столбцы
+    barGroups.append('rect')
+      .attr('class', 'bar')
+      .attr('x', d => xScale(d.month))
+      .attr('y', height)
+      .attr('width', xScale.bandwidth())
+      .attr('height', 0)
+      .attr('fill', 'url(#barGradient)')
+      .attr('rx', 6)
+      .attr('ry', 6)
+      .attr('filter', 'url(#shadow)')
+      .on('click', function(event, d) {
+        if (selectedMonth?.monthIndex === d.monthIndex) {
+          setSelectedMonth(null);
+          setDailyData([]);
+          g.selectAll('.bar')
+            .transition()
+            .duration(200)
+            .attr('opacity', 1);
+        } else {
+          setSelectedMonth(d);
+          setDailyData(generateDailyData(d.monthIndex, d.month, d.year));
+          g.selectAll('.bar')
+            .transition()
+            .duration(200)
+            .attr('opacity', function(data) {
+              return data.monthIndex === d.monthIndex ? 1 : 0.5;
+            });
+        }
       })
-      .on('mouseout', function() {
-        d3.select(this).attr('r', 4);
-        setHoveredData(null);
-      });
+      .on('mouseover', function(event, d) {
+        if (selectedMonth?.monthIndex !== d.monthIndex) {
+          d3.select(this)
+            .transition()
+            .duration(100)
+            .attr('transform', `translate(0, -5)`);
+        }
+      })
+      .on('mouseout', function(event, d) {
+        d3.select(this)
+          .transition()
+          .duration(100)
+          .attr('transform', 'translate(0, 0)');
+      })
+      .transition()
+      .duration(800)
+      .delay((d, i) => i * 60)
+      .attr('y', d => yScale(d.total))
+      .attr('height', d => height - yScale(d.total));
+
+    // Значения на столбцах
+    barGroups.append('text')
+      .attr('class', 'label')
+      .attr('x', d => xScale(d.month) + xScale.bandwidth() / 2)
+      .attr('y', d => yScale(d.total) - 10)
+      .attr('text-anchor', 'middle')
+      .style('fill', isDark ? '#f3f4f6' : '#1f2937')
+      .style('font-size', '13px')
+      .style('font-weight', '600')
+      .style('opacity', 0)
+      .text(d => d.total.toLocaleString('ru-RU'))
+      .transition()
+      .duration(800)
+      .delay((d, i) => i * 60 + 400)
+      .style('opacity', 1);
 
     // Оси
-    g.append('g')
+    const xAxis = g.append('g')
       .attr('transform', `translate(0,${height})`)
-      .call(d3.axisBottom(xScale)
-        .tickFormat(d3.timeFormat('%b'))
-      )
+      .call(d3.axisBottom(xScale))
       .selectAll('text')
-      .style('fill', isDark ? '#9ca3af' : '#4b5563');
+      .style('fill', isDark ? '#9ca3af' : '#4b5563')
+      .style('font-size', '12px');
 
     g.append('g')
-      .call(d3.axisLeft(yScale))
+      .call(d3.axisLeft(yScale)
+        .ticks(5)
+        .tickFormat(d => d.toLocaleString('ru-RU'))
+      )
       .selectAll('text')
-      .style('fill', isDark ? '#9ca3af' : '#4b5563');
+      .style('fill', isDark ? '#9ca3af' : '#4b5563')
+      .style('font-size', '12px');
 
     // Подпись оси Y
     g.append('text')
       .attr('transform', 'rotate(-90)')
-      .attr('y', 0 - margin.left)
+      .attr('y', 0 - margin.left + 15)
       .attr('x', 0 - (height / 2))
       .attr('dy', '1em')
       .style('text-anchor', 'middle')
       .style('fill', isDark ? '#9ca3af' : '#4b5563')
+      .style('font-size', '12px')
       .text('Количество автомобилей');
 
-  }, [data, selectedMetric, dimensions, isDark]);
+  }, [data, dimensions, isDark, selectedMonth, selectedModel]);
 
   // Вычисление изменения
   const calculateChange = () => {
     if (data.length < 2) return { value: 0, isPositive: true };
-    const lastValue = data[data.length - 1][selectedMetric];
-    const prevValue = data[data.length - 2][selectedMetric];
+    const lastValue = data[data.length - 1].total;
+    const prevValue = data[data.length - 2].total;
     const change = ((lastValue - prevValue) / prevValue) * 100;
     return {
       value: Math.abs(change).toFixed(1),
@@ -248,133 +397,234 @@ const WarehouseMonthlyChart = ({ isDark = false }) => {
   };
 
   const change = calculateChange();
+  const currentTotal = data.length > 0 ? data[data.length - 1].total : 0;
 
   return (
-    <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 shadow-md`}>
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
+    <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md overflow-hidden`}>
+      {/* Заголовок */}
+      <div className={`px-6 py-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="flex items-center justify-between">
           <div>
             <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
               Динамика складских запасов
             </h3>
-            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              Изменение количества автомобилей по месяцам
+            <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              {selectedModel === 'all' 
+                ? 'Общее количество автомобилей по месяцам' 
+                : `${availableModels.find(m => m.id === selectedModel)?.name || ''} - динамика по месяцам`}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              2025
-            </span>
+          <div className={`flex items-center gap-4`}>
+            <div className={`text-right`}>
+              <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Текущий остаток</div>
+              <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {currentTotal.toLocaleString('ru-RU')}
+              </div>
+            </div>
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+              change.isPositive 
+                ? isDark ? 'bg-green-900/20' : 'bg-green-50' 
+                : isDark ? 'bg-red-900/20' : 'bg-red-50'
+            }`}>
+              {change.isPositive ? (
+                <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+              )}
+              <span className={`text-sm font-semibold ${
+                change.isPositive ? 'text-green-500' : 'text-red-500'
+              }`}>
+                {change.value}%
+              </span>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Селектор метрики */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {Object.entries(metricLabels).map(([key, label]) => (
+      {/* Табы для выбора модели */}
+      <div className={`px-6 py-3 ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+          <button
+            onClick={() => setSelectedModel('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+              selectedModel === 'all'
+                ? `${isDark ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'}`
+                : `${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'}`
+            }`}
+          >
+            Все модели
+          </button>
+          {availableModels.map(model => (
             <button
-              key={key}
-              onClick={() => setSelectedMetric(key)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                selectedMetric === key
-                  ? `bg-opacity-20 ${isDark ? 'text-white' : 'text-gray-900'}`
-                  : `${isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-800'}`
+              key={model.id}
+              onClick={() => setSelectedModel(model.id)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                selectedModel === model.id
+                  ? `text-white`
+                  : `${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'}`
               }`}
               style={{
-                backgroundColor: selectedMetric === key ? metricColors[key] + '33' : 'transparent',
-                borderColor: selectedMetric === key ? metricColors[key] : 'transparent',
-                borderWidth: '1px',
-                borderStyle: 'solid'
+                backgroundColor: selectedModel === model.id ? model.color : undefined
               }}
             >
-              {label}
+              {model.name}
             </button>
           ))}
-        </div>
-
-        {/* Статистика изменения */}
-        <div className={`flex items-center gap-2 p-3 rounded-lg ${
-          isDark ? 'bg-gray-700' : 'bg-gray-100'
-        }`}>
-          <div className="flex items-center gap-2">
-            {change.isPositive ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-              </svg>
-            )}
-            <span className={`font-semibold ${
-              change.isPositive ? 'text-green-500' : 'text-red-500'
-            }`}>
-              {change.isPositive ? '+' : '-'}{change.value}%
-            </span>
-          </div>
-          <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            по сравнению с прошлым месяцем
-          </span>
         </div>
       </div>
 
       {/* График */}
-      <div ref={containerRef} className="relative">
-        <svg ref={svgRef}></svg>
-        
-        {/* Всплывающая подсказка */}
-        {hoveredData && (
-          <div
-            className={`absolute z-10 p-3 rounded-lg shadow-lg ${
-              isDark ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-gray-200'
-            }`}
-            style={{
-              left: '50%',
-              top: '20px',
-              transform: 'translateX(-50%)'
-            }}
-          >
-            <div className={`font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {hoveredData.month} 2025
-            </div>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between gap-4">
-                <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>
-                  {metricLabels[selectedMetric]}:
-                </span>
-                <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {hoveredData[selectedMetric].toLocaleString('ru-RU')}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Легенда с общей статистикой */}
-      <div className={`mt-4 pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {data.length > 0 && Object.entries(metricLabels).map(([key, label]) => {
-            const lastValue = data[data.length - 1][key];
-            return (
-              <div key={key} className="flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: metricColors[key] }}
-                />
-                <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {label}:
-                </span>
-                <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {lastValue.toLocaleString('ru-RU')}
-                </span>
-              </div>
-            );
-          })}
+      <div className="px-6 py-4">
+        <div ref={containerRef} className="relative">
+          <svg ref={svgRef}></svg>
         </div>
       </div>
+
+      {/* Информация о выбранном месяце */}
+      {selectedMonth && (
+        <div className={`mx-6 mb-4 px-4 py-3 rounded-lg ${
+          isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className={`text-sm font-medium ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                {selectedMonth.month} {selectedMonth.year}
+              </span>
+            </div>
+            <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              {selectedMonth.total.toLocaleString('ru-RU')} автомобилей
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Таблица с детализацией по дням */}
+      {selectedMonth && dailyData.length > 0 && (
+        <div className={`px-6 pb-6`}>
+          <div className={`${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} rounded-lg overflow-hidden`}>
+            <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <h4 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                Детализация по дням - {selectedMonth.month} {selectedMonth.year}
+              </h4>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className={`text-xs ${isDark ? 'bg-gray-800/50 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>
+                    <th className="text-left p-3 font-medium">Дата</th>
+                    <th className="text-right p-3 font-medium">Всего</th>
+                    {selectedModel === 'all' 
+                      ? availableModels.map(model => (
+                          <th key={model.id} className="text-right p-3 font-medium">{model.name}</th>
+                        ))
+                      : (
+                        <>
+                          <th className="text-right p-3 font-medium">Доступно</th>
+                          <th className="text-right p-3 font-medium">Забронировано</th>
+                          <th className="text-right p-3 font-medium">Брак-ОК</th>
+                          <th className="text-right p-3 font-medium">Брак</th>
+                          <th className="text-right p-3 font-medium">Trade-in</th>
+                        </>
+                      )
+                    }
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${isDark ? 'divide-gray-800' : 'divide-gray-200'}`}>
+                  {dailyData.map((day) => {
+                    const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6;
+                    return (
+                      <tr 
+                        key={day.day} 
+                        className={`text-sm ${
+                          isWeekend 
+                            ? isDark ? 'bg-gray-800/30' : 'bg-gray-50' 
+                            : ''
+                        } ${isDark ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'} transition-colors`}
+                      >
+                        <td className={`p-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{day.dateStr}</span>
+                          </div>
+                        </td>
+                        <td className={`p-3 text-right font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                          {day.total.toLocaleString('ru-RU')}
+                        </td>
+                        {selectedModel === 'all' 
+                          ? availableModels.map(model => (
+                              <td key={model.id} className={`p-3 text-right ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                {(day[model.name] || 0).toLocaleString('ru-RU')}
+                              </td>
+                            ))
+                          : (
+                            <>
+                              <td className={`p-3 text-right ${isDark ? 'text-green-400' : 'text-green-600'}`}>
+                                {(day.available || 0).toLocaleString('ru-RU')}
+                              </td>
+                              <td className={`p-3 text-right ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                                {(day.reserved || 0).toLocaleString('ru-RU')}
+                              </td>
+                              <td className={`p-3 text-right ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                                {(day.defectiveOk || 0).toLocaleString('ru-RU')}
+                              </td>
+                              <td className={`p-3 text-right ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                                {(day.defective || 0).toLocaleString('ru-RU')}
+                              </td>
+                              <td className={`p-3 text-right ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
+                                {(day.tradeIn || 0).toLocaleString('ru-RU')}
+                              </td>
+                            </>
+                          )
+                        }
+                      </tr>
+                    );
+                  })}
+                  {/* Итоговая строка */}
+                  <tr className={`font-semibold text-sm ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                    <td className={`p-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>Итого за месяц</td>
+                    <td className={`p-3 text-right ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {dailyData.reduce((sum, day) => sum + day.total, 0).toLocaleString('ru-RU')}
+                    </td>
+                    {selectedModel === 'all' 
+                      ? availableModels.map(model => (
+                          <td key={model.id} className={`p-3 text-right ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            {dailyData.reduce((sum, day) => sum + (day[model.name] || 0), 0).toLocaleString('ru-RU')}
+                          </td>
+                        ))
+                      : (
+                        <>
+                          <td className={`p-3 text-right ${isDark ? 'text-green-400' : 'text-green-600'}`}>
+                            {dailyData.reduce((sum, day) => sum + (day.available || 0), 0).toLocaleString('ru-RU')}
+                          </td>
+                          <td className={`p-3 text-right ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                            {dailyData.reduce((sum, day) => sum + (day.reserved || 0), 0).toLocaleString('ru-RU')}
+                          </td>
+                          <td className={`p-3 text-right ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                            {dailyData.reduce((sum, day) => sum + (day.defectiveOk || 0), 0).toLocaleString('ru-RU')}
+                          </td>
+                          <td className={`p-3 text-right ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                            {dailyData.reduce((sum, day) => sum + (day.defective || 0), 0).toLocaleString('ru-RU')}
+                          </td>
+                          <td className={`p-3 text-right ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
+                            {dailyData.reduce((sum, day) => sum + (day.tradeIn || 0), 0).toLocaleString('ru-RU')}
+                          </td>
+                        </>
+                      )
+                    }
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
