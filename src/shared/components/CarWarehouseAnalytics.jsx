@@ -931,7 +931,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
   const currentTotal = lastDataPoint ? lastDataPoint.total : 0;
 
   return (
-    <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md overflow-hidden`}>
+    <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md`}>
       {/* Заголовок */}
       <div className={`px-6 py-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="flex items-center justify-between">
@@ -1017,41 +1017,43 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
       </div>
 
       {/* Табы для выбора модели с горизонтальным скроллом */}
-      <div className={`px-6 py-3 ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div className="relative">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200" style={{
-            scrollbarWidth: 'thin',
-            scrollbarColor: isDark ? '#4b5563 #1f2937' : '#9ca3af #f3f4f6'
-          }}>
-            <button
-              onClick={() => setSelectedModel('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
-                selectedModel === 'all'
-                  ? `${isDark ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'}`
-                  : `${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'}`
-              }`}
-            >
-              Все модели
-            </button>
-            {availableModels.map(model => (
-              <button
-                key={model.id}
-                onClick={() => setSelectedModel(model.id)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
-                  selectedModel === model.id
-                    ? `text-white`
-                    : `${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'}`
-                }`}
-                style={{
-                  backgroundColor: selectedModel === model.id ? model.color : undefined
-                }}
-              >
-                {model.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+<div className={`px-6 py-3 ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} `}>
+  <div className="relative overflow-visible">
+          <div
+      //       className="flex items-center gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 min-w-0" style={{
+      // scrollbarWidth: 'thin',
+      // scrollbarColor: isDark ? '#4b5563 #1f2937' : '#9ca3af #f3f4f6'
+      //     }}
+          >
+      <button
+        onClick={() => setSelectedModel('all')}
+        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
+          selectedModel === 'all'
+            ? `${isDark ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'}`
+            : `${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'}`
+        }`}
+      >
+        Все модели
+      </button>
+      {availableModels.map(model => (
+        <button
+          key={model.id}
+          onClick={() => setSelectedModel(model.id)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
+            selectedModel === model.id
+              ? `text-white`
+              : `${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'}`
+          }`}
+          style={{
+            backgroundColor: selectedModel === model.id ? model.color : undefined
+          }}
+        >
+          {model.name}
+        </button>
+      ))}
+    </div>
+  </div>
+</div>
 
       {/* График */}
       <div className="px-6 py-4">
@@ -2708,7 +2710,7 @@ if (!isMobile) {
  }
 
  return (
-   <div className={`p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} ${isDark ? 'text-gray-100' : 'text-gray-900'} min-h-screen`}>
+   <div className={`p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
      {/* Верхняя панель со списком складов */}
      <div className={`mb-6 ${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md`}>
        <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
