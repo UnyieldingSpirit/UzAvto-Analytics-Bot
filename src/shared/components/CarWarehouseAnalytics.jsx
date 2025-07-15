@@ -11,1096 +11,1113 @@ import { useThemeStore } from '../../store/theme';
 import { useAuth } from '../../hooks/useAuth';
 import { axiosInstance } from '../../utils/axiosConfig';
 
-const WarehouseMonthlyChart = ({ isDark = false }) => {
-  const svgRef = useRef(null);
-  const dailySvgRef = useRef(null);
-  const containerRef = useRef(null);
-  const tooltipRef = useRef(null);
-  
-  // Основные состояния
-  const [selectedMonth, setSelectedMonth] = useState(null);
-  const [selectedModel, setSelectedModel] = useState('all');
-  const [selectedDay, setSelectedDay] = useState(null);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const [loading, setLoading] = useState(false);
-  const [apiData, setApiData] = useState(null);
-  
-  // Дата по умолчанию
-  const today = new Date();
-  const startOfYear = new Date(today.getFullYear(), 0, 1);
-  const [dateRange, setDateRange] = useState({
-    startDate: startOfYear.toISOString().split('T')[0],
-    endDate: today.toISOString().split('T')[0]
-  });
-
-  // Константы
-  const monthNames = [
-    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-  ];
-
-  // Вспомогательные функции
-  const getCategoryColor = (modelName) => {
-    const name = modelName.toUpperCase();
-    if (name.includes('TRACKER') || name.includes('TAHOE') || name.includes('EQUINOX') || name.includes('CAPTIVA') || name.includes('TRAVERSE')) {
-      return '#3b82f6';
-    }
-    if (name.includes('COBALT') || name.includes('ONIX') || name.includes('MALIBU') || name.includes('NEXIA') || name.includes('LACETTI')) {
-      return '#10b981';
-    }
-    if (name.includes('DAMAS') || name.includes('LABO')) {
-      return '#f59e0b';
-    }
-    return '#8b5cf6';
-  };
-
-  const formatDateForAPI = (date) => {
-    const d = new Date(date);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}.${month}.${year}`;
-  };
-
-  // Функция загрузки данных
-  const fetchDailyStockData = async (beginDate, endDate) => {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem('authToken');
-      
-      const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Auth': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          url: '/b/dashboard/infos&get_stock_by_day',
-          begin_date: beginDate,
-          end_date: endDate
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('API Response:', data);
-      setApiData(data);
-      
-    } catch (error) {
-      console.error('Error fetching daily stock data:', error);
-      setApiData([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Загрузка данных ТОЛЬКО при монтировании
-  useEffect(() => {
-    const formattedStart = formatDateForAPI(dateRange.startDate);
-    const formattedEnd = formatDateForAPI(dateRange.endDate);
-    fetchDailyStockData(formattedStart, formattedEnd);
-  }, []);
-
-  // Обработчик изменения дат
-  const handleDateRangeChange = (start, end) => {
-    setDateRange({ startDate: start, endDate: end });
-    if (start && end) {
-      const formattedStart = formatDateForAPI(start);
-      const formattedEnd = formatDateForAPI(end);
-      fetchDailyStockData(formattedStart, formattedEnd);
-    }
-  };
-
-  // Получаем модели из данных (ТОЛЬКО те, у которых есть данные)
-  const getAvailableModels = () => {
-    if (apiData && Array.isArray(apiData) && apiData.length > 0) {
-      return apiData
-        .filter(m => m.model_id && m.model_name && m.filter_by_day && m.filter_by_day.length > 0)
-        .map(m => ({
-          id: m.model_id,
-          name: m.model_name,
-          color: getCategoryColor(m.model_name)
-        }));
-    }
-    
-    return [];
-  };
-
-  // Получаем данные для графика по месяцам (СУММИРУЕМ все дни месяца)
-const getMonthlyData = () => {
-  const availableModels = getAvailableModels();
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth();
-  const result = [];
-
-  // Создаем структуру для всех месяцев
-  for (let i = 0; i <= currentMonth; i++) {
-    const monthData = {
-      month: monthNames[i],
-      monthIndex: i,
-      year: currentYear,
-      date: new Date(currentYear, i, 1),
-      total: 0,
-      hasData: false
-    };
-
-    // Инициализируем для каждой модели
-    availableModels.forEach(model => {
-      monthData[model.id] = 0;
-    });
-
-    result.push(monthData);
-  }
-
-  // Получаем первое значение для каждого месяца
-  if (apiData && Array.isArray(apiData)) {
-    apiData.forEach(modelData => {
-      if (!modelData.filter_by_day || !Array.isArray(modelData.filter_by_day)) return;
-
-      const model = availableModels.find(m => 
-        m.id === modelData.model_id || m.name === modelData.model_name
-      );
-      if (!model) return;
-
-      // Группируем данные по месяцам и берем первое значение
-      const monthlyFirstValues = {};
-      
-      modelData.filter_by_day.forEach(dayData => {
-        const date = new Date(dayData.date);
-        const monthIndex = date.getMonth();
-        const year = date.getFullYear();
-        
-        if (year === currentYear && monthIndex <= currentMonth) {
-          // Если для этого месяца еще нет значения, сохраняем первое найденное
-          if (!monthlyFirstValues[monthIndex]) {
-            monthlyFirstValues[monthIndex] = parseInt(dayData.quantity) || 0;
-          }
-        }
-      });
-
-      // Применяем первые значения к результатам
-      Object.entries(monthlyFirstValues).forEach(([monthIndex, quantity]) => {
-        const idx = parseInt(monthIndex);
-        if (result[idx]) {
-          result[idx][model.id] = quantity;
-          result[idx].hasData = true;
-        }
-      });
-    });
-  }
-
-  // Пересчитываем total
-  result.forEach(monthData => {
-    if (selectedModel === 'all') {
-      monthData.total = availableModels.reduce((sum, model) => {
-        return sum + (monthData[model.id] || 0);
-      }, 0);
-    } else {
-      monthData.total = monthData[selectedModel] || 0;
-    }
-  });
-
-  return result;
-};
-
-  const getDailyData = () => {
-    if (!selectedMonth) return [];
-    
-    const availableModels = getAvailableModels();
-    const daysInMonth = new Date(selectedMonth.year, selectedMonth.monthIndex + 1, 0).getDate();
-    const result = [];
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(selectedMonth.year, selectedMonth.monthIndex, day);
-      const dateStr = date.toISOString().split('T')[0];
-      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-
-      const dayData = {
-        day,
-        date,
-        dateStr: `${String(day).padStart(2, '0')}.${String(selectedMonth.monthIndex + 1).padStart(2, '0')}.${selectedMonth.year}`,
-        total: 0,
-        isWeekend,
-        hasData: false
-      };
-
-      // Только реальные данные из API
-      if (apiData && Array.isArray(apiData)) {
-        if (selectedModel === 'all') {
-          availableModels.forEach(model => {
-            const apiModel = apiData.find(m => 
-              m.model_id === model.id || m.model_name === model.name
-            );
-
-            if (apiModel && apiModel.filter_by_day) {
-              const dayEntry = apiModel.filter_by_day.find(d => d.date === dateStr);
-              if (dayEntry) {
-                const quantity = parseInt(dayEntry.quantity) || 0;
-                dayData[model.name] = quantity;
-                dayData.total += quantity;
-                dayData.hasData = true;
-              } else {
-                dayData[model.name] = 0;
-              }
-            }
-          });
-        } else {
-          const selectedModelObj = availableModels.find(m => m.id === selectedModel);
-          const selectedModelData = apiData.find(m => 
-            m.model_id === selectedModel || m.model_name === selectedModelObj?.name
-          );
-
-          if (selectedModelData && selectedModelData.filter_by_day) {
-            const dayEntry = selectedModelData.filter_by_day.find(d => d.date === dateStr);
-            if (dayEntry) {
-              const quantity = parseInt(dayEntry.quantity) || 0;
-              dayData.total = quantity;
-              dayData.hasData = true;
-            }
-          }
-        }
-      }
-
-      result.push(dayData);
-    }
-
-    return result;
-  };
-
-  // Обработка изменения размеров
-  useEffect(() => {
-    const handleResize = () => {
-      if (containerRef.current) {
-        const { width } = containerRef.current.getBoundingClientRect();
-        setDimensions({
-          width: width - 40,
-          height: Math.min(450, width * 0.5)
-        });
-      }
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Отрисовка основного графика
-  useEffect(() => {
-    if (!dimensions.width || !dimensions.height || loading) return;
-
-    const availableModels = getAvailableModels();
-    const data = getMonthlyData();
-    
-    // Если нет моделей с данными, показываем сообщение
-    if (availableModels.length === 0) {
-      d3.select(svgRef.current).selectAll('*').remove();
-      const svg = d3.select(svgRef.current)
-        .attr('width', dimensions.width)
-        .attr('height', dimensions.height);
-      
-      svg.append('text')
-        .attr('x', dimensions.width / 2)
-        .attr('y', dimensions.height / 2)
-        .attr('text-anchor', 'middle')
-        .style('fill', isDark ? '#6b7280' : '#9ca3af')
-        .style('font-size', '16px')
-        .text('Нет данных для отображения');
-      return;
-    }
-
-    const margin = { top: 20, right: 40, bottom: 80, left: 70 };
-    const width = dimensions.width - margin.left - margin.right;
-    const height = dimensions.height - margin.top - margin.bottom;
-
-    d3.select(svgRef.current).selectAll('*').remove();
-
-    const svg = d3.select(svgRef.current)
-      .attr('width', dimensions.width)
-      .attr('height', dimensions.height);
-
-    const g = svg.append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`);
-
-    const xScale = d3.scaleBand()
-      .domain(data.map(d => d.month))
-      .range([0, width])
-      .padding(0.25);
-
-    const dataWithValues = data.filter(d => d.hasData && d.total > 0);
-    const maxValue = dataWithValues.length > 0 
-      ? d3.max(dataWithValues, d => d.total) 
-      : 1000;
-    
-    const yScale = d3.scaleLinear()
-      .domain([0, maxValue * 1.1])
-      .range([height, 0])
-      .nice();
-
-    const barColor = selectedModel === 'all' 
-      ? '#3b82f6' 
-      : availableModels.find(m => m.id === selectedModel)?.color || '#3b82f6';
-
-    // Градиент
-    const gradient = svg.append('defs')
-      .append('linearGradient')
-      .attr('id', 'barGradient')
-      .attr('gradientUnits', 'userSpaceOnUse')
-      .attr('x1', 0).attr('y1', height)
-      .attr('x2', 0).attr('y2', 0);
-
-    gradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', d3.rgb(barColor).darker(0.5))
-      .attr('stop-opacity', 1);
-
-    gradient.append('stop')
-      .attr('offset', '50%')
-      .attr('stop-color', barColor)
-      .attr('stop-opacity', 1);
-
-    gradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', d3.rgb(barColor).brighter(0.5))
-      .attr('stop-opacity', 1);
-
-    // Тень
-    const filter = svg.append('defs')
-      .append('filter')
-      .attr('id', 'shadow')
-      .attr('x', '-50%')
-      .attr('y', '-50%')
-      .attr('width', '200%')
-      .attr('height', '200%');
-
-    filter.append('feGaussianBlur')
-      .attr('in', 'SourceAlpha')
-      .attr('stdDeviation', 3);
-
-    filter.append('feOffset')
-      .attr('dx', 0)
-      .attr('dy', 2);
-
-    filter.append('feComponentTransfer')
-      .append('feFuncA')
-      .attr('type', 'linear')
-      .attr('slope', 0.2);
-
-    const feMerge = filter.append('feMerge');
-    feMerge.append('feMergeNode');
-    feMerge.append('feMergeNode')
-      .attr('in', 'SourceGraphic');
-
-    // Сетка
-    g.append('g')
-      .attr('class', 'grid')
-      .call(d3.axisLeft(yScale)
-        .ticks(5)
-        .tickSize(-width)
-        .tickFormat('')
-      )
-      .selectAll('line')
-      .style('stroke', isDark ? '#374151' : '#e5e7eb')
-      .style('stroke-dasharray', '3,3')
-      .style('opacity', 0.5);
-
-    // Средняя линия
-    if (dataWithValues.length > 0) {
-      const avgValue = d3.mean(dataWithValues, d => d.total);
-      
-      g.append('line')
-        .attr('x1', 0)
-        .attr('x2', width)
-        .attr('y1', yScale(avgValue))
-        .attr('y2', yScale(avgValue))
-        .attr('stroke', isDark ? '#6b7280' : '#9ca3af')
-        .attr('stroke-width', 2)
-        .attr('stroke-dasharray', '5,5')
-        .attr('opacity', 0.7);
-
-      g.append('text')
-        .attr('x', width - 5)
-        .attr('y', yScale(avgValue) - 5)
-        .attr('text-anchor', 'end')
-        .style('fill', isDark ? '#6b7280' : '#9ca3af')
-        .style('font-size', '11px')
-        .text(`Среднее: ${Math.round(avgValue).toLocaleString('ru-RU')}`);
-    }
-
-    // Столбцы
-    const barGroups = g.selectAll('.bar-group')
-      .data(data)
-      .enter().append('g')
-      .attr('class', 'bar-group')
-      .style('cursor', d => d.hasData && d.total > 0 ? 'pointer' : 'default');
-
-    barGroups.append('rect')
-      .attr('class', 'bar')
-      .attr('x', d => xScale(d.month))
-      .attr('y', height)
-      .attr('width', xScale.bandwidth())
-      .attr('height', 0)
-      .attr('fill', d => (d.hasData && d.total > 0) ? 'url(#barGradient)' : (isDark ? '#374151' : '#e5e7eb'))
-      .attr('opacity', d => (d.hasData && d.total > 0) ? 1 : 0.3)
-      .attr('rx', 6)
-      .attr('ry', 6)
-      .attr('filter', d => (d.hasData && d.total > 0) ? 'url(#shadow)' : 'none')
-      .on('click', function(event, d) {
-        if (!d.hasData || d.total === 0) return;
-        
-        if (selectedMonth?.monthIndex === d.monthIndex) {
-          setSelectedMonth(null);
-          setSelectedDay(null);
-        } else {
-          setSelectedMonth(d);
-          setSelectedDay(null);
-        }
-      })
-      .on('mouseover', function(event, d) {
-        if (!d.hasData || d.total === 0) return;
-        
-        if (selectedMonth?.monthIndex !== d.monthIndex) {
-          d3.select(this)
-            .transition()
-            .duration(100)
-            .attr('transform', `translate(0, -5)`);
-        }
-
-        if (tooltipRef.current) {
-          tooltipRef.current.remove();
-        }
-
-        const tooltip = d3.select('body').append('div')
-          .attr('class', 'chart-tooltip')
-          .style('position', 'absolute')
-          .style('visibility', 'hidden')
-          .style('background-color', isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)')
-          .style('color', isDark ? '#f3f4f6' : '#1f2937')
-          .style('padding', '12px')
-          .style('border-radius', '8px')
-          .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.1)')
-          .style('font-size', '14px')
-          .style('pointer-events', 'none')
-          .style('z-index', 1000);
-
-        tooltipRef.current = tooltip.node();
-
-        tooltip.html(`
-          <div style="font-weight: 600; margin-bottom: 4px;">${d.month} ${d.year}</div>
-          <div>Всего поставок: <span style="font-weight: 600;">${d.total.toLocaleString('ru-RU')}</span></div>
-          ${d.hasData ? `
-            <div style="font-size: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'}; margin-top: 4px;">
-              Кликните для просмотра по дням
-            </div>
-          ` : ''}
-        `);
-
-        tooltip
-          .style('visibility', 'visible')
-          .style('left', (event.pageX + 10) + 'px')
-          .style('top', (event.pageY - 10) + 'px');
-      })
-      .on('mousemove', function(event) {
-        if (tooltipRef.current) {
-          d3.select(tooltipRef.current)
-            .style('left', (event.pageX + 10) + 'px')
-            .style('top', (event.pageY - 10) + 'px');
-        }
-      })
-      .on('mouseout', function(event, d) {
-        if (d.hasData && d.total > 0) {
-          d3.select(this)
-            .transition()
-            .duration(100)
-            .attr('transform', 'translate(0, 0)');
-        }
-
-        if (tooltipRef.current) {
-          tooltipRef.current.remove();
-          tooltipRef.current = null;
-        }
-      })
-      .transition()
-      .duration(800)
-      .delay((d, i) => i * 60)
-      .attr('y', d => (d.hasData && d.total > 0) ? yScale(d.total) : height)
-      .attr('height', d => (d.hasData && d.total > 0) ? height - yScale(d.total) : 0);
-
-    // Метки
-    barGroups.filter(d => d.hasData && d.total > 0)
-      .append('text')
-      .attr('class', 'label')
-      .attr('x', d => xScale(d.month) + xScale.bandwidth() / 2)
-      .attr('y', d => yScale(d.total) - 10)
-      .attr('text-anchor', 'middle')
-      .style('fill', isDark ? '#f3f4f6' : '#1f2937')
-      .style('font-size', '13px')
-      .style('font-weight', '600')
-      .style('opacity', 0)
-      .text(d => d.total.toLocaleString('ru-RU'))
-      .transition()
-      .duration(800)
-      .delay((d, i) => i * 60 + 400)
-      .style('opacity', 1);
-
-    // Метки для пустых месяцев
-    barGroups.filter(d => !d.hasData || d.total === 0)
-      .append('text')
-      .attr('x', d => xScale(d.month) + xScale.bandwidth() / 2)
-      .attr('y', height - 10)
-      .attr('text-anchor', 'middle')
-      .style('fill', isDark ? '#6b7280' : '#9ca3af')
-      .style('font-size', '11px')
-      .text('Нет данных');
-
-    // Оси
-    g.append('g')
-      .attr('transform', `translate(0,${height})`)
-      .call(d3.axisBottom(xScale))
-      .selectAll('text')
-      .style('fill', isDark ? '#9ca3af' : '#4b5563')
-      .style('font-size', '12px');
-
-    g.append('g')
-      .call(d3.axisLeft(yScale)
-        .ticks(5)
-        .tickFormat(d => d.toLocaleString('ru-RU'))
-      )
-      .selectAll('text')
-      .style('fill', isDark ? '#9ca3af' : '#4b5563')
-      .style('font-size', '12px');
-
-    g.append('text')
-      .attr('transform', 'rotate(-90)')
-      .attr('y', 0 - margin.left + 15)
-      .attr('x', 0 - (height / 2))
-      .attr('dy', '1em')
-      .style('text-anchor', 'middle')
-      .style('fill', isDark ? '#9ca3af' : '#4b5563')
-      .style('font-size', '12px')
-      .text('Количество автомобилей');
-
-  }, [dimensions, isDark, selectedMonth, selectedModel, apiData, loading]);
-
-  // Отрисовка графика по дням
-  useEffect(() => {
-    if (!selectedMonth || !dimensions.width || loading) return;
-
-    const availableModels = getAvailableModels();
-    const dailyData = getDailyData();
-    
-    if (!dailyData.length || !availableModels.length) return;
-
-    const margin = { top: 40, right: 40, bottom: 100, left: 70 };
-    const width = dimensions.width - margin.left - margin.right;
-    const height = 350 - margin.top - margin.bottom;
-
-    d3.select(dailySvgRef.current).selectAll('*').remove();
-
-    const svg = d3.select(dailySvgRef.current)
-      .attr('width', dimensions.width)
-      .attr('height', 350);
-
-    const g = svg.append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`);
-
-    const xScale = d3.scaleLinear()
-      .domain([1, dailyData.length])
-      .range([0, width]);
-
-    const maxDayValue = d3.max(dailyData, d => d.total) || 100;
-    const yScale = d3.scaleLinear()
-      .domain([0, maxDayValue * 1.1])
-      .range([height, 0])
-      .nice();
-
-    const barColor = selectedModel === 'all' 
-      ? '#3b82f6' 
-      : availableModels.find(m => m.id === selectedModel)?.color || '#3b82f6';
-
-    // Градиент для области
-    const areaGradient = svg.append('defs')
-      .append('linearGradient')
-      .attr('id', 'areaGradient')
-      .attr('gradientUnits', 'userSpaceOnUse')
-      .attr('x1', 0).attr('y1', 0)
-      .attr('x2', 0).attr('y2', height);
-
-    areaGradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', barColor)
-      .attr('stop-opacity', 0.6);
-
-    areaGradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', barColor)
-      .attr('stop-opacity', 0.1);
-
-    // Сетка
-    g.append('g')
-      .attr('class', 'grid')
-      .call(d3.axisLeft(yScale)
-        .ticks(5)
-        .tickSize(-width)
-        .tickFormat('')
-      )
-      .selectAll('line')
-      .style('stroke', isDark ? '#374151' : '#e5e7eb')
-      .style('stroke-dasharray', '3,3')
-      .style('opacity', 0.5);
-
-    // Подсветка выходных
-    dailyData.forEach(d => {
-      if (d.isWeekend) {
-        g.append('rect')
-          .attr('x', xScale(d.day) - 10)
-          .attr('y', 0)
-          .attr('width', 20)
-          .attr('height', height)
-          .attr('fill', isDark ? '#ef4444' : '#fee2e2')
-          .attr('opacity', 0.2);
-      }
-    });
-
-    // Линии и области
-    const daysWithData = dailyData.filter(d => d.hasData && d.total > 0);
-    
-    if (daysWithData.length > 0) {
-      const line = d3.line()
-        .x(d => xScale(d.day))
-        .y(d => yScale(d.total))
-        .curve(d3.curveMonotoneX);
-
-      const area = d3.area()
-        .x(d => xScale(d.day))
-        .y0(height)
-        .y1(d => yScale(d.total))
-        .curve(d3.curveMonotoneX);
-
-      // Область
-      g.append('path')
-        .datum(daysWithData)
-        .attr('fill', 'url(#areaGradient)')
-        .attr('opacity', 0)
-        .attr('d', area)
-        .transition()
-        .duration(1000)
-        .attr('opacity', 1);
-
-      // Линия
-      const path = g.append('path')
-        .datum(daysWithData)
-        .attr('fill', 'none')
-        .attr('stroke', barColor)
-        .attr('stroke-width', 3)
-        .attr('d', line);
-
-      const totalLength = path.node().getTotalLength();
-      path
-        .attr('stroke-dasharray', totalLength)
-        .attr('stroke-dashoffset', totalLength)
-        .transition()
-        .duration(1500)
-        .attr('stroke-dashoffset', 0);
-    }
-
-    // Точки
-    const dots = g.selectAll('.dot-group')
-      .data(dailyData)
-      .enter().append('g')
-      .attr('class', 'dot-group');
-
-    dots.filter(d => d.hasData && d.total > 0)
-      .append('circle')
-      .attr('class', 'dot')
-      .attr('cx', d => xScale(d.day))
-      .attr('cy', d => yScale(d.total))
-      .attr('r', 0)
-      .attr('fill', barColor)
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 2)
-      .style('cursor', 'pointer')
-      .on('mouseover', function(event, d) {
-        d3.select(this)
-          .transition()
-          .duration(200)
-          .attr('r', 6);
-          
-        if (tooltipRef.current) {
-          tooltipRef.current.remove();
-        }
-          
-        const tooltip = d3.select('body').append('div')
-          .attr('class', 'chart-tooltip')
-          .style('position', 'absolute')
-          .style('visibility', 'hidden')
-          .style('background-color', isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)')
-          .style('color', isDark ? '#f3f4f6' : '#1f2937')
-          .style('padding', '12px')
-          .style('border-radius', '8px')
-          .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.1)')
-          .style('font-size', '14px')
-          .style('pointer-events', 'none')
-          .style('z-index', 1000);
-
-        tooltipRef.current = tooltip.node();
-
-        let tooltipContent = `
-          <div style="font-weight: 600; margin-bottom: 8px;">${d.dateStr}</div>
-          <div>Всего: <span style="font-weight: 600;">${d.total.toLocaleString('ru-RU')}</span></div>
-        `;
-
-        // Если выбраны все модели, показываем разбивку по моделям
-        if (selectedModel === 'all') {
-          tooltipContent += `
-            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
-          `;
-          availableModels.forEach(model => {
-            const value = d[model.name] || 0;
-            if (value > 0) {
-              tooltipContent += `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin: 2px 0;">
-                  <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">${model.name}:</span>
-                  <span style="font-weight: 500; margin-left: 8px;">${value.toLocaleString('ru-RU')}</span>
-                </div>
-              `;
-            }
-          });
-          tooltipContent += '</div>';
-        }
-
-        tooltip.html(tooltipContent);
-
-        tooltip
-          .style('visibility', 'visible')
-          .style('left', (event.pageX + 10) + 'px')
-          .style('top', (event.pageY - 10) + 'px');
-      })
-      .on('mousemove', function(event) {
-        if (tooltipRef.current) {
-          d3.select(tooltipRef.current)
-            .style('left', (event.pageX + 10) + 'px')
-            .style('top', (event.pageY - 10) + 'px');
-        }
-      })
-      .on('mouseout', function(event, d) {
-        if (selectedDay?.day !== d.day) {
-          d3.select(this)
-            .transition()
-            .duration(200)
-            .attr('r', 4);
-        }
-        
-        if (tooltipRef.current) {
-          tooltipRef.current.remove();
-          tooltipRef.current = null;
-        }
-      })
-      .on('click', function(event, d) {
-        setSelectedDay(d);
-        
-        if (tooltipRef.current) {
-          tooltipRef.current.remove();
-          tooltipRef.current = null;
-        }
-      })
-      .transition()
-      .duration(1500)
-      .delay((d, i) => i * 30)
-      .attr('r', 4);
-
-    // Проверка на отсутствие данных
-    if (daysWithData.length === 0) {
-      g.append('text')
-        .attr('x', width / 2)
-        .attr('y', height / 2)
-        .attr('text-anchor', 'middle')
-        .style('fill', isDark ? '#6b7280' : '#9ca3af')
-        .style('font-size', '14px')
-        .text('Нет данных за этот месяц');
-    }
-
-    // Числа над точками
-    const showEveryNthLabel = daysWithData.length > 20 ? 3 : 1;
-    dots.filter((d, i) => d.hasData && d.total > 0 && i % showEveryNthLabel === 0)
-      .append('text')
-      .attr('class', 'dot-label')
-      .attr('x', d => xScale(d.day))
-      .attr('y', d => yScale(d.total) - 15)
-      .attr('text-anchor', 'middle')
-      .style('fill', isDark ? '#f3f4f6' : '#1f2937')
-      .style('font-size', '11px')
-      .style('font-weight', '500')
-      .style('opacity', 0)
-      .text(d => d.total.toLocaleString('ru-RU'))
-      .transition()
-      .duration(1500)
-      .delay((d, i) => i * 30)
-      .style('opacity', 0.8);
-
-    // Оси
-    g.append('g')
-      .attr('transform', `translate(0,${height})`)
-      .call(d3.axisBottom(xScale)
-        .ticks(dailyData.length > 20 ? 10 : dailyData.length)
-        .tickFormat(d => Math.floor(d))
-      )
-      .selectAll('text')
-      .style('fill', isDark ? '#9ca3af' : '#4b5563')
-      .style('font-size', '10px')
-      .attr('transform', dailyData.length > 20 ? 'rotate(-45)' : null)
-      .style('text-anchor', dailyData.length > 20 ? 'end' : 'middle');
-
-    g.append('g')
-      .call(d3.axisLeft(yScale)
-        .ticks(5)
-        .tickFormat(d => d.toLocaleString('ru-RU'))
-      )
-      .selectAll('text')
-      .style('fill', isDark ? '#9ca3af' : '#4b5563')
-      .style('font-size', '11px');
-
-    // Заголовок
-    g.append('text')
-      .attr('x', width / 2)
-      .attr('y', -20)
-      .attr('text-anchor', 'middle')
-      .style('fill', isDark ? '#f3f4f6' : '#1f2937')
-      .style('font-size', '14px')
-      .style('font-weight', '600')
-      .text(`Динамика по дням - ${selectedMonth.month} ${selectedMonth.year}`);
-
-  }, [selectedMonth, dimensions, isDark, selectedModel, selectedDay, apiData, loading]);
-
-  // Вычисляем значения для отображения
-  const availableModels = getAvailableModels();
-  const monthlyData = getMonthlyData();
-  
-  const calculateChange = () => {
-    const dataWithValues = monthlyData.filter(d => d.total > 0);
-    if (dataWithValues.length < 2) return { value: 0, isPositive: true };
-    
-    const lastValue = dataWithValues[dataWithValues.length - 1].total;
-    const prevValue = dataWithValues[dataWithValues.length - 2].total;
-    const change = ((lastValue - prevValue) / prevValue) * 100;
-    
-    return {
-      value: Math.abs(change).toFixed(1),
-      isPositive: change >= 0
-    };
-  };
-
-  const change = calculateChange();
-  const lastDataPoint = monthlyData.filter(d => d.total > 0).pop();
-  const currentTotal = lastDataPoint ? lastDataPoint.total : 0;
-
-  return (
-    <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md`}>
-      {/* Заголовок */}
-      <div className={`px-6 py-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Динамика складских запасов
-            </h3>
-            <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {selectedModel === 'all' 
-                ? 'Общее количество автомобилей по месяцам' 
-                : `${availableModels.find(m => m.id === selectedModel)?.name || ''} - динамика по месяцам`}
-            </p>
-          </div>
-          <div className={`flex items-center gap-4`}>
-            <div className={`text-right`}>
-              <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Поставок за последний месяц</div>
-              <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {currentTotal.toLocaleString('ru-RU')}
-              </div>
-            </div>
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
-              change.isPositive 
-                ? isDark ? 'bg-green-900/20' : 'bg-green-50' 
-                : isDark ? 'bg-red-900/20' : 'bg-red-50'
-            }`}>
-              {change.isPositive ? (
-                <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </svg>
-              )}
-              <span className={`text-sm font-semibold ${
-                change.isPositive ? 'text-green-500' : 'text-red-500'
-              }`}>
-                {change.value}%
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Выбор даты */}
-      <div className={`px-6 py-3 ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <label className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-              Период:
-            </label>
-            <input
-              type="date"
-              value={dateRange.startDate || ''}
-              onChange={(e) => handleDateRangeChange(e.target.value, dateRange.endDate)}
-              className={`px-3 py-1.5 rounded-lg border ${
-                isDark 
-                  ? 'bg-gray-800 border-gray-600 text-white' 
-                  : 'bg-white border-gray-300 text-gray-900'
-              } focus:outline-none focus:ring-2 focus:ring-blue-500`}
-            />
-            <span className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>—</span>
-            <input
-              type="date"
-              value={dateRange.endDate || ''}
-              onChange={(e) => handleDateRangeChange(dateRange.startDate, e.target.value)}
-              className={`px-3 py-1.5 rounded-lg border ${
-                isDark 
-                  ? 'bg-gray-800 border-gray-600 text-white' 
-                  : 'bg-white border-gray-300 text-gray-900'
-              } focus:outline-none focus:ring-2 focus:ring-blue-500`}
-            />
-          </div>
-          {loading && (
-            <div className="flex items-center gap-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-              <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                Загрузка данных...
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Табы для выбора модели - показываем только если есть модели с данными */}
-      {availableModels.length > 0 && (
-        <div className={`px-6 py-3 ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="relative overflow-visible">
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => setSelectedModel('all')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                  selectedModel === 'all'
-                    ? `${isDark ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'}`
-                    : `${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'}`
-                }`}
-              >
-                Все модели
-              </button>
-              {availableModels.map(model => (
-                <button
-                  key={model.id}
-                  onClick={() => setSelectedModel(model.id)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                    selectedModel === model.id
-                      ? `text-white`
-                      : `${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'}`
-                  }`}
-                  style={{
-                    backgroundColor: selectedModel === model.id ? model.color : undefined
-                  }}
-                >
-                  {model.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* График */}
-      <div className="px-6 py-4">
-        <div ref={containerRef} className="relative">
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-            </div>
-          ) : (
-            <svg ref={svgRef}></svg>
-          )}
-        </div>
-      </div>
-
-      {/* Информация о выбранном месяце */}
-      {selectedMonth && selectedMonth.hasData && (
-        <div className={`mx-6 mb-4 px-4 py-3 rounded-lg ${
-          isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'
-        }`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <svg className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span className={`text-sm font-medium ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                {selectedMonth.month} {selectedMonth.year}
-              </span>
-            </div>
-            <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {selectedMonth.total.toLocaleString('ru-RU')} автомобилей
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* График по дням */}
-      {selectedMonth && (
-        <div className={`px-6 pb-6`}>
-          <div className={`${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} rounded-lg p-4`}>
-            <svg ref={dailySvgRef}></svg>
-            
-            {/* Детальная информация о выбранном дне */}
-            {selectedDay && selectedDay.hasData && (
-              <div className={`mt-4 p-4 rounded-lg ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <h5 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {selectedDay.dateStr} {selectedDay.isWeekend && <span className="text-red-500 text-sm">(выходной)</span>}
-                  </h5>
-                  <button
-                    onClick={() => setSelectedDay(null)}
-                    className={`text-sm ${isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-700'}`}
-                  >
-                    ✕
-                  </button>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className={`flex items-center justify-between py-2 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Всего автомобилей</span>
-                    <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {selectedDay.total.toLocaleString('ru-RU')}
-                    </span>
-                  </div>
-                  
-                  {selectedModel === 'all' && (
-                    availableModels.map(model => (
-                      <div key={model.id} className="flex items-center justify-between py-1">
-                        <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                          {model.name}
-                        </span>
-                        <span className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                          {(selectedDay[model.name] || 0).toLocaleString('ru-RU')}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
+ const svgRef = useRef(null);
+ const dailySvgRef = useRef(null);
+ const containerRef = useRef(null);
+ const tooltipRef = useRef(null);
+ 
+ // Основные состояния
+ const [selectedMonth, setSelectedMonth] = useState(null);
+ const [selectedModel, setSelectedModel] = useState('all');
+ const [selectedDay, setSelectedDay] = useState(null);
+ const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+ const [loading, setLoading] = useState(false);
+ const [apiData, setApiData] = useState(null);
+ 
+ // Дата по умолчанию
+ const today = new Date();
+ const startOfYear = new Date(today.getFullYear(), 0, 1);
+ const [dateRange, setDateRange] = useState({
+   startDate: startOfYear.toISOString().split('T')[0],
+   endDate: today.toISOString().split('T')[0]
+ });
+
+ // Константы
+ const monthNames = [
+   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+ ];
+
+ // Вспомогательные функции
+ const getCategoryColor = (modelName) => {
+   const name = modelName.toUpperCase();
+   if (name.includes('TRACKER') || name.includes('TAHOE') || name.includes('EQUINOX') || name.includes('CAPTIVA') || name.includes('TRAVERSE')) {
+     return '#3b82f6';
+   }
+   if (name.includes('COBALT') || name.includes('ONIX') || name.includes('MALIBU') || name.includes('NEXIA') || name.includes('LACETTI')) {
+     return '#10b981';
+   }
+   if (name.includes('DAMAS') || name.includes('LABO')) {
+     return '#f59e0b';
+   }
+   return '#8b5cf6';
+ };
+
+ const formatDateForAPI = (date) => {
+   const d = new Date(date);
+   const day = String(d.getDate()).padStart(2, '0');
+   const month = String(d.getMonth() + 1).padStart(2, '0');
+   const year = d.getFullYear();
+   return `${day}.${month}.${year}`;
+ };
+
+ // Функция загрузки данных
+ const fetchDailyStockData = async (beginDate, endDate) => {
+   try {
+     setLoading(true);
+     const token = localStorage.getItem('authToken');
+     
+     const response = await fetch('https://uzavtoanalytics.uz/dashboard/proxy', {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+         'X-Auth': `Bearer ${token}`
+       },
+       body: JSON.stringify({
+         url: '/b/dashboard/infos&get_stock_by_day',
+         begin_date: beginDate,
+         end_date: endDate
+       })
+     });
+
+     if (!response.ok) {
+       throw new Error(`HTTP error! status: ${response.status}`);
+     }
+
+     const data = await response.json();
+     console.log('API Response:', data);
+     setApiData(data);
+     
+   } catch (error) {
+     console.error('Error fetching daily stock data:', error);
+     setApiData([]);
+   } finally {
+     setLoading(false);
+   }
+ };
+
+ // Загрузка данных ТОЛЬКО при монтировании
+ useEffect(() => {
+   const formattedStart = formatDateForAPI(dateRange.startDate);
+   const formattedEnd = formatDateForAPI(dateRange.endDate);
+   fetchDailyStockData(formattedStart, formattedEnd);
+ }, []);
+
+ // Обработчик изменения дат
+ const handleDateRangeChange = (start, end) => {
+   setDateRange({ startDate: start, endDate: end });
+   if (start && end) {
+     const formattedStart = formatDateForAPI(start);
+     const formattedEnd = formatDateForAPI(end);
+     fetchDailyStockData(formattedStart, formattedEnd);
+   }
+ };
+
+ // Получаем модели из данных (ТОЛЬКО те, у которых есть данные)
+ const getAvailableModels = () => {
+   if (apiData && Array.isArray(apiData) && apiData.length > 0) {
+     return apiData
+       .filter(m => m.model_id && m.model_name && m.filter_by_day && m.filter_by_day.length > 0)
+       .map(m => ({
+         id: m.model_id,
+         name: m.model_name,
+         color: getCategoryColor(m.model_name)
+       }));
+   }
+   
+   return [];
+ };
+
+ // Получаем данные для графика по месяцам (ПЕРВОЕ ЗНАЧЕНИЕ В МЕСЯЦЕ)
+ const getMonthlyData = () => {
+   const availableModels = getAvailableModels();
+   const currentYear = new Date().getFullYear();
+   const currentMonth = new Date().getMonth();
+   const result = [];
+
+   // Создаем структуру для всех месяцев
+   for (let i = 0; i <= currentMonth; i++) {
+     const monthData = {
+       month: monthNames[i],
+       monthIndex: i,
+       year: currentYear,
+       date: new Date(currentYear, i, 1),
+       total: 0,
+       hasData: false
+     };
+
+     // Инициализируем для каждой модели
+     availableModels.forEach(model => {
+       monthData[model.id] = 0;
+     });
+
+     result.push(monthData);
+   }
+
+   // Получаем первое значение для каждого месяца
+   if (apiData && Array.isArray(apiData)) {
+     apiData.forEach(modelData => {
+       if (!modelData.filter_by_day || !Array.isArray(modelData.filter_by_day)) return;
+
+       const model = availableModels.find(m => 
+         m.id === modelData.model_id || m.name === modelData.model_name
+       );
+       if (!model) return;
+
+       // Сортируем данные по дате для гарантии правильного порядка
+       const sortedDays = [...modelData.filter_by_day].sort((a, b) => 
+         new Date(a.date) - new Date(b.date)
+       );
+
+       // Группируем данные по месяцам и берем первое значение
+       const monthlyFirstValues = {};
+       
+       sortedDays.forEach(dayData => {
+         const date = new Date(dayData.date);
+         const monthIndex = date.getMonth();
+         const year = date.getFullYear();
+         
+         if (year === currentYear && monthIndex <= currentMonth) {
+           // Если для этого месяца еще нет значения, сохраняем первое найденное
+           if (monthlyFirstValues[monthIndex] === undefined) {
+             monthlyFirstValues[monthIndex] = parseInt(dayData.quantity) || 0;
+           }
+         }
+       });
+
+       // Применяем первые значения к результатам
+       Object.entries(monthlyFirstValues).forEach(([monthIndex, quantity]) => {
+         const idx = parseInt(monthIndex);
+         if (result[idx]) {
+           result[idx][model.id] = quantity;
+           result[idx].hasData = true;
+         }
+       });
+     });
+   }
+
+   // Пересчитываем total ПОСЛЕ того как все данные собраны
+   result.forEach(monthData => {
+     if (monthData.hasData) {
+       if (selectedModel === 'all') {
+         monthData.total = availableModels.reduce((sum, model) => {
+           return sum + (monthData[model.id] || 0);
+         }, 0);
+       } else {
+         monthData.total = monthData[selectedModel] || 0;
+       }
+     }
+   });
+
+   return result;
+ };
+
+ // Получаем данные для графика по дням (БЕЗ МОКОВЫХ ДАННЫХ)
+ const getDailyData = () => {
+   if (!selectedMonth) return [];
+   
+   const availableModels = getAvailableModels();
+   const daysInMonth = new Date(selectedMonth.year, selectedMonth.monthIndex + 1, 0).getDate();
+   const result = [];
+
+   for (let day = 1; day <= daysInMonth; day++) {
+     const date = new Date(selectedMonth.year, selectedMonth.monthIndex, day);
+     const dateStr = date.toISOString().split('T')[0];
+     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+     const dayData = {
+       day,
+       date,
+       dateStr: `${String(day).padStart(2, '0')}.${String(selectedMonth.monthIndex + 1).padStart(2, '0')}.${selectedMonth.year}`,
+       total: 0,
+       isWeekend,
+       hasData: false
+     };
+
+     // Только реальные данные из API
+     if (apiData && Array.isArray(apiData)) {
+       if (selectedModel === 'all') {
+         availableModels.forEach(model => {
+           const apiModel = apiData.find(m => 
+             m.model_id === model.id || m.model_name === model.name
+           );
+
+           if (apiModel && apiModel.filter_by_day) {
+             const dayEntry = apiModel.filter_by_day.find(d => d.date === dateStr);
+             if (dayEntry) {
+               const quantity = parseInt(dayEntry.quantity) || 0;
+               dayData[model.name] = quantity;
+               dayData.total += quantity;
+               dayData.hasData = true;
+             } else {
+               dayData[model.name] = 0;
+             }
+           }
+         });
+       } else {
+         const selectedModelObj = availableModels.find(m => m.id === selectedModel);
+         const selectedModelData = apiData.find(m => 
+           m.model_id === selectedModel || m.model_name === selectedModelObj?.name
+         );
+
+         if (selectedModelData && selectedModelData.filter_by_day) {
+           const dayEntry = selectedModelData.filter_by_day.find(d => d.date === dateStr);
+           if (dayEntry) {
+             const quantity = parseInt(dayEntry.quantity) || 0;
+             dayData.total = quantity;
+             dayData.hasData = true;
+           }
+         }
+       }
+     }
+
+     result.push(dayData);
+   }
+
+   return result;
+ };
+
+ // Обработка изменения размеров
+ useEffect(() => {
+   const handleResize = () => {
+     if (containerRef.current) {
+       const { width } = containerRef.current.getBoundingClientRect();
+       setDimensions({
+         width: width - 40,
+         height: Math.min(450, width * 0.5)
+       });
+     }
+   };
+
+   handleResize();
+   window.addEventListener('resize', handleResize);
+   return () => window.removeEventListener('resize', handleResize);
+ }, []);
+
+ // Отрисовка основного графика - БЕЗ selectedMonth в зависимостях!
+ useEffect(() => {
+   if (!dimensions.width || !dimensions.height || loading) return;
+
+   const availableModels = getAvailableModels();
+   const data = getMonthlyData();
+   
+   // Если нет моделей с данными, показываем сообщение
+   if (availableModels.length === 0) {
+     d3.select(svgRef.current).selectAll('*').remove();
+     const svg = d3.select(svgRef.current)
+       .attr('width', dimensions.width)
+       .attr('height', dimensions.height);
+     
+     svg.append('text')
+       .attr('x', dimensions.width / 2)
+       .attr('y', dimensions.height / 2)
+       .attr('text-anchor', 'middle')
+       .style('fill', isDark ? '#6b7280' : '#9ca3af')
+       .style('font-size', '16px')
+       .text('Нет данных для отображения');
+     return;
+   }
+
+   const margin = { top: 20, right: 40, bottom: 80, left: 70 };
+   const width = dimensions.width - margin.left - margin.right;
+   const height = dimensions.height - margin.top - margin.bottom;
+
+   d3.select(svgRef.current).selectAll('*').remove();
+
+   const svg = d3.select(svgRef.current)
+     .attr('width', dimensions.width)
+     .attr('height', dimensions.height);
+
+   const g = svg.append('g')
+     .attr('transform', `translate(${margin.left},${margin.top})`);
+
+   const xScale = d3.scaleBand()
+     .domain(data.map(d => d.month))
+     .range([0, width])
+     .padding(0.25);
+
+   const dataWithValues = data.filter(d => d.hasData && d.total > 0);
+   const maxValue = dataWithValues.length > 0 
+     ? d3.max(dataWithValues, d => d.total) 
+     : 1000;
+   
+   const yScale = d3.scaleLinear()
+     .domain([0, maxValue * 1.1])
+     .range([height, 0])
+     .nice();
+
+   const barColor = selectedModel === 'all' 
+     ? '#3b82f6' 
+     : availableModels.find(m => m.id === selectedModel)?.color || '#3b82f6';
+
+   // Градиент
+   const gradient = svg.append('defs')
+     .append('linearGradient')
+     .attr('id', 'barGradient')
+     .attr('gradientUnits', 'userSpaceOnUse')
+     .attr('x1', 0).attr('y1', height)
+     .attr('x2', 0).attr('y2', 0);
+
+   gradient.append('stop')
+     .attr('offset', '0%')
+     .attr('stop-color', d3.rgb(barColor).darker(0.5))
+     .attr('stop-opacity', 1);
+
+   gradient.append('stop')
+     .attr('offset', '50%')
+     .attr('stop-color', barColor)
+     .attr('stop-opacity', 1);
+
+   gradient.append('stop')
+     .attr('offset', '100%')
+     .attr('stop-color', d3.rgb(barColor).brighter(0.5))
+     .attr('stop-opacity', 1);
+
+   // Тень
+   const filter = svg.append('defs')
+     .append('filter')
+     .attr('id', 'shadow')
+     .attr('x', '-50%')
+     .attr('y', '-50%')
+     .attr('width', '200%')
+     .attr('height', '200%');
+
+   filter.append('feGaussianBlur')
+     .attr('in', 'SourceAlpha')
+     .attr('stdDeviation', 3);
+
+   filter.append('feOffset')
+     .attr('dx', 0)
+     .attr('dy', 2);
+
+   filter.append('feComponentTransfer')
+     .append('feFuncA')
+     .attr('type', 'linear')
+     .attr('slope', 0.2);
+
+   const feMerge = filter.append('feMerge');
+   feMerge.append('feMergeNode');
+   feMerge.append('feMergeNode')
+     .attr('in', 'SourceGraphic');
+
+   // Сетка
+   g.append('g')
+     .attr('class', 'grid')
+     .call(d3.axisLeft(yScale)
+       .ticks(5)
+       .tickSize(-width)
+       .tickFormat('')
+     )
+     .selectAll('line')
+     .style('stroke', isDark ? '#374151' : '#e5e7eb')
+     .style('stroke-dasharray', '3,3')
+     .style('opacity', 0.5);
+
+   // Средняя линия
+   if (dataWithValues.length > 0) {
+     const avgValue = d3.mean(dataWithValues, d => d.total);
+     
+     g.append('line')
+       .attr('x1', 0)
+       .attr('x2', width)
+       .attr('y1', yScale(avgValue))
+       .attr('y2', yScale(avgValue))
+       .attr('stroke', isDark ? '#6b7280' : '#9ca3af')
+       .attr('stroke-width', 2)
+       .attr('stroke-dasharray', '5,5')
+       .attr('opacity', 0.7);
+
+     g.append('text')
+       .attr('x', width - 5)
+       .attr('y', yScale(avgValue) - 5)
+       .attr('text-anchor', 'end')
+       .style('fill', isDark ? '#6b7280' : '#9ca3af')
+       .style('font-size', '11px')
+       .text(`Среднее: ${Math.round(avgValue).toLocaleString('ru-RU')}`);
+   }
+
+   // Столбцы
+   const barGroups = g.selectAll('.bar-group')
+     .data(data)
+     .enter().append('g')
+     .attr('class', 'bar-group')
+     .style('cursor', d => d.hasData && d.total > 0 ? 'pointer' : 'default');
+
+   // Сохраняем ссылки на прямоугольники для использования в обработчиках
+   const bars = barGroups.append('rect')
+     .attr('class', 'bar')
+     .attr('x', d => xScale(d.month))
+     .attr('y', height)
+     .attr('width', xScale.bandwidth())
+     .attr('height', 0)
+     .attr('fill', d => (d.hasData && d.total > 0) ? 'url(#barGradient)' : (isDark ? '#374151' : '#e5e7eb'))
+     .attr('opacity', d => (d.hasData && d.total > 0) ? 1 : 0.3)
+     .attr('rx', 6)
+     .attr('ry', 6)
+     .attr('filter', d => (d.hasData && d.total > 0) ? 'url(#shadow)' : 'none');
+
+   // Анимация появления столбцов
+   bars.transition()
+     .duration(800)
+     .delay((d, i) => i * 60)
+     .attr('y', d => (d.hasData && d.total > 0) ? yScale(d.total) : height)
+     .attr('height', d => (d.hasData && d.total > 0) ? height - yScale(d.total) : 0);
+
+   // Обработчики событий
+   bars
+     .on('click', function(event, d) {
+       if (!d.hasData || d.total === 0) return;
+       
+       if (selectedMonth?.monthIndex === d.monthIndex) {
+         setSelectedMonth(null);
+         setSelectedDay(null);
+       } else {
+         setSelectedMonth(d);
+         setSelectedDay(null);
+       }
+     })
+     .on('mouseover', function(event, d) {
+       if (!d.hasData || d.total === 0) return;
+       
+       // Анимация только если это не выбранный месяц
+       if (selectedMonth?.monthIndex !== d.monthIndex) {
+         d3.select(this)
+           .transition()
+           .duration(100)
+           .attr('y', yScale(d.total) - 5)
+           .attr('height', height - yScale(d.total) + 5);
+       }
+
+       if (tooltipRef.current) {
+         tooltipRef.current.remove();
+       }
+
+       const tooltip = d3.select('body').append('div')
+         .attr('class', 'chart-tooltip')
+         .style('position', 'absolute')
+         .style('visibility', 'hidden')
+         .style('background-color', isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)')
+         .style('color', isDark ? '#f3f4f6' : '#1f2937')
+         .style('padding', '12px')
+         .style('border-radius', '8px')
+         .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.1)')
+         .style('font-size', '14px')
+         .style('pointer-events', 'none')
+         .style('z-index', 1000);
+
+       tooltipRef.current = tooltip.node();
+
+       tooltip.html(`
+         <div style="font-weight: 600; margin-bottom: 4px;">${d.month} ${d.year}</div>
+         <div>Остаток на складе: <span style="font-weight: 600;">${d.total.toLocaleString('ru-RU')}</span></div>
+         ${d.hasData ? `
+           <div style="font-size: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'}; margin-top: 4px;">
+             Кликните для просмотра по дням
+           </div>
+         ` : ''}
+       `);
+
+       tooltip
+         .style('visibility', 'visible')
+         .style('left', (event.pageX + 10) + 'px')
+         .style('top', (event.pageY - 10) + 'px');
+     })
+     .on('mousemove', function(event) {
+       if (tooltipRef.current) {
+         d3.select(tooltipRef.current)
+           .style('left', (event.pageX + 10) + 'px')
+           .style('top', (event.pageY - 10) + 'px');
+       }
+     })
+     .on('mouseout', function(event, d) {
+       if (d.hasData && d.total > 0) {
+         d3.select(this)
+           .transition()
+           .duration(100)
+           .attr('y', yScale(d.total))
+           .attr('height', height - yScale(d.total));
+       }
+
+       if (tooltipRef.current) {
+         tooltipRef.current.remove();
+         tooltipRef.current = null;
+       }
+     });
+
+   // Метки
+   barGroups.filter(d => d.hasData && d.total > 0)
+     .append('text')
+     .attr('class', 'label')
+     .attr('x', d => xScale(d.month) + xScale.bandwidth() / 2)
+     .attr('y', d => yScale(d.total) - 10)
+     .attr('text-anchor', 'middle')
+     .style('fill', isDark ? '#f3f4f6' : '#1f2937')
+     .style('font-size', '13px')
+     .style('font-weight', '600')
+     .style('opacity', 0)
+     .text(d => d.total.toLocaleString('ru-RU'))
+     .transition()
+     .duration(800)
+     .delay((d, i) => i * 60 + 400)
+     .style('opacity', 1);
+
+   // Метки для пустых месяцев
+   barGroups.filter(d => !d.hasData || d.total === 0)
+     .append('text')
+     .attr('x', d => xScale(d.month) + xScale.bandwidth() / 2)
+     .attr('y', height - 10)
+     .attr('text-anchor', 'middle')
+     .style('fill', isDark ? '#6b7280' : '#9ca3af')
+     .style('font-size', '11px')
+     .text('Нет данных');
+
+   // Оси
+   g.append('g')
+     .attr('transform', `translate(0,${height})`)
+     .call(d3.axisBottom(xScale))
+     .selectAll('text')
+     .style('fill', isDark ? '#9ca3af' : '#4b5563')
+     .style('font-size', '12px');
+
+   g.append('g')
+     .call(d3.axisLeft(yScale)
+       .ticks(5)
+       .tickFormat(d => d.toLocaleString('ru-RU'))
+     )
+     .selectAll('text')
+     .style('fill', isDark ? '#9ca3af' : '#4b5563')
+     .style('font-size', '12px');
+
+   g.append('text')
+     .attr('transform', 'rotate(-90)')
+     .attr('y', 0 - margin.left + 15)
+     .attr('x', 0 - (height / 2))
+     .attr('dy', '1em')
+     .style('text-anchor', 'middle')
+     .style('fill', isDark ? '#9ca3af' : '#4b5563')
+     .style('font-size', '12px')
+     .text('Количество автомобилей');
+
+ }, [dimensions, isDark, selectedModel, apiData, loading]); // БЕЗ selectedMonth!
+
+ // Отрисовка графика по дням
+ useEffect(() => {
+   if (!selectedMonth || !dimensions.width || loading) return;
+
+   const availableModels = getAvailableModels();
+   const dailyData = getDailyData();
+   
+   if (!dailyData.length || !availableModels.length) return;
+
+   const margin = { top: 40, right: 40, bottom: 100, left: 70 };
+   const width = dimensions.width - margin.left - margin.right;
+   const height = 350 - margin.top - margin.bottom;
+
+   d3.select(dailySvgRef.current).selectAll('*').remove();
+
+   const svg = d3.select(dailySvgRef.current)
+     .attr('width', dimensions.width)
+     .attr('height', 350);
+
+   const g = svg.append('g')
+     .attr('transform', `translate(${margin.left},${margin.top})`);
+
+   const xScale = d3.scaleLinear()
+     .domain([1, dailyData.length])
+     .range([0, width]);
+
+   const maxDayValue = d3.max(dailyData, d => d.total) || 100;
+   const yScale = d3.scaleLinear()
+     .domain([0, maxDayValue * 1.1])
+     .range([height, 0])
+     .nice();
+
+   const barColor = selectedModel === 'all' 
+     ? '#3b82f6' 
+     : availableModels.find(m => m.id === selectedModel)?.color || '#3b82f6';
+
+   // Градиент для области
+   const areaGradient = svg.append('defs')
+     .append('linearGradient')
+     .attr('id', 'areaGradient')
+     .attr('gradientUnits', 'userSpaceOnUse')
+     .attr('x1', 0).attr('y1', 0)
+     .attr('x2', 0).attr('y2', height);
+
+   areaGradient.append('stop')
+     .attr('offset', '0%')
+     .attr('stop-color', barColor)
+     .attr('stop-opacity', 0.6);
+
+   areaGradient.append('stop')
+     .attr('offset', '100%')
+     .attr('stop-color', barColor)
+     .attr('stop-opacity', 0.1);
+
+   // Сетка
+   g.append('g')
+     .attr('class', 'grid')
+     .call(d3.axisLeft(yScale)
+       .ticks(5)
+       .tickSize(-width)
+       .tickFormat('')
+     )
+     .selectAll('line')
+     .style('stroke', isDark ? '#374151' : '#e5e7eb')
+     .style('stroke-dasharray', '3,3')
+     .style('opacity', 0.5);
+
+   // Подсветка выходных
+   dailyData.forEach(d => {
+     if (d.isWeekend) {
+       g.append('rect')
+         .attr('x', xScale(d.day) - 10)
+         .attr('y', 0)
+         .attr('width', 20)
+         .attr('height', height)
+         .attr('fill', isDark ? '#ef4444' : '#fee2e2')
+         .attr('opacity', 0.2);
+     }
+   });
+
+   // Линии и области
+   const daysWithData = dailyData.filter(d => d.hasData && d.total > 0);
+   
+   if (daysWithData.length > 0) {
+     const line = d3.line()
+       .x(d => xScale(d.day))
+       .y(d => yScale(d.total))
+       .curve(d3.curveMonotoneX);
+
+     const area = d3.area()
+       .x(d => xScale(d.day))
+       .y0(height)
+       .y1(d => yScale(d.total))
+       .curve(d3.curveMonotoneX);
+
+     // Область
+     g.append('path')
+       .datum(daysWithData)
+       .attr('fill', 'url(#areaGradient)')
+       .attr('opacity', 0)
+       .attr('d', area)
+       .transition()
+       .duration(1000)
+       .attr('opacity', 1);
+
+     // Линия
+     const path = g.append('path')
+       .datum(daysWithData)
+       .attr('fill', 'none')
+       .attr('stroke', barColor)
+       .attr('stroke-width', 3)
+       .attr('d', line);
+
+     const totalLength = path.node().getTotalLength();
+     path
+       .attr('stroke-dasharray', totalLength)
+       .attr('stroke-dashoffset', totalLength)
+       .transition()
+       .duration(1500)
+       .attr('stroke-dashoffset', 0);
+   }
+
+   // Точки
+   const dots = g.selectAll('.dot-group')
+     .data(dailyData)
+     .enter().append('g')
+     .attr('class', 'dot-group');
+
+   dots.filter(d => d.hasData && d.total > 0)
+     .append('circle')
+     .attr('class', 'dot')
+     .attr('cx', d => xScale(d.day))
+     .attr('cy', d => yScale(d.total))
+     .attr('r', 0)
+     .attr('fill', barColor)
+     .attr('stroke', '#fff')
+     .attr('stroke-width', 2)
+     .style('cursor', 'pointer')
+     .on('mouseover', function(event, d) {
+       d3.select(this)
+         .transition()
+         .duration(200)
+         .attr('r', 6);
+         
+       if (tooltipRef.current) {
+         tooltipRef.current.remove();
+       }
+         
+       const tooltip = d3.select('body').append('div')
+         .attr('class', 'chart-tooltip')
+         .style('position', 'absolute')
+         .style('visibility', 'hidden')
+         .style('background-color', isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)')
+         .style('color', isDark ? '#f3f4f6' : '#1f2937')
+         .style('padding', '12px')
+         .style('border-radius', '8px')
+         .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.1)')
+         .style('font-size', '14px')
+         .style('pointer-events', 'none')
+         .style('z-index', 1000);
+
+       tooltipRef.current = tooltip.node();
+
+       let tooltipContent = `
+         <div style="font-weight: 600; margin-bottom: 8px;">${d.dateStr}</div>
+         <div>Всего: <span style="font-weight: 600;">${d.total.toLocaleString('ru-RU')}</span></div>
+       `;
+
+       // Если выбраны все модели, показываем разбивку по моделям
+       if (selectedModel === 'all') {
+         tooltipContent += `
+           <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
+         `;
+         availableModels.forEach(model => {
+           const value = d[model.name] || 0;
+           if (value > 0) {
+             tooltipContent += `
+               <div style="display: flex; justify-content: space-between; align-items: center; margin: 2px 0;">
+                 <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">${model.name}:</span>
+                 <span style="font-weight: 500; margin-left: 8px;">${value.toLocaleString('ru-RU')}</span>
+               </div>
+             `;
+           }
+         });
+         tooltipContent += '</div>';
+       }
+
+       tooltip.html(tooltipContent);
+
+       tooltip
+         .style('visibility', 'visible')
+         .style('left', (event.pageX + 10) + 'px')
+         .style('top', (event.pageY - 10) + 'px');
+     })
+     .on('mousemove', function(event) {
+       if (tooltipRef.current) {
+         d3.select(tooltipRef.current)
+           .style('left', (event.pageX + 10) + 'px')
+           .style('top', (event.pageY - 10) + 'px');
+       }
+     })
+     .on('mouseout', function(event, d) {
+       if (selectedDay?.day !== d.day) {
+         d3.select(this)
+           .transition()
+           .duration(200)
+           .attr('r', 4);
+       }
+       
+       if (tooltipRef.current) {
+         tooltipRef.current.remove();
+         tooltipRef.current = null;
+       }
+     })
+     .on('click', function(event, d) {
+       setSelectedDay(d);
+       
+       if (tooltipRef.current) {
+         tooltipRef.current.remove();
+         tooltipRef.current = null;
+       }
+     })
+     .transition()
+     .duration(1500)
+     .delay((d, i) => i * 30)
+     .attr('r', 4);
+
+   // Проверка на отсутствие данных
+   if (daysWithData.length === 0) {
+     g.append('text')
+       .attr('x', width / 2)
+       .attr('y', height / 2)
+       .attr('text-anchor', 'middle')
+       .style('fill', isDark ? '#6b7280' : '#9ca3af')
+       .style('font-size', '14px')
+       .text('Нет данных за этот месяц');
+   }
+
+   // Числа над точками
+   const showEveryNthLabel = daysWithData.length > 20 ? 3 : 1;
+   dots.filter((d, i) => d.hasData && d.total > 0 && i % showEveryNthLabel === 0)
+     .append('text')
+     .attr('class', 'dot-label')
+     .attr('x', d => xScale(d.day))
+     .attr('y', d => yScale(d.total) - 15)
+     .attr('text-anchor', 'middle')
+     .style('fill', isDark ? '#f3f4f6' : '#1f2937')
+     .style('font-size', '11px')
+     .style('font-weight', '500')
+     .style('opacity', 0)
+     .text(d => d.total.toLocaleString('ru-RU'))
+     .transition()
+     .duration(1500)
+     .delay((d, i) => i * 30)
+     .style('opacity', 0.8);
+
+   // Оси
+   g.append('g')
+     .attr('transform', `translate(0,${height})`)
+     .call(d3.axisBottom(xScale)
+       .ticks(dailyData.length > 20 ? 10 : dailyData.length)
+       .tickFormat(d => Math.floor(d))
+     )
+     .selectAll('text')
+     .style('fill', isDark ? '#9ca3af' : '#4b5563')
+     .style('font-size', '10px')
+     .attr('transform', dailyData.length > 20 ? 'rotate(-45)' : null)
+     .style('text-anchor', dailyData.length > 20 ? 'end' : 'middle');
+
+   g.append('g')
+     .call(d3.axisLeft(yScale)
+       .ticks(5)
+       .tickFormat(d => d.toLocaleString('ru-RU'))
+     )
+     .selectAll('text')
+     .style('fill', isDark ? '#9ca3af' : '#4b5563')
+     .style('font-size', '11px');
+
+   // Заголовок
+   g.append('text')
+     .attr('x', width / 2)
+     .attr('y', -20)
+     .attr('text-anchor', 'middle')
+     .style('fill', isDark ? '#f3f4f6' : '#1f2937')
+     .style('font-size', '14px')
+     .style('font-weight', '600')
+     .text(`Динамика по дням - ${selectedMonth.month} ${selectedMonth.year}`);
+
+ }, [selectedMonth, dimensions, isDark, selectedModel, selectedDay, apiData, loading]);
+
+ // Вычисляем значения для отображения
+ const availableModels = getAvailableModels();
+ const monthlyData = getMonthlyData();
+ 
+ const calculateChange = () => {
+   const dataWithValues = monthlyData.filter(d => d.total > 0);
+   if (dataWithValues.length < 2) return { value: 0, isPositive: true };
+   
+   const lastValue = dataWithValues[dataWithValues.length - 1].total;
+   const prevValue = dataWithValues[dataWithValues.length - 2].total;
+   const change = ((lastValue - prevValue) / prevValue) * 100;
+   
+   return {
+     value: Math.abs(change).toFixed(1),
+     isPositive: change >= 0
+   };
+ };
+
+ const change = calculateChange();
+ const lastDataPoint = monthlyData.filter(d => d.total > 0).pop();
+ const currentTotal = lastDataPoint ? lastDataPoint.total : 0;
+
+ return (
+   <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md`}>
+     {/* Заголовок */}
+     <div className={`px-6 py-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+       <div className="flex items-center justify-between">
+         <div>
+           <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+             Динамика складских запасов
+           </h3>
+           <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+             {selectedModel === 'all' 
+               ? 'Общее количество автомобилей по месяцам' 
+               : `${availableModels.find(m => m.id === selectedModel)?.name || ''} - динамика по месяцам`}
+           </p>
+         </div>
+         <div className={`flex items-center gap-4`}>
+           <div className={`text-right`}>
+             <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Текущий остаток</div>
+             <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+               {currentTotal.toLocaleString('ru-RU')}
+             </div>
+           </div>
+           <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+             change.isPositive 
+               ? isDark ? 'bg-green-900/20' : 'bg-green-50' 
+               : isDark ? 'bg-red-900/20' : 'bg-red-50'
+           }`}>
+             {change.isPositive ? (
+               <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+               </svg>
+             ) : (
+               <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+               </svg>
+             )}
+             <span className={`text-sm font-semibold ${
+               change.isPositive ? 'text-green-500' : 'text-red-500'
+             }`}>
+               {change.value}%
+             </span>
+           </div>
+         </div>
+       </div>
+     </div>
+
+     {/* Выбор даты */}
+     <div className={`px-6 py-3 ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+       <div className="flex items-center gap-4">
+         <div className="flex items-center gap-2">
+           <label className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+             Период:
+           </label>
+           <input
+             type="date"
+             value={dateRange.startDate || ''}
+             onChange={(e) => handleDateRangeChange(e.target.value, dateRange.endDate)}
+             className={`px-3 py-1.5 rounded-lg border ${
+               isDark 
+                 ? 'bg-gray-800 border-gray-600 text-white' 
+                 : 'bg-white border-gray-300 text-gray-900'
+             } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+           />
+           <span className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>—</span>
+           <input
+             type="date"
+             value={dateRange.endDate || ''}
+             onChange={(e) => handleDateRangeChange(dateRange.startDate, e.target.value)}
+             className={`px-3 py-1.5 rounded-lg border ${
+               isDark 
+                 ? 'bg-gray-800 border-gray-600 text-white' 
+                 : 'bg-white border-gray-300 text-gray-900'
+             } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+           />
+         </div>
+         {loading && (
+           <div className="flex items-center gap-2">
+             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+             <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+               Загрузка данных...
+             </span>
+           </div>
+         )}
+       </div>
+     </div>
+
+     {/* Табы для выбора модели - показываем только если есть модели с данными */}
+     {availableModels.length > 0 && (
+       <div className={`px-6 py-3 ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+         <div className="relative overflow-visible">
+           <div className="flex gap-2 flex-wrap">
+             <button
+               onClick={() => setSelectedModel('all')}
+               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                 selectedModel === 'all'
+                   ? `${isDark ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'}`
+                   : `${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'}`
+               }`}
+             >
+               Все модели
+             </button>
+             {availableModels.map(model => (
+               <button
+                 key={model.id}
+                 onClick={() => setSelectedModel(model.id)}
+                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                   selectedModel === model.id
+                     ? `text-white`
+                     : `${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'}`
+                 }`}
+                 style={{
+                   backgroundColor: selectedModel === model.id ? model.color : undefined
+                 }}
+               >
+                 {model.name}
+               </button>
+             ))}
+           </div>
+         </div>
+       </div>
+     )}
+
+     {/* График */}
+     <div className="px-6 py-4">
+       <div ref={containerRef} className="relative">
+         {loading ? (
+           <div className="flex items-center justify-center h-64">
+             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+           </div>
+         ) : (
+           <svg ref={svgRef}></svg>
+         )}
+       </div>
+     </div>
+
+     {/* Информация о выбранном месяце */}
+     {selectedMonth && selectedMonth.hasData && (
+       <div className={`mx-6 mb-4 px-4 py-3 rounded-lg ${
+         isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'
+       }`}>
+         <div className="flex items-center justify-between">
+           <div className="flex items-center gap-2">
+             <svg className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+             </svg>
+             <span className={`text-sm font-medium ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+               {selectedMonth.month} {selectedMonth.year}
+             </span>
+           </div>
+           <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+             {selectedMonth.total.toLocaleString('ru-RU')} автомобилей
+           </span>
+         </div>
+       </div>
+     )}
+
+     {/* График по дням */}
+     {selectedMonth && (
+       <div className={`px-6 pb-6`}>
+         <div className={`${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} rounded-lg p-4`}>
+           <svg ref={dailySvgRef}></svg>
+           
+           {/* Детальная информация о выбранном дне */}
+           {selectedDay && selectedDay.hasData && (
+             <div className={`mt-4 p-4 rounded-lg ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+               <div className="flex items-center justify-between mb-3">
+                 <h5 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                   {selectedDay.dateStr} {selectedDay.isWeekend && <span className="text-red-500 text-sm">(выходной)</span>}
+                 </h5>
+                 <button
+                   onClick={() => setSelectedDay(null)}
+                   className={`text-sm ${isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-700'}`}
+                 >
+                   ✕
+                 </button>
+               </div>
+               
+               <div className="space-y-2">
+                 <div className={`flex items-center justify-between py-2 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                   <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Всего автомобилей</span>
+                   <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                     {selectedDay.total.toLocaleString('ru-RU')}
+                   </span>
+                 </div>
+                 
+                 {selectedModel === 'all' && (
+                   availableModels.map(model => (
+                     <div key={model.id} className="flex items-center justify-between py-1">
+                       <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                         {model.name}
+                       </span>
+                       <span className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                         {(selectedDay[model.name] || 0).toLocaleString('ru-RU')}
+                       </span>
+                     </div>
+                   ))
+                 )}
+               </div>
+             </div>
+           )}
+         </div>
+       </div>
+     )}
+   </div>
+ );
 };
 
 const CarWarehouseAnalytics = () => {
