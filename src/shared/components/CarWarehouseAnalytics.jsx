@@ -39,15 +39,6 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
     'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
   ];
 
-  const DEFAULT_MODELS = [
-    { id: '445', name: 'TRACKER-2', color: '#3b82f6' },
-    { id: '436', name: 'COBALT', color: '#10b981' },
-    { id: '516', name: 'ONIX', color: '#10b981' },
-    { id: '439', name: 'MALIBU-2', color: '#10b981' },
-    { id: '441', name: 'TAHOE', color: '#3b82f6' },
-    { id: '444', name: 'EQUINOX', color: '#3b82f6' }
-  ];
-
   // Вспомогательные функции
   const getCategoryColor = (modelName) => {
     const name = modelName.toUpperCase();
@@ -111,7 +102,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
     const formattedStart = formatDateForAPI(dateRange.startDate);
     const formattedEnd = formatDateForAPI(dateRange.endDate);
     fetchDailyStockData(formattedStart, formattedEnd);
-  }, []); // Пустой массив зависимостей!
+  }, []);
 
   // Обработчик изменения дат
   const handleDateRangeChange = (start, end) => {
@@ -123,11 +114,11 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
     }
   };
 
-  // Получаем модели из данных
+  // Получаем модели из данных (ТОЛЬКО те, у которых есть данные)
   const getAvailableModels = () => {
     if (apiData && Array.isArray(apiData) && apiData.length > 0) {
       return apiData
-        .filter(m => m.model_id && m.model_name)
+        .filter(m => m.model_id && m.model_name && m.filter_by_day && m.filter_by_day.length > 0)
         .map(m => ({
           id: m.model_id,
           name: m.model_name,
@@ -135,20 +126,10 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
         }));
     }
     
-    if (enhancedCarModels && enhancedCarModels.length > 0) {
-      return enhancedCarModels.slice(0, 10).map(m => ({
-        id: m.id,
-        name: m.name,
-        color: m.category === 'suv' ? '#3b82f6' : 
-               m.category === 'sedan' ? '#10b981' : 
-               m.category === 'minivan' ? '#f59e0b' : '#8b5cf6'
-      }));
-    }
-    
-    return DEFAULT_MODELS;
+    return [];
   };
 
-  // Получаем данные для графика по месяцам
+  // Получаем данные для графика по месяцам (СУММИРУЕМ все дни месяца)
   const getMonthlyData = () => {
     const availableModels = getAvailableModels();
     const currentYear = new Date().getFullYear();
@@ -174,7 +155,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
       result.push(monthData);
     }
 
-    // Заполняем данными из API
+    // СУММИРУЕМ данные из API по месяцам
     if (apiData && Array.isArray(apiData)) {
       apiData.forEach(modelData => {
         if (!modelData.filter_by_day || !Array.isArray(modelData.filter_by_day)) return;
@@ -184,9 +165,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
         );
         if (!model) return;
 
-        // Группируем по месяцам
-        const monthlyValues = {};
-        
+        // СУММИРУЕМ значения по месяцам
         modelData.filter_by_day.forEach(dayData => {
           const date = new Date(dayData.date);
           const monthIndex = date.getMonth();
@@ -194,30 +173,14 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
           
           if (year === currentYear && monthIndex <= currentMonth) {
             const quantity = parseInt(dayData.quantity) || 0;
-            const day = date.getDate();
             
-            if (!monthlyValues[monthIndex] || day > monthlyValues[monthIndex].day) {
-              monthlyValues[monthIndex] = { day, quantity };
+            // ДОБАВЛЯЕМ к сумме месяца
+            if (result[monthIndex]) {
+              result[monthIndex][model.id] += quantity;
+              result[monthIndex].hasData = true;
             }
           }
         });
-
-        // Применяем значения
-        Object.entries(monthlyValues).forEach(([monthIndex, { quantity }]) => {
-          const idx = parseInt(monthIndex);
-          if (result[idx]) {
-            result[idx][model.id] = quantity;
-            result[idx].hasData = true;
-          }
-        });
-      });
-    } else {
-      // Моковые данные
-      result.forEach((monthData, index) => {
-        availableModels.forEach(model => {
-          monthData[model.id] = Math.round(300 + Math.random() * 700);
-        });
-        monthData.hasData = true;
       });
     }
 
@@ -235,7 +198,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
     return result;
   };
 
-  // Получаем данные для графика по дням - УПРОЩЕННАЯ ВЕРСИЯ БЕЗ СТАТУСОВ
+  // Получаем данные для графика по дням (БЕЗ МОКОВЫХ ДАННЫХ)
   const getDailyData = () => {
     if (!selectedMonth) return [];
     
@@ -257,7 +220,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
         hasData: false
       };
 
-      // Если есть API данные
+      // Только реальные данные из API
       if (apiData && Array.isArray(apiData)) {
         if (selectedModel === 'all') {
           availableModels.forEach(model => {
@@ -292,23 +255,6 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
             }
           }
         }
-      } else {
-        // Моковые данные
-        const monthTotal = selectedMonth[selectedModel] || selectedMonth.total || 1000;
-        const avgDaily = monthTotal / daysInMonth;
-        const variation = 0.8 + Math.random() * 0.4;
-        const weekendFactor = isWeekend ? 0.7 : 1;
-        
-        dayData.total = Math.round(avgDaily * variation * weekendFactor);
-        dayData.hasData = true;
-
-        if (selectedModel === 'all') {
-          availableModels.forEach(model => {
-            const modelMonthTotal = selectedMonth[model.id] || 0;
-            const modelAvgDaily = modelMonthTotal / daysInMonth;
-            dayData[model.name] = Math.round(modelAvgDaily * variation * weekendFactor);
-          });
-        }
       }
 
       result.push(dayData);
@@ -341,7 +287,22 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
     const availableModels = getAvailableModels();
     const data = getMonthlyData();
     
-    if (!data.length || !availableModels.length) return;
+    // Если нет моделей с данными, показываем сообщение
+    if (availableModels.length === 0) {
+      d3.select(svgRef.current).selectAll('*').remove();
+      const svg = d3.select(svgRef.current)
+        .attr('width', dimensions.width)
+        .attr('height', dimensions.height);
+      
+      svg.append('text')
+        .attr('x', dimensions.width / 2)
+        .attr('y', dimensions.height / 2)
+        .attr('text-anchor', 'middle')
+        .style('fill', isDark ? '#6b7280' : '#9ca3af')
+        .style('font-size', '16px')
+        .text('Нет данных для отображения');
+      return;
+    }
 
     const margin = { top: 20, right: 40, bottom: 80, left: 70 };
     const width = dimensions.width - margin.left - margin.right;
@@ -361,7 +322,6 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
       .range([0, width])
       .padding(0.25);
 
-    // ИСПРАВЛЕНИЕ: Определяем максимальное значение правильно
     const dataWithValues = data.filter(d => d.hasData && d.total > 0);
     const maxValue = dataWithValues.length > 0 
       ? d3.max(dataWithValues, d => d.total) 
@@ -522,7 +482,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
 
         tooltip.html(`
           <div style="font-weight: 600; margin-bottom: 4px;">${d.month} ${d.year}</div>
-          <div>Всего: <span style="font-weight: 600;">${d.total.toLocaleString('ru-RU')}</span></div>
+          <div>Всего поставок: <span style="font-weight: 600;">${d.total.toLocaleString('ru-RU')}</span></div>
           ${d.hasData ? `
             <div style="font-size: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'}; margin-top: 4px;">
               Кликните для просмотра по дням
@@ -617,7 +577,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
 
   }, [dimensions, isDark, selectedMonth, selectedModel, apiData, loading]);
 
-  // Отрисовка графика по дням - УПРОЩЕННАЯ ВЕРСИЯ
+  // Отрисовка графика по дням
   useEffect(() => {
     if (!selectedMonth || !dimensions.width || loading) return;
 
@@ -780,7 +740,6 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
 
         tooltipRef.current = tooltip.node();
 
-        // УПРОЩЕННЫЙ TOOLTIP БЕЗ СТАТУСОВ
         let tooltipContent = `
           <div style="font-weight: 600; margin-bottom: 8px;">${d.dateStr}</div>
           <div>Всего: <span style="font-weight: 600;">${d.total.toLocaleString('ru-RU')}</span></div>
@@ -947,7 +906,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
           </div>
           <div className={`flex items-center gap-4`}>
             <div className={`text-right`}>
-              <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Текущий остаток</div>
+              <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Поставок за последний месяц</div>
               <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 {currentTotal.toLocaleString('ru-RU')}
               </div>
@@ -1016,44 +975,41 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
         </div>
       </div>
 
-      {/* Табы для выбора модели с горизонтальным скроллом */}
-<div className={`px-6 py-3 ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} `}>
-  <div className="relative overflow-visible">
-          <div
-      //       className="flex items-center gap-2 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 min-w-0" style={{
-      // scrollbarWidth: 'thin',
-      // scrollbarColor: isDark ? '#4b5563 #1f2937' : '#9ca3af #f3f4f6'
-      //     }}
-          >
-      <button
-        onClick={() => setSelectedModel('all')}
-        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
-          selectedModel === 'all'
-            ? `${isDark ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'}`
-            : `${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'}`
-        }`}
-      >
-        Все модели
-      </button>
-      {availableModels.map(model => (
-        <button
-          key={model.id}
-          onClick={() => setSelectedModel(model.id)}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
-            selectedModel === model.id
-              ? `text-white`
-              : `${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'}`
-          }`}
-          style={{
-            backgroundColor: selectedModel === model.id ? model.color : undefined
-          }}
-        >
-          {model.name}
-        </button>
-      ))}
-    </div>
-  </div>
-</div>
+      {/* Табы для выбора модели - показываем только если есть модели с данными */}
+      {availableModels.length > 0 && (
+        <div className={`px-6 py-3 ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className="relative overflow-visible">
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setSelectedModel('all')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                  selectedModel === 'all'
+                    ? `${isDark ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'}`
+                    : `${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'}`
+                }`}
+              >
+                Все модели
+              </button>
+              {availableModels.map(model => (
+                <button
+                  key={model.id}
+                  onClick={() => setSelectedModel(model.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                    selectedModel === model.id
+                      ? `text-white`
+                      : `${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'}`
+                  }`}
+                  style={{
+                    backgroundColor: selectedModel === model.id ? model.color : undefined
+                  }}
+                >
+                  {model.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* График */}
       <div className="px-6 py-4">
@@ -1095,7 +1051,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
           <div className={`${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} rounded-lg p-4`}>
             <svg ref={dailySvgRef}></svg>
             
-            {/* Детальная информация о выбранном дне - УПРОЩЕННАЯ ВЕРСИЯ */}
+            {/* Детальная информация о выбранном дне */}
             {selectedDay && selectedDay.hasData && (
               <div className={`mt-4 p-4 rounded-lg ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
                 <div className="flex items-center justify-between mb-3">
@@ -2720,7 +2676,9 @@ if (!isMobile) {
          </div>
        </div>
      </div>
-     
+        <div className="mt-6 mb-6">
+       <WarehouseMonthlyChart isDark={isDark} />
+     </div>
      {/* Ключевые метрики с обновленными статусами */}
      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md`}>
@@ -3809,9 +3767,7 @@ if (!isMobile) {
          </motion.div>
        )}
      </AnimatePresence>
-       <div className="mt-6 mb-6">
-       <WarehouseMonthlyChart isDark={isDark} />
-     </div>
+    
      {/* Контейнер уведомлений */}
      <NotificationsContainer />
    </div>
