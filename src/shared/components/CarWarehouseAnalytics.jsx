@@ -18,7 +18,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
  const tooltipRef = useRef(null);
  
  // Основные состояния
- const [selectedMonth, setSelectedMonth] = useState(null);
+ const [selectedMonthIndex, setSelectedMonthIndex] = useState(null); // Изменено!
  const [selectedModel, setSelectedModel] = useState('all');
  const [selectedDay, setSelectedDay] = useState(null);
  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -130,170 +130,173 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
  };
 
  // Получаем данные для графика по месяцам (ПЕРВОЕ ЗНАЧЕНИЕ В МЕСЯЦЕ)
-const getMonthlyData = () => {
-  const availableModels = getAvailableModels();
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth();
-  const result = [];
+ const getMonthlyData = () => {
+   const availableModels = getAvailableModels();
+   const currentYear = new Date().getFullYear();
+   const currentMonth = new Date().getMonth();
+   const result = [];
 
-  // Создаем структуру для всех месяцев
-  for (let i = 0; i <= currentMonth; i++) {
-    const monthData = {
-      month: monthNames[i],
-      monthIndex: i,
-      year: currentYear,
-      date: new Date(currentYear, i, 1),
-      total: 0,
-      hasData: false
-    };
+   // Создаем структуру для всех месяцев
+   for (let i = 0; i <= currentMonth; i++) {
+     const monthData = {
+       month: monthNames[i],
+       monthIndex: i,
+       year: currentYear,
+       date: new Date(currentYear, i, 1),
+       total: 0,
+       hasData: false
+     };
 
-    // Инициализируем для каждой модели
-    availableModels.forEach(model => {
-      monthData[model.id] = 0;
-    });
+     // Инициализируем для каждой модели
+     availableModels.forEach(model => {
+       monthData[model.id] = 0;
+     });
 
-    result.push(monthData);
-  }
+     result.push(monthData);
+   }
 
-  // Получаем первое значение для каждого месяца
-  if (apiData && Array.isArray(apiData)) {
-    apiData.forEach(modelData => {
-      if (!modelData.filter_by_day || !Array.isArray(modelData.filter_by_day)) return;
+   // Получаем первое значение для каждого месяца
+   if (apiData && Array.isArray(apiData)) {
+     apiData.forEach(modelData => {
+       if (!modelData.filter_by_day || !Array.isArray(modelData.filter_by_day)) return;
 
-      const model = availableModels.find(m => 
-        m.id === modelData.model_id || m.name === modelData.model_name
-      );
-      if (!model) return;
+       const model = availableModels.find(m => 
+         m.id === modelData.model_id || m.name === modelData.model_name
+       );
+       if (!model) return;
 
-      // Сортируем данные по дате для гарантии правильного порядка
-      const sortedDays = [...modelData.filter_by_day].sort((a, b) => {
-        // Парсим даты правильно, учитывая формат YYYY-MM-DD
-        const [yearA, monthA, dayA] = a.date.split('-').map(Number);
-        const [yearB, monthB, dayB] = b.date.split('-').map(Number);
-        const dateA = new Date(yearA, monthA - 1, dayA);
-        const dateB = new Date(yearB, monthB - 1, dayB);
-        return dateA - dateB;
-      });
+       // Сортируем данные по дате для гарантии правильного порядка
+       const sortedDays = [...modelData.filter_by_day].sort((a, b) => {
+         // Парсим даты правильно, учитывая формат YYYY-MM-DD
+         const [yearA, monthA, dayA] = a.date.split('-').map(Number);
+         const [yearB, monthB, dayB] = b.date.split('-').map(Number);
+         const dateA = new Date(yearA, monthA - 1, dayA);
+         const dateB = new Date(yearB, monthB - 1, dayB);
+         return dateA - dateB;
+       });
 
-      // Группируем данные по месяцам и берем первое значение
-      const monthlyFirstValues = {};
-      
-      sortedDays.forEach(dayData => {
-        // Парсим дату из формата YYYY-MM-DD
-        const [year, month, day] = dayData.date.split('-').map(Number);
-        const date = new Date(year, month - 1, day);
-        const monthIndex = date.getMonth();
-        const dataYear = date.getFullYear();
-        
-        if (dataYear === currentYear && monthIndex <= currentMonth) {
-          // Если для этого месяца еще нет значения, сохраняем первое найденное
-          if (monthlyFirstValues[monthIndex] === undefined) {
-            monthlyFirstValues[monthIndex] = parseInt(dayData.quantity) || 0;
-          }
-        }
-      });
+       // Группируем данные по месяцам и берем первое значение
+       const monthlyFirstValues = {};
+       
+       sortedDays.forEach(dayData => {
+         // Парсим дату из формата YYYY-MM-DD
+         const [year, month, day] = dayData.date.split('-').map(Number);
+         const date = new Date(year, month - 1, day);
+         const monthIndex = date.getMonth();
+         const dataYear = date.getFullYear();
+         
+         if (dataYear === currentYear && monthIndex <= currentMonth) {
+           // Если для этого месяца еще нет значения, сохраняем первое найденное
+           if (monthlyFirstValues[monthIndex] === undefined) {
+             monthlyFirstValues[monthIndex] = parseInt(dayData.quantity) || 0;
+           }
+         }
+       });
 
-      // Применяем первые значения к результатам
-      Object.entries(monthlyFirstValues).forEach(([monthIndex, quantity]) => {
-        const idx = parseInt(monthIndex);
-        if (result[idx]) {
-          result[idx][model.id] = quantity;
-          result[idx].hasData = true;
-        }
-      });
-    });
-  }
+       // Применяем первые значения к результатам
+       Object.entries(monthlyFirstValues).forEach(([monthIndex, quantity]) => {
+         const idx = parseInt(monthIndex);
+         if (result[idx]) {
+           result[idx][model.id] = quantity;
+           result[idx].hasData = true;
+         }
+       });
+     });
+   }
 
-  // Пересчитываем total ПОСЛЕ того как все данные собраны
-  result.forEach(monthData => {
-    if (monthData.hasData) {
-      if (selectedModel === 'all') {
-        monthData.total = availableModels.reduce((sum, model) => {
-          return sum + (monthData[model.id] || 0);
-        }, 0);
-      } else {
-        monthData.total = monthData[selectedModel] || 0;
-      }
-    }
-  });
+   // Пересчитываем total ПОСЛЕ того как все данные собраны
+   result.forEach(monthData => {
+     if (monthData.hasData) {
+       if (selectedModel === 'all') {
+         monthData.total = availableModels.reduce((sum, model) => {
+           return sum + (monthData[model.id] || 0);
+         }, 0);
+       } else {
+         monthData.total = monthData[selectedModel] || 0;
+       }
+     }
+   });
 
-  return result;
-};
+   return result;
+ };
 
  // Получаем данные для графика по дням (БЕЗ МОКОВЫХ ДАННЫХ)
-const getDailyData = () => {
-  if (!selectedMonth) return [];
-  
-  const availableModels = getAvailableModels();
-  const daysInMonth = new Date(selectedMonth.year, selectedMonth.monthIndex + 1, 0).getDate();
-  const result = [];
+ const getDailyData = () => {
+   if (selectedMonthIndex === null) return [];
+   
+   const monthlyData = getMonthlyData();
+   const selectedMonth = monthlyData[selectedMonthIndex];
+   
+   if (!selectedMonth || !selectedMonth.hasData) return [];
+   
+   const availableModels = getAvailableModels();
+   const daysInMonth = new Date(selectedMonth.year, selectedMonth.monthIndex + 1, 0).getDate();
+   const result = [];
 
-  for (let day = 1; day <= daysInMonth; day++) {
-    // Создаем дату в локальном времени, чтобы избежать проблем с часовыми поясами
-    const date = new Date(selectedMonth.year, selectedMonth.monthIndex, day);
-    
-    // Форматируем дату как YYYY-MM-DD для сравнения с API
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const dayStr = String(date.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${dayStr}`;
-    
-    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+   for (let day = 1; day <= daysInMonth; day++) {
+     // Создаем дату в локальном времени, чтобы избежать проблем с часовыми поясами
+     const date = new Date(selectedMonth.year, selectedMonth.monthIndex, day);
+     
+     // Форматируем дату как YYYY-MM-DD для сравнения с API
+     const year = date.getFullYear();
+     const month = String(date.getMonth() + 1).padStart(2, '0');
+     const dayStr = String(date.getDate()).padStart(2, '0');
+     const dateStr = `${year}-${month}-${dayStr}`;
+     
+     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
-    const dayData = {
-      day,
-      date,
-      dateStr: `${dayStr}.${month}.${year}`,
-      dateApiStr: dateStr, // Добавляем для сравнения с API
-      total: 0,
-      isWeekend,
-      hasData: false
-    };
+     const dayData = {
+       day,
+       date,
+       dateStr: `${dayStr}.${month}.${year}`,
+       dateApiStr: dateStr,
+       total: 0,
+       isWeekend,
+       hasData: false
+     };
 
-    // Только реальные данные из API
-    if (apiData && Array.isArray(apiData)) {
-      if (selectedModel === 'all') {
-        availableModels.forEach(model => {
-          const apiModel = apiData.find(m => 
-            m.model_id === model.id || m.model_name === model.name
-          );
+     // Только реальные данные из API
+     if (apiData && Array.isArray(apiData)) {
+       if (selectedModel === 'all') {
+         availableModels.forEach(model => {
+           const apiModel = apiData.find(m => 
+             m.model_id === model.id || m.model_name === model.name
+           );
 
-          if (apiModel && apiModel.filter_by_day) {
-            // Используем dateApiStr для точного сравнения
-            const dayEntry = apiModel.filter_by_day.find(d => d.date === dateStr);
-            if (dayEntry) {
-              const quantity = parseInt(dayEntry.quantity) || 0;
-              dayData[model.name] = quantity;
-              dayData.total += quantity;
-              dayData.hasData = true;
-            } else {
-              dayData[model.name] = 0;
-            }
-          }
-        });
-      } else {
-        const selectedModelObj = availableModels.find(m => m.id === selectedModel);
-        const selectedModelData = apiData.find(m => 
-          m.model_id === selectedModel || m.model_name === selectedModelObj?.name
-        );
+           if (apiModel && apiModel.filter_by_day) {
+             const dayEntry = apiModel.filter_by_day.find(d => d.date === dateStr);
+             if (dayEntry) {
+               const quantity = parseInt(dayEntry.quantity) || 0;
+               dayData[model.name] = quantity;
+               dayData.total += quantity;
+               dayData.hasData = true;
+             } else {
+               dayData[model.name] = 0;
+             }
+           }
+         });
+       } else {
+         const selectedModelObj = availableModels.find(m => m.id === selectedModel);
+         const selectedModelData = apiData.find(m => 
+           m.model_id === selectedModel || m.model_name === selectedModelObj?.name
+         );
 
-        if (selectedModelData && selectedModelData.filter_by_day) {
-          // Используем dateApiStr для точного сравнения
-          const dayEntry = selectedModelData.filter_by_day.find(d => d.date === dateStr);
-          if (dayEntry) {
-            const quantity = parseInt(dayEntry.quantity) || 0;
-            dayData.total = quantity;
-            dayData.hasData = true;
-          }
-        }
-      }
-    }
+         if (selectedModelData && selectedModelData.filter_by_day) {
+           const dayEntry = selectedModelData.filter_by_day.find(d => d.date === dateStr);
+           if (dayEntry) {
+             const quantity = parseInt(dayEntry.quantity) || 0;
+             dayData.total = quantity;
+             dayData.hasData = true;
+           }
+         }
+       }
+     }
 
-    result.push(dayData);
-  }
+     result.push(dayData);
+   }
 
-  return result;
-};
+   return result;
+ };
 
  // Обработка изменения размеров
  useEffect(() => {
@@ -312,7 +315,7 @@ const getDailyData = () => {
    return () => window.removeEventListener('resize', handleResize);
  }, []);
 
- // Отрисовка основного графика - БЕЗ selectedMonth в зависимостях!
+ // Отрисовка основного графика
  useEffect(() => {
    if (!dimensions.width || !dimensions.height || loading) return;
 
@@ -461,7 +464,6 @@ const getDailyData = () => {
      .attr('class', 'bar-group')
      .style('cursor', d => d.hasData && d.total > 0 ? 'pointer' : 'default');
 
-   // Сохраняем ссылки на прямоугольники для использования в обработчиках
    const bars = barGroups.append('rect')
      .attr('class', 'bar')
      .attr('x', d => xScale(d.month))
@@ -472,7 +474,8 @@ const getDailyData = () => {
      .attr('opacity', d => (d.hasData && d.total > 0) ? 1 : 0.3)
      .attr('rx', 6)
      .attr('ry', 6)
-     .attr('filter', d => (d.hasData && d.total > 0) ? 'url(#shadow)' : 'none');
+     .attr('filter', d => (d.hasData && d.total > 0) ? 'url(#shadow)' : 'none')
+     .style('pointer-events', 'all');
 
    // Анимация появления столбцов
    bars.transition()
@@ -484,13 +487,19 @@ const getDailyData = () => {
    // Обработчики событий
    bars
      .on('click', function(event, d) {
+       event.stopPropagation();
+       
        if (!d.hasData || d.total === 0) return;
        
-       if (selectedMonth?.monthIndex === d.monthIndex) {
-         setSelectedMonth(null);
+       console.log('Clicked month index:', d.monthIndex, 'Current selected:', selectedMonthIndex);
+       
+       if (selectedMonthIndex === d.monthIndex) {
+         console.log('Closing month details');
+         setSelectedMonthIndex(null);
          setSelectedDay(null);
        } else {
-         setSelectedMonth(d);
+         console.log('Opening month details for:', d.month);
+         setSelectedMonthIndex(d.monthIndex);
          setSelectedDay(null);
        }
      })
@@ -498,7 +507,7 @@ const getDailyData = () => {
        if (!d.hasData || d.total === 0) return;
        
        // Анимация только если это не выбранный месяц
-       if (selectedMonth?.monthIndex !== d.monthIndex) {
+       if (selectedMonthIndex !== d.monthIndex) {
          d3.select(this)
            .transition()
            .duration(100)
@@ -548,7 +557,7 @@ const getDailyData = () => {
        }
      })
      .on('mouseout', function(event, d) {
-       if (d.hasData && d.total > 0) {
+       if (d.hasData && d.total > 0 && selectedMonthIndex !== d.monthIndex) {
          d3.select(this)
            .transition()
            .duration(100)
@@ -573,6 +582,7 @@ const getDailyData = () => {
      .style('font-size', '13px')
      .style('font-weight', '600')
      .style('opacity', 0)
+     .style('pointer-events', 'none')
      .text(d => d.total.toLocaleString('ru-RU'))
      .transition()
      .duration(800)
@@ -587,6 +597,7 @@ const getDailyData = () => {
      .attr('text-anchor', 'middle')
      .style('fill', isDark ? '#6b7280' : '#9ca3af')
      .style('font-size', '11px')
+     .style('pointer-events', 'none')
      .text('Нет данных');
 
    // Оси
@@ -616,18 +627,23 @@ const getDailyData = () => {
      .style('font-size', '12px')
      .text('Количество автомобилей');
 
- }, [dimensions, isDark, selectedModel, apiData, loading]); // БЕЗ selectedMonth!
+ }, [dimensions, isDark, selectedModel, apiData, loading, selectedMonthIndex]); // Добавили selectedMonthIndex
 
  // Отрисовка графика по дням
  useEffect(() => {
-   if (!selectedMonth || !dimensions.width || loading) return;
+   if (selectedMonthIndex === null || !dimensions.width || loading) return;
+
+   const monthlyData = getMonthlyData();
+   const selectedMonth = monthlyData[selectedMonthIndex];
+   
+   if (!selectedMonth || !selectedMonth.hasData) return;
 
    const availableModels = getAvailableModels();
    const dailyData = getDailyData();
    
    if (!dailyData.length || !availableModels.length) return;
 
-   const margin = { top: 40, right: 40, bottom: 100, left: 70 };
+   const margin = { top: 70, right: 40, bottom: 100, left: 70 };
    const width = dimensions.width - margin.left - margin.right;
    const height = 350 - margin.top - margin.bottom;
 
@@ -700,6 +716,60 @@ const getDailyData = () => {
 
    // Линии и области
    const daysWithData = dailyData.filter(d => d.hasData && d.total > 0);
+
+   // ДОБАВЛЯЕМ БЛОК СТАТИСТИКИ ИЗМЕНЕНИЙ
+   if (daysWithData.length > 1) {
+     const firstDayValue = daysWithData[0].total;
+     const lastDayValue = daysWithData[daysWithData.length - 1].total;
+     const difference = lastDayValue - firstDayValue;
+     const percentChange = firstDayValue > 0 ? ((difference / firstDayValue) * 100).toFixed(1) : 0;
+     const isPositive = difference >= 0;
+
+     // Создаем группу для статистики
+     const statsGroup = svg.append('g')
+       .attr('transform', `translate(${dimensions.width - 220}, ${20})`);
+
+     // Фоновый прямоугольник
+     statsGroup.append('rect')
+       .attr('x', -10)
+       .attr('y', -10)
+       .attr('width', 200)
+       .attr('height', 40)
+       .attr('rx', 8)
+       .attr('fill', isDark ? '#1f2937' : '#f9fafb')
+       .attr('stroke', isDark ? '#374151' : '#e5e7eb')
+       .attr('stroke-width', 1);
+
+     // Иконка тренда
+     const iconColor = isPositive ? '#10b981' : '#ef4444';
+     const icon = statsGroup.append('path')
+       .attr('d', isPositive 
+         ? 'M5 10l7-7m0 0l7 7m-7-7v18' 
+         : 'M19 14l-7 7m0 0l-7-7m7 7V3')
+       .attr('fill', 'none')
+       .attr('stroke', iconColor)
+       .attr('stroke-width', 2)
+       .attr('stroke-linecap', 'round')
+       .attr('stroke-linejoin', 'round')
+       .attr('transform', 'scale(0.8) translate(5, 5)');
+
+     // Текст изменения
+     statsGroup.append('text')
+       .attr('x', 30)
+       .attr('y', 3)
+       .style('font-size', '14px')
+       .style('font-weight', '600')
+       .style('fill', iconColor)
+       .text(`${isPositive ? '+' : ''}${difference.toLocaleString('ru-RU')} шт`);
+
+     // Процент изменения
+     statsGroup.append('text')
+       .attr('x', 30)
+       .attr('y', 18)
+       .style('font-size', '12px')
+       .style('fill', isDark ? '#9ca3af' : '#6b7280')
+       .text(`${isPositive ? '+' : ''}${percentChange}% за месяц`);
+   }
    
    if (daysWithData.length > 0) {
      const line = d3.line()
@@ -906,7 +976,7 @@ const getDailyData = () => {
      .style('font-weight', '600')
      .text(`Динамика по дням - ${selectedMonth.month} ${selectedMonth.year}`);
 
- }, [selectedMonth, dimensions, isDark, selectedModel, selectedDay, apiData, loading]);
+ }, [selectedMonthIndex, dimensions, isDark, selectedModel, selectedDay, apiData, loading]);
 
  // Вычисляем значения для отображения
  const availableModels = getAvailableModels();
@@ -1066,28 +1136,32 @@ const getDailyData = () => {
      </div>
 
      {/* Информация о выбранном месяце */}
-     {selectedMonth && selectedMonth.hasData && (
-       <div className={`mx-6 mb-4 px-4 py-3 rounded-lg ${
-         isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'
-       }`}>
-         <div className="flex items-center justify-between">
-           <div className="flex items-center gap-2">
-             <svg className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-             </svg>
-             <span className={`text-sm font-medium ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-               {selectedMonth.month} {selectedMonth.year}
+     {selectedMonthIndex !== null && (() => {
+       const selectedMonth = monthlyData[selectedMonthIndex];
+       
+       return selectedMonth && selectedMonth.hasData && (
+         <div className={`mx-6 mb-4 px-4 py-3 rounded-lg ${
+           isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'
+         }`}>
+           <div className="flex items-center justify-between">
+             <div className="flex items-center gap-2">
+               <svg className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+               </svg>
+               <span className={`text-sm font-medium ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                 {selectedMonth.month} {selectedMonth.year}
+               </span>
+             </div>
+             <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+               {selectedMonth.total.toLocaleString('ru-RU')} автомобилей
              </span>
            </div>
-           <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-             {selectedMonth.total.toLocaleString('ru-RU')} автомобилей
-           </span>
          </div>
-       </div>
-     )}
+       );
+     })()}
 
      {/* График по дням */}
-     {selectedMonth && (
+     {selectedMonthIndex !== null && (
        <div className={`px-6 pb-6`}>
          <div className={`${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} rounded-lg p-4`}>
            <svg ref={dailySvgRef}></svg>
