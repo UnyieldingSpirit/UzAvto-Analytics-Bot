@@ -2676,9 +2676,7 @@ if (!isMobile) {
          </div>
        </div>
      </div>
-        <div className="mt-6 mb-6">
-       <WarehouseMonthlyChart isDark={isDark} />
-     </div>
+    
      {/* Ключевые метрики с обновленными статусами */}
      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md`}>
@@ -2779,7 +2777,9 @@ if (!isMobile) {
          </div>
        </div>
      </div>
-    
+        <div className="mt-6 mb-6">
+       <WarehouseMonthlyChart isDark={isDark} />
+     </div>
      {/* Основные графики */}
      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-md`}>
