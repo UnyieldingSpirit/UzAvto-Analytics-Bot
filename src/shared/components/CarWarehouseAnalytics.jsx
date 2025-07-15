@@ -130,153 +130,170 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
  };
 
  // Получаем данные для графика по месяцам (ПЕРВОЕ ЗНАЧЕНИЕ В МЕСЯЦЕ)
- const getMonthlyData = () => {
-   const availableModels = getAvailableModels();
-   const currentYear = new Date().getFullYear();
-   const currentMonth = new Date().getMonth();
-   const result = [];
+const getMonthlyData = () => {
+  const availableModels = getAvailableModels();
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
+  const result = [];
 
-   // Создаем структуру для всех месяцев
-   for (let i = 0; i <= currentMonth; i++) {
-     const monthData = {
-       month: monthNames[i],
-       monthIndex: i,
-       year: currentYear,
-       date: new Date(currentYear, i, 1),
-       total: 0,
-       hasData: false
-     };
+  // Создаем структуру для всех месяцев
+  for (let i = 0; i <= currentMonth; i++) {
+    const monthData = {
+      month: monthNames[i],
+      monthIndex: i,
+      year: currentYear,
+      date: new Date(currentYear, i, 1),
+      total: 0,
+      hasData: false
+    };
 
-     // Инициализируем для каждой модели
-     availableModels.forEach(model => {
-       monthData[model.id] = 0;
-     });
+    // Инициализируем для каждой модели
+    availableModels.forEach(model => {
+      monthData[model.id] = 0;
+    });
 
-     result.push(monthData);
-   }
+    result.push(monthData);
+  }
 
-   // Получаем первое значение для каждого месяца
-   if (apiData && Array.isArray(apiData)) {
-     apiData.forEach(modelData => {
-       if (!modelData.filter_by_day || !Array.isArray(modelData.filter_by_day)) return;
+  // Получаем первое значение для каждого месяца
+  if (apiData && Array.isArray(apiData)) {
+    apiData.forEach(modelData => {
+      if (!modelData.filter_by_day || !Array.isArray(modelData.filter_by_day)) return;
 
-       const model = availableModels.find(m => 
-         m.id === modelData.model_id || m.name === modelData.model_name
-       );
-       if (!model) return;
+      const model = availableModels.find(m => 
+        m.id === modelData.model_id || m.name === modelData.model_name
+      );
+      if (!model) return;
 
-       // Сортируем данные по дате для гарантии правильного порядка
-       const sortedDays = [...modelData.filter_by_day].sort((a, b) => 
-         new Date(a.date) - new Date(b.date)
-       );
+      // Сортируем данные по дате для гарантии правильного порядка
+      const sortedDays = [...modelData.filter_by_day].sort((a, b) => {
+        // Парсим даты правильно, учитывая формат YYYY-MM-DD
+        const [yearA, monthA, dayA] = a.date.split('-').map(Number);
+        const [yearB, monthB, dayB] = b.date.split('-').map(Number);
+        const dateA = new Date(yearA, monthA - 1, dayA);
+        const dateB = new Date(yearB, monthB - 1, dayB);
+        return dateA - dateB;
+      });
 
-       // Группируем данные по месяцам и берем первое значение
-       const monthlyFirstValues = {};
-       
-       sortedDays.forEach(dayData => {
-         const date = new Date(dayData.date);
-         const monthIndex = date.getMonth();
-         const year = date.getFullYear();
-         
-         if (year === currentYear && monthIndex <= currentMonth) {
-           // Если для этого месяца еще нет значения, сохраняем первое найденное
-           if (monthlyFirstValues[monthIndex] === undefined) {
-             monthlyFirstValues[monthIndex] = parseInt(dayData.quantity) || 0;
-           }
-         }
-       });
+      // Группируем данные по месяцам и берем первое значение
+      const monthlyFirstValues = {};
+      
+      sortedDays.forEach(dayData => {
+        // Парсим дату из формата YYYY-MM-DD
+        const [year, month, day] = dayData.date.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        const monthIndex = date.getMonth();
+        const dataYear = date.getFullYear();
+        
+        if (dataYear === currentYear && monthIndex <= currentMonth) {
+          // Если для этого месяца еще нет значения, сохраняем первое найденное
+          if (monthlyFirstValues[monthIndex] === undefined) {
+            monthlyFirstValues[monthIndex] = parseInt(dayData.quantity) || 0;
+          }
+        }
+      });
 
-       // Применяем первые значения к результатам
-       Object.entries(monthlyFirstValues).forEach(([monthIndex, quantity]) => {
-         const idx = parseInt(monthIndex);
-         if (result[idx]) {
-           result[idx][model.id] = quantity;
-           result[idx].hasData = true;
-         }
-       });
-     });
-   }
+      // Применяем первые значения к результатам
+      Object.entries(monthlyFirstValues).forEach(([monthIndex, quantity]) => {
+        const idx = parseInt(monthIndex);
+        if (result[idx]) {
+          result[idx][model.id] = quantity;
+          result[idx].hasData = true;
+        }
+      });
+    });
+  }
 
-   // Пересчитываем total ПОСЛЕ того как все данные собраны
-   result.forEach(monthData => {
-     if (monthData.hasData) {
-       if (selectedModel === 'all') {
-         monthData.total = availableModels.reduce((sum, model) => {
-           return sum + (monthData[model.id] || 0);
-         }, 0);
-       } else {
-         monthData.total = monthData[selectedModel] || 0;
-       }
-     }
-   });
+  // Пересчитываем total ПОСЛЕ того как все данные собраны
+  result.forEach(monthData => {
+    if (monthData.hasData) {
+      if (selectedModel === 'all') {
+        monthData.total = availableModels.reduce((sum, model) => {
+          return sum + (monthData[model.id] || 0);
+        }, 0);
+      } else {
+        monthData.total = monthData[selectedModel] || 0;
+      }
+    }
+  });
 
-   return result;
- };
+  return result;
+};
 
  // Получаем данные для графика по дням (БЕЗ МОКОВЫХ ДАННЫХ)
- const getDailyData = () => {
-   if (!selectedMonth) return [];
-   
-   const availableModels = getAvailableModels();
-   const daysInMonth = new Date(selectedMonth.year, selectedMonth.monthIndex + 1, 0).getDate();
-   const result = [];
+const getDailyData = () => {
+  if (!selectedMonth) return [];
+  
+  const availableModels = getAvailableModels();
+  const daysInMonth = new Date(selectedMonth.year, selectedMonth.monthIndex + 1, 0).getDate();
+  const result = [];
 
-   for (let day = 1; day <= daysInMonth; day++) {
-     const date = new Date(selectedMonth.year, selectedMonth.monthIndex, day);
-     const dateStr = date.toISOString().split('T')[0];
-     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  for (let day = 1; day <= daysInMonth; day++) {
+    // Создаем дату в локальном времени, чтобы избежать проблем с часовыми поясами
+    const date = new Date(selectedMonth.year, selectedMonth.monthIndex, day);
+    
+    // Форматируем дату как YYYY-MM-DD для сравнения с API
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${dayStr}`;
+    
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
-     const dayData = {
-       day,
-       date,
-       dateStr: `${String(day).padStart(2, '0')}.${String(selectedMonth.monthIndex + 1).padStart(2, '0')}.${selectedMonth.year}`,
-       total: 0,
-       isWeekend,
-       hasData: false
-     };
+    const dayData = {
+      day,
+      date,
+      dateStr: `${dayStr}.${month}.${year}`,
+      dateApiStr: dateStr, // Добавляем для сравнения с API
+      total: 0,
+      isWeekend,
+      hasData: false
+    };
 
-     // Только реальные данные из API
-     if (apiData && Array.isArray(apiData)) {
-       if (selectedModel === 'all') {
-         availableModels.forEach(model => {
-           const apiModel = apiData.find(m => 
-             m.model_id === model.id || m.model_name === model.name
-           );
+    // Только реальные данные из API
+    if (apiData && Array.isArray(apiData)) {
+      if (selectedModel === 'all') {
+        availableModels.forEach(model => {
+          const apiModel = apiData.find(m => 
+            m.model_id === model.id || m.model_name === model.name
+          );
 
-           if (apiModel && apiModel.filter_by_day) {
-             const dayEntry = apiModel.filter_by_day.find(d => d.date === dateStr);
-             if (dayEntry) {
-               const quantity = parseInt(dayEntry.quantity) || 0;
-               dayData[model.name] = quantity;
-               dayData.total += quantity;
-               dayData.hasData = true;
-             } else {
-               dayData[model.name] = 0;
-             }
-           }
-         });
-       } else {
-         const selectedModelObj = availableModels.find(m => m.id === selectedModel);
-         const selectedModelData = apiData.find(m => 
-           m.model_id === selectedModel || m.model_name === selectedModelObj?.name
-         );
+          if (apiModel && apiModel.filter_by_day) {
+            // Используем dateApiStr для точного сравнения
+            const dayEntry = apiModel.filter_by_day.find(d => d.date === dateStr);
+            if (dayEntry) {
+              const quantity = parseInt(dayEntry.quantity) || 0;
+              dayData[model.name] = quantity;
+              dayData.total += quantity;
+              dayData.hasData = true;
+            } else {
+              dayData[model.name] = 0;
+            }
+          }
+        });
+      } else {
+        const selectedModelObj = availableModels.find(m => m.id === selectedModel);
+        const selectedModelData = apiData.find(m => 
+          m.model_id === selectedModel || m.model_name === selectedModelObj?.name
+        );
 
-         if (selectedModelData && selectedModelData.filter_by_day) {
-           const dayEntry = selectedModelData.filter_by_day.find(d => d.date === dateStr);
-           if (dayEntry) {
-             const quantity = parseInt(dayEntry.quantity) || 0;
-             dayData.total = quantity;
-             dayData.hasData = true;
-           }
-         }
-       }
-     }
+        if (selectedModelData && selectedModelData.filter_by_day) {
+          // Используем dateApiStr для точного сравнения
+          const dayEntry = selectedModelData.filter_by_day.find(d => d.date === dateStr);
+          if (dayEntry) {
+            const quantity = parseInt(dayEntry.quantity) || 0;
+            dayData.total = quantity;
+            dayData.hasData = true;
+          }
+        }
+      }
+    }
 
-     result.push(dayData);
-   }
+    result.push(dayData);
+  }
 
-   return result;
- };
+  return result;
+};
 
  // Обработка изменения размеров
  useEffect(() => {
