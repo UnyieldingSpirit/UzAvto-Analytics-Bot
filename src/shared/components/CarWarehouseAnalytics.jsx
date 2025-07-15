@@ -11,7 +11,7 @@ import { useThemeStore } from '../../store/theme';
 import { useAuth } from '../../hooks/useAuth';
 import { axiosInstance } from '../../utils/axiosConfig';
 
-const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
+const WarehouseMonthlyChart = ({ isDark = false }) => {
   const svgRef = useRef(null);
   const dailySvgRef = useRef(null);
   const containerRef = useRef(null);
@@ -130,75 +130,82 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
   };
 
   // Получаем данные для графика по месяцам (СУММИРУЕМ все дни месяца)
-  const getMonthlyData = () => {
-    const availableModels = getAvailableModels();
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth();
-    const result = [];
+const getMonthlyData = () => {
+  const availableModels = getAvailableModels();
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
+  const result = [];
 
-    // Создаем структуру для всех месяцев
-    for (let i = 0; i <= currentMonth; i++) {
-      const monthData = {
-        month: monthNames[i],
-        monthIndex: i,
-        year: currentYear,
-        date: new Date(currentYear, i, 1),
-        total: 0,
-        hasData: false
-      };
+  // Создаем структуру для всех месяцев
+  for (let i = 0; i <= currentMonth; i++) {
+    const monthData = {
+      month: monthNames[i],
+      monthIndex: i,
+      year: currentYear,
+      date: new Date(currentYear, i, 1),
+      total: 0,
+      hasData: false
+    };
 
-      // Инициализируем для каждой модели
-      availableModels.forEach(model => {
-        monthData[model.id] = 0;
-      });
-
-      result.push(monthData);
-    }
-
-    // СУММИРУЕМ данные из API по месяцам
-    if (apiData && Array.isArray(apiData)) {
-      apiData.forEach(modelData => {
-        if (!modelData.filter_by_day || !Array.isArray(modelData.filter_by_day)) return;
-
-        const model = availableModels.find(m => 
-          m.id === modelData.model_id || m.name === modelData.model_name
-        );
-        if (!model) return;
-
-        // СУММИРУЕМ значения по месяцам
-        modelData.filter_by_day.forEach(dayData => {
-          const date = new Date(dayData.date);
-          const monthIndex = date.getMonth();
-          const year = date.getFullYear();
-          
-          if (year === currentYear && monthIndex <= currentMonth) {
-            const quantity = parseInt(dayData.quantity) || 0;
-            
-            // ДОБАВЛЯЕМ к сумме месяца
-            if (result[monthIndex]) {
-              result[monthIndex][model.id] += quantity;
-              result[monthIndex].hasData = true;
-            }
-          }
-        });
-      });
-    }
-
-    // Пересчитываем total
-    result.forEach(monthData => {
-      if (selectedModel === 'all') {
-        monthData.total = availableModels.reduce((sum, model) => {
-          return sum + (monthData[model.id] || 0);
-        }, 0);
-      } else {
-        monthData.total = monthData[selectedModel] || 0;
-      }
+    // Инициализируем для каждой модели
+    availableModels.forEach(model => {
+      monthData[model.id] = 0;
     });
 
-    return result;
-  };
+    result.push(monthData);
+  }
 
-  // Получаем данные для графика по дням (БЕЗ МОКОВЫХ ДАННЫХ)
+  // Получаем первое значение для каждого месяца
+  if (apiData && Array.isArray(apiData)) {
+    apiData.forEach(modelData => {
+      if (!modelData.filter_by_day || !Array.isArray(modelData.filter_by_day)) return;
+
+      const model = availableModels.find(m => 
+        m.id === modelData.model_id || m.name === modelData.model_name
+      );
+      if (!model) return;
+
+      // Группируем данные по месяцам и берем первое значение
+      const monthlyFirstValues = {};
+      
+      modelData.filter_by_day.forEach(dayData => {
+        const date = new Date(dayData.date);
+        const monthIndex = date.getMonth();
+        const year = date.getFullYear();
+        
+        if (year === currentYear && monthIndex <= currentMonth) {
+          // Если для этого месяца еще нет значения, сохраняем первое найденное
+          if (!monthlyFirstValues[monthIndex]) {
+            monthlyFirstValues[monthIndex] = parseInt(dayData.quantity) || 0;
+          }
+        }
+      });
+
+      // Применяем первые значения к результатам
+      Object.entries(monthlyFirstValues).forEach(([monthIndex, quantity]) => {
+        const idx = parseInt(monthIndex);
+        if (result[idx]) {
+          result[idx][model.id] = quantity;
+          result[idx].hasData = true;
+        }
+      });
+    });
+  }
+
+  // Пересчитываем total
+  result.forEach(monthData => {
+    if (selectedModel === 'all') {
+      monthData.total = availableModels.reduce((sum, model) => {
+        return sum + (monthData[model.id] || 0);
+      }, 0);
+    } else {
+      monthData.total = monthData[selectedModel] || 0;
+    }
+  });
+
+  return result;
+};
+
   const getDailyData = () => {
     if (!selectedMonth) return [];
     
