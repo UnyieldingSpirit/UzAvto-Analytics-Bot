@@ -710,54 +710,58 @@ useEffect(() => {
         .attr('y', 0)
         .attr('width', 20)
         .attr('height', height)
-        .attr('fill', isDark ? '#ef4444' : '#fee2e2')
-        .attr('opacity', 0.2);
+        .attr('fill', isDark ? '#374151' : '#e5e7eb')
+        .attr('opacity', 0.1);
     }
   });
 
   // Линии и области
   const daysWithData = dailyData.filter(d => d.hasData && d.total > 0);
 
-  // НОВЫЙ БЛОК: РАСЧЕТ ПРОДАЖ И СТАТИСТИКИ
+  // БЛОК АНАЛИЗА ДВИЖЕНИЯ ТОВАРА
   if (daysWithData.length > 1) {
-    // Вычисляем изменения между днями (продажи)
-    const salesData = [];
-    let totalSales = 0;
-    let maxDailySales = 0;
-    let minDailySales = Infinity;
+    // Вычисляем изменения между днями
+    const movementData = [];
+    let totalOutgoing = 0;
+    let totalIncoming = 0;
+    let maxMovement = 0;
     
     for (let i = 1; i < daysWithData.length; i++) {
       const prevDay = daysWithData[i - 1];
       const currentDay = daysWithData[i];
-      const dailySales = prevDay.total - currentDay.total; // Уменьшение = продажи
+      const movement = currentDay.total - prevDay.total;
       
-      if (dailySales > 0) {
-        totalSales += dailySales;
-        maxDailySales = Math.max(maxDailySales, dailySales);
-        minDailySales = Math.min(minDailySales, dailySales);
+      if (movement < 0) {
+        totalOutgoing += Math.abs(movement);
+      } else if (movement > 0) {
+        totalIncoming += movement;
       }
       
-      salesData.push({
+      maxMovement = Math.max(maxMovement, Math.abs(movement));
+      
+      movementData.push({
         day: currentDay.day,
-        sales: dailySales,
+        movement: movement,
         stockLevel: currentDay.total,
-        date: currentDay.date
+        date: currentDay.date,
+        isIncoming: movement > 0,
+        isOutgoing: movement < 0
       });
     }
 
-    // Средние продажи в день
-    const avgDailySales = totalSales / (daysWithData.length - 1);
+    // Средний оборот
+    const avgTurnover = (totalOutgoing + totalIncoming) / (daysWithData.length - 1) / 2;
     
-    // БЛОК СТАТИСТИКИ ПРОДАЖ
+    // БЛОК СТАТИСТИКИ ДВИЖЕНИЯ
     const statsGroup = svg.append('g')
-      .attr('transform', `translate(${dimensions.width - 250}, ${20})`);
+      .attr('transform', `translate(${dimensions.width - 260}, ${20})`);
 
     // Фоновый прямоугольник
     statsGroup.append('rect')
       .attr('x', -10)
       .attr('y', -10)
-      .attr('width', 240)
-      .attr('height', 90)
+      .attr('width', 250)
+      .attr('height', 80)
       .attr('rx', 8)
       .attr('fill', isDark ? '#1f2937' : '#f9fafb')
       .attr('stroke', isDark ? '#374151' : '#e5e7eb')
@@ -770,78 +774,100 @@ useEffect(() => {
       .style('font-size', '12px')
       .style('font-weight', '600')
       .style('fill', isDark ? '#9ca3af' : '#6b7280')
-      .text('Статистика продаж');
+      .text('Движение на складе');
 
-    // Общие продажи
-    statsGroup.append('text')
-      .attr('x', 5)
-      .attr('y', 25)
-      .style('font-size', '14px')
-      .style('font-weight', '600')
-      .style('fill', '#10b981')
-      .text(`Продано: ${totalSales.toLocaleString('ru-RU')} шт`);
-
-    // Средние продажи
-    statsGroup.append('text')
-      .attr('x', 5)
-      .attr('y', 45)
-      .style('font-size', '12px')
-      .style('fill', isDark ? '#f3f4f6' : '#374151')
-      .text(`Ср. в день: ${Math.round(avgDailySales).toLocaleString('ru-RU')} шт`);
-
-    // Темп продаж
-    const firstDayValue = daysWithData[0].total;
-    const lastDayValue = daysWithData[daysWithData.length - 1].total;
-    const salesRate = firstDayValue > 0 ? ((firstDayValue - lastDayValue) / firstDayValue * 100).toFixed(1) : 0;
+    // Отгрузки
+    statsGroup.append('circle')
+      .attr('cx', 10)
+      .attr('cy', 30)
+      .attr('r', 4)
+      .attr('fill', '#ef4444');
     
     statsGroup.append('text')
-      .attr('x', 5)
-      .attr('y', 65)
-      .style('font-size', '12px')
+      .attr('x', 20)
+      .attr('y', 30)
+      .attr('dy', '0.3em')
+      .style('font-size', '13px')
       .style('fill', isDark ? '#f3f4f6' : '#374151')
-      .text(`Темп реализации: ${salesRate}%`);
+      .text(`Отгружено: ${totalOutgoing.toLocaleString('ru-RU')} шт`);
+    // Поступления
+    statsGroup.append('circle')
+      .attr('cx', 10)
+      .attr('cy', 50)
+      .attr('r', 4)
+      .attr('fill', '#10b981');
+    
+    statsGroup.append('text')
+      .attr('x', 20)
+      .attr('y', 50)
+      .attr('dy', '0.3em')
+      .style('font-size', '13px')
+      .style('fill', isDark ? '#f3f4f6' : '#374151')
+      .text(`Поступило: ${totalIncoming.toLocaleString('ru-RU')} шт`);
 
-    // ДОБАВЛЯЕМ ВИЗУАЛИЗАЦИЮ ПРОДАЖ (зеленые столбики вниз)
-    if (salesData.length > 0) {
-      const salesScale = d3.scaleLinear()
-        .domain([0, maxDailySales * 1.2])
-        .range([0, height * 0.3]); // Используем 30% высоты для продаж
 
-      const salesBars = g.selectAll('.sales-bar')
-        .data(salesData)
+    // ВИЗУАЛИЗАЦИЯ ДВИЖЕНИЯ ТОВАРА
+    if (movementData.length > 0) {
+      const movementScale = d3.scaleLinear()
+        .domain([0, maxMovement])
+        .range([0, height * 0.2]);
+
+      const movementBars = g.selectAll('.movement-bar')
+        .data(movementData)
         .enter().append('g')
-        .attr('class', 'sales-bar');
+        .attr('class', 'movement-bar');
 
-      // Столбики продаж (вниз от линии)
-      salesBars.filter(d => d.sales > 0)
+      // Столбики отгрузок (вниз)
+      movementBars.filter(d => d.isOutgoing)
         .append('rect')
-        .attr('x', d => xScale(d.day) - 3)
+        .attr('x', d => xScale(d.day) - 4)
         .attr('y', d => yScale(d.stockLevel))
-        .attr('width', 6)
+        .attr('width', 8)
         .attr('height', 0)
-        .attr('fill', '#10b981')
-        .attr('opacity', 0.7)
+        .attr('fill', '#ef4444')
+        .attr('opacity', 0.6)
         .attr('rx', 2)
         .transition()
         .duration(800)
-        .delay((d, i) => i * 50)
-        .attr('height', d => salesScale(d.sales));
+        .delay((d, i) => i * 30)
+        .attr('height', d => movementScale(Math.abs(d.movement)));
 
-      // Числа продаж над столбиками
-      salesBars.filter(d => d.sales > 50) // Показываем только значимые продажи
+      // Столбики поступлений (вверх)
+      movementBars.filter(d => d.isIncoming)
+        .append('rect')
+        .attr('x', d => xScale(d.day) - 4)
+        .attr('y', d => yScale(d.stockLevel) - movementScale(d.movement))
+        .attr('width', 8)
+        .attr('height', 0)
+        .attr('fill', '#10b981')
+        .attr('opacity', 0.6)
+        .attr('rx', 2)
+        .transition()
+        .duration(800)
+        .delay((d, i) => i * 30)
+        .attr('height', d => movementScale(d.movement));
+
+      // Метки для значительных движений
+      movementBars.filter(d => Math.abs(d.movement) > maxMovement * 0.3)
         .append('text')
         .attr('x', d => xScale(d.day))
-        .attr('y', d => yScale(d.stockLevel) + salesScale(d.sales) + 15)
+        .attr('y', d => {
+          if (d.isOutgoing) {
+            return yScale(d.stockLevel) + movementScale(Math.abs(d.movement)) + 15;
+          } else {
+            return yScale(d.stockLevel) - movementScale(d.movement) - 5;
+          }
+        })
         .attr('text-anchor', 'middle')
-        .style('fill', '#10b981')
+        .style('fill', d => d.isOutgoing ? '#ef4444' : '#10b981')
         .style('font-size', '10px')
         .style('font-weight', '600')
         .style('opacity', 0)
-        .text(d => `-${d.sales}`)
+        .text(d => d.isOutgoing ? `-${Math.abs(d.movement)}` : `+${d.movement}`)
         .transition()
         .duration(800)
-        .delay((d, i) => i * 50 + 400)
-        .style('opacity', 1);
+        .delay((d, i) => i * 30 + 400)
+        .style('opacity', 0.8);
     }
   }
   
@@ -883,25 +909,47 @@ useEffect(() => {
       .duration(1500)
       .attr('stroke-dashoffset', 0);
 
-    // Добавляем среднюю линию остатков
-    const avgStock = d3.mean(daysWithData, d => d.total);
+    // Минимальный и максимальный уровни
+    const minStock = d3.min(daysWithData, d => d.total);
+    const maxStock = d3.max(daysWithData, d => d.total);
+    
+    // Линия минимального уровня
     g.append('line')
       .attr('x1', xScale(daysWithData[0].day))
       .attr('x2', xScale(daysWithData[daysWithData.length - 1].day))
-      .attr('y1', yScale(avgStock))
-      .attr('y2', yScale(avgStock))
-      .attr('stroke', isDark ? '#6b7280' : '#9ca3af')
-      .attr('stroke-width', 1.5)
-      .attr('stroke-dasharray', '5,5')
-      .attr('opacity', 0.7);
+      .attr('y1', yScale(minStock))
+      .attr('y2', yScale(minStock))
+      .attr('stroke', '#ef4444')
+      .attr('stroke-width', 1)
+      .attr('stroke-dasharray', '3,3')
+      .attr('opacity', 0.5);
 
     g.append('text')
       .attr('x', xScale(daysWithData[daysWithData.length - 1].day) + 5)
-      .attr('y', yScale(avgStock))
+      .attr('y', yScale(minStock))
       .attr('dy', '0.3em')
-      .style('fill', isDark ? '#6b7280' : '#9ca3af')
-      .style('font-size', '11px')
-      .text(`Ср. остаток: ${Math.round(avgStock).toLocaleString('ru-RU')}`);
+      .style('fill', '#ef4444')
+      .style('font-size', '10px')
+      .text(`Мин: ${minStock.toLocaleString('ru-RU')}`);
+
+    // Линия максимального уровня
+    g.append('line')
+      .attr('x1', xScale(daysWithData[0].day))
+      .attr('x2', xScale(daysWithData[daysWithData.length - 1].day))
+      .attr('y1', yScale(maxStock))
+      .attr('y2', yScale(maxStock))
+      .attr('stroke', '#10b981')
+      .attr('stroke-width', 1)
+      .attr('stroke-dasharray', '3,3')
+      .attr('opacity', 0.5);
+
+    g.append('text')
+      .attr('x', xScale(daysWithData[daysWithData.length - 1].day) + 5)
+      .attr('y', yScale(maxStock))
+      .attr('dy', '0.3em')
+      .style('fill', '#10b981')
+      .style('font-size', '10px')
+      .text(`Макс: ${maxStock.toLocaleString('ru-RU')}`);
   }
 
   // Точки
@@ -945,26 +993,34 @@ useEffect(() => {
 
       tooltipRef.current = tooltip.node();
 
-      // Вычисляем продажи для этого дня
+      // Вычисляем изменение для этого дня
       const dayIndex = daysWithData.findIndex(day => day.day === d.day);
-      let dailySales = 0;
+      let dayMovement = 0;
+      let movementType = '';
+      
       if (dayIndex > 0) {
-        dailySales = daysWithData[dayIndex - 1].total - d.total;
+        dayMovement = d.total - daysWithData[dayIndex - 1].total;
+        if (dayMovement > 0) {
+          movementType = 'Поступление';
+        } else if (dayMovement < 0) {
+          movementType = 'Отгрузка';
+        }
       }
 
       let tooltipContent = `
         <div style="font-weight: 600; margin-bottom: 8px;">${d.dateStr}</div>
         <div style="display: flex; justify-content: space-between; gap: 20px;">
           <span>Остаток:</span>
-          <span style="font-weight: 600;">${d.total.toLocaleString('ru-RU')}</span>
+          <span style="font-weight: 600;">${d.total.toLocaleString('ru-RU')} шт</span>
         </div>
       `;
 
-      if (dailySales > 0) {
+      if (dayMovement !== 0) {
+        const color = dayMovement > 0 ? '#10b981' : '#ef4444';
         tooltipContent += `
-          <div style="display: flex; justify-content: space-between; gap: 20px; color: #10b981;">
-            <span>Продано:</span>
-            <span style="font-weight: 600;">${dailySales.toLocaleString('ru-RU')}</span>
+          <div style="display: flex; justify-content: space-between; gap: 20px; color: ${color};">
+            <span>${movementType}:</span>
+            <span style="font-weight: 600;">${dayMovement > 0 ? '+' : ''}${dayMovement.toLocaleString('ru-RU')} шт</span>
           </div>
         `;
       }
@@ -973,6 +1029,7 @@ useEffect(() => {
       if (selectedModel === 'all' && d.hasData) {
         tooltipContent += `
           <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
+            <div style="font-size: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'}; margin-bottom: 4px;">По моделям:</div>
         `;
         availableModels.forEach(model => {
           const value = d[model.name] || 0;
@@ -1061,53 +1118,81 @@ useEffect(() => {
     .style('fill', isDark ? '#9ca3af' : '#4b5563')
     .style('font-size', '11px');
 
-  // Заголовок с акцентом на продажи
+  // Метка оси Y
+  g.append('text')
+    .attr('transform', 'rotate(-90)')
+    .attr('y', 0 - margin.left + 20)
+    .attr('x', 0 - (height / 2))
+    .attr('dy', '1em')
+    .style('text-anchor', 'middle')
+    .style('fill', isDark ? '#9ca3af' : '#6b7280')
+    .style('font-size', '12px')
+    .text('Количество на складе (шт)');
+
+  // Заголовок
   g.append('text')
     .attr('x', width / 2)
     .attr('y', -20)
     .attr('text-anchor', 'middle')
     .style('fill', isDark ? '#f3f4f6' : '#1f2937')
-    .style('font-size', '14px')
+    .style('font-size', '16px')
     .style('font-weight', '600')
-    .text(`Остатки и продажи - ${selectedMonth.month} ${selectedMonth.year}`);
+    .text(`Складская динамика - ${selectedMonth.month} ${selectedMonth.year}`);
 
   // Легенда
   const legend = g.append('g')
-    .attr('transform', `translate(${width - 200}, ${height - 40})`);
+    .attr('transform', `translate(${20}, ${-45})`);
+
+  // Поступления
+  legend.append('rect')
+    .attr('x', 0)
+    .attr('y', 0)
+    .attr('width', 12)
+    .attr('height', 12)
+    .attr('fill', '#10b981')
+    .attr('opacity', 0.6);
+
+  legend.append('text')
+    .attr('x', 17)
+    .attr('y', 6)
+    .attr('dy', '0.3em')
+    .style('fill', isDark ? '#f3f4f6' : '#374151')
+    .style('font-size', '11px')
+    .text('Поступления');
+
+  // Отгрузки
+  legend.append('rect')
+    .attr('x', 100)
+    .attr('y', 0)
+    .attr('width', 12)
+    .attr('height', 12)
+    .attr('fill', '#ef4444')
+    .attr('opacity', 0.6);
+
+  legend.append('text')
+    .attr('x', 117)
+    .attr('y', 6)
+    .attr('dy', '0.3em')
+    .style('fill', isDark ? '#f3f4f6' : '#374151')
+    .style('font-size', '11px')
+    .text('Отгрузки');
 
   // Остатки
   legend.append('line')
-    .attr('x1', 0)
-    .attr('x2', 20)
-    .attr('y1', 0)
-    .attr('y2', 0)
+    .attr('x1', 200)
+    .attr('x2', 220)
+    .attr('y1', 6)
+    .attr('y2', 6)
     .attr('stroke', barColor)
     .attr('stroke-width', 3);
 
   legend.append('text')
-    .attr('x', 25)
-    .attr('y', 0)
+    .attr('x', 225)
+    .attr('y', 6)
     .attr('dy', '0.3em')
     .style('fill', isDark ? '#f3f4f6' : '#374151')
     .style('font-size', '11px')
-    .text('Остатки на складе');
-
-  // Продажи
-  legend.append('rect')
-    .attr('x', 0)
-    .attr('y', 15)
-    .attr('width', 20)
-    .attr('height', 10)
-    .attr('fill', '#10b981')
-    .attr('opacity', 0.7);
-
-  legend.append('text')
-    .attr('x', 25)
-    .attr('y', 20)
-    .attr('dy', '0.3em')
-    .style('fill', isDark ? '#f3f4f6' : '#374151')
-    .style('font-size', '11px')
-    .text('Объем продаж');
+    .text('Уровень остатков');
 
 }, [selectedMonthIndex, dimensions, isDark, selectedModel, selectedDay, apiData, loading]);
 
