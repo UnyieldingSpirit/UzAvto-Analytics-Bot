@@ -630,7 +630,6 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
  }, [dimensions, isDark, selectedModel, apiData, loading, selectedMonthIndex]); // Добавили selectedMonthIndex
 
  // Отрисовка графика по дням
-// Отрисовка графика по дням
 useEffect(() => {
   if (selectedMonthIndex === null || !dimensions.width || loading) return;
 
@@ -761,7 +760,7 @@ useEffect(() => {
       .attr('x', -10)
       .attr('y', -10)
       .attr('width', 250)
-      .attr('height', 80)
+      .attr('height', 100)
       .attr('rx', 8)
       .attr('fill', isDark ? '#1f2937' : '#f9fafb')
       .attr('stroke', isDark ? '#374151' : '#e5e7eb')
@@ -776,12 +775,12 @@ useEffect(() => {
       .style('fill', isDark ? '#9ca3af' : '#6b7280')
       .text('Движение на складе');
 
-    // Отгрузки
+    // Отгрузки (ЗЕЛЕНЫЙ - хорошо)
     statsGroup.append('circle')
       .attr('cx', 10)
       .attr('cy', 30)
       .attr('r', 4)
-      .attr('fill', '#ef4444');
+      .attr('fill', '#10b981');
     
     statsGroup.append('text')
       .attr('x', 20)
@@ -790,12 +789,13 @@ useEffect(() => {
       .style('font-size', '13px')
       .style('fill', isDark ? '#f3f4f6' : '#374151')
       .text(`Отгружено: ${totalOutgoing.toLocaleString('ru-RU')} шт`);
-    // Поступления
+
+    // Поступления (КРАСНЫЙ - увеличение запасов)
     statsGroup.append('circle')
       .attr('cx', 10)
       .attr('cy', 50)
       .attr('r', 4)
-      .attr('fill', '#10b981');
+      .attr('fill', '#ef4444');
     
     statsGroup.append('text')
       .attr('x', 20)
@@ -805,6 +805,13 @@ useEffect(() => {
       .style('fill', isDark ? '#f3f4f6' : '#374151')
       .text(`Поступило: ${totalIncoming.toLocaleString('ru-RU')} шт`);
 
+    // Средний оборот
+    statsGroup.append('text')
+      .attr('x', 5)
+      .attr('y', 75)
+      .style('font-size', '12px')
+      .style('fill', isDark ? '#9ca3af' : '#6b7280')
+      .text(`Ср. оборот: ${Math.round(avgTurnover).toLocaleString('ru-RU')} шт/день`);
 
     // ВИЗУАЛИЗАЦИЯ ДВИЖЕНИЯ ТОВАРА
     if (movementData.length > 0) {
@@ -817,14 +824,14 @@ useEffect(() => {
         .enter().append('g')
         .attr('class', 'movement-bar');
 
-      // Столбики отгрузок (вниз)
+      // Столбики отгрузок (вниз) - ЗЕЛЕНЫЕ
       movementBars.filter(d => d.isOutgoing)
         .append('rect')
         .attr('x', d => xScale(d.day) - 4)
         .attr('y', d => yScale(d.stockLevel))
         .attr('width', 8)
         .attr('height', 0)
-        .attr('fill', '#ef4444')
+        .attr('fill', '#10b981') // Зеленый цвет для отгрузок
         .attr('opacity', 0.6)
         .attr('rx', 2)
         .transition()
@@ -832,14 +839,14 @@ useEffect(() => {
         .delay((d, i) => i * 30)
         .attr('height', d => movementScale(Math.abs(d.movement)));
 
-      // Столбики поступлений (вверх)
+      // Столбики поступлений (вверх) - КРАСНЫЕ
       movementBars.filter(d => d.isIncoming)
         .append('rect')
         .attr('x', d => xScale(d.day) - 4)
         .attr('y', d => yScale(d.stockLevel) - movementScale(d.movement))
         .attr('width', 8)
         .attr('height', 0)
-        .attr('fill', '#10b981')
+        .attr('fill', '#ef4444') // Красный цвет для поступлений
         .attr('opacity', 0.6)
         .attr('rx', 2)
         .transition()
@@ -859,7 +866,7 @@ useEffect(() => {
           }
         })
         .attr('text-anchor', 'middle')
-        .style('fill', d => d.isOutgoing ? '#ef4444' : '#10b981')
+        .style('fill', d => d.isOutgoing ? '#10b981' : '#ef4444') // Соответствующие цвета
         .style('font-size', '10px')
         .style('font-weight', '600')
         .style('opacity', 0)
@@ -913,13 +920,13 @@ useEffect(() => {
     const minStock = d3.min(daysWithData, d => d.total);
     const maxStock = d3.max(daysWithData, d => d.total);
     
-    // Линия минимального уровня
+    // Линия минимального уровня (зеленая - хорошо когда мало остатков)
     g.append('line')
       .attr('x1', xScale(daysWithData[0].day))
       .attr('x2', xScale(daysWithData[daysWithData.length - 1].day))
       .attr('y1', yScale(minStock))
       .attr('y2', yScale(minStock))
-      .attr('stroke', '#ef4444')
+      .attr('stroke', '#10b981')
       .attr('stroke-width', 1)
       .attr('stroke-dasharray', '3,3')
       .attr('opacity', 0.5);
@@ -928,17 +935,17 @@ useEffect(() => {
       .attr('x', xScale(daysWithData[daysWithData.length - 1].day) + 5)
       .attr('y', yScale(minStock))
       .attr('dy', '0.3em')
-      .style('fill', '#ef4444')
+      .style('fill', '#10b981')
       .style('font-size', '10px')
       .text(`Мин: ${minStock.toLocaleString('ru-RU')}`);
 
-    // Линия максимального уровня
+    // Линия максимального уровня (красная - много остатков)
     g.append('line')
       .attr('x1', xScale(daysWithData[0].day))
       .attr('x2', xScale(daysWithData[daysWithData.length - 1].day))
       .attr('y1', yScale(maxStock))
       .attr('y2', yScale(maxStock))
-      .attr('stroke', '#10b981')
+      .attr('stroke', '#ef4444')
       .attr('stroke-width', 1)
       .attr('stroke-dasharray', '3,3')
       .attr('opacity', 0.5);
@@ -947,7 +954,7 @@ useEffect(() => {
       .attr('x', xScale(daysWithData[daysWithData.length - 1].day) + 5)
       .attr('y', yScale(maxStock))
       .attr('dy', '0.3em')
-      .style('fill', '#10b981')
+      .style('fill', '#ef4444')
       .style('font-size', '10px')
       .text(`Макс: ${maxStock.toLocaleString('ru-RU')}`);
   }
@@ -1016,7 +1023,7 @@ useEffect(() => {
       `;
 
       if (dayMovement !== 0) {
-        const color = dayMovement > 0 ? '#10b981' : '#ef4444';
+        const color = dayMovement > 0 ? '#ef4444' : '#10b981'; // Поменяли цвета
         tooltipContent += `
           <div style="display: flex; justify-content: space-between; gap: 20px; color: ${color};">
             <span>${movementType}:</span>
@@ -1143,7 +1150,7 @@ useEffect(() => {
   const legend = g.append('g')
     .attr('transform', `translate(${20}, ${-45})`);
 
-  // Поступления
+  // Отгрузки (ЗЕЛЕНЫЙ)
   legend.append('rect')
     .attr('x', 0)
     .attr('y', 0)
@@ -1158,11 +1165,11 @@ useEffect(() => {
     .attr('dy', '0.3em')
     .style('fill', isDark ? '#f3f4f6' : '#374151')
     .style('font-size', '11px')
-    .text('Поступления');
+    .text('Отгрузки');
 
-  // Отгрузки
+  // Поступления (КРАСНЫЙ)
   legend.append('rect')
-    .attr('x', 100)
+    .attr('x', 80)
     .attr('y', 0)
     .attr('width', 12)
     .attr('height', 12)
@@ -1170,24 +1177,24 @@ useEffect(() => {
     .attr('opacity', 0.6);
 
   legend.append('text')
-    .attr('x', 117)
+    .attr('x', 97)
     .attr('y', 6)
     .attr('dy', '0.3em')
     .style('fill', isDark ? '#f3f4f6' : '#374151')
     .style('font-size', '11px')
-    .text('Отгрузки');
+    .text('Поступления');
 
   // Остатки
   legend.append('line')
-    .attr('x1', 200)
-    .attr('x2', 220)
+    .attr('x1', 180)
+    .attr('x2', 200)
     .attr('y1', 6)
     .attr('y2', 6)
     .attr('stroke', barColor)
     .attr('stroke-width', 3);
 
   legend.append('text')
-    .attr('x', 225)
+    .attr('x', 205)
     .attr('y', 6)
     .attr('dy', '0.3em')
     .style('fill', isDark ? '#f3f4f6' : '#374151')
