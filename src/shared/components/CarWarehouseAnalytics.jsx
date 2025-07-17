@@ -630,353 +630,486 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
  }, [dimensions, isDark, selectedModel, apiData, loading, selectedMonthIndex]); // Добавили selectedMonthIndex
 
  // Отрисовка графика по дням
- useEffect(() => {
-   if (selectedMonthIndex === null || !dimensions.width || loading) return;
+// Отрисовка графика по дням
+useEffect(() => {
+  if (selectedMonthIndex === null || !dimensions.width || loading) return;
 
-   const monthlyData = getMonthlyData();
-   const selectedMonth = monthlyData[selectedMonthIndex];
-   
-   if (!selectedMonth || !selectedMonth.hasData) return;
+  const monthlyData = getMonthlyData();
+  const selectedMonth = monthlyData[selectedMonthIndex];
+  
+  if (!selectedMonth || !selectedMonth.hasData) return;
 
-   const availableModels = getAvailableModels();
-   const dailyData = getDailyData();
-   
-   if (!dailyData.length || !availableModels.length) return;
+  const availableModels = getAvailableModels();
+  const dailyData = getDailyData();
+  
+  if (!dailyData.length || !availableModels.length) return;
 
-   const margin = { top: 70, right: 40, bottom: 100, left: 70 };
-   const width = dimensions.width - margin.left - margin.right;
-   const height = 350 - margin.top - margin.bottom;
+  const margin = { top: 70, right: 40, bottom: 100, left: 70 };
+  const width = dimensions.width - margin.left - margin.right;
+  const height = 350 - margin.top - margin.bottom;
 
-   d3.select(dailySvgRef.current).selectAll('*').remove();
+  d3.select(dailySvgRef.current).selectAll('*').remove();
 
-   const svg = d3.select(dailySvgRef.current)
-     .attr('width', dimensions.width)
-     .attr('height', 350);
+  const svg = d3.select(dailySvgRef.current)
+    .attr('width', dimensions.width)
+    .attr('height', 350);
 
-   const g = svg.append('g')
-     .attr('transform', `translate(${margin.left},${margin.top})`);
+  const g = svg.append('g')
+    .attr('transform', `translate(${margin.left},${margin.top})`);
 
-   const xScale = d3.scaleLinear()
-     .domain([1, dailyData.length])
-     .range([0, width]);
+  const xScale = d3.scaleLinear()
+    .domain([1, dailyData.length])
+    .range([0, width]);
 
-   const maxDayValue = d3.max(dailyData, d => d.total) || 100;
-   const yScale = d3.scaleLinear()
-     .domain([0, maxDayValue * 1.1])
-     .range([height, 0])
-     .nice();
+  const maxDayValue = d3.max(dailyData, d => d.total) || 100;
+  const yScale = d3.scaleLinear()
+    .domain([0, maxDayValue * 1.1])
+    .range([height, 0])
+    .nice();
 
-   const barColor = selectedModel === 'all' 
-     ? '#3b82f6' 
-     : availableModels.find(m => m.id === selectedModel)?.color || '#3b82f6';
+  const barColor = selectedModel === 'all' 
+    ? '#3b82f6' 
+    : availableModels.find(m => m.id === selectedModel)?.color || '#3b82f6';
 
-   // Градиент для области
-   const areaGradient = svg.append('defs')
-     .append('linearGradient')
-     .attr('id', 'areaGradient')
-     .attr('gradientUnits', 'userSpaceOnUse')
-     .attr('x1', 0).attr('y1', 0)
-     .attr('x2', 0).attr('y2', height);
+  // Градиент для области
+  const areaGradient = svg.append('defs')
+    .append('linearGradient')
+    .attr('id', 'areaGradient')
+    .attr('gradientUnits', 'userSpaceOnUse')
+    .attr('x1', 0).attr('y1', 0)
+    .attr('x2', 0).attr('y2', height);
 
-   areaGradient.append('stop')
-     .attr('offset', '0%')
-     .attr('stop-color', barColor)
-     .attr('stop-opacity', 0.6);
+  areaGradient.append('stop')
+    .attr('offset', '0%')
+    .attr('stop-color', barColor)
+    .attr('stop-opacity', 0.6);
 
-   areaGradient.append('stop')
-     .attr('offset', '100%')
-     .attr('stop-color', barColor)
-     .attr('stop-opacity', 0.1);
+  areaGradient.append('stop')
+    .attr('offset', '100%')
+    .attr('stop-color', barColor)
+    .attr('stop-opacity', 0.1);
 
-   // Сетка
-   g.append('g')
-     .attr('class', 'grid')
-     .call(d3.axisLeft(yScale)
-       .ticks(5)
-       .tickSize(-width)
-       .tickFormat('')
-     )
-     .selectAll('line')
-     .style('stroke', isDark ? '#374151' : '#e5e7eb')
-     .style('stroke-dasharray', '3,3')
-     .style('opacity', 0.5);
+  // Сетка
+  g.append('g')
+    .attr('class', 'grid')
+    .call(d3.axisLeft(yScale)
+      .ticks(5)
+      .tickSize(-width)
+      .tickFormat('')
+    )
+    .selectAll('line')
+    .style('stroke', isDark ? '#374151' : '#e5e7eb')
+    .style('stroke-dasharray', '3,3')
+    .style('opacity', 0.5);
 
-   // Подсветка выходных
-   dailyData.forEach(d => {
-     if (d.isWeekend) {
-       g.append('rect')
-         .attr('x', xScale(d.day) - 10)
-         .attr('y', 0)
-         .attr('width', 20)
-         .attr('height', height)
-         .attr('fill', isDark ? '#ef4444' : '#fee2e2')
-         .attr('opacity', 0.2);
-     }
-   });
+  // Подсветка выходных
+  dailyData.forEach(d => {
+    if (d.isWeekend) {
+      g.append('rect')
+        .attr('x', xScale(d.day) - 10)
+        .attr('y', 0)
+        .attr('width', 20)
+        .attr('height', height)
+        .attr('fill', isDark ? '#ef4444' : '#fee2e2')
+        .attr('opacity', 0.2);
+    }
+  });
 
-   // Линии и области
-   const daysWithData = dailyData.filter(d => d.hasData && d.total > 0);
+  // Линии и области
+  const daysWithData = dailyData.filter(d => d.hasData && d.total > 0);
 
-   // ДОБАВЛЯЕМ БЛОК СТАТИСТИКИ ИЗМЕНЕНИЙ
-   if (daysWithData.length > 1) {
-     const firstDayValue = daysWithData[0].total;
-     const lastDayValue = daysWithData[daysWithData.length - 1].total;
-     const difference = lastDayValue - firstDayValue;
-     const percentChange = firstDayValue > 0 ? ((difference / firstDayValue) * 100).toFixed(1) : 0;
-     const isPositive = difference >= 0;
+  // НОВЫЙ БЛОК: РАСЧЕТ ПРОДАЖ И СТАТИСТИКИ
+  if (daysWithData.length > 1) {
+    // Вычисляем изменения между днями (продажи)
+    const salesData = [];
+    let totalSales = 0;
+    let maxDailySales = 0;
+    let minDailySales = Infinity;
+    
+    for (let i = 1; i < daysWithData.length; i++) {
+      const prevDay = daysWithData[i - 1];
+      const currentDay = daysWithData[i];
+      const dailySales = prevDay.total - currentDay.total; // Уменьшение = продажи
+      
+      if (dailySales > 0) {
+        totalSales += dailySales;
+        maxDailySales = Math.max(maxDailySales, dailySales);
+        minDailySales = Math.min(minDailySales, dailySales);
+      }
+      
+      salesData.push({
+        day: currentDay.day,
+        sales: dailySales,
+        stockLevel: currentDay.total,
+        date: currentDay.date
+      });
+    }
 
-     // Создаем группу для статистики
-     const statsGroup = svg.append('g')
-       .attr('transform', `translate(${dimensions.width - 220}, ${20})`);
+    // Средние продажи в день
+    const avgDailySales = totalSales / (daysWithData.length - 1);
+    
+    // БЛОК СТАТИСТИКИ ПРОДАЖ
+    const statsGroup = svg.append('g')
+      .attr('transform', `translate(${dimensions.width - 250}, ${20})`);
 
-     // Фоновый прямоугольник
-     statsGroup.append('rect')
-       .attr('x', -10)
-       .attr('y', -10)
-       .attr('width', 200)
-       .attr('height', 40)
-       .attr('rx', 8)
-       .attr('fill', isDark ? '#1f2937' : '#f9fafb')
-       .attr('stroke', isDark ? '#374151' : '#e5e7eb')
-       .attr('stroke-width', 1);
+    // Фоновый прямоугольник
+    statsGroup.append('rect')
+      .attr('x', -10)
+      .attr('y', -10)
+      .attr('width', 240)
+      .attr('height', 90)
+      .attr('rx', 8)
+      .attr('fill', isDark ? '#1f2937' : '#f9fafb')
+      .attr('stroke', isDark ? '#374151' : '#e5e7eb')
+      .attr('stroke-width', 1);
 
-     // Иконка тренда
-     const iconColor = isPositive ? '#10b981' : '#ef4444';
-     const icon = statsGroup.append('path')
-       .attr('d', isPositive 
-         ? 'M5 10l7-7m0 0l7 7m-7-7v18' 
-         : 'M19 14l-7 7m0 0l-7-7m7 7V3')
-       .attr('fill', 'none')
-       .attr('stroke', iconColor)
-       .attr('stroke-width', 2)
-       .attr('stroke-linecap', 'round')
-       .attr('stroke-linejoin', 'round')
-       .attr('transform', 'scale(0.8) translate(5, 5)');
+    // Заголовок
+    statsGroup.append('text')
+      .attr('x', 5)
+      .attr('y', 5)
+      .style('font-size', '12px')
+      .style('font-weight', '600')
+      .style('fill', isDark ? '#9ca3af' : '#6b7280')
+      .text('Статистика продаж');
 
-     // Текст изменения
-     statsGroup.append('text')
-       .attr('x', 30)
-       .attr('y', 3)
-       .style('font-size', '14px')
-       .style('font-weight', '600')
-       .style('fill', iconColor)
-       .text(`${isPositive ? '+' : ''}${difference.toLocaleString('ru-RU')} шт`);
+    // Общие продажи
+    statsGroup.append('text')
+      .attr('x', 5)
+      .attr('y', 25)
+      .style('font-size', '14px')
+      .style('font-weight', '600')
+      .style('fill', '#10b981')
+      .text(`Продано: ${totalSales.toLocaleString('ru-RU')} шт`);
 
-     // Процент изменения
-     statsGroup.append('text')
-       .attr('x', 30)
-       .attr('y', 18)
-       .style('font-size', '12px')
-       .style('fill', isDark ? '#9ca3af' : '#6b7280')
-       .text(`${isPositive ? '+' : ''}${percentChange}% за месяц`);
-   }
-   
-   if (daysWithData.length > 0) {
-     const line = d3.line()
-       .x(d => xScale(d.day))
-       .y(d => yScale(d.total))
-       .curve(d3.curveMonotoneX);
+    // Средние продажи
+    statsGroup.append('text')
+      .attr('x', 5)
+      .attr('y', 45)
+      .style('font-size', '12px')
+      .style('fill', isDark ? '#f3f4f6' : '#374151')
+      .text(`Ср. в день: ${Math.round(avgDailySales).toLocaleString('ru-RU')} шт`);
 
-     const area = d3.area()
-       .x(d => xScale(d.day))
-       .y0(height)
-       .y1(d => yScale(d.total))
-       .curve(d3.curveMonotoneX);
+    // Темп продаж
+    const firstDayValue = daysWithData[0].total;
+    const lastDayValue = daysWithData[daysWithData.length - 1].total;
+    const salesRate = firstDayValue > 0 ? ((firstDayValue - lastDayValue) / firstDayValue * 100).toFixed(1) : 0;
+    
+    statsGroup.append('text')
+      .attr('x', 5)
+      .attr('y', 65)
+      .style('font-size', '12px')
+      .style('fill', isDark ? '#f3f4f6' : '#374151')
+      .text(`Темп реализации: ${salesRate}%`);
 
-     // Область
-     g.append('path')
-       .datum(daysWithData)
-       .attr('fill', 'url(#areaGradient)')
-       .attr('opacity', 0)
-       .attr('d', area)
-       .transition()
-       .duration(1000)
-       .attr('opacity', 1);
+    // ДОБАВЛЯЕМ ВИЗУАЛИЗАЦИЮ ПРОДАЖ (зеленые столбики вниз)
+    if (salesData.length > 0) {
+      const salesScale = d3.scaleLinear()
+        .domain([0, maxDailySales * 1.2])
+        .range([0, height * 0.3]); // Используем 30% высоты для продаж
 
-     // Линия
-     const path = g.append('path')
-       .datum(daysWithData)
-       .attr('fill', 'none')
-       .attr('stroke', barColor)
-       .attr('stroke-width', 3)
-       .attr('d', line);
+      const salesBars = g.selectAll('.sales-bar')
+        .data(salesData)
+        .enter().append('g')
+        .attr('class', 'sales-bar');
 
-     const totalLength = path.node().getTotalLength();
-     path
-       .attr('stroke-dasharray', totalLength)
-       .attr('stroke-dashoffset', totalLength)
-       .transition()
-       .duration(1500)
-       .attr('stroke-dashoffset', 0);
-   }
+      // Столбики продаж (вниз от линии)
+      salesBars.filter(d => d.sales > 0)
+        .append('rect')
+        .attr('x', d => xScale(d.day) - 3)
+        .attr('y', d => yScale(d.stockLevel))
+        .attr('width', 6)
+        .attr('height', 0)
+        .attr('fill', '#10b981')
+        .attr('opacity', 0.7)
+        .attr('rx', 2)
+        .transition()
+        .duration(800)
+        .delay((d, i) => i * 50)
+        .attr('height', d => salesScale(d.sales));
 
-   // Точки
-   const dots = g.selectAll('.dot-group')
-     .data(dailyData)
-     .enter().append('g')
-     .attr('class', 'dot-group');
+      // Числа продаж над столбиками
+      salesBars.filter(d => d.sales > 50) // Показываем только значимые продажи
+        .append('text')
+        .attr('x', d => xScale(d.day))
+        .attr('y', d => yScale(d.stockLevel) + salesScale(d.sales) + 15)
+        .attr('text-anchor', 'middle')
+        .style('fill', '#10b981')
+        .style('font-size', '10px')
+        .style('font-weight', '600')
+        .style('opacity', 0)
+        .text(d => `-${d.sales}`)
+        .transition()
+        .duration(800)
+        .delay((d, i) => i * 50 + 400)
+        .style('opacity', 1);
+    }
+  }
+  
+  if (daysWithData.length > 0) {
+    const line = d3.line()
+      .x(d => xScale(d.day))
+      .y(d => yScale(d.total))
+      .curve(d3.curveMonotoneX);
 
-   dots.filter(d => d.hasData && d.total > 0)
-     .append('circle')
-     .attr('class', 'dot')
-     .attr('cx', d => xScale(d.day))
-     .attr('cy', d => yScale(d.total))
-     .attr('r', 0)
-     .attr('fill', barColor)
-     .attr('stroke', '#fff')
-     .attr('stroke-width', 2)
-     .style('cursor', 'pointer')
-     .on('mouseover', function(event, d) {
-       d3.select(this)
-         .transition()
-         .duration(200)
-         .attr('r', 6);
-         
-       if (tooltipRef.current) {
-         tooltipRef.current.remove();
-       }
-         
-       const tooltip = d3.select('body').append('div')
-         .attr('class', 'chart-tooltip')
-         .style('position', 'absolute')
-         .style('visibility', 'hidden')
-         .style('background-color', isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)')
-         .style('color', isDark ? '#f3f4f6' : '#1f2937')
-         .style('padding', '12px')
-         .style('border-radius', '8px')
-         .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.1)')
-         .style('font-size', '14px')
-         .style('pointer-events', 'none')
-         .style('z-index', 1000);
+    const area = d3.area()
+      .x(d => xScale(d.day))
+      .y0(height)
+      .y1(d => yScale(d.total))
+      .curve(d3.curveMonotoneX);
 
-       tooltipRef.current = tooltip.node();
+    // Область
+    g.append('path')
+      .datum(daysWithData)
+      .attr('fill', 'url(#areaGradient)')
+      .attr('opacity', 0)
+      .attr('d', area)
+      .transition()
+      .duration(1000)
+      .attr('opacity', 1);
 
-       let tooltipContent = `
-         <div style="font-weight: 600; margin-bottom: 8px;">${d.dateStr}</div>
-         <div>Всего: <span style="font-weight: 600;">${d.total.toLocaleString('ru-RU')}</span></div>
-       `;
+    // Линия
+    const path = g.append('path')
+      .datum(daysWithData)
+      .attr('fill', 'none')
+      .attr('stroke', barColor)
+      .attr('stroke-width', 3)
+      .attr('d', line);
 
-       // Если выбраны все модели, показываем разбивку по моделям
-       if (selectedModel === 'all') {
-         tooltipContent += `
-           <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
-         `;
-         availableModels.forEach(model => {
-           const value = d[model.name] || 0;
-           if (value > 0) {
-             tooltipContent += `
-               <div style="display: flex; justify-content: space-between; align-items: center; margin: 2px 0;">
-                 <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">${model.name}:</span>
-                 <span style="font-weight: 500; margin-left: 8px;">${value.toLocaleString('ru-RU')}</span>
-               </div>
-             `;
-           }
-         });
-         tooltipContent += '</div>';
-       }
+    const totalLength = path.node().getTotalLength();
+    path
+      .attr('stroke-dasharray', totalLength)
+      .attr('stroke-dashoffset', totalLength)
+      .transition()
+      .duration(1500)
+      .attr('stroke-dashoffset', 0);
 
-       tooltip.html(tooltipContent);
+    // Добавляем среднюю линию остатков
+    const avgStock = d3.mean(daysWithData, d => d.total);
+    g.append('line')
+      .attr('x1', xScale(daysWithData[0].day))
+      .attr('x2', xScale(daysWithData[daysWithData.length - 1].day))
+      .attr('y1', yScale(avgStock))
+      .attr('y2', yScale(avgStock))
+      .attr('stroke', isDark ? '#6b7280' : '#9ca3af')
+      .attr('stroke-width', 1.5)
+      .attr('stroke-dasharray', '5,5')
+      .attr('opacity', 0.7);
 
-       tooltip
-         .style('visibility', 'visible')
-         .style('left', (event.pageX + 10) + 'px')
-         .style('top', (event.pageY - 10) + 'px');
-     })
-     .on('mousemove', function(event) {
-       if (tooltipRef.current) {
-         d3.select(tooltipRef.current)
-           .style('left', (event.pageX + 10) + 'px')
-           .style('top', (event.pageY - 10) + 'px');
-       }
-     })
-     .on('mouseout', function(event, d) {
-       if (selectedDay?.day !== d.day) {
-         d3.select(this)
-           .transition()
-           .duration(200)
-           .attr('r', 4);
-       }
-       
-       if (tooltipRef.current) {
-         tooltipRef.current.remove();
-         tooltipRef.current = null;
-       }
-     })
-     .on('click', function(event, d) {
-       setSelectedDay(d);
-       
-       if (tooltipRef.current) {
-         tooltipRef.current.remove();
-         tooltipRef.current = null;
-       }
-     })
-     .transition()
-     .duration(1500)
-     .delay((d, i) => i * 30)
-     .attr('r', 4);
+    g.append('text')
+      .attr('x', xScale(daysWithData[daysWithData.length - 1].day) + 5)
+      .attr('y', yScale(avgStock))
+      .attr('dy', '0.3em')
+      .style('fill', isDark ? '#6b7280' : '#9ca3af')
+      .style('font-size', '11px')
+      .text(`Ср. остаток: ${Math.round(avgStock).toLocaleString('ru-RU')}`);
+  }
 
-   // Проверка на отсутствие данных
-   if (daysWithData.length === 0) {
-     g.append('text')
-       .attr('x', width / 2)
-       .attr('y', height / 2)
-       .attr('text-anchor', 'middle')
-       .style('fill', isDark ? '#6b7280' : '#9ca3af')
-       .style('font-size', '14px')
-       .text('Нет данных за этот месяц');
-   }
+  // Точки
+  const dots = g.selectAll('.dot-group')
+    .data(dailyData)
+    .enter().append('g')
+    .attr('class', 'dot-group');
 
-   // Числа над точками
-   const showEveryNthLabel = daysWithData.length > 20 ? 3 : 1;
-   dots.filter((d, i) => d.hasData && d.total > 0 && i % showEveryNthLabel === 0)
-     .append('text')
-     .attr('class', 'dot-label')
-     .attr('x', d => xScale(d.day))
-     .attr('y', d => yScale(d.total) - 15)
-     .attr('text-anchor', 'middle')
-     .style('fill', isDark ? '#f3f4f6' : '#1f2937')
-     .style('font-size', '11px')
-     .style('font-weight', '500')
-     .style('opacity', 0)
-     .text(d => d.total.toLocaleString('ru-RU'))
-     .transition()
-     .duration(1500)
-     .delay((d, i) => i * 30)
-     .style('opacity', 0.8);
+  dots.filter(d => d.hasData && d.total > 0)
+    .append('circle')
+    .attr('class', 'dot')
+    .attr('cx', d => xScale(d.day))
+    .attr('cy', d => yScale(d.total))
+    .attr('r', 0)
+    .attr('fill', barColor)
+    .attr('stroke', '#fff')
+    .attr('stroke-width', 2)
+    .style('cursor', 'pointer')
+    .on('mouseover', function(event, d) {
+      d3.select(this)
+        .transition()
+        .duration(200)
+        .attr('r', 6);
+        
+      if (tooltipRef.current) {
+        tooltipRef.current.remove();
+      }
+        
+      const tooltip = d3.select('body').append('div')
+        .attr('class', 'chart-tooltip')
+        .style('position', 'absolute')
+        .style('visibility', 'hidden')
+        .style('background-color', isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)')
+        .style('color', isDark ? '#f3f4f6' : '#1f2937')
+        .style('padding', '12px')
+        .style('border-radius', '8px')
+        .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.1)')
+        .style('font-size', '14px')
+        .style('pointer-events', 'none')
+        .style('z-index', 1000);
 
-   // Оси
-   g.append('g')
-     .attr('transform', `translate(0,${height})`)
-     .call(d3.axisBottom(xScale)
-       .ticks(dailyData.length > 20 ? 10 : dailyData.length)
-       .tickFormat(d => Math.floor(d))
-     )
-     .selectAll('text')
-     .style('fill', isDark ? '#9ca3af' : '#4b5563')
-     .style('font-size', '10px')
-     .attr('transform', dailyData.length > 20 ? 'rotate(-45)' : null)
-     .style('text-anchor', dailyData.length > 20 ? 'end' : 'middle');
+      tooltipRef.current = tooltip.node();
 
-   g.append('g')
-     .call(d3.axisLeft(yScale)
-       .ticks(5)
-       .tickFormat(d => d.toLocaleString('ru-RU'))
-     )
-     .selectAll('text')
-     .style('fill', isDark ? '#9ca3af' : '#4b5563')
-     .style('font-size', '11px');
+      // Вычисляем продажи для этого дня
+      const dayIndex = daysWithData.findIndex(day => day.day === d.day);
+      let dailySales = 0;
+      if (dayIndex > 0) {
+        dailySales = daysWithData[dayIndex - 1].total - d.total;
+      }
 
-   // Заголовок
-   g.append('text')
-     .attr('x', width / 2)
-     .attr('y', -20)
-     .attr('text-anchor', 'middle')
-     .style('fill', isDark ? '#f3f4f6' : '#1f2937')
-     .style('font-size', '14px')
-     .style('font-weight', '600')
-     .text(`Динамика по дням - ${selectedMonth.month} ${selectedMonth.year}`);
+      let tooltipContent = `
+        <div style="font-weight: 600; margin-bottom: 8px;">${d.dateStr}</div>
+        <div style="display: flex; justify-content: space-between; gap: 20px;">
+          <span>Остаток:</span>
+          <span style="font-weight: 600;">${d.total.toLocaleString('ru-RU')}</span>
+        </div>
+      `;
 
- }, [selectedMonthIndex, dimensions, isDark, selectedModel, selectedDay, apiData, loading]);
+      if (dailySales > 0) {
+        tooltipContent += `
+          <div style="display: flex; justify-content: space-between; gap: 20px; color: #10b981;">
+            <span>Продано:</span>
+            <span style="font-weight: 600;">${dailySales.toLocaleString('ru-RU')}</span>
+          </div>
+        `;
+      }
+
+      // Если выбраны все модели, показываем разбивку
+      if (selectedModel === 'all' && d.hasData) {
+        tooltipContent += `
+          <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
+        `;
+        availableModels.forEach(model => {
+          const value = d[model.name] || 0;
+          if (value > 0) {
+            tooltipContent += `
+              <div style="display: flex; justify-content: space-between; align-items: center; margin: 2px 0;">
+                <span style="color: ${isDark ? '#9ca3af' : '#6b7280'}; font-size: 12px;">${model.name}:</span>
+                <span style="font-weight: 500; margin-left: 8px; font-size: 12px;">${value.toLocaleString('ru-RU')}</span>
+              </div>
+            `;
+          }
+        });
+        tooltipContent += '</div>';
+      }
+
+      tooltip.html(tooltipContent);
+
+      tooltip
+        .style('visibility', 'visible')
+        .style('left', (event.pageX + 10) + 'px')
+        .style('top', (event.pageY - 10) + 'px');
+    })
+    .on('mousemove', function(event) {
+      if (tooltipRef.current) {
+        d3.select(tooltipRef.current)
+          .style('left', (event.pageX + 10) + 'px')
+          .style('top', (event.pageY - 10) + 'px');
+      }
+    })
+    .on('mouseout', function(event, d) {
+      if (selectedDay?.day !== d.day) {
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .attr('r', 4);
+      }
+      
+      if (tooltipRef.current) {
+        tooltipRef.current.remove();
+        tooltipRef.current = null;
+      }
+    })
+    .on('click', function(event, d) {
+      setSelectedDay(d);
+      
+      if (tooltipRef.current) {
+        tooltipRef.current.remove();
+        tooltipRef.current = null;
+      }
+    })
+    .transition()
+    .duration(1500)
+    .delay((d, i) => i * 30)
+    .attr('r', 4);
+
+  // Проверка на отсутствие данных
+  if (daysWithData.length === 0) {
+    g.append('text')
+      .attr('x', width / 2)
+      .attr('y', height / 2)
+      .attr('text-anchor', 'middle')
+      .style('fill', isDark ? '#6b7280' : '#9ca3af')
+      .style('font-size', '14px')
+      .text('Нет данных за этот месяц');
+  }
+
+  // Оси
+  g.append('g')
+    .attr('transform', `translate(0,${height})`)
+    .call(d3.axisBottom(xScale)
+      .ticks(dailyData.length > 20 ? 10 : dailyData.length)
+      .tickFormat(d => Math.floor(d))
+    )
+    .selectAll('text')
+    .style('fill', isDark ? '#9ca3af' : '#4b5563')
+    .style('font-size', '10px')
+    .attr('transform', dailyData.length > 20 ? 'rotate(-45)' : null)
+    .style('text-anchor', dailyData.length > 20 ? 'end' : 'middle');
+
+  g.append('g')
+    .call(d3.axisLeft(yScale)
+      .ticks(5)
+      .tickFormat(d => d.toLocaleString('ru-RU'))
+    )
+    .selectAll('text')
+    .style('fill', isDark ? '#9ca3af' : '#4b5563')
+    .style('font-size', '11px');
+
+  // Заголовок с акцентом на продажи
+  g.append('text')
+    .attr('x', width / 2)
+    .attr('y', -20)
+    .attr('text-anchor', 'middle')
+    .style('fill', isDark ? '#f3f4f6' : '#1f2937')
+    .style('font-size', '14px')
+    .style('font-weight', '600')
+    .text(`Остатки и продажи - ${selectedMonth.month} ${selectedMonth.year}`);
+
+  // Легенда
+  const legend = g.append('g')
+    .attr('transform', `translate(${width - 200}, ${height - 40})`);
+
+  // Остатки
+  legend.append('line')
+    .attr('x1', 0)
+    .attr('x2', 20)
+    .attr('y1', 0)
+    .attr('y2', 0)
+    .attr('stroke', barColor)
+    .attr('stroke-width', 3);
+
+  legend.append('text')
+    .attr('x', 25)
+    .attr('y', 0)
+    .attr('dy', '0.3em')
+    .style('fill', isDark ? '#f3f4f6' : '#374151')
+    .style('font-size', '11px')
+    .text('Остатки на складе');
+
+  // Продажи
+  legend.append('rect')
+    .attr('x', 0)
+    .attr('y', 15)
+    .attr('width', 20)
+    .attr('height', 10)
+    .attr('fill', '#10b981')
+    .attr('opacity', 0.7);
+
+  legend.append('text')
+    .attr('x', 25)
+    .attr('y', 20)
+    .attr('dy', '0.3em')
+    .style('fill', isDark ? '#f3f4f6' : '#374151')
+    .style('font-size', '11px')
+    .text('Объем продаж');
+
+}, [selectedMonthIndex, dimensions, isDark, selectedModel, selectedDay, apiData, loading]);
 
  // Вычисляем значения для отображения
  const availableModels = getAvailableModels();
