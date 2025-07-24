@@ -629,7 +629,7 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
 
  }, [dimensions, isDark, selectedModel, apiData, loading, selectedMonthIndex]); // Добавили selectedMonthIndex
 
- // Отрисовка графика по дням
+// Отрисовка графика по дням
 useEffect(() => {
   if (selectedMonthIndex === null || !dimensions.width || loading) return;
 
@@ -760,7 +760,7 @@ useEffect(() => {
       .attr('x', -10)
       .attr('y', -10)
       .attr('width', 250)
-      .attr('height', 100)
+      .attr('height', 140) // Увеличиваем высоту для новой метрики
       .attr('rx', 8)
       .attr('fill', isDark ? '#1f2937' : '#f9fafb')
       .attr('stroke', isDark ? '#374151' : '#e5e7eb')
@@ -775,41 +775,92 @@ useEffect(() => {
       .style('fill', isDark ? '#9ca3af' : '#6b7280')
       .text('Движение на складе');
 
-    // Отгрузки (ЗЕЛЕНЫЙ - хорошо)
+    // ОБЩАЯ ДИНАМИКА ЗА МЕСЯЦ - ГЛАВНАЯ МЕТРИКА
+    // Вычисляем общее изменение
+    const firstDayStock = daysWithData[0].total;
+    const lastDayStock = daysWithData[daysWithData.length - 1].total;
+    const totalMonthChange = lastDayStock - firstDayStock;
+    const isGoodDynamics = totalMonthChange < 0; // Отрицательное изменение = хорошо
+
+    // Большая цифра с динамикой
+    const dynamicsGroup = statsGroup.append('g')
+      .attr('transform', 'translate(5, 25)');
+
+    // Иконка тренда
+    dynamicsGroup.append('path')
+      .attr('d', isGoodDynamics 
+        ? 'M5 10l7-7m0 0l7 7m-7-7v12' // Стрелка вниз (хорошо)
+        : 'M5 14l7-7m0 0l7 7m-7-7v12' // Стрелка вверх (плохо)
+      )
+      .attr('transform', 'scale(0.8) translate(0, 5)')
+      .attr('fill', 'none')
+      .attr('stroke', isGoodDynamics ? '#10b981' : '#ef4444')
+      .attr('stroke-width', 2)
+      .attr('stroke-linecap', 'round')
+      .attr('stroke-linejoin', 'round');
+
+    // Основная цифра
+    dynamicsGroup.append('text')
+      .attr('x', 25)
+      .attr('y', 15)
+      .style('font-size', '24px')
+      .style('font-weight', '700')
+      .style('fill', isGoodDynamics ? '#10b981' : '#ef4444')
+      .text(`${totalMonthChange > 0 ? '+' : ''}${Math.abs(totalMonthChange).toLocaleString('ru-RU')} шт`);
+
+    // Подпись под цифрой
+    dynamicsGroup.append('text')
+      .attr('x', 25)
+      .attr('y', 30)
+      .style('font-size', '11px')
+      .style('fill', isDark ? '#9ca3af' : '#6b7280')
+      .text(isGoodDynamics ? 'Хорошая динамика' : 'Машины залеживаются');
+
+    // Разделительная линия
+    statsGroup.append('line')
+      .attr('x1', 0)
+      .attr('x2', 230)
+      .attr('y1', 65)
+      .attr('y2', 65)
+      .attr('stroke', isDark ? '#374151' : '#e5e7eb')
+      .attr('stroke-width', 1);
+
+    // Детализация ниже
+    // Отгрузки (всегда зеленый - это хорошо)
     statsGroup.append('circle')
       .attr('cx', 10)
-      .attr('cy', 30)
+      .attr('cy', 80)
       .attr('r', 4)
       .attr('fill', '#10b981');
     
     statsGroup.append('text')
       .attr('x', 20)
-      .attr('y', 30)
+      .attr('y', 80)
       .attr('dy', '0.3em')
-      .style('font-size', '13px')
+      .style('font-size', '12px')
       .style('fill', isDark ? '#f3f4f6' : '#374151')
       .text(`Отгружено: ${totalOutgoing.toLocaleString('ru-RU')} шт`);
 
-    // Поступления (КРАСНЫЙ - увеличение запасов)
+    // Поступления (всегда красный - увеличение запасов)
     statsGroup.append('circle')
       .attr('cx', 10)
-      .attr('cy', 50)
+      .attr('cy', 100)
       .attr('r', 4)
       .attr('fill', '#ef4444');
     
     statsGroup.append('text')
       .attr('x', 20)
-      .attr('y', 50)
+      .attr('y', 100)
       .attr('dy', '0.3em')
-      .style('font-size', '13px')
+      .style('font-size', '12px')
       .style('fill', isDark ? '#f3f4f6' : '#374151')
       .text(`Поступило: ${totalIncoming.toLocaleString('ru-RU')} шт`);
 
     // Средний оборот
     statsGroup.append('text')
       .attr('x', 5)
-      .attr('y', 75)
-      .style('font-size', '12px')
+      .attr('y', 120)
+      .style('font-size', '11px')
       .style('fill', isDark ? '#9ca3af' : '#6b7280')
       .text(`Ср. оборот: ${Math.round(avgTurnover).toLocaleString('ru-RU')} шт/день`);
 
