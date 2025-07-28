@@ -717,24 +717,16 @@ useEffect(() => {
   // Линии и области
   const daysWithData = dailyData.filter(d => d.hasData && d.total > 0);
 
-  // БЛОК АНАЛИЗА ДВИЖЕНИЯ ТОВАРА
+  // ВИЗУАЛИЗАЦИЯ ДВИЖЕНИЯ ТОВАРА (БЕЗ БЛОКА СТАТИСТИКИ)
   if (daysWithData.length > 1) {
     // Вычисляем изменения между днями
     const movementData = [];
-    let totalOutgoing = 0;
-    let totalIncoming = 0;
     let maxMovement = 0;
     
     for (let i = 1; i < daysWithData.length; i++) {
       const prevDay = daysWithData[i - 1];
       const currentDay = daysWithData[i];
       const movement = currentDay.total - prevDay.total;
-      
-      if (movement < 0) {
-        totalOutgoing += Math.abs(movement);
-      } else if (movement > 0) {
-        totalIncoming += movement;
-      }
       
       maxMovement = Math.max(maxMovement, Math.abs(movement));
       
@@ -747,122 +739,6 @@ useEffect(() => {
         isOutgoing: movement < 0
       });
     }
-
-    // Средний оборот
-    const avgTurnover = (totalOutgoing + totalIncoming) / (daysWithData.length - 1) / 2;
-    
-    // БЛОК СТАТИСТИКИ ДВИЖЕНИЯ
-    const statsGroup = svg.append('g')
-      .attr('transform', `translate(${dimensions.width - 260}, ${20})`);
-
-    // Фоновый прямоугольник
-    statsGroup.append('rect')
-      .attr('x', -10)
-      .attr('y', -10)
-      .attr('width', 250)
-      .attr('height', 140) // Увеличиваем высоту для новой метрики
-      .attr('rx', 8)
-      .attr('fill', isDark ? '#1f2937' : '#f9fafb')
-      .attr('stroke', isDark ? '#374151' : '#e5e7eb')
-      .attr('stroke-width', 1);
-
-    // Заголовок
-    statsGroup.append('text')
-      .attr('x', 5)
-      .attr('y', 5)
-      .style('font-size', '12px')
-      .style('font-weight', '600')
-      .style('fill', isDark ? '#9ca3af' : '#6b7280')
-      .text('Движение на складе');
-
-    // ОБЩАЯ ДИНАМИКА ЗА МЕСЯЦ - ГЛАВНАЯ МЕТРИКА
-    // Вычисляем общее изменение
-    const firstDayStock = daysWithData[0].total;
-    const lastDayStock = daysWithData[daysWithData.length - 1].total;
-    const totalMonthChange = lastDayStock - firstDayStock;
-    const isGoodDynamics = totalMonthChange < 0; // Отрицательное изменение = хорошо
-
-    // Большая цифра с динамикой
-    const dynamicsGroup = statsGroup.append('g')
-      .attr('transform', 'translate(5, 25)');
-
-    // Иконка тренда
-    dynamicsGroup.append('path')
-      .attr('d', isGoodDynamics 
-        ? 'M5 10l7-7m0 0l7 7m-7-7v12' // Стрелка вниз (хорошо)
-        : 'M5 14l7-7m0 0l7 7m-7-7v12' // Стрелка вверх (плохо)
-      )
-      .attr('transform', 'scale(0.8) translate(0, 5)')
-      .attr('fill', 'none')
-      .attr('stroke', isGoodDynamics ? '#10b981' : '#ef4444')
-      .attr('stroke-width', 2)
-      .attr('stroke-linecap', 'round')
-      .attr('stroke-linejoin', 'round');
-
-    // Основная цифра
-    dynamicsGroup.append('text')
-      .attr('x', 25)
-      .attr('y', 15)
-      .style('font-size', '24px')
-      .style('font-weight', '700')
-      .style('fill', isGoodDynamics ? '#10b981' : '#ef4444')
-      .text(`${totalMonthChange > 0 ? '+' : ''}${Math.abs(totalMonthChange).toLocaleString('ru-RU')} шт`);
-
-    // Подпись под цифрой
-    dynamicsGroup.append('text')
-      .attr('x', 25)
-      .attr('y', 30)
-      .style('font-size', '11px')
-      .style('fill', isDark ? '#9ca3af' : '#6b7280')
-      .text(isGoodDynamics ? 'Хорошая динамика' : 'Машины залеживаются');
-
-    // Разделительная линия
-    statsGroup.append('line')
-      .attr('x1', 0)
-      .attr('x2', 230)
-      .attr('y1', 65)
-      .attr('y2', 65)
-      .attr('stroke', isDark ? '#374151' : '#e5e7eb')
-      .attr('stroke-width', 1);
-
-    // Детализация ниже
-    // Отгрузки (всегда зеленый - это хорошо)
-    statsGroup.append('circle')
-      .attr('cx', 10)
-      .attr('cy', 80)
-      .attr('r', 4)
-      .attr('fill', '#10b981');
-    
-    statsGroup.append('text')
-      .attr('x', 20)
-      .attr('y', 80)
-      .attr('dy', '0.3em')
-      .style('font-size', '12px')
-      .style('fill', isDark ? '#f3f4f6' : '#374151')
-      .text(`Отгружено: ${totalOutgoing.toLocaleString('ru-RU')} шт`);
-
-    // Поступления (всегда красный - увеличение запасов)
-    statsGroup.append('circle')
-      .attr('cx', 10)
-      .attr('cy', 100)
-      .attr('r', 4)
-      .attr('fill', '#ef4444');
-    
-    statsGroup.append('text')
-      .attr('x', 20)
-      .attr('y', 100)
-      .attr('dy', '0.3em')
-      .style('font-size', '12px')
-      .style('fill', isDark ? '#f3f4f6' : '#374151')
-      .text(`Поступило: ${totalIncoming.toLocaleString('ru-RU')} шт`);
-
-    // Средний оборот
-    statsGroup.append('text')
-      .attr('x', 5)
-      .attr('y', 120)
-      .style('font-size', '11px')
-      .style('fill', isDark ? '#9ca3af' : '#6b7280')
-      .text(`Ср. оборот: ${Math.round(avgTurnover).toLocaleString('ru-RU')} шт/день`);
 
     // ВИЗУАЛИЗАЦИЯ ДВИЖЕНИЯ ТОВАРА
     if (movementData.length > 0) {
@@ -882,7 +758,7 @@ useEffect(() => {
         .attr('y', d => yScale(d.stockLevel))
         .attr('width', 8)
         .attr('height', 0)
-        .attr('fill', '#10b981') // Зеленый цвет для отгрузок
+        .attr('fill', '#10b981')
         .attr('opacity', 0.6)
         .attr('rx', 2)
         .transition()
@@ -897,7 +773,7 @@ useEffect(() => {
         .attr('y', d => yScale(d.stockLevel) - movementScale(d.movement))
         .attr('width', 8)
         .attr('height', 0)
-        .attr('fill', '#ef4444') // Красный цвет для поступлений
+        .attr('fill', '#ef4444')
         .attr('opacity', 0.6)
         .attr('rx', 2)
         .transition()
@@ -917,7 +793,7 @@ useEffect(() => {
           }
         })
         .attr('text-anchor', 'middle')
-        .style('fill', d => d.isOutgoing ? '#10b981' : '#ef4444') // Соответствующие цвета
+        .style('fill', d => d.isOutgoing ? '#10b981' : '#ef4444')
         .style('font-size', '10px')
         .style('font-weight', '600')
         .style('opacity', 0)
@@ -971,7 +847,7 @@ useEffect(() => {
     const minStock = d3.min(daysWithData, d => d.total);
     const maxStock = d3.max(daysWithData, d => d.total);
     
-    // Линия минимального уровня (зеленая - хорошо когда мало остатков)
+    // Линия минимального уровня
     g.append('line')
       .attr('x1', xScale(daysWithData[0].day))
       .attr('x2', xScale(daysWithData[daysWithData.length - 1].day))
@@ -990,7 +866,7 @@ useEffect(() => {
       .style('font-size', '10px')
       .text(`Мин: ${minStock.toLocaleString('ru-RU')}`);
 
-    // Линия максимального уровня (красная - много остатков)
+    // Линия максимального уровня
     g.append('line')
       .attr('x1', xScale(daysWithData[0].day))
       .attr('x2', xScale(daysWithData[daysWithData.length - 1].day))
@@ -1074,7 +950,7 @@ useEffect(() => {
       `;
 
       if (dayMovement !== 0) {
-        const color = dayMovement > 0 ? '#ef4444' : '#10b981'; // Поменяли цвета
+        const color = dayMovement > 0 ? '#ef4444' : '#10b981';
         tooltipContent += `
           <div style="display: flex; justify-content: space-between; gap: 20px; color: ${color};">
             <span>${movementType}:</span>
@@ -1083,7 +959,6 @@ useEffect(() => {
         `;
       }
 
-      // Если выбраны все модели, показываем разбивку
       if (selectedModel === 'all' && d.hasData) {
         tooltipContent += `
           <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
@@ -1185,7 +1060,7 @@ useEffect(() => {
     .style('text-anchor', 'middle')
     .style('fill', isDark ? '#9ca3af' : '#6b7280')
     .style('font-size', '12px')
-    .text('Количество на складе (шт)');
+    // .text('Количество на складе (шт)');
 
   // Заголовок
   g.append('text')
@@ -1412,29 +1287,173 @@ useEffect(() => {
      </div>
 
      {/* Информация о выбранном месяце */}
-     {selectedMonthIndex !== null && (() => {
-       const selectedMonth = monthlyData[selectedMonthIndex];
-       
-       return selectedMonth && selectedMonth.hasData && (
-         <div className={`mx-6 mb-4 px-4 py-3 rounded-lg ${
-           isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'
-         }`}>
-           <div className="flex items-center justify-between">
-             <div className="flex items-center gap-2">
-               <svg className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-               </svg>
-               <span className={`text-sm font-medium ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                 {selectedMonth.month} {selectedMonth.year}
-               </span>
-             </div>
-             <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-               {selectedMonth.total.toLocaleString('ru-RU')} автомобилей
-             </span>
-           </div>
-         </div>
-       );
-     })()}
+ {/* График по дням */}
+{/* График по дням */}
+{selectedMonthIndex !== null && (
+  <div className={`px-6 pb-6`}>
+    <div className={`${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} rounded-lg p-4`}>
+      
+      {/* БЛОК СТАТИСТИКИ ДВИЖЕНИЯ */}
+      {(() => {
+        const monthlyData = getMonthlyData();
+        const selectedMonth = monthlyData[selectedMonthIndex];
+        const dailyData = getDailyData();
+        const daysWithData = dailyData.filter(d => d.hasData && d.total > 0);
+        
+        if (!selectedMonth || !selectedMonth.hasData || daysWithData.length <= 1) return null;
+
+        // Вычисляем статистику движения
+        let totalOutgoing = 0;
+        let totalIncoming = 0;
+        
+        for (let i = 1; i < daysWithData.length; i++) {
+          const prevDay = daysWithData[i - 1];
+          const currentDay = daysWithData[i];
+          const movement = currentDay.total - prevDay.total;
+          
+          if (movement < 0) {
+            totalOutgoing += Math.abs(movement);
+          } else if (movement > 0) {
+            totalIncoming += movement;
+          }
+        }
+
+        const firstDayStock = daysWithData[0].total;
+        const lastDayStock = daysWithData[daysWithData.length - 1].total;
+        const totalMonthChange = lastDayStock - firstDayStock;
+        const isGoodDynamics = totalMonthChange < 0;
+        const avgTurnover = (totalOutgoing + totalIncoming) / (daysWithData.length - 1) / 2;
+
+        return (
+          <div className={`mb-4 p-4 rounded-lg ${isDark ? 'bg-gray-800' : 'bg-white'} border ${
+            isDark ? 'border-gray-700' : 'border-gray-200'
+          }`}>
+            <div className="flex flex-col md:flex-row gap-4">
+              {/* Главная динамика */}
+              <div className="flex-1">
+                <h5 className={`text-sm font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Движение на складе
+                </h5>
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${isGoodDynamics ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                    <svg 
+                      className={`w-5 h-5 ${isGoodDynamics ? 'text-green-500' : 'text-red-500'}`} 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d={isGoodDynamics 
+                          ? 'M19 14l-7 7m0 0l-7-7m7 7V3' // Стрелка вниз
+                          : 'M5 10l7-7m0 0l7 7m-7-7v18' // Стрелка вверх
+                        } 
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className={`text-2xl font-bold ${isGoodDynamics ? 'text-green-500' : 'text-red-500'}`}>
+                      {totalMonthChange > 0 ? '+' : ''}{Math.abs(totalMonthChange).toLocaleString('ru-RU')} шт
+                    </div>
+                    <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>
+                      {isGoodDynamics ? 'Хорошая динамика' : 'Машины залеживаются'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Детализация */}
+              <div className="flex-1 grid grid-cols-3 gap-3">
+                {/* Отгрузки */}
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Отгружено</span>
+                  </div>
+                  <div className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {totalOutgoing.toLocaleString('ru-RU')}
+                  </div>
+                </div>
+
+                {/* Поступления */}
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                    <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Поступило</span>
+                  </div>
+                  <div className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {totalIncoming.toLocaleString('ru-RU')}
+                  </div>
+                </div>
+
+                {/* Средний оборот */}
+                <div>
+                  <div className={`text-xs mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Ср. оборот/день
+                  </div>
+                  <div className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {Math.round(avgTurnover).toLocaleString('ru-RU')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* КОНТЕЙНЕР ДЛЯ SVG ГРАФИКА */}
+      {/* <div className="w-full" style={{ minHeight: '350px' }}>
+        <svg 
+          ref={dailySvgRef} 
+          width="100%" 
+          height="350"
+          style={{ display: 'block' }}
+        />
+      </div> */}
+      
+      {/* Детальная информация о выбранном дне */}
+      {selectedDay && selectedDay.hasData && (
+        <div className={`mt-4 p-4 rounded-lg ${isDark ? 'bg-gray-800' : 'bg-white'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className="flex items-center justify-between mb-3">
+            <h5 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              {selectedDay.dateStr} {selectedDay.isWeekend && <span className="text-red-500 text-sm">(выходной)</span>}
+            </h5>
+            <button
+              onClick={() => setSelectedDay(null)}
+              className={`text-sm ${isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-700'}`}
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="space-y-2">
+            <div className={`flex items-center justify-between py-2 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Всего автомобилей</span>
+              <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {selectedDay.total.toLocaleString('ru-RU')}
+              </span>
+            </div>
+            
+            {selectedModel === 'all' && (
+              availableModels.map(model => (
+                <div key={model.id} className="flex items-center justify-between py-1">
+                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {model.name}
+                  </span>
+                  <span className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {(selectedDay[model.name] || 0).toLocaleString('ru-RU')}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
      {/* График по дням */}
      {selectedMonthIndex !== null && (
