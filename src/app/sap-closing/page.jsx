@@ -1283,7 +1283,7 @@ export default function SAPClosingPage() {
   
   return (
     <div className="min-h-screen p-4 md:p-6" style={{ backgroundColor: colors.background }}>
- // В начало компонента, после заголовка, добавим:
+ 
 
 {/* Заголовок с анимацией */}
 <motion.div 

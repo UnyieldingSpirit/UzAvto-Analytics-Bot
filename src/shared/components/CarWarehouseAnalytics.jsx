@@ -43,15 +43,15 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
  const getCategoryColor = (modelName) => {
    const name = modelName.toUpperCase();
    if (name.includes('TRACKER') || name.includes('TAHOE') || name.includes('EQUINOX') || name.includes('CAPTIVA') || name.includes('TRAVERSE')) {
-     return '#3b82f6';
+    return '#8b5cf6';
    }
    if (name.includes('COBALT') || name.includes('ONIX') || name.includes('MALIBU') || name.includes('NEXIA') || name.includes('LACETTI')) {
-     return '#10b981';
+    return '#a78bfa';
    }
    if (name.includes('DAMAS') || name.includes('LABO')) {
-     return '#f59e0b';
+   return '#c084fc';
    }
-   return '#8b5cf6';
+  return '#7c3aed';
  };
 
  const formatDateForAPI = (date) => {
@@ -367,9 +367,9 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
      .range([height, 0])
      .nice();
 
-   const barColor = selectedModel === 'all' 
-     ? '#3b82f6' 
-     : availableModels.find(m => m.id === selectedModel)?.color || '#3b82f6';
+const barColor = selectedModel === 'all' 
+  ? '#8b5cf6' 
+  : availableModels.find(m => m.id === selectedModel)?.color || '#8b5cf6';
 
    // Градиент
    const gradient = svg.append('defs')
@@ -379,20 +379,20 @@ const WarehouseMonthlyChart = ({ isDark = false, enhancedCarModels = [] }) => {
      .attr('x1', 0).attr('y1', height)
      .attr('x2', 0).attr('y2', 0);
 
-   gradient.append('stop')
-     .attr('offset', '0%')
-     .attr('stop-color', d3.rgb(barColor).darker(0.5))
-     .attr('stop-opacity', 1);
+gradient.append('stop')
+  .attr('offset', '0%')
+  .attr('stop-color', d3.rgb(barColor).darker(0.5))
+  .attr('stop-opacity', 1);
 
-   gradient.append('stop')
-     .attr('offset', '50%')
-     .attr('stop-color', barColor)
-     .attr('stop-opacity', 1);
+gradient.append('stop')
+  .attr('offset', '50%')
+  .attr('stop-color', barColor)
+  .attr('stop-opacity', 1);
 
-   gradient.append('stop')
-     .attr('offset', '100%')
-     .attr('stop-color', d3.rgb(barColor).brighter(0.5))
-     .attr('stop-opacity', 1);
+gradient.append('stop')
+  .attr('offset', '100%')
+  .attr('stop-color', d3.rgb(barColor).brighter(0.5))
+  .attr('stop-opacity', 1);
 
    // Тень
    const filter = svg.append('defs')
@@ -758,7 +758,7 @@ useEffect(() => {
         .attr('y', d => yScale(d.stockLevel))
         .attr('width', 8)
         .attr('height', 0)
-        .attr('fill', '#10b981')
+        .attr('fill', '#8b5cf6')
         .attr('opacity', 0.6)
         .attr('rx', 2)
         .transition()
@@ -773,7 +773,7 @@ useEffect(() => {
         .attr('y', d => yScale(d.stockLevel) - movementScale(d.movement))
         .attr('width', 8)
         .attr('height', 0)
-        .attr('fill', '#ef4444')
+        .attr('fill', '#c084fc')
         .attr('opacity', 0.6)
         .attr('rx', 2)
         .transition()
@@ -793,7 +793,7 @@ useEffect(() => {
           }
         })
         .attr('text-anchor', 'middle')
-        .style('fill', d => d.isOutgoing ? '#10b981' : '#ef4444')
+        .style('fill', d => d.isOutgoing ? '#8b5cf6' : '#c084fc')
         .style('font-size', '10px')
         .style('font-weight', '600')
         .style('opacity', 0)
@@ -853,7 +853,7 @@ useEffect(() => {
       .attr('x2', xScale(daysWithData[daysWithData.length - 1].day))
       .attr('y1', yScale(minStock))
       .attr('y2', yScale(minStock))
-      .attr('stroke', '#10b981')
+      .attr('stroke', '#8b5cf6')
       .attr('stroke-width', 1)
       .attr('stroke-dasharray', '3,3')
       .attr('opacity', 0.5);
@@ -862,7 +862,7 @@ useEffect(() => {
       .attr('x', xScale(daysWithData[daysWithData.length - 1].day) + 5)
       .attr('y', yScale(minStock))
       .attr('dy', '0.3em')
-      .style('fill', '#10b981')
+     .style('fill', '#8b5cf6')
       .style('font-size', '10px')
       .text(`Мин: ${minStock.toLocaleString('ru-RU')}`);
 
@@ -872,7 +872,7 @@ useEffect(() => {
       .attr('x2', xScale(daysWithData[daysWithData.length - 1].day))
       .attr('y1', yScale(maxStock))
       .attr('y2', yScale(maxStock))
-      .attr('stroke', '#ef4444')
+      .attr('stroke', '#c084fc')
       .attr('stroke-width', 1)
       .attr('stroke-dasharray', '3,3')
       .attr('opacity', 0.5);
@@ -881,7 +881,7 @@ useEffect(() => {
       .attr('x', xScale(daysWithData[daysWithData.length - 1].day) + 5)
       .attr('y', yScale(maxStock))
       .attr('dy', '0.3em')
-      .style('fill', '#ef4444')
+      .style('fill', '#c084fc')
       .style('font-size', '10px')
       .text(`Макс: ${maxStock.toLocaleString('ru-RU')}`);
   }
@@ -1082,7 +1082,7 @@ useEffect(() => {
     .attr('y', 0)
     .attr('width', 12)
     .attr('height', 12)
-    .attr('fill', '#10b981')
+    .attr('fill', '#8b5cf6')
     .attr('opacity', 0.6);
 
   legend.append('text')
@@ -1099,7 +1099,7 @@ useEffect(() => {
     .attr('y', 0)
     .attr('width', 12)
     .attr('height', 12)
-    .attr('fill', '#ef4444')
+    .attr('fill', '#c084fc')
     .attr('opacity', 0.6);
 
   legend.append('text')
@@ -1335,7 +1335,7 @@ useEffect(() => {
                   Движение на складе
                 </h5>
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${isGoodDynamics ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                  <div className={`p-2 rounded-lg ${isGoodDynamics ? 'bg-purple-500/10' : 'bg-purple-700/10'}`}>
                     <svg 
                       className={`w-5 h-5 ${isGoodDynamics ? 'text-green-500' : 'text-red-500'}`} 
                       fill="none" 
@@ -1354,7 +1354,7 @@ useEffect(() => {
                     </svg>
                   </div>
                   <div>
-                    <div className={`text-2xl font-bold ${isGoodDynamics ? 'text-green-500' : 'text-red-500'}`}>
+<div className={`text-2xl font-bold ${isGoodDynamics ? 'text-purple-500' : 'text-purple-700'}`}>
                       {totalMonthChange > 0 ? '+' : ''}{Math.abs(totalMonthChange).toLocaleString('ru-RU')} шт
                     </div>
                     <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>
@@ -1369,7 +1369,7 @@ useEffect(() => {
                 {/* Отгрузки */}
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <div className="w-3 h-3 rounded-full bg-purple-500"></div>
                     <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Отгружено</span>
                   </div>
                   <div className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -1380,7 +1380,7 @@ useEffect(() => {
                 {/* Поступления */}
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                    <div className="w-3 h-3 rounded-full bg-purple-400"></div>
                     <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Поступило</span>
                   </div>
                   <div className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -2170,9 +2170,9 @@ const renderWarehouseDistribution = () => {
   container.innerHTML = '';
   
   // Сначала определяем colorScale
-  const colorScale = d3.scaleOrdinal()
-    .domain(['available', 'reserved', 'defectiveOk', 'defective', 'tradeIn'])
-    .range(['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6']);
+const colorScale = d3.scaleOrdinal()
+  .domain(['available', 'reserved', 'defectiveOk', 'defective', 'tradeIn'])
+  .range(['#8b5cf6', '#a78bfa', '#c084fc', '#c084fc', '#7c3aed']);
   
   // Увеличиваем левый отступ для размещения названий складов
   const margin = { 
@@ -2395,10 +2395,10 @@ const renderWarehouseDistribution = () => {
       
     const colorScale = d3.scaleOrdinal()
       .domain(warehouseData.map(d => d.warehouse))
-      .range([
-        '#3b82f6', '#ef4444', '#f59e0b', '#22c55e', '#8b5cf6',
-        '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16'
-      ]);
+    .range([
+  '#8b5cf6', '#a78bfa', '#c084fc', '#9333ea', '#7c3aed',
+  '#6366f1', '#a855f7', '#7e22ce', '#9f1239', '#581c87'
+]);
       
     const pie = d3.pie()
       .value(d => d.value)
@@ -2597,13 +2597,13 @@ const renderModelInventoryChart = () => {
   const defs = svg.append('defs');
   
   // Градиенты для всех статусов включая Trade-in
-  const gradients = [
-    { id: 'availableGradient', startColor: '#22c55e', endColor: '#4ade80' },
-    { id: 'reservedGradient', startColor: '#3b82f6', endColor: '#60a5fa' },
-    { id: 'defectiveOkGradient', startColor: '#f59e0b', endColor: '#fbbf24' },
-    { id: 'defectiveGradient', startColor: '#ef4444', endColor: '#f87171' },
-    { id: 'tradeInGradient', startColor: '#8b5cf6', endColor: '#a78bfa' }
-  ];
+const gradients = [
+  { id: 'availableGradient', startColor: '#8b5cf6', endColor: '#a78bfa' },
+  { id: 'reservedGradient', startColor: '#a78bfa', endColor: '#c084fc' },
+  { id: 'defectiveOkGradient', startColor: '#c084fc', endColor: '#d8b4fe' },
+  { id: 'defectiveGradient', startColor: '#7c3aed', endColor: '#9333ea' },
+  { id: 'tradeInGradient', startColor: '#6366f1', endColor: '#818cf8' }
+];
   
   gradients.forEach(g => {
     const gradient = defs.append('linearGradient')
@@ -2699,13 +2699,13 @@ if (!isMobile) {
   const legend = svg.append('g')
     .attr('transform', `translate(${width / 2 - 300}, ${height + 40})`); // Увеличиваем смещение для центрирования
     
-  const legendItems = [
-    { key: 'available', label: t('status.available'), color: '#22c55e' },
-    { key: 'reserved', label: t('status.reserved'), color: '#3b82f6' },
-    { key: 'defectiveOk', label: t('status.defectiveOk'), color: '#f59e0b' },
-    { key: 'defective', label: t('status.defective'), color: '#ef4444' },
-    { key: 'tradeIn', label: 'Trade-in', color: '#8b5cf6' }
-  ];
+const legendItems = [
+  { key: 'available', label: t('status.available'), color: '#8b5cf6' },
+  { key: 'reserved', label: t('status.reserved'), color: '#a78bfa' },
+  { key: 'defectiveOk', label: t('status.defectiveOk'), color: '#c084fc' },
+  { key: 'defective', label: t('status.defective'), color: '#7c3aed' },
+  { key: 'tradeIn', label: 'Trade-in', color: '#6366f1' }
+];
   
   legendItems.forEach((item, i) => {
     const xOffset = i * 120; // Увеличил с 85 до 100 для большего расстояния
@@ -2880,14 +2880,14 @@ if (!isMobile) {
       .append('g')
       .attr('transform', `translate(${width/2},${height/2})`);
       
-    const data = [
-      { name: t('status.free'), value: warehouse.capacity - warehouse.totalCount, color: '#94a3b8' },
-      { name: t('status.defective'), value: warehouse.defective, color: '#ef4444' }, 
-      { name: t('status.defectiveOk'), value: warehouse.defectiveOk, color: '#f59e0b' },
-      { name: t('status.reserved'), value: warehouse.reserved, color: '#3b82f6' },
-      { name: t('status.available'), value: warehouse.available, color: '#22c55e' },
-      { name: 'Trade-in', value: warehouse.tradeIn, color: '#8b5cf6' } // Добавляем Trade-in
-    ];
+const data = [
+  { name: t('status.free'), value: warehouse.capacity - warehouse.totalCount, color: '#94a3b8' },
+  { name: t('status.defective'), value: warehouse.defective, color: '#7c3aed' }, 
+  { name: t('status.defectiveOk'), value: warehouse.defectiveOk, color: '#c084fc' },
+  { name: t('status.reserved'), value: warehouse.reserved, color: '#a78bfa' },
+  { name: t('status.available'), value: warehouse.available, color: '#8b5cf6' },
+  { name: 'Trade-in', value: warehouse.tradeIn, color: '#6366f1' }
+];
     
     const pie = d3.pie()
       .value(d => d.value)
@@ -3064,7 +3064,7 @@ if (!isMobile) {
  if (error) {
    return (
      <div className={`p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} text-gray-100 min-h-screen`}>
-       <div className="bg-red-500/20 text-red-400 p-6 rounded-lg text-center">
+       <div className="bg-purple-700/20 text-purple-700 p-6 rounded-lg text-center">
          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
          </svg>
@@ -3092,7 +3092,7 @@ if (!isMobile) {
        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md`}>
          <div className="flex items-center">
            <div className={`w-12 h-12 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'} flex items-center justify-center mr-3`}>
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
              </svg>
            </div>
@@ -3106,7 +3106,7 @@ if (!isMobile) {
        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md`}>
          <div className="flex items-center">
            <div className={`w-12 h-12 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'} flex items-center justify-center mr-3`}>
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
              </svg>
            </div>
@@ -3120,7 +3120,7 @@ if (!isMobile) {
        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md`}>
          <div className="flex items-center">
            <div className={`w-12 h-12 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'} flex items-center justify-center mr-3`}>
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
              </svg>
            </div>
@@ -3134,7 +3134,7 @@ if (!isMobile) {
        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md`}>
          <div className="flex items-center">
            <div className={`w-12 h-12 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'} flex items-center justify-center mr-3`}>
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
              </svg>
            </div>
@@ -3148,7 +3148,7 @@ if (!isMobile) {
        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-md`}>
          <div className="flex items-center">
            <div className={`w-12 h-12 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'} flex items-center justify-center mr-3`}>
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
              </svg>
            </div>
@@ -3182,7 +3182,7 @@ if (!isMobile) {
            <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t('metrics.totalCarModels', { count: enhancedCarModels.length })}</span>
          </div>
          
-         <div className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm">
+         <div className="bg-purple-600/20 text-purple-600 px-3 py-1 rounded-full text-sm">
            {t('metrics.updatedAt')} {formatDate(lastUpdateDate)}
          </div>
        </div>
@@ -3195,7 +3195,7 @@ if (!isMobile) {
        <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-md`}>
          <div className="flex justify-between mb-2">
            <h2 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{t('charts.warehouseDistribution')}</h2>
-           <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">{t('charts.inventoryShare')}</span>
+           <span className="text-sm bg-purple-600/20 text-purple-600 px-2 py-1 rounded-full">{t('charts.inventoryShare')}</span>
          </div>
          <div ref={manufacturerChartRef} className="h-[300px]"></div>
        </div>
@@ -3203,7 +3203,7 @@ if (!isMobile) {
 <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-md`}>
  <div className="flex justify-between mb-2">
    <h2 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{t('charts.carsByWarehouse')}</h2>
-   <span className="text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+   <span className="text-sm bg-purple-600/20 text-purple-600 px-2 py-1 rounded-full">
      {t('charts.interactive')}
    </span>
  </div>
@@ -3247,7 +3247,7 @@ if (!isMobile) {
      <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-md mb-6`}>
        <div className="flex justify-between mb-2">
          <h2 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{t('charts.carStatusInWarehouses')}</h2>
-         <span className="text-sm bg-green-500/20 text-green-400 px-2 py-1 rounded-full">{t('charts.percentageRatio')}</span>
+         <span className="text-sm bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full">{t('charts.percentageRatio')}</span>
        </div>
        <div ref={modelInventoryChartRef} className="h-[300px]"></div>
      </div>
@@ -3293,22 +3293,22 @@ if (!isMobile) {
          <div className="mt-2 flex gap-1 flex-wrap">
            {/* Показываем все статусы, даже если 0 */}
            <span className={`text-xs px-1.5 py-0.5 rounded ${
-             model.available > 0 ? 'bg-green-500/20 text-green-400' : isDark ? 'bg-gray-600/20 text-gray-500' : 'bg-gray-300/20 text-gray-500'
+             model.available > 0 ? 'bg-purple-500/20 text-purple-400' : isDark ? 'bg-gray-600/20 text-gray-500' : 'bg-gray-300/20 text-gray-500'
            }`}>
              {model.available} {t('status.availableShort')}
            </span>
            <span className={`text-xs px-1.5 py-0.5 rounded ${
-             model.reserved > 0 ? 'bg-blue-500/20 text-blue-400' : isDark ? 'bg-gray-600/20 text-gray-500' : 'bg-gray-300/20 text-gray-500'
+             model.reserved > 0 ? 'bg-purple-600/20 text-purple-600' : isDark ? 'bg-gray-600/20 text-gray-500' : 'bg-gray-300/20 text-gray-500'
            }`}>
              {model.reserved} {t('status.reservedShort')}
            </span>
            <span className={`text-xs px-1.5 py-0.5 rounded ${
-             model.defectiveOk > 0 ? 'bg-amber-500/20 text-amber-400' : isDark ? 'bg-gray-600/20 text-gray-500' : 'bg-gray-300/20 text-gray-500'
+             model.defectiveOk > 0 ? 'bg-purple-400/20 text-purple-400' : isDark ? 'bg-gray-600/20 text-gray-500' : 'bg-gray-300/20 text-gray-500'
            }`}>
              {model.defectiveOk} {t('status.defectiveOkShort')}
            </span>
            <span className={`text-xs px-1.5 py-0.5 rounded ${
-             model.defective > 0 ? 'bg-red-500/20 text-red-400' : isDark ? 'bg-gray-600/20 text-gray-500' : 'bg-gray-300/20 text-gray-500'
+             model.defective > 0 ? 'bg-purple-700/20 text-purple-700' : isDark ? 'bg-gray-600/20 text-gray-500' : 'bg-gray-300/20 text-gray-500'
            }`}>
              {model.defective} {t('status.defectiveShort')}
            </span>
@@ -3378,12 +3378,12 @@ if (!isMobile) {
            <td className={`p-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{warehouse.available}</td>
            <td className={`p-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{warehouse.reserved}</td>
            <td className="p-3">
-             <span className={`bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full text-xs`}>
+             <span className={`bg-purple-400/20 text-purple-400 px-2 py-1 rounded-full text-xs`}>
                {warehouse.defectiveOk}
              </span>
            </td>
            <td className="p-3">
-             <span className={`bg-red-500/20 text-red-400 px-2 py-1 rounded-full text-xs`}>
+             <span className={`bg-purple-700/20 text-purple-700 px-2 py-1 rounded-full text-xs`}>
                {warehouse.defective}
              </span>
            </td>
@@ -3407,7 +3407,7 @@ if (!isMobile) {
              </td>
            )}
            <td className="p-3">
-             <button className="text-blue-400 hover:text-blue-300 transition-colors p-1 rounded-full">
+             <button className="text-purple-600 hover:text-blue-300 transition-colors p-1 rounded-full">
                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
@@ -3429,7 +3429,7 @@ if (!isMobile) {
            animate={{ opacity: 1, y: 0 }}
            exit={{ opacity: 0, y: 20 }}
            transition={{ duration: 0.3 }}
-           className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-5 shadow-md mb-6 border ${isDark ? 'border-blue-900/30' : 'border-blue-200'}`}
+           className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-5 shadow-md mb-6 border ${isDark ? 'border-purple-900/30' : 'border-purple-200'}`}
          >
            <div className="flex flex-col md:flex-row justify-between items-start mb-5">
              <div className="flex flex-col md:flex-row items-start md:items-center">
@@ -3440,7 +3440,7 @@ if (!isMobile) {
                />
                <div>
                  <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedCarModel.name}</h2>
-                 <p className="text-blue-400 text-sm">{t('details.carModelDetails')}</p>
+                 <p className="text-purple-500 text-sm">{t('details.carModelDetails')}</p>
                  <div className="flex items-center mt-1">
                    <span className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mr-2`}>{selectedCarModel.totalCount} {t('units')}</span>
                    <span className={`text-sm capitalize ${isDark ? 'bg-gray-700' : 'bg-gray-200'} px-2 py-0.5 rounded`}>{
@@ -3508,7 +3508,7 @@ if (!isMobile) {
                    </div>
                    <div className={`w-full ${isDark ? 'bg-gray-800' : 'bg-gray-200'} h-3 rounded-full overflow-hidden`}>
                      <div 
-                       className="h-full bg-green-500 rounded-full"
+                    className="h-full bg-purple-400 rounded-full"    
                        style={{ width: `${(selectedCarModel.available / selectedCarModel.totalCount) * 100}%` }}
                      ></div>
                    </div>
@@ -3525,7 +3525,7 @@ if (!isMobile) {
                    </div>
                    <div className={`w-full ${isDark ? 'bg-gray-800' : 'bg-gray-200'} h-3 rounded-full overflow-hidden`}>
                      <div 
-                       className="h-full bg-blue-500 rounded-full"
+                className="h-full bg-purple-500 rounded-full"
                        style={{ width: `${(selectedCarModel.reserved / selectedCarModel.totalCount) * 100}%` }}
                      ></div>
                    </div>
@@ -3542,7 +3542,7 @@ if (!isMobile) {
                    </div>
                    <div className={`w-full ${isDark ? 'bg-gray-800' : 'bg-gray-200'} h-3 rounded-full overflow-hidden`}>
                      <div 
-                       className="h-full bg-amber-500 rounded-full"
+                      className="h-full bg-purple-600 rounded-full" 
                        style={{ width: `${(selectedCarModel.defectiveOk / selectedCarModel.totalCount) * 100}%` }}
                      ></div>
                    </div>
@@ -3559,7 +3559,7 @@ if (!isMobile) {
                    </div>
                    <div className={`w-full ${isDark ? 'bg-gray-800' : 'bg-gray-200'} h-3 rounded-full overflow-hidden`}>
                      <div 
-                       className="h-full bg-red-500 rounded-full"
+                       className="h-full bg-purple-700 rounded-full"
                        style={{ width: `${(selectedCarModel.defective / selectedCarModel.totalCount) * 100}%` }}
                      ></div>
                    </div>
@@ -3589,7 +3589,7 @@ if (!isMobile) {
            <div className={`${isDark ? 'bg-gray-700/50' : 'bg-gray-100'} p-4 rounded-lg mb-5`}>
              <div className="flex justify-between items-center mb-3">
                <h3 className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>{t('details.colorDistribution')}</h3>
-               <div className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
+              <div className="text-xs px-2 py-1 bg-purple-500/20 text-purple-400 rounded">
                  {t('details.availableColors', { count: selectedCarModel.colors.length })}
                </div>
              </div>
@@ -3615,7 +3615,7 @@ if (!isMobile) {
                          <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'} mr-1`}>{color.available}</span>
                          <div className={`w-16 h-1.5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
                            <div 
-                             className="h-full bg-green-500 rounded-full"
+                             className="h-full bg-purple-400 rounded-full"
                              style={{ width: `${(color.available / color.count) * 100}%` }}
                            ></div>
                          </div>
@@ -3628,7 +3628,7 @@ if (!isMobile) {
                          <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'} mr-1`}>{color.reserved}</span>
                          <div className={`w-16 h-1.5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
                            <div 
-                             className="h-full bg-blue-500 rounded-full"
+                           className="h-full bg-purple-500 rounded-full"
                              style={{ width: `${(color.reserved / color.count) * 100}%` }}
                            ></div>
                          </div>
@@ -3641,7 +3641,7 @@ if (!isMobile) {
                          <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'} mr-1`}>{color.defectiveOk}</span>
                          <div className={`w-16 h-1.5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
                            <div 
-                             className="h-full bg-amber-500 rounded-full"
+                           className="h-full bg-purple-600 rounded-full" 
                              style={{ width: `${(color.defectiveOk / color.count) * 100}%` }}
                            ></div>
                          </div>
@@ -3654,7 +3654,7 @@ if (!isMobile) {
                          <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'} mr-1`}>{color.defective}</span>
                          <div className={`w-16 h-1.5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
                            <div 
-                             className="h-full bg-red-500 rounded-full"
+                            className="h-full bg-purple-700 rounded-full"
                              style={{ width: `${(color.defective / color.count) * 100}%` }}
                            ></div>
                          </div>
@@ -3668,7 +3668,7 @@ if (!isMobile) {
                            <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'} mr-1`}>{color.tradeIn}</span>
                            <div className={`w-16 h-1.5 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full overflow-hidden`}>
                              <div 
-                               className="h-full bg-purple-500 rounded-full"
+                              className="h-full bg-purple-800 rounded-full"
                                style={{ width: `${(color.tradeIn / color.count) * 100}%` }}
                              ></div>
                            </div>
@@ -3685,7 +3685,7 @@ if (!isMobile) {
            <div className={`${isDark ? 'bg-gray-700/50' : 'bg-gray-100'} p-4 rounded-lg mb-5`}>
              <div className="flex justify-between items-center mb-3">
                <h3 className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>{t('details.modifications', { model: selectedCarModel.name })}</h3>
-               <div className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
+               <div className="text-xs px-2 py-1 bg-purple-600/20 text-purple-600 rounded">
                  {t('details.modificationsCount', { count: selectedCarModel.modifications.length })}
                </div>
              </div>
@@ -3729,19 +3729,19 @@ if (!isMobile) {
                    
                    <div className="grid grid-cols-2 gap-2">
                      <div className="flex justify-between items-center bg-green-500/10 px-2 py-1 rounded">
-                       <span className="text-xs text-green-400">{t('status.available')}</span>
+                       <span className="text-xs text-purple-400">{t('status.available')}</span>
                        <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'}`}>{modification.available}</span>
                      </div>
                      <div className="flex justify-between items-center bg-blue-500/10 px-2 py-1 rounded">
-                       <span className="text-xs text-blue-400">{t('status.reserved')}</span>
+                       <span className="text-xs text-purple-600">{t('status.reserved')}</span>
                        <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'}`}>{modification.reserved}</span>
                      </div>
                      <div className="flex justify-between items-center bg-amber-500/10 px-2 py-1 rounded">
-                       <span className="text-xs text-amber-400">{t('status.defectiveOk')}</span>
+                       <span className="text-xs text-purple-400">{t('status.defectiveOk')}</span>
                        <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'}`}>{modification.defectiveOk}</span>
                      </div>
                      <div className="flex justify-between items-center bg-red-500/10 px-2 py-1 rounded">
-                       <span className="text-xs text-red-400">{t('status.defective')}</span>
+                       <span className="text-xs text-purple-700">{t('status.defective')}</span>
                        <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'}`}>{modification.defective}</span>
                      </div>
                      {modification.tradeIn > 0 && (
@@ -3821,10 +3821,10 @@ if (!isMobile) {
                <div className="flex items-center mt-1">
                  <span className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mr-2`}>{selectedWarehouse.totalCount} {t('car')}</span>
                  <span className={`text-sm px-2 py-0.5 rounded ${
-                   selectedWarehouse.status === 'critical' ? 'bg-red-500/20 text-red-400' :
-                   selectedWarehouse.status === 'high' ? 'bg-orange-500/20 text-orange-400' :
-                   selectedWarehouse.status === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                   'bg-green-500/20 text-green-400'
+         selectedWarehouse.status === 'critical' ? 'bg-purple-900/20 text-purple-300' :
+selectedWarehouse.status === 'high' ? 'bg-purple-700/20 text-purple-400' :
+selectedWarehouse.status === 'medium' ? 'bg-purple-600/20 text-purple-500' :
+'bg-purple-500/20 text-purple-400'
                  }`}>
                    {t('details.occupancy')}: {selectedWarehouse.occupancyRate}%
                  </span>
@@ -3913,22 +3913,22 @@ if (!isMobile) {
                            {/* Показываем все статусы в более компактном виде */}
                            <div className="flex flex-wrap gap-2 text-xs">
                              {model.available > 0 && (
-                               <span className="text-green-400">
+                               <span className="text-purple-400">
                                  {model.available} {t('status.availableShort')}
                                </span>
                              )}
                              {model.reserved > 0 && (
-                               <span className="text-blue-400">
+                               <span className="text-purple-400">
                                  {model.reserved} {t('status.reservedShort')}
                                </span>
                              )}
                              {model.defectiveOk > 0 && (
-                               <span className="text-amber-400">
+                               <span className="text-purple-400">
                                  {model.defectiveOk} {t('status.defectiveOkShort')}
                                </span>
                              )}
                              {model.defective > 0 && (
-                               <span className="text-red-400">
+                               <span className="text-purple-700">
                                  {model.defective} {t('status.defectiveShort')}
                                </span>
                              )}
@@ -4014,23 +4014,23 @@ if (!isMobile) {
                                <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{t('metrics.total')}</div>
                                <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{modelData.count}</div>
                              </div>
-                             <div className="bg-green-900/30 p-3 rounded-lg">
-                               <div className="text-green-400 text-xs">{t('metrics.available')}</div>
+                             <div className="bg-purple-400/20 p-3 rounded-lg">
+                               <div className="text-purple-400 text-xs">{t('metrics.available')}</div>
                                <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{modelData.available}</div>
                              </div>
-                             <div className="bg-blue-900/30 p-3 rounded-lg">
-                               <div className="text-blue-400 text-xs">{t('metrics.reserved')}</div>
+                             <div className="bg-purple-500/20 p-3 rounded-lg" >
+                               <div className="text-purple-400 text-xs">{t('metrics.reserved')}</div>
                                <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{modelData.reserved}</div>
                              </div>
-                             <div className="bg-amber-900/30 p-3 rounded-lg">
-                               <div className="text-amber-400 text-xs">{t('metrics.defectiveOk')}</div>
+                             <div className="bg-purple-600/20 p-3 rounded-lg" >
+                               <div className="text-purple-600 text-xs">{t('metrics.defectiveOk')}</div>
                                <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{modelData.defectiveOk}</div>
                              </div>
                              <div className="bg-red-900/30 p-3 rounded-lg">
-                               <div className="text-red-400 text-xs">{t('metrics.defective')}</div>
+                               <div className="text-purple-700 text-xs">{t('metrics.defective')}</div>
                                <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{modelData.defective}</div>
                              </div>
-                             <div className="bg-purple-900/30 p-3 rounded-lg">
+                             <div className="bg-purple-700/20 p-3 rounded-lg">
                                <div className="text-purple-400 text-xs">Trade-in</div>
                                <div className={`${isDark ? 'text-white' : 'text-gray-900'} text-lg font-medium`}>{modelData.tradeIn}</div>
                              </div>
@@ -4042,7 +4042,7 @@ if (!isMobile) {
                                <button 
                                  className={`pb-2 font-medium text-sm ${
                                    warehouseModelViewTab === 'modifications' 
-                                     ? 'border-b-2 border-blue-500 text-blue-400' 
+                                     ? 'border-b-2 border-blue-500 text-purple-600' 
                                      : isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-800'
                                  }`}
                                  onClick={() => setWarehouseModelViewTab('modifications')}
@@ -4052,7 +4052,7 @@ if (!isMobile) {
                                <button 
                                  className={`pb-2 font-medium text-sm ${
                                    warehouseModelViewTab === 'colors' 
-                                     ? 'border-b-2 border-blue-500 text-blue-400' 
+                                     ? 'border-b-2 border-blue-500 text-purple-600' 
                                      : isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-800'
                                  }`}
                                  onClick={() => setWarehouseModelViewTab('colors')}
@@ -4083,19 +4083,19 @@ if (!isMobile) {
                                        </div>
                                        <div className="grid grid-cols-2 gap-1 mt-2">
                                          <div className="bg-green-900/20 px-1.5 py-1 rounded flex justify-between">
-                                           <span className="text-green-400 text-xs">{t('status.availableShort')}:</span>
+                                           <span className="text-purple-400 text-xs" >{t('status.availableShort')}:</span>
                                            <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseMod.warehouseCount * (modelData.available / modelData.count))}</span>
                                          </div>
                                          <div className="bg-blue-900/20 px-1.5 py-1 rounded flex justify-between">
-                                           <span className="text-blue-400 text-xs">{t('status.reservedShort')}:</span>
+                                           <span className="text-purple-600 text-xs">{t('status.reservedShort')}:</span>
                                            <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseMod.warehouseCount * (modelData.reserved / modelData.count))}</span>
                                          </div>
                                          <div className="bg-amber-900/20 px-1.5 py-1 rounded flex justify-between">
-                                           <span className="text-amber-400 text-xs">{t('status.defectiveOkShort')}:</span>
+                                           <span className="text-purple-400 text-xs">{t('status.defectiveOkShort')}:</span>
                                            <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseMod.warehouseCount * (modelData.defectiveOk / modelData.count))}</span>
                                          </div>
                                          <div className="bg-red-900/20 px-1.5 py-1 rounded flex justify-between">
-                                           <span className="text-red-400 text-xs">{t('status.defectiveShort')}:</span>
+                                           <span className="text-purple-700 text-xs">{t('status.defectiveShort')}:</span>
                                            <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseMod.warehouseCount * (modelData.defective / modelData.count))}</span>
                                          </div>
                                          {modelData.tradeIn > 0 && (
@@ -4139,19 +4139,19 @@ if (!isMobile) {
                                        </div>
                                        <div className="grid grid-cols-2 gap-1 mt-2">
                                          <div className="bg-green-900/20 px-1.5 py-1 rounded flex justify-between">
-                                           <span className="text-green-400 text-xs">{t('status.availableShort')}:</span>
+                                           <span className="text-purple-400 text-xs">{t('status.availableShort')}:</span>
                                            <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseColor.warehouseCount * (modelData.available / modelData.count))}</span>
                                          </div>
                                          <div className="bg-blue-900/20 px-1.5 py-1 rounded flex justify-between">
-                                           <span className="text-blue-400 text-xs">{t('status.reservedShort')}:</span>
+                                           <span className="text-purple-500 text-xs" >{t('status.reservedShort')}:</span>
                                            <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseColor.warehouseCount * (modelData.reserved / modelData.count))}</span>
                                          </div>
                                          <div className="bg-amber-900/20 px-1.5 py-1 rounded flex justify-between">
-                                           <span className="text-amber-400 text-xs">{t('status.defectiveOkShort')}:</span>
+                                           <span className="text-purple-400 text-xs">{t('status.defectiveOkShort')}:</span>
                                            <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseColor.warehouseCount * (modelData.defectiveOk / modelData.count))}</span>
                                          </div>
                                          <div className="bg-red-900/20 px-1.5 py-1 rounded flex justify-between">
-                                           <span className="text-red-400 text-xs">{t('status.defectiveShort')}:</span>
+                                           <span className="text-purple-700 text-xs">{t('status.defectiveShort')}:</span>
                                            <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs`}>{Math.floor(warehouseColor.warehouseCount * (modelData.defective / modelData.count))}</span>
                                          </div>
                                          {modelData.tradeIn > 0 && (

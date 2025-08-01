@@ -2867,6 +2867,8 @@ const renderChart = (container, data, year) => {
 };
 
   
+ 
+ 
 const renderMoneyReturnChart = () => {
   // Получаем контейнер
   const container = moneyReturnChartRef.current;
@@ -2945,7 +2947,7 @@ const loadMoneyReturnData = (year) => {
     // Показываем загрузку
     chartDiv.innerHTML = `
       <div class="flex flex-col items-center justify-center h-64">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-purple-500 mb-4"></div>
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-blue-500 mb-4"></div>
         <p class="text-gray-400">Загрузка данных...</p>
       </div>
     `;

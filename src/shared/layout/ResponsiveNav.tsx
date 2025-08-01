@@ -295,20 +295,20 @@ const categoryColors = {
       category: 'warehouse',
       icon: <Car size={22} strokeWidth={1.5} color={categoryColors.warehouse} />,
     },
-    {
-      path: '/warehouse-statistics',
-      label: t('warehouseStatistics'),
-      translationKey: 'warehouseStatistics',
-      category: 'warehouse',
-      icon: <BarChart3 size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
-    },
-    {
-      path: '/sap-closing',
-      label: t('sapClosing'),
-      translationKey: 'sapClosing',
-      category: 'finance',
-      icon: <Calendar size={22} strokeWidth={1.5} color={categoryColors.finance} />,
-    }
+    // {
+    //   path: '/warehouse-statistics',
+    //   label: t('warehouseStatistics'),
+    //   translationKey: 'warehouseStatistics',
+    //   category: 'warehouse',
+    //   icon: <BarChart3 size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
+    // },
+    // {
+    //   path: '/sap-closing',
+    //   label: t('sapClosing'),
+    //   translationKey: 'sapClosing',
+    //   category: 'finance',
+    //   icon: <Calendar size={22} strokeWidth={1.5} color={categoryColors.finance} />,
+    // }
   ];
 
   // Компонент навигационного элемента

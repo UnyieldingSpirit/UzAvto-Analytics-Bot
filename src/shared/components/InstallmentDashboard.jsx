@@ -477,29 +477,29 @@ const InstallmentDashboard = () => {
     }
     
     // Подготовка данных
-    const data = [
-      { 
-        period: 'Последние 2 месяца', 
-        amount: statsData.overdueLastTwoMonths,
-        color: '#fbbf24',
-        gradientStart: '#f59e0b',
-        gradientEnd: '#fbbf24'
-      },
-      { 
-        period: 'Последние 3 месяца', 
-        amount: statsData.overdueLastThreeMonths,
-        color: '#fb923c',
-        gradientStart: '#ea580c',
-        gradientEnd: '#fb923c'
-      },
-      { 
-        period: 'Всего просрочено', 
-        amount: statsData.overdue,
-        color: '#ef4444',
-        gradientStart: '#dc2626',
-        gradientEnd: '#ef4444'
-      }
-    ];
+const data = [
+  { 
+    period: 'Последние 2 месяца', 
+    amount: statsData.overdueLastTwoMonths,
+    color: '#d8b4fe',
+    gradientStart: '#c084fc',
+    gradientEnd: '#d8b4fe'
+  },
+  { 
+    period: 'Последние 3 месяца', 
+    amount: statsData.overdueLastThreeMonths,
+    color: '#c084fc',
+    gradientStart: '#a855f7',
+    gradientEnd: '#c084fc'
+  },
+  { 
+    period: 'Всего просрочено', 
+    amount: statsData.overdue,
+    color: '#a855f7',
+    gradientStart: '#9333ea',
+    gradientEnd: '#a855f7'
+  }
+];
     
     // Настройки графика
     const margin = { top: 50, right: 40, bottom: 80, left: 60 };
@@ -804,7 +804,7 @@ const InstallmentDashboard = () => {
       .attr('y', height/2 - barHeight/2)
       .attr('width', 0)
       .attr('height', barHeight)
-      .attr('fill', '#16a34a')
+     .attr('fill', '#8b5cf6')
       .attr('rx', 6)
       .transition()
       .duration(1000)
@@ -816,7 +816,7 @@ const InstallmentDashboard = () => {
       .attr('y', height/2 - barHeight/2)
       .attr('width', 0)
       .attr('height', barHeight)
-      .attr('fill', '#dc2626')
+      .attr('fill', '#c084fc')
       .transition()
       .duration(1000)
       .attr('width', middleWidth * data.overduePercent / 100);
@@ -892,7 +892,7 @@ const InstallmentDashboard = () => {
         .attr('x', middleX)
         .attr('y', line1Y)
         .attr('text-anchor', 'start')
-        .attr('fill', '#16a34a')
+       .attr('fill', '#8b5cf6')
         .attr('font-size', labelFontSize)
         .text(`${t('metrics.paid')}: ${formatNumberClear(paidTotal)} ${t('units.currency')} (${data.paidPercent}%)`);
       
@@ -900,7 +900,7 @@ const InstallmentDashboard = () => {
         .attr('x', middleX)
         .attr('y', line2Y)
         .attr('text-anchor', 'start')
-        .attr('fill', '#dc2626')
+        .attr('fill', '#c084fc')
         .attr('font-size', labelFontSize)
         .text(`${t('metrics.overduePay')}: ${formatNumberClear(totalOverdue)} ${t('units.currency')} (${data.overduePercent}%)`);
       
@@ -918,7 +918,7 @@ const InstallmentDashboard = () => {
         .attr('x', 0)
         .attr('y', 0)
         .attr('text-anchor', 'start')
-        .attr('fill', '#16a34a')
+       .attr('fill', '#8b5cf6')
         .attr('font-size', labelFontSize)
         .text(`${t('metrics.paid')}: ${formatNumberClear(paidTotal)} ${t('units.currency')}`);
       
@@ -928,7 +928,7 @@ const InstallmentDashboard = () => {
         .attr('x', 0)
         .attr('y', 0)
         .attr('text-anchor', 'middle')
-        .attr('fill', '#dc2626')
+       .attr('fill', '#c084fc')
         .attr('font-size', labelFontSize)
         .text(`${t('metrics.overduePay')}: ${formatNumberClear(totalOverdue)} ${t('units.currency')}`);
       
@@ -1081,13 +1081,13 @@ const InstallmentDashboard = () => {
       .attr('in', 'SourceGraphic');
     
     // Набор градиентов для баров
-    const colors = [
-      ['#3b82f6', '#60a5fa'], // Синий
-      ['#8b5cf6', '#a78bfa'], // Фиолетовый
-      ['#ec4899', '#f472b6'], // Розовый
-      ['#f59e0b', '#fbbf24'], // Оранжевый
-      ['#10b981', '#34d399']  // Зеленый
-    ];
+  const colors = [
+  ['#8b5cf6', '#a78bfa'], // Фиолетовый основной
+  ['#7c3aed', '#9333ea'], // Фиолетовый темный
+  ['#a855f7', '#c084fc'], // Фиолетовый светлый
+  ['#6366f1', '#818cf8'], // Индиго
+  ['#9333ea', '#a855f7']  // Фиолетовый яркий
+];
     
     colors.forEach((color, i) => {
       const gradient = defs.append('linearGradient')
@@ -1310,11 +1310,11 @@ const InstallmentDashboard = () => {
     }
     
     // Создаем данные для диаграммы
-    const pieData = [
-      { label: t('metrics.paid'), value: paidTotal > 0 ? paidTotal : 0, color: '#16a34a', gradientId: 'gradientPaid', percentage: paidPercentage },
-      { label: t('metrics.overduePay'), value: totalOverdue > 0 ? totalOverdue : 0, color: '#dc2626', gradientId: 'gradientOverdue', percentage: overduePercentage },
-      { label: t('metrics.remaining'), value: remaining > 0 ? remaining : 0, color: isDark ? '#334155' : '#94a3b8', gradientId: 'gradientRemaining', percentage: remainingPercentage }
-    ].filter(d => d.value > 0);
+   const pieData = [
+  { label: t('metrics.paid'), value: paidTotal > 0 ? paidTotal : 0, color: '#8b5cf6', gradientId: 'gradientPaid', percentage: paidPercentage },
+  { label: t('metrics.overduePay'), value: totalOverdue > 0 ? totalOverdue : 0, color: '#c084fc', gradientId: 'gradientOverdue', percentage: overduePercentage },
+  { label: t('metrics.remaining'), value: remaining > 0 ? remaining : 0, color: isDark ? '#6366f1' : '#a78bfa', gradientId: 'gradientRemaining', percentage: remainingPercentage }
+].filter(d => d.value > 0);
     
     if (pieData.length === 0) {
       pieData.push({ label: t('noData'), value: 1, color: isDark ? '#94a3b8' : '#d1d5db', gradientId: 'gradientNoData', percentage: 100 });
@@ -1331,13 +1331,13 @@ const InstallmentDashboard = () => {
       .attr('x2', '100%')
       .attr('y2', '100%');
       
-    gradientPaid.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#059669');
-      
-    gradientPaid.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#10b981');
+gradientPaid.append('stop')
+  .attr('offset', '0%')
+  .attr('stop-color', '#7c3aed');
+  
+gradientPaid.append('stop')
+  .attr('offset', '100%')
+  .attr('stop-color', '#8b5cf6');
     
     // Градиент для просроченной части
     const gradientOverdue = defs.append('linearGradient')
@@ -1347,13 +1347,13 @@ const InstallmentDashboard = () => {
       .attr('x2', '100%')
       .attr('y2', '100%');
       
-    gradientOverdue.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#b91c1c');
-      
-    gradientOverdue.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#ef4444');
+gradientOverdue.append('stop')
+  .attr('offset', '0%')
+  .attr('stop-color', '#a855f7');
+  
+gradientOverdue.append('stop')
+  .attr('offset', '100%')
+  .attr('stop-color', '#c084fc');
     
     // Градиент для оставшейся части
     const gradientRemaining = defs.append('linearGradient')
@@ -1717,13 +1717,13 @@ const InstallmentDashboard = () => {
      .attr('x2', '0%')
      .attr('y2', '100%');
    
-   paidGradient.append('stop')
-     .attr('offset', '0%')
-     .attr('stop-color', '#16a34a');
-   
-   paidGradient.append('stop')
-     .attr('offset', '100%')
-     .attr('stop-color', '#10b981');
+paidGradient.append('stop')
+  .attr('offset', '0%')
+  .attr('stop-color', '#7c3aed');
+
+paidGradient.append('stop')
+  .attr('offset', '100%')
+  .attr('stop-color', '#8b5cf6');
    
    // Градиент просроченных платежей
    const unpaidGradient = defs.append('linearGradient')
@@ -1733,13 +1733,13 @@ const InstallmentDashboard = () => {
      .attr('x2', '0%')
      .attr('y2', '100%');
    
-   unpaidGradient.append('stop')
-     .attr('offset', '0%')
-     .attr('stop-color', '#dc2626');
-   
-   unpaidGradient.append('stop')
-     .attr('offset', '100%')
-     .attr('stop-color', '#ef4444');
+unpaidGradient.append('stop')
+  .attr('offset', '0%')
+  .attr('stop-color', '#a855f7');
+
+unpaidGradient.append('stop')
+  .attr('offset', '100%')
+  .attr('stop-color', '#c084fc');
    
    // Добавляем столбцы оплаченных сумм с анимацией
    svg.selectAll('.paid-bar')
@@ -1783,7 +1783,7 @@ const InstallmentDashboard = () => {
    const linePath = svg.append('path')
      .datum(monthlyPayments)
      .attr('fill', 'none')
-     .attr('stroke', '#3b82f6')
+    .attr('stroke', '#7c3aed')
      .attr('stroke-width', 3)
      .attr('d', lineGenerator);
    
@@ -1819,11 +1819,11 @@ const InstallmentDashboard = () => {
    
    // Оплаченные платежи
    const paidLegend = legend.append('g');
-   paidLegend.append('rect')
-     .attr('width', 12)
-     .attr('height', 12)
-     .attr('fill', '#16a34a')
-     .attr('rx', 2);
+ paidLegend.append('rect')
+  .attr('width', 12)
+  .attr('height', 12)
+  .attr('fill', '#8b5cf6')
+  .attr('rx', 2);
    
    paidLegend.append('text')
      .attr('x', 18)
@@ -1836,11 +1836,11 @@ const InstallmentDashboard = () => {
    const unpaidLegend = legend.append('g')
      .attr('transform', 'translate(0, 20)');
    
-   unpaidLegend.append('rect')
-     .attr('width', 12)
-     .attr('height', 12)
-     .attr('fill', '#dc2626')
-     .attr('rx', 2);
+unpaidLegend.append('rect')
+  .attr('width', 12)
+  .attr('height', 12)
+  .attr('fill', '#c084fc')
+  .attr('rx', 2);
    
    unpaidLegend.append('text')
      .attr('x', 18)
@@ -1858,14 +1858,14 @@ const InstallmentDashboard = () => {
      .attr('x2', 12)
      .attr('y1', 6)
      .attr('y2', 6)
-     .attr('stroke', '#3b82f6')
+    .attr('stroke', '#7c3aed')
      .attr('stroke-width', 2);
    
    totalLegend.append('circle')
      .attr('cx', 6)
      .attr('cy', 6)
      .attr('r', 3)
-     .attr('fill', '#3b82f6');
+    .attr('fill', '#7c3aed');
    
    totalLegend.append('text')
      .attr('x', 18)
@@ -2173,7 +2173,7 @@ const InstallmentDashboard = () => {
          .attr('width', innerWidth + 20)
          .attr('height', y.bandwidth() + 4)
          .attr('fill', 'none')
-         .attr('stroke', '#3b82f6')
+         .attr('stroke', '#7c3aed')
          .attr('stroke-width', 1.5)
          .attr('stroke-dasharray', '3,2')
          .attr('rx', 5);
@@ -2234,7 +2234,7 @@ const InstallmentDashboard = () => {
            <div 
              key={model.model_id}
              className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-xl overflow-hidden shadow-lg transition-all cursor-pointer border ${
-               selectedModel?.model_id === model.model_id ? 'border-blue-500 scale-[1.02]' : (isDark ? 'border-slate-700 hover:scale-[1.01]' : 'border-gray-200 hover:scale-[1.01]')
+               selectedModel?.model_id === model.model_id ? 'border-purple-500 scale-[1.02]' : (isDark ? 'border-slate-700 hover:scale-[1.01]' : 'border-gray-200 hover:scale-[1.01]')
              }`}
              onClick={() => handleModelSelect(model)}
            >
@@ -2262,29 +2262,29 @@ const InstallmentDashboard = () => {
                  </div>
                  <div className={`w-full ${isDark ? 'bg-slate-700' : 'bg-gray-200'} rounded-full h-1.5 mb-3`}>
                    <div 
-                     className="bg-blue-600 h-1.5 rounded-full" 
+                     className="bg-purple-600 h-1.5 rounded-full"
                      style={{ width: `${(modelData.contract_count / maxContracts) * 100}%` }}
                    ></div>
                  </div>
                  
                  <div className="flex justify-between text-sm mb-1">
                    <span className={isDark ? 'text-slate-400' : 'text-gray-600'}>{t('metrics.paid')}:</span>
-                   <span className="text-green-400 font-medium">{paidPercentage}%</span>
+                   <span className="text-purple-400 font-medium">{paidPercentage}%</span>
                  </div>
                  <div className={`w-full ${isDark ? 'bg-slate-700' : 'bg-gray-200'} rounded-full h-1.5 mb-3`}>
                    <div 
-                     className="bg-green-500 h-1.5 rounded-full" 
+                    className="bg-purple-500 h-1.5 rounded-full"
                      style={{ width: `${paidPercentage}%` }}
                    ></div>
                  </div>
                  
                  <div className="flex justify-between text-sm mb-1">
                    <span className={isDark ? 'text-slate-400' : 'text-gray-600'}>{t('metrics.overduePay')}:</span>
-                   <span className="text-red-400 font-medium">{overduePercentage}%</span>
+                   <span className="text-purple-300 font-medium">{overduePercentage}%</span>
                  </div>
                  <div className={`w-full ${isDark ? 'bg-slate-700' : 'bg-gray-200'} rounded-full h-1.5`}>
                    <div 
-                     className="bg-red-500 h-1.5 rounded-full" 
+                   className="bg-purple-400 h-1.5 rounded-full"
                      style={{ width: `${overduePercentage}%` }}
                    ></div>
                  </div>
@@ -2528,7 +2528,7 @@ const InstallmentDashboard = () => {
      {/* Навигационные вкладки */}
      <div className={`flex mb-6 border-b ${isDark ? 'border-slate-700' : 'border-gray-300'} overflow-x-auto pb-1`}>
        <button 
-         className={`px-4 py-2 font-medium whitespace-nowrap ${viewMode === 'region' ? 'text-blue-400 border-b-2 border-blue-400' : (isDark ? 'text-slate-400' : 'text-gray-600')}`}
+         className={`px-4 py-2 font-medium whitespace-nowrap ${viewMode === 'region' ? 'text-purple-400 border-b-2 border-purple-400' : (isDark ? 'text-slate-400' : 'text-gray-600')}`}
          onClick={() => {
            setViewMode('region');
            setModelCompareMode(false);
@@ -2538,7 +2538,7 @@ const InstallmentDashboard = () => {
        </button>
        {selectedModel && (
          <button 
-           className={`px-4 py-2 font-medium whitespace-nowrap ${viewMode === 'model' ? 'text-blue-400 border-b-2 border-blue-400' : (isDark ? 'text-slate-400' : 'text-gray-600')}`}
+           className={`px-4 py-2 font-medium whitespace-nowrap ${viewMode === 'model' ? 'text-purple-400 border-b-2 border-purple-400' : (isDark ? 'text-slate-400' : 'text-gray-600')}`}
            onClick={() => setViewMode('model')}
          >
            {selectedModel.model_name}
@@ -2557,7 +2557,7 @@ const InstallmentDashboard = () => {
            onClick={() => handleRegionSelect('all')}
            className={`mb-2 px-4 py-2 rounded-lg transition-all ${
              selectedRegion === 'all' 
-               ? 'bg-blue-600 text-white font-medium ring-2 ring-blue-500/50' 
+               ? 'bg-purple-600 text-white font-medium ring-2 ring-purple-500/50' 
                : isDark ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
            }`}
          >
@@ -2570,7 +2570,7 @@ const InstallmentDashboard = () => {
              onClick={() => handleRegionSelect(region.id)}
              className={`mb-2 px-4 py-2 rounded-lg transition-all ${
                selectedRegion === region.id 
-                 ? 'bg-blue-600 text-white font-medium ring-2 ring-blue-500/50' 
+                 ? 'bg-purple-600 text-white font-medium ring-2 ring-purple-500/50' 
                  : isDark ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
              }`}
            >
