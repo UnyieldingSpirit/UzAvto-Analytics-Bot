@@ -44,13 +44,14 @@ body {
 
 /* Градиентный текст */
 .gradient-text {
-  background: linear-gradient(to right, #3b82f6, #8b5cf6, #ec4899);
+  background: linear-gradient(to right, #8b5cf6, #a78bfa, #c084fc);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   background-size: 200% auto;
   animation: gradient-shift 3s linear infinite;
 }
+
 
 @keyframes gradient-shift {
   0% {
@@ -63,9 +64,9 @@ body {
 
 /* Эффект свечения */
 .glow {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5),
-              0 0 40px rgba(139, 92, 246, 0.3),
-              0 0 60px rgba(236, 72, 153, 0.1);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.5),
+              0 0 40px rgba(167, 139, 250, 0.3),
+              0 0 60px rgba(192, 132, 252, 0.1);
 }
 
 /* Кастомные скроллбары для светлой темы */
@@ -130,4 +131,12 @@ body {
 
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.purple-gradient {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.purple-gradient-light {
+  background: linear-gradient(135deg, #a78bfa, #8b5cf6);
 }

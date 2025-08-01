@@ -27,10 +27,10 @@ const navTranslations = {
     carWarehouse: 'Автомобильный склад',
     systemSettings: 'Настройки системы',
     warehouseStatistics: 'Производство авто',
-    sapClosing: 'SAP закрытие месяца', // Новый перевод
+    sapClosing: 'SAP закрытие месяца',
     documentation: 'Документация и поддержка',
     selectLanguage: 'Выбрать язык',
-    appTitle: 'UzAvtoAnalytics',
+    appTitle: 'CarSale Аналитик',
     appSubtitle: 'Управляющая система',
     categories: {
       main: 'Главное',
@@ -61,13 +61,13 @@ const navTranslations = {
     financialAnalytics: 'Moliyaviy tahlil',
     contracts: 'Shartnomalar',
     warehouseStatistics: 'Ishlab chiqarish statistikasi',
-    sapClosing: 'SAP oyni yopish', // Новый перевод
+    sapClosing: 'SAP oyni yopish',
     installments: 'Bo\'lib to\'lash',
     carWarehouse: 'Avtomobil ombori',
     systemSettings: 'Tizim sozlamalari',
     documentation: 'Hujjatlar va yordam',
     selectLanguage: 'Tilni tanlang',
-    appTitle: 'UzAvtoAnalytics',
+    appTitle: 'CarSale Аналитик',
     appSubtitle: 'Boshqaruv tizimi',
     categories: {
       main: 'Asosiy',
@@ -98,13 +98,13 @@ const navTranslations = {
     financialAnalytics: 'Financial Analytics',
     contracts: 'Contracts',
     warehouseStatistics: 'Warehouse Statistics',
-    sapClosing: 'SAP Month Closing', // Новый перевод
+    sapClosing: 'SAP Month Closing',
     installments: 'Installments',
     carWarehouse: 'Car Warehouse',
     systemSettings: 'System Settings',
     documentation: 'Documentation & Support',
     selectLanguage: 'Select Language',
-    appTitle: 'UzAvtoAnalytics',
+    appTitle: 'CarSale Analytics',
     appSubtitle: 'Management System',
     categories: {
       main: 'Main',
@@ -215,14 +215,14 @@ export default function ResponsiveNav() {
     Calendar
   } = LucideIcons;
 
-  // Цвета по категориям
-  const categoryColors = {
-    main: "#3b82f6",
-    analytics: "#6366f1",
-    finance: "#10b981",
-    warehouse: "#f59e0b",
-    utility: "#8b5cf6"
-  };
+  // Цвета по категориям с фиолетовой палитрой
+const categoryColors = {
+  main: "#8b5cf6",      // фиолетовый
+  analytics: "#3b82f6", // синий
+  finance: "#10b981",   // зеленый
+  warehouse: "#f59e0b", // оранжевый
+  utility: "#ec4899"    // розовый
+};
 
   const navItems: NavItem[] = [
     {
@@ -288,63 +288,72 @@ export default function ResponsiveNav() {
       category: 'finance',
       icon: <HandCoins size={22} strokeWidth={1.5} color={categoryColors.finance} />
     },
-     {
-    path: '/car-warehouse',
-    label: t('carWarehouse'),
-    translationKey: 'carWarehouse',
-    category: 'warehouse',
-    icon: <Car size={22} strokeWidth={1.5} color={categoryColors.warehouse} />,
-  },
-  {
-    path: '/warehouse-statistics',
-    label: t('warehouseStatistics'),
-    translationKey: 'warehouseStatistics',
-    category: 'warehouse',
-    icon: <BarChart3 size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
-  },
-  {
-    path: '/sap-closing',
-    label: t('sapClosing'), // Используем новый ключ перевода
-    translationKey: 'sapClosing',
-    category: 'finance', // Помещаем в категорию финансы, так как это связано с закрытием периода
-    icon: <Calendar size={22} strokeWidth={1.5} color={categoryColors.finance} />,
-  }
+    {
+      path: '/car-warehouse',
+      label: t('carWarehouse'),
+      translationKey: 'carWarehouse',
+      category: 'warehouse',
+      icon: <Car size={22} strokeWidth={1.5} color={categoryColors.warehouse} />,
+    },
+    {
+      path: '/warehouse-statistics',
+      label: t('warehouseStatistics'),
+      translationKey: 'warehouseStatistics',
+      category: 'warehouse',
+      icon: <BarChart3 size={22} strokeWidth={1.5} color={categoryColors.warehouse} />
+    },
+    {
+      path: '/sap-closing',
+      label: t('sapClosing'),
+      translationKey: 'sapClosing',
+      category: 'finance',
+      icon: <Calendar size={22} strokeWidth={1.5} color={categoryColors.finance} />,
+    }
   ];
 
   // Компонент навигационного элемента
-  const NavItem = ({ item }: { item: NavItem }) => {
-    const isActive = pathname === item.path;
-    
-    return (
-      <motion.div
-        whileTap={{ scale: 0.95 }}
-        className="nav-item-container"
+const getCategoryColor = (category: string) => {
+  return categoryColors[category as keyof typeof categoryColors] || categoryColors.main;
+};
+
+// 3. Обновите компонент NavItem, чтобы использовать динамические цвета:
+const NavItem = ({ item }: { item: NavItem }) => {
+  const isActive = pathname === item.path;
+  const categoryColor = getCategoryColor(item.category);
+  
+  return (
+    <motion.div
+      whileTap={{ scale: 0.95 }}
+      className="nav-item-container"
+    >
+      <Link 
+        href={item.path} 
+        className={`nav-item ${isActive ? 'active' : ''}`}
+        onClick={() => handleNavClick(item.path)}
+        style={{
+          '--category-color': categoryColor
+        } as React.CSSProperties}
       >
-        <Link 
-          href={item.path} 
-          className={`nav-item ${isActive ? 'active' : ''}`}
-          onClick={() => handleNavClick(item.path)}
+        <motion.div 
+          className="icon-wrapper"
         >
-          <motion.div 
-            className="icon-wrapper"
-          >
-            {item.icon}
-            {item.notification && (
-              <span className="badge">{item.notification}</span>
-            )}
-          </motion.div>
-          <span className="label">{item.label}</span>
-          {isActive && (
-            <motion.div 
-              layoutId="activeIndicator"
-              className="active-indicator"
-              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-            />
+          {item.icon}
+          {item.notification && (
+            <span className="badge">{item.notification}</span>
           )}
-        </Link>
-      </motion.div>
-    );
-  };
+        </motion.div>
+        <span className="label">{item.label}</span>
+        {isActive && (
+          <motion.div 
+            layoutId="activeIndicator"
+            className="active-indicator"
+            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+          />
+        )}
+      </Link>
+    </motion.div>
+  );
+};
 
   // Группировка навигации по категориям
   const groupedNavItems = {
@@ -394,155 +403,155 @@ export default function ResponsiveNav() {
         </div>
         
         <div className="nav-content">
-<div className="controls-section">
-<div className="theme-control">
-  <div style={{
-    display: 'flex',
-    gap: '4px',
-    backgroundColor: isDark ? '#1f2937' : '#e5e7eb',
-    padding: '4px',
-    borderRadius: '8px',
-    transition: 'background-color 0.3s ease'
-  }}>
-    <motion.button
-      whileTap={{ scale: 0.95 }}
-      onClick={() => {setMode('light'),  setTimeout(() => {
-        window.location.reload();
-    }, 100);}}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px',
-        padding: '6px 12px',
-        borderRadius: '6px',
-        transition: 'all 0.2s ease',
-        fontSize: '14px',
-        fontWeight: '500',
-        border: 'none',
-        cursor: 'pointer',
-        backgroundColor: mode === 'light' 
-          ? (isDark ? '#374151' : '#ffffff')
-          : 'transparent',
-        color: mode === 'light'
-          ? '#f59e0b'
-          : (isDark ? '#9ca3af' : '#4b5563'),
-        boxShadow: mode === 'light' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
-      }}
-      onMouseEnter={(e) => {
-        if (mode !== 'light') {
-          e.currentTarget.style.backgroundColor = isDark ? '#374151' : '#f3f4f6';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (mode !== 'light') {
-          e.currentTarget.style.backgroundColor = 'transparent';
-        }
-      }}
-    >
-      <Sun size={16} />
-      <span>Light</span>
-    </motion.button>
-    
-    <motion.button
-      whileTap={{ scale: 0.95 }}
+          <div className="controls-section">
+            <div className="theme-control">
+              <div style={{
+                display: 'flex',
+                gap: '4px',
+                backgroundColor: isDark ? '#1f2937' : '#e5e7eb',
+                padding: '4px',
+                borderRadius: '8px',
+                transition: 'background-color 0.3s ease'
+              }}>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {setMode('light'), setTimeout(() => {
+                    window.location.reload();
+                  }, 100);}}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    transition: 'all 0.2s ease',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    border: 'none',
+                    cursor: 'pointer',
+                    backgroundColor: mode === 'light' 
+                      ? (isDark ? '#374151' : '#ffffff')
+                      : 'transparent',
+                    color: mode === 'light'
+                      ? '#8b5cf6'
+                      : (isDark ? '#9ca3af' : '#4b5563'),
+                    boxShadow: mode === 'light' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (mode !== 'light') {
+                      e.currentTarget.style.backgroundColor = isDark ? '#374151' : '#f3f4f6';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (mode !== 'light') {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                  }}
+                >
+                  <Sun size={16} />
+                  <span>Light</span>
+                </motion.button>
+                
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => {
                     setMode('dark'),
                     setTimeout(() => {
-        window.location.reload();
-    }, 100);}}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px',
-        padding: '6px 12px',
-        borderRadius: '6px',
-        transition: 'all 0.2s ease',
-        fontSize: '14px',
-        fontWeight: '500',
-        border: 'none',
-        cursor: 'pointer',
-        backgroundColor: mode === 'dark' 
-          ? (isDark ? '#374151' : '#ffffff')
-          : 'transparent',
-        color: mode === 'dark'
-          ? '#3b82f6'
-          : (isDark ? '#9ca3af' : '#4b5563'),
-        boxShadow: mode === 'dark' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
-      }}
-      onMouseEnter={(e) => {
-        if (mode !== 'dark') {
-          e.currentTarget.style.backgroundColor = isDark ? '#374151' : '#f3f4f6';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (mode !== 'dark') {
-          e.currentTarget.style.backgroundColor = 'transparent';
-        }
-      }}
-    >
-      <Moon size={16} />
-      <span>Dark</span>
-    </motion.button>
-  </div>
-</div>
-  
-<div className="language-control">
-  <div style={{
-    display: 'flex',
-    gap: '4px',
-    backgroundColor: isDark ? '#1f2937' : '#e5e7eb',
-    padding: '4px',
-    borderRadius: '8px',
-    transition: 'background-color 0.3s ease'
-  }}>
-    {[
-      { code: 'ru', flag: '🇷🇺', label: 'РУ' },
-      { code: 'uz', flag: '🇺🇿', label: 'UZ' },
-      { code: 'en', flag: '🇬🇧', label: 'EN' }
-    ].map(lang => (
-      <motion.button
-        key={lang.code}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => {setLocale(lang.code as 'ru' | 'uz' | 'en'),  setTimeout(() => {
-        window.location.reload();
-    }, 100);}}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          transition: 'all 0.2s ease',
-          fontSize: '14px',
-          fontWeight: '500',
-          border: 'none',
-          cursor: 'pointer',
-          backgroundColor: currentLocale === lang.code 
-            ? (isDark ? '#374151' : '#ffffff')
-            : 'transparent',
-          color: currentLocale === lang.code
-            ? '#3b82f6'
-            : (isDark ? '#9ca3af' : '#4b5563'),
-          boxShadow: currentLocale === lang.code ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
-        }}
-        onMouseEnter={(e) => {
-          if (currentLocale !== lang.code) {
-            e.currentTarget.style.backgroundColor = isDark ? '#374151' : '#f3f4f6';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (currentLocale !== lang.code) {
-            e.currentTarget.style.backgroundColor = 'transparent';
-          }
-        }}
-      >
-        <span style={{ fontSize: '16px' }}>{lang.flag}</span>
-        <span>{lang.label}</span>
-      </motion.button>
-    ))}
-  </div>
-</div>
-</div>
+                      window.location.reload();
+                    }, 100);}}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    transition: 'all 0.2s ease',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    border: 'none',
+                    cursor: 'pointer',
+                    backgroundColor: mode === 'dark' 
+                      ? (isDark ? '#374151' : '#ffffff')
+                      : 'transparent',
+                    color: mode === 'dark'
+                      ? '#8b5cf6'
+                      : (isDark ? '#9ca3af' : '#4b5563'),
+                    boxShadow: mode === 'dark' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (mode !== 'dark') {
+                      e.currentTarget.style.backgroundColor = isDark ? '#374151' : '#f3f4f6';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (mode !== 'dark') {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                  }}
+                >
+                  <Moon size={16} />
+                  <span>Dark</span>
+                </motion.button>
+              </div>
+            </div>
+            
+            <div className="language-control">
+              <div style={{
+                display: 'flex',
+                gap: '4px',
+                backgroundColor: isDark ? '#1f2937' : '#e5e7eb',
+                padding: '4px',
+                borderRadius: '8px',
+                transition: 'background-color 0.3s ease'
+              }}>
+                {[
+                  { code: 'ru', flag: '🇷🇺', label: 'РУ' },
+                  { code: 'uz', flag: '🇺🇿', label: 'UZ' },
+                  { code: 'en', flag: '🇬🇧', label: 'EN' }
+                ].map(lang => (
+                  <motion.button
+                    key={lang.code}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {setLocale(lang.code as 'ru' | 'uz' | 'en'), setTimeout(() => {
+                      window.location.reload();
+                    }, 100);}}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      transition: 'all 0.2s ease',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      border: 'none',
+                      cursor: 'pointer',
+                      backgroundColor: currentLocale === lang.code 
+                        ? (isDark ? '#374151' : '#ffffff')
+                        : 'transparent',
+                      color: currentLocale === lang.code
+                        ? '#8b5cf6'
+                        : (isDark ? '#9ca3af' : '#4b5563'),
+                      boxShadow: currentLocale === lang.code ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (currentLocale !== lang.code) {
+                        e.currentTarget.style.backgroundColor = isDark ? '#374151' : '#f3f4f6';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (currentLocale !== lang.code) {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: '16px' }}>{lang.flag}</span>
+                    <span>{lang.label}</span>
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+          </div>
           
           {/* Навигационные элементы */}
           {Object.entries(groupedNavItems).map(([category, items]) => (
@@ -653,8 +662,8 @@ export default function ResponsiveNav() {
         }
 
         .dark .sidebar {
-          background: #111827;
-          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+          background: #0f0a19;
+          box-shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.1);
         }
 
         @media (max-width: 1023px) {
@@ -672,12 +681,10 @@ export default function ResponsiveNav() {
             transform: translateX(0);
           }
           
-          /* Добавляем отступ для основного контента на мобильных устройствах */
           main, .main-content, #content-wrapper, [role="main"], .page-content {
             padding-top: var(--header-height);
           }
           
-          /* Специфичный стиль для страниц, не имеющих классов выше */
           body > div:not(.sidebar):not(.mobile-header):not(.backdrop) {
             padding-top: var(--header-height);
           }
@@ -693,7 +700,7 @@ export default function ResponsiveNav() {
         }
 
         .dark .sidebar-header {
-          border-bottom-color: #374151;
+          border-bottom-color: #2d1b69;
         }
 
         .logo-container {
@@ -706,7 +713,7 @@ export default function ResponsiveNav() {
           width: 44px;
           height: 44px;
           border-radius: var(--radius-md);
-          background: linear-gradient(135deg, #3b82f6, #2563eb);
+          background: linear-gradient(135deg, #8b5cf6, #7c3aed);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -751,7 +758,7 @@ export default function ResponsiveNav() {
         }
 
         .dark .close-btn {
-          background: #1e293b;
+          background: #1e1530;
           color: #f1f5f9;
         }
 
@@ -772,7 +779,7 @@ export default function ResponsiveNav() {
         }
 
         .dark .controls-section {
-          border-bottom-color: #374151;
+          border-bottom-color: #2d1b69;
         }
 
         .theme-control,
@@ -792,37 +799,6 @@ export default function ResponsiveNav() {
           color: #94a3b8;
         }
 
-        .language-select {
-          padding: 6px 12px;
-          border-radius: 8px;
-          background: #f3f4f6;
-          border: 1px solid #e5e7eb;
-          color: #1e293b;
-          font-size: 14px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          outline: none;
-        }
-
-        .dark .language-select {
-          background: #1e293b;
-          border-color: #374151;
-          color: #f1f5f9;
-        }
-
-        .language-select:hover {
-          border-color: #cbd5e1;
-        }
-
-        .dark .language-select:hover {
-          border-color: #4b5563;
-        }
-
-        .language-select:focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
         /* Группы навигации */
         .nav-group {
           margin-bottom: var(--space-lg);
@@ -839,18 +815,18 @@ export default function ResponsiveNav() {
           border-radius: 0 3px 3px 0;
         }
 
-        .nav-group.main::before { 
-          background: linear-gradient(135deg, #3b82f6, #2563eb); 
-        }
-        .nav-group.analytics::before { 
-          background: linear-gradient(135deg, #6366f1, #4f46e5); 
-        }
-        .nav-group.finance::before { 
-          background: linear-gradient(135deg, #10b981, #059669); 
-        }
-        .nav-group.warehouse::before { 
-          background: linear-gradient(135deg, #f59e0b, #d97706); 
-        }
+   .nav-group.main::before { 
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed); 
+}
+.nav-group.analytics::before { 
+  background: linear-gradient(135deg, #3b82f6, #2563eb); 
+}
+.nav-group.finance::before { 
+  background: linear-gradient(135deg, #10b981, #059669); 
+}
+.nav-group.warehouse::before { 
+  background: linear-gradient(135deg, #f59e0b, #d97706); 
+}
 
         .category-title {
           display: flex;
@@ -869,7 +845,7 @@ export default function ResponsiveNav() {
         }
 
         .dark .category-title span {
-          color: #94a3b8;
+          color: #a78bfa;
         }
 
         .title-line {
@@ -879,7 +855,7 @@ export default function ResponsiveNav() {
         }
 
         .dark .title-line {
-          background: linear-gradient(to right, #374151, transparent);
+          background: linear-gradient(to right, #2d1b69, transparent);
         }
 
         /* Элементы навигации */
@@ -907,25 +883,24 @@ export default function ResponsiveNav() {
           color: #94a3b8;
         }
 
-        .nav-item:hover {
-          color: #1e293b;
-          background: #f3f4f6;
-        }
+     .nav-item:hover {
+  color: var(--category-color);
+  background: color-mix(in srgb, var(--category-color) 5%, transparent);
+}
 
-        .dark .nav-item:hover {
-          color: #f1f5f9;
-          background: rgba(30, 41, 59, 0.8);
-        }
+.dark .nav-item:hover {
+  color: color-mix(in srgb, var(--category-color) 70%, white);
+  background: color-mix(in srgb, var(--category-color) 10%, transparent);
+}
 
-        .nav-item.active {
-          color: #3b82f6;
-          background: #eff6ff;
-        }
-
-        .dark .nav-item.active {
-          color: #60a5fa;
-          background: rgba(59, 130, 246, 0.15);
-        }
+    .nav-item.active {
+  color: var(--category-color);
+  background: color-mix(in srgb, var(--category-color) 10%, transparent);
+}
+.dark .nav-item.active {
+  color: color-mix(in srgb, var(--category-color) 80%, white);
+  background: color-mix(in srgb, var(--category-color) 20%, transparent);
+}
 
         .icon-wrapper {
           width: 38px;
@@ -942,25 +917,26 @@ export default function ResponsiveNav() {
         }
 
         .dark .icon-wrapper {
-          background: rgba(30, 41, 59, 0.8);
+          background: rgba(30, 21, 48, 0.8);
         }
 
         .nav-item:hover .icon-wrapper {
-          background: #e5e7eb;
+          background: #ede9fe;
         }
 
         .dark .nav-item:hover .icon-wrapper {
-          background: rgba(59, 130, 246, 0.15);
+          background: rgba(139, 92, 246, 0.15);
         }
 
-        .nav-item.active .icon-wrapper {
-          background: #dbeafe;
-        }
+      .nav-item.active .icon-wrapper {
+  background: color-mix(in srgb, var(--category-color) 20%, transparent);
+}
 
-        .dark .nav-item.active .icon-wrapper {
-          background: rgba(59, 130, 246, 0.25);
-          box-shadow: 0 0 10px rgba(59, 130, 246, 0.15);
-        }
+
+     .dark .nav-item.active .icon-wrapper {
+  background: color-mix(in srgb, var(--category-color) 30%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--category-color) 30%, transparent);
+}
 
         .badge {
           position: absolute;
@@ -981,7 +957,7 @@ export default function ResponsiveNav() {
         }
 
         .dark .badge {
-          border-color: #111827;
+          border-color: #0f0a19;
         }
 
         .label {
@@ -992,27 +968,27 @@ export default function ResponsiveNav() {
           text-overflow: ellipsis;
         }
 
-        .active-indicator {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          border-radius: var(--radius-md);
-          background: radial-gradient(
-            circle at right center,
-            rgba(59, 130, 246, 0.15),
-            transparent 70%
-          );
-          z-index: -1;
-        }
+    .active-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-md);
+  background: radial-gradient(
+    circle at right center,
+    color-mix(in srgb, var(--category-color) 15%, transparent),
+    transparent 70%
+  );
+  z-index: -1;
+}
 
         /* Профиль пользователя */
         .user-profile {
           padding: var(--space-md);
           margin: var(--space-md);
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
+          background: #faf5ff;
+          border: 1px solid #e9d5ff;
           border-radius: var(--radius-lg);
           display: flex;
           align-items: center;
@@ -1023,10 +999,10 @@ export default function ResponsiveNav() {
         .dark .user-profile {
           background: linear-gradient(
             to bottom right,
-            rgba(59, 130, 246, 0.1),
-            rgba(99, 102, 241, 0.05)
+            rgba(139, 92, 246, 0.1),
+            rgba(124, 58, 237, 0.05)
           );
-          border-color: rgba(59, 130, 246, 0.15);
+          border-color: rgba(139, 92, 246, 0.2);
         }
 
         .user-profile::before {
@@ -1039,7 +1015,7 @@ export default function ResponsiveNav() {
           background: linear-gradient(
             to right,
             transparent,
-            #3b82f6,
+            #8b5cf6,
             transparent
           );
           opacity: 0.5;
@@ -1049,7 +1025,7 @@ export default function ResponsiveNav() {
           width: 42px;
           height: 42px;
           border-radius: var(--radius-md);
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(99, 102, 241, 0.4));
+          background: linear-gradient(135deg, rgba(139, 92, 246, 0.4), rgba(124, 58, 237, 0.4));
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1068,12 +1044,12 @@ export default function ResponsiveNav() {
           height: 10px;
           border-radius: 50%;
           background: #10b981;
-          border: 2px solid #f9fafb;
+          border: 2px solid #faf5ff;
           box-shadow: 0 0 5px rgba(16, 185, 129, 0.8);
         }
 
         .dark .status {
-          border-color: #111827;
+          border-color: #0f0a19;
         }
 
         .profile-info {
@@ -1138,27 +1114,27 @@ export default function ResponsiveNav() {
         }
 
         .dark .mobile-header {
-          background: #111827;
-          border-bottom-color: #374151;
+          background: #0f0a19;
+          border-bottom-color: #2d1b69;
         }
 
         .menu-btn {
           width: 40px;
           height: 40px;
           border-radius: var(--radius-md);
-          background: #f3f4f6;
+          background: #faf5ff;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #1e293b;
+          color: #8b5cf6;
           border: none;
           cursor: pointer;
           transition: all 0.2s ease;
         }
 
         .dark .menu-btn {
-          background: #1e293b;
-          color: #f1f5f9;
+          background: #1e1530;
+          color: #a78bfa;
         }
 
         .page-title {
@@ -1194,20 +1170,25 @@ export default function ResponsiveNav() {
         }
 
         .nav-content::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
+          background: #e9d5ff;
           border-radius: 4px;
         }
 
         .dark .nav-content::-webkit-scrollbar-thumb {
-          background: #4b5563;
+          background: #4c1d95;
         }
 
         .nav-content::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
+          background: #c084fc;
         }
 
         .dark .nav-content::-webkit-scrollbar-thumb:hover {
-          background: #6b7280;
+          background: #6d28d9;
+        }
+
+        .language-select:focus {
+          border-color: #8b5cf6;
+          box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
         }
       `}</style>
     </>

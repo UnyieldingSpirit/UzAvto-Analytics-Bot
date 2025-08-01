@@ -66,14 +66,14 @@ export default function Statistics() {
     if (!isDark) return baseColor;
     
     // Адаптация цветов для темной темы
-    const colorMap = {
-      '#3b82f6': { base: '#60a5fa', light: '#93bbfc', dark: '#2563eb' }, // blue
-      '#8b5cf6': { base: '#a78bfa', light: '#c4b5fd', dark: '#7c3aed' }, // purple
-      '#ec4899': { base: '#f472b6', light: '#f9a8d4', dark: '#db2777' }, // pink
-      '#10b981': { base: '#34d399', light: '#6ee7b7', dark: '#059669' }, // green
-      '#f59e0b': { base: '#fbbf24', light: '#fcd34d', dark: '#d97706' }, // amber
-      '#ef4444': { base: '#f87171', light: '#fca5a5', dark: '#dc2626' }, // red
-    };
+const colorMap = {
+  '#8b5cf6': { base: '#a78bfa', light: '#c4b5fd', dark: '#7c3aed' }, // purple основной
+  '#7c3aed': { base: '#8b5cf6', light: '#a78bfa', dark: '#6d28d9' }, // purple темный
+  '#a78bfa': { base: '#c084fc', light: '#d8b4fe', dark: '#8b5cf6' }, // purple светлый
+  '#10b981': { base: '#34d399', light: '#6ee7b7', dark: '#059669' }, // green (оставляем)
+  '#c084fc': { base: '#d8b4fe', light: '#e9d5ff', dark: '#a855f7' }, // purple-300
+  '#6366f1': { base: '#818cf8', light: '#a5b4fc', dark: '#4f46e5' }, // indigo
+};
     
     const colors = colorMap[baseColor];
     if (!colors) return baseColor;
@@ -2375,10 +2375,10 @@ const fetchMarketData = async (startDate, endDate) => {
         .text(t('charts.sales', { defaultValue: 'Количество продаж' }));
       
       // Создаем цветовую шкалу для столбцов
-      const getBarColor = (_, i) => {
-        const baseColor = getThemedColor(selectedModel.color);
-        const hslColor = d3.hsl(baseColor);
-        hslColor.l = isDark ? 0.5 + (i * 0.05) : 0.4 + (i * 0.05);
+  const getBarColor = (_, i) => {
+  const baseColor = getThemedColor(selectedModel.color);
+  const hslColor = d3.hsl(baseColor);
+  hslColor.l = isDark ? 0.5 + (i * 0.05) : 0.4 + (i * 0.05);
         return hslColor.toString();
       };
       
@@ -2823,15 +2823,15 @@ const fetchMarketData = async (startDate, endDate) => {
       .range([height - margin.bottom, margin.top]);
       
     // Создаем цветовую шкалу для продавцов с более контрастными цветами
-    const colorScale = d3.scaleOrdinal()
-      .domain(Object.keys(monthlyByPerson))
-      .range([
-        getThemedColor('#FF5733'), // Ярко-оранжевый
-        getThemedColor('#33A8FF'), // Ярко-голубой
-        getThemedColor('#B933FF'), // Фиолетовый
-        getThemedColor('#33FF57'), // Ярко-зеленый
-        getThemedColor('#FFD433')  // Золотой
-      ]);
+ const colorScale = d3.scaleOrdinal()
+  .domain(Object.keys(monthlyByPerson))
+  .range([
+    getThemedColor('#8b5cf6'), // Фиолетовый
+    getThemedColor('#a78bfa'), // Светло-фиолетовый
+    getThemedColor('#7c3aed'), // Темно-фиолетовый
+    getThemedColor('#c084fc'), // Фиолетовый-300
+    getThemedColor('#6366f1')  // Индиго
+  ]);
       
     // Создаем функцию линии
     const line = d3.line()
@@ -3424,7 +3424,7 @@ const fetchMarketData = async (startDate, endDate) => {
        <motion.h1 
          initial={{ opacity: 0, y: -20 }}
          animate={{ opacity: 1, y: 0 }}
-         className={`text-2xl sm:text-3xl md:text-4xl font-bold ${isDark ? 'text-transparent bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text' : 'text-transparent bg-gradient-to-r from-blue-600 to-purple-700 bg-clip-text'}`}
+         className={`text-2xl sm:text-3xl md:text-4xl font-bold ${isDark ? 'text-transparent bg-gradient-to-r from-purple-500 to-purple-600 bg-clip-text' : 'text-transparent bg-gradient-to-r from-purple-500 to-purple-600 bg-clip-text'}`}
        >
          {t('title', { defaultValue: 'Интерактивная панель контрактов автомобилей' })}
        </motion.h1>
@@ -3468,7 +3468,7 @@ const fetchMarketData = async (startDate, endDate) => {
              whileHover={{ scale: 1.05 }}
              whileTap={{ scale: 0.95 }}
              onClick={() => setChartType('bar')}
-             className={`px-3 py-1.5 rounded-md text-xs sm:text-sm ${chartType === 'bar' ? 'bg-blue-600 text-white' : (isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700')}`}
+             className={`px-3 py-1.5 rounded-md text-xs sm:text-sm ${chartType === 'bar' ? 'bg-purple-500 text-white' : (isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700')}`}
            >
              {t('chartTypes.bar', { defaultValue: 'Столбцы' })}
            </motion.button>
@@ -3476,7 +3476,7 @@ const fetchMarketData = async (startDate, endDate) => {
              whileHover={{ scale: 1.05 }}
              whileTap={{ scale: 0.95 }}
              onClick={() => setChartType('pie')}
-             className={`px-3 py-1.5 rounded-md text-xs sm:text-sm ${chartType === 'pie' ? 'bg-blue-600 text-white' : (isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700')}`}
+             className={`px-3 py-1.5 rounded-md text-xs sm:text-sm ${chartType === 'pie' ? 'bg-purple-500 text-white' : (isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700')}`}
            >
              {t('chartTypes.pie', { defaultValue: 'Круговая' })}
            </motion.button>
@@ -3489,7 +3489,7 @@ const fetchMarketData = async (startDate, endDate) => {
              whileHover={{ scale: 1.02 }}
              whileTap={{ scale: 0.98 }}
            >
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500  mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
              </svg>
              <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-xs sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis`}>{getDateRangeLabel()}</span>
@@ -3612,7 +3612,7 @@ const fetchMarketData = async (startDate, endDate) => {
                        refreshDataWithDateRange(dateRange);
                        setShowDatePicker(false);
                      }}
-                     className="px-3 py-1.5 rounded-md text-sm bg-blue-600 text-white"
+                     className="px-3 py-1.5 rounded-md text-sm bg-purple-500 text-white"
                    >
                      {t('dateRangeSelector.apply', { defaultValue: 'Применить' })}
                    </motion.button>
@@ -3626,12 +3626,12 @@ const fetchMarketData = async (startDate, endDate) => {
        <motion.div 
          initial={{ opacity: 0, y: -10 }}
          animate={{ opacity: 1, y: 0 }}
-         className={`mb-4 flex items-center ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'} rounded-lg p-2 text-xs sm:text-sm overflow-hidden`}
+         className={`mb-4 flex items-center ${isDark ? 'bg-purple-500 ' : 'bg-purple-100'} rounded-lg p-2 text-xs sm:text-sm overflow-hidden`}
        >
-         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500  mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
          </svg>
-         <span className={`${isDark ? 'text-blue-200' : 'text-blue-700'} text-xs sm:text-sm overflow-hidden text-ellipsis`}>
+         <span className={`${isDark ? 'text-dark-200' : 'text-dark-500'} text-xs sm:text-sm overflow-hidden text-ellipsis`}>
            {t('periodData', { period: getDateRangeLabel(), defaultValue: 'Данные за период: {{period}}' })}
          </span>
        </motion.div>

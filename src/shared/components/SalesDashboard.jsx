@@ -683,7 +683,7 @@ const getDealerData = (status, regionName, selectedModelId) => {
      <div className="h-full flex flex-col">
        {/* Заголовок с кнопкой закрытия */}
        <div className={`flex items-center gap-3 p-4 pt-14 border-b ${isDark ? 'border-gray-700 bg-gray-800/90' : 'border-gray-200 bg-white'}`}>
-         <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-blue-900/40 text-blue-400`}>
+         <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-purple-900/40 text-purple-400`}>
            <Package size={20} />
          </div>
          <div className="flex-1">
@@ -743,7 +743,7 @@ const getDealerData = (status, regionName, selectedModelId) => {
                        ID: {model.id}
                      </div>
                    </div>
-                   <div className={`px-3 py-2 rounded-lg bg-blue-900/40 text-blue-300 flex flex-col items-center border border-blue-800/30`}>
+                   <div className={`px-3 py-2 rounded-lg bg-purple-900/40 text-purple-300 flex flex-col items-center border border-purple-800/30`}>
                      <span className="text-lg font-bold">{model.count}</span>
                      <span className="text-xs">единиц</span>
                    </div>
@@ -1229,7 +1229,7 @@ const getDealerData = (status, regionName, selectedModelId) => {
       {/* Шапка с индикатором пути */}
       <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} backdrop-blur-sm rounded-lg p-3 mb-5 border ${isDark ? 'border-gray-700/50' : 'border-gray-200'} shadow-md flex justify-between items-center`}>
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-purple-600 flex items-center justify-center">
             <BarChart3 size={20} className="text-white" />
           </div>
           <div>
@@ -1263,7 +1263,7 @@ const getDealerData = (status, regionName, selectedModelId) => {
       <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} backdrop-blur-sm rounded-lg mb-5 border ${isDark ? 'border-gray-700/50' : 'border-gray-200'} shadow-md overflow-hidden`}>
         <div className={`flex justify-between items-center p-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
           <h2 className={`text-base font-medium ${isDark ? 'text-white' : 'text-gray-900'} flex items-center gap-2`}>
-            <Activity size={18} className="text-blue-400" />
+            <Activity size={18} className="text-purple-400" />
             {t('carsStatus')}
             {selectedModel && (
               <span className={`ml-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -1278,13 +1278,13 @@ const getDealerData = (status, regionName, selectedModelId) => {
             onClick={() => handleStatusSelect('notShipped')}
             className={`relative p-4 border-r ${isDark ? 'border-gray-700' : 'border-gray-200'} cursor-pointer ${isDark ? 'hover:bg-gray-700/30' : 'hover:bg-gray-50'} transition-colors group`}
           >
-            <div className={`absolute bottom-0 left-0 w-full h-1 ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}></div>
-            <div className="absolute bottom-0 left-0 h-1 bg-blue-600" 
+            <div className={`absolute bottom-0 left-0 w-full h-1 ${isDark ? 'bg-purple-900/30' : 'bg-purple-100'}`}></div>
+            <div className="absolute bottom-0 left-0 h-1 bg-purple-600" 
                  style={{ width: `${(contractDebtData.notShipped / (contractDebtData.notShipped + contractDebtData.inTransit + contractDebtData.delivered)) * 100}%` }}></div>
             
             <div className="flex items-start gap-3">
-              <div className={`w-12 h-12 rounded-full ${isDark ? 'bg-blue-900/40' : 'bg-blue-100'} flex items-center justify-center`}>
-                <Warehouse size={22} className="text-blue-400" />
+              <div className={`w-12 h-12 rounded-full ${isDark ? 'bg-purple-900/40' : 'bg-purple-100'} flex items-center justify-center`}>
+                <Warehouse size={22} className="text-purple-400" />
               </div>
               <div className="flex-1">
                 <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>{contractDebtData.notShipped}</div>
@@ -1429,7 +1429,7 @@ const getDealerData = (status, regionName, selectedModelId) => {
          <div className={`${isDark ? 'bg-gray-800/70' : 'bg-white'} backdrop-blur-sm rounded-lg border ${isDark ? 'border-gray-700/50' : 'border-gray-200'} shadow-md overflow-hidden`}>
            <div className={`flex justify-between items-center p-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
              <h3 className={`text-base font-medium ${isDark ? 'text-white' : 'text-gray-900'} flex items-center gap-2`}>
-               <Package size={18} className="text-blue-400" />
+               <Package size={18} className="text-purple-400" />
                Автомобили на складах
                {selectedModel && (
                  <span className={`ml-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -1437,7 +1437,7 @@ const getDealerData = (status, regionName, selectedModelId) => {
                  </span>
                )}
              </h3>
-             <div className="text-[16px] text-blue-300">
+             <div className="text-[16px] text-purple-300">
                Складов: <span className="font-bold">{warehousesList.length}</span>
              </div>
            </div>
@@ -1450,14 +1450,14 @@ const getDealerData = (status, regionName, selectedModelId) => {
                    onClick={() => handleWarehouseClick(warehouse)}
                    className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
                      isDark 
-                       ? 'bg-gray-800/60 border-gray-700 hover:bg-gray-700/70 hover:border-blue-600' 
-                       : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-blue-400'
+                       ? 'bg-gray-800/60 border-gray-700 hover:bg-gray-700/70 hover:border-purple-600' 
+                       : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-purple-400'
                    }`}
                  >
                    <div className="flex items-start justify-between mb-3">
                      <div className="flex items-center gap-2">
-                       <div className={`w-10 h-10 rounded-lg ${isDark ? 'bg-blue-900/40' : 'bg-blue-100'} flex items-center justify-center`}>
-                         <Package size={20} className="text-blue-400" />
+                       <div className={`w-10 h-10 rounded-lg ${isDark ? 'bg-purple-900/40' : 'bg-purple-100'} flex items-center justify-center`}>
+                         <Package size={20} className="text-purple-400" />
                        </div>
                        <div>
                          <h4 className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>

@@ -19,12 +19,12 @@ const SALE_TYPES = {
   RETAIL: {
     id: 'retail',
     name: 'Розничные продажи',
-    color: '#3b82f6'
+    color: '#a78bfa'  // светло-фиолетовый
   },
   WHOLESALE: {
     id: 'wholesale',
     name: 'Оптовые продажи',
-    color: '#8b5cf6'
+    color: '#8b5cf6'  // фиолетовый
   }
 };
 
@@ -1467,7 +1467,7 @@ const renderPeriodComparisonTable = () => {
     .style('height', '100%')
     .style('background', isDarkMode 
       ? 'radial-gradient(circle at 10% 20%, rgba(21, 30, 45, 0.4) 0%, rgba(10, 14, 23, 0.2) 90%)' 
-      : 'radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.05) 0%, rgba(255, 255, 255, 0.95) 90%)')
+      : 'radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.05) 0%, rgba(255, 255, 255, 0.95) 90%)')
     .style('opacity', '0.7')
     .style('z-index', '0');
  
@@ -1483,12 +1483,12 @@ const renderPeriodComparisonTable = () => {
     .style('padding', '10px 15px')
     .style('background', isDarkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(255, 255, 255, 0.9)')
     .style('border-radius', '10px')
-    .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.2)'}`)
+    .style('border', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.2)'}`)
     .style('box-shadow', '0 4px 6px -1px rgba(0, 0, 0, 0.1)');
  
   // Добавляем иконку календаря
   filterPanel.append('div')
-    .style('color', '#60a5fa')
+    .style('color', '#a78bfa')
     .style('font-size', '1.1rem')
     .html('<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>');
  
@@ -1530,7 +1530,7 @@ const renderPeriodComparisonTable = () => {
     .style('cursor', 'pointer')
     .style('transition', 'all 0.2s')
     .on('mouseover', function() {
-      d3.select(this).style('border-color', 'rgba(59, 130, 246, 0.5)');
+      d3.select(this).style('border-color', 'rgba(139, 92, 246, 0.5)');
     })
     .on('mouseout', function() {
       d3.select(this).style('border-color', isDarkMode ? 'rgba(75, 85, 99, 0.5)' : 'rgba(203, 213, 225, 0.8)');
@@ -1583,7 +1583,7 @@ const renderPeriodComparisonTable = () => {
     .property('disabled', true)
     .on('mouseover', function() {
       if (!this.disabled) {
-        d3.select(this).style('border-color', 'rgba(59, 130, 246, 0.5)');
+        d3.select(this).style('border-color', 'rgba(139, 92, 246, 0.5)');
       }
     })
     .on('mouseout', function() {
@@ -1639,9 +1639,9 @@ const renderPeriodComparisonTable = () => {
   const periodBadge = filterPanel.append('div')
     .attr('id', 'period-badge')
     .style('margin-left', 'auto')
-    .style('background', isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)')
-    .style('color', '#60a5fa')
-    .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'}`)
+    .style('background', isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.1)')
+    .style('color', '#a78bfa')
+    .style('border', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)'}`)
     .style('border-radius', '6px')
     .style('padding', '4px 10px')
     .style('font-size', '0.8rem')
@@ -1649,8 +1649,8 @@ const renderPeriodComparisonTable = () => {
  
   // Добавляем кнопку сброса фильтров
   const resetButton = filterPanel.append('button')
-    .style('background', isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)')
-    .style('color', '#60a5fa')
+    .style('background', isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)')
+    .style('color', '#a78bfa')
     .style('border', 'none')
     .style('padding', '4px 10px')
     .style('border-radius', '6px')
@@ -1662,10 +1662,10 @@ const renderPeriodComparisonTable = () => {
     .style('gap', '4px')
     .html(`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13h12l4-8-8 12-1-9-2 5h-5z"/></svg> <span>${t('buttons.reset')}</span>`)
     .on('mouseover', function() {
-      d3.select(this).style('background', isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)');
+      d3.select(this).style('background', isDarkMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)');
     })
     .on('mouseout', function() {
-      d3.select(this).style('background', isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)');
+      d3.select(this).style('background', isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)');
     })
     .on('click', function() {
       // Сбрасываем выбранные значения
@@ -1715,7 +1715,7 @@ const renderPeriodComparisonTable = () => {
     .style('background', isDarkMode ? 'linear-gradient(135deg, #1f2937 0%, #111827 100%)' : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)')
     .style('border-radius', '1rem')
     .style('box-shadow', '0 10px 25px -5px rgba(0, 0, 0, 0.3)')
-    .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.2)'}`);
+    .style('border', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.2)'}`);
  
   // Добавляем карточку с заголовком и описанием
   const headerCard = svg.append('g')
@@ -1728,8 +1728,8 @@ const renderPeriodComparisonTable = () => {
     .attr('width', 400)
     .attr('height', 50)
     .attr('rx', 25)
-    .attr('fill', isDarkMode ? 'rgba(30, 58, 138, 0.3)' : 'rgba(59, 130, 246, 0.1)')
-    .attr('stroke', isDarkMode ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.3)')
+    .attr('fill', isDarkMode ? 'rgba(109, 40, 217, 0.3)' : 'rgba(139, 92, 246, 0.1)')
+    .attr('stroke', isDarkMode ? 'rgba(139, 92, 246, 0.5)' : 'rgba(139, 92, 246, 0.3)')
     .attr('stroke-width', 1);
  
   // Добавляем заголовок с тенью для текста
@@ -1778,7 +1778,7 @@ const updateChartByMonth = async (monthKey) => {
     .style('border-radius', '8px')
     .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.1)')
     .html(`
-      <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mr-3"></div>
+      <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mr-3"></div>
       <span>${t('filters.loadingMonthData')}</span>
     `);
   
@@ -2112,9 +2112,9 @@ const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
     
     // Создаем расширенную цветовую схему для любого количества годов
     const colorPalette = [
-      '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981',  // Основные цвета
-      '#0ea5e9', '#6366f1', '#a855f7', '#d946ef', '#f43f5e',  // Дополнительные цвета
-      '#14b8a6', '#f97316', '#84cc16', '#22d3ee', '#a3e635'   // Дополнительные цвета 2
+      '#8b5cf6', '#a78bfa', '#c084fc', '#6d28d9', '#7c3aed',  // Фиолетовые оттенки
+      '#9333ea', '#a855f7', '#d8b4fe', '#6366f1', '#818cf8',  // Дополнительные фиолетовые
+      '#10b981', '#14b8a6', '#059669', '#34d399', '#6ee7b7'   // Зеленые для разнообразия
     ];
     
     const colorScale = d3.scaleOrdinal()
@@ -2185,7 +2185,7 @@ const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
         .style('border-radius', '5px')
         .style('font-size', '0.9rem')
         .style('box-shadow', '0 4px 15px rgba(0, 0, 0, 0.3)')
-        .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'}`)
+        .style('border', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)'}`)
         .style('z-index', 10);
     }
     
@@ -2211,7 +2211,7 @@ const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
           </div>
           <div>
             <div style="font-size: 0.75rem; color: ${isDarkMode ? '#9ca3af' : '#64748b'};">${t('metrics.share')}</div>
-            <div style="font-weight: bold; color: #60a5fa;">${percentage}%</div>
+            <div style="font-weight: bold; color: #a78bfa;">${percentage}%</div>
           </div>
         </div>
       `);
@@ -2406,7 +2406,7 @@ const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
         .attr('height', maxVisibleLegendItems * 30 + 10)
         .attr('rx', 10)
         .attr('fill', isDarkMode ? 'rgba(17, 24, 39, 0.6)' : 'rgba(255, 255, 255, 0.8)')
-        .attr('stroke', isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)')
+        .attr('stroke', isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)')
         .attr('stroke-width', 1);
     }
     
@@ -2518,7 +2518,7 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('margin-bottom', '20px')
     .style('padding-bottom', '15px')
     .style('gap', '15px')
-    .style('border-bottom', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)'}`);
+    .style('border-bottom', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)'}`);
   
   // Добавляем иконку и анимированный заголовок
   const titleSection = header.append('div')
@@ -2527,14 +2527,14 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('gap', '12px');
     
   titleSection.append('div')
-    .style('background', isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)')
+    .style('background', isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)')
     .style('width', '40px')
     .style('height', '40px')
     .style('border-radius', '10px')
     .style('display', 'flex')
     .style('align-items', 'center')
     .style('justify-content', 'center')
-    .html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>');
+    .html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></svg>');
   
   titleSection.append('h2')
     .style('font-size', isMobile ? '1.2rem' : '1.5rem')
@@ -2551,9 +2551,9 @@ const showCarModelDetails = (year, month, monthName) => {
   
   // Кнопка возврата к выбору с улучшенным дизайном и анимацией
   const backButton = buttonGroup.append('button')
-    .style('background', isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)')
-    .style('color', '#60a5fa')
-    .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.2)'}`)
+    .style('background', isDarkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)')
+    .style('color', '#a78bfa')
+    .style('border', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.25)' : 'rgba(139, 92, 246, 0.2)'}`)
     .style('padding', '8px 15px')
     .style('border-radius', '8px')
     .style('font-size', '0.85rem')
@@ -2566,12 +2566,12 @@ const showCarModelDetails = (year, month, monthName) => {
     .html(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> ${t('models.backToChoice')}`)
     .on('mouseover', function() {
       d3.select(this)
-        .style('background', isDarkMode ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.15)')
+        .style('background', isDarkMode ? 'rgba(139, 92, 246, 0.25)' : 'rgba(139, 92, 246, 0.15)')
         .style('transform', 'translateY(-2px)');
     })
     .on('mouseout', function() {
       d3.select(this)
-        .style('background', isDarkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)')
+        .style('background', isDarkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)')
         .style('transform', 'translateY(0)');
     })
     .on('click', () => showSelectionOptions(year, month, monthName));
@@ -2639,7 +2639,7 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('padding', '10px')
     .style('border-radius', '8px')
     .style('background', isDarkMode ? 'rgba(30, 41, 59, 0.4)' : 'rgba(241, 245, 249, 0.6)')
-    .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)'}`);
+    .style('border', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)'}`);
   
   // Рассчитываем общие показатели на основе данных моделей
   const totalSales = Object.values(yearData.modelData)
@@ -2717,7 +2717,7 @@ const showCarModelDetails = (year, month, monthName) => {
     formatProfitCompact(getCurrentMonthTotal()),
     t('metrics.basedOnModels'),
     '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
-    '59, 130, 246'
+    '139, 92, 246'
   );
 
   // Рассчитываем долю премиум сегмента (модели со средней ценой выше среднего)
@@ -2735,7 +2735,7 @@ const showCarModelDetails = (year, month, monthName) => {
     `${premiumShare.toFixed(1)}%`,
     `${premiumModels.length} ${t('models.models', { count: premiumModels.length })}`,
     '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>',
-    '139, 92, 246'
+    '167, 139, 250'
   );
   
   // Отображаем лидера продаж
@@ -2767,7 +2767,7 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.4)' : 'rgba(255, 255, 255, 0.8)')
     .style('border-radius', '12px')
     .style('padding', isMobile ? '12px' : '16px')
-    .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)'}`)
+    .style('border', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)'}`)
     .style('display', 'flex')
     .style('flex-direction', 'column')
     .style('min-height', isMobile ? '300px' : 'auto');
@@ -2810,7 +2810,7 @@ const showCarModelDetails = (year, month, monthName) => {
   viewOptions.forEach((option, i) => {
     viewToggle.append('button')
       .attr('id', `view-${option.id}`)
-      .style('background', option.id === viewMode ? 'rgba(59, 130, 246, 0.4)' : 'transparent')
+      .style('background', option.id === viewMode ? 'rgba(139, 92, 246, 0.4)' : 'transparent')
       .style('color', option.id === viewMode ? '#f9fafb' : (isDarkMode ? '#9ca3af' : '#64748b'))
       .style('border', 'none')
       .style('border-radius', '4px')
@@ -2829,7 +2829,7 @@ const showCarModelDetails = (year, month, monthName) => {
           .style('color', isDarkMode ? '#9ca3af' : '#64748b');
         
         d3.select(this)
-          .style('background', 'rgba(59, 130, 246, 0.4)')
+          .style('background', 'rgba(139, 92, 246, 0.4)')
           .style('color', '#f9fafb');
         
         // Обновляем текущий режим просмотра
@@ -2919,12 +2919,12 @@ const showCarModelDetails = (year, month, monthName) => {
     
     barGradient.append('stop')
       .attr('offset', '0%')
-      .attr('stop-color', '#3b82f6')
+      .attr('stop-color', '#8b5cf6')
       .attr('stop-opacity', 0.9);
     
     barGradient.append('stop')
       .attr('offset', '100%')
-      .attr('stop-color', '#60a5fa')
+      .attr('stop-color', '#a78bfa')
       .attr('stop-opacity', 0.7);
     
     // Градиент для наведения
@@ -2937,12 +2937,12 @@ const showCarModelDetails = (year, month, monthName) => {
     
     barHoverGradient.append('stop')
       .attr('offset', '0%')
-      .attr('stop-color', '#2563eb')
+      .attr('stop-color', '#7c3aed')
       .attr('stop-opacity', 1);
     
     barHoverGradient.append('stop')
       .attr('offset', '100%')
-      .attr('stop-color', '#3b82f6')
+      .attr('stop-color', '#8b5cf6')
       .attr('stop-opacity', 0.8);
     
     // Добавляем фоновую сетку
@@ -2992,7 +2992,7 @@ const showCarModelDetails = (year, month, monthName) => {
         .style('border-radius', '8px')
         .style('font-size', '0.9rem')
         .style('box-shadow', '0 10px 25px rgba(0, 0, 0, 0.2)')
-        .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'}`)
+        .style('border', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)'}`)
         .style('z-index', 1000)
         .style('max-width', '280px')
         .style('backdrop-filter', 'blur(4px)');
@@ -3046,7 +3046,7 @@ const showCarModelDetails = (year, month, monthName) => {
           </div>
           <div style="display: flex; justify-content: space-between; margin-top: 4px;">
             <span style="font-size: 0.75rem; color: ${isDarkMode ? '#9ca3af' : '#64748b'};">${t('metrics.share')}:</span>
-            <span style="font-weight: bold; color: #60a5fa;">${percentage}%</span>
+            <span style="font-weight: bold; color: #a78bfa;">${percentage}%</span>
           </div>
         </div>
       `;
@@ -3092,7 +3092,7 @@ const showCarModelDetails = (year, month, monthName) => {
         .attr('x2', '100%')
         .attr('y2', '0%');
       
-      const baseColor = d3.rgb(i === 0 ? '#3b82f6' : '#4b5563');
+      const baseColor = d3.rgb(i === 0 ? '#8b5cf6' : '#4b5563');
       const startColor = baseColor.brighter(0.5);
       const endColor = baseColor;
       
@@ -3184,7 +3184,7 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.4)' : 'rgba(255, 255, 255, 0.8)')
     .style('border-radius', '12px')
     .style('padding', isMobile ? '12px' : '16px')
-    .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)'}`)
+    .style('border', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)'}`)
     .style('min-height', isMobile ? '300px' : 'auto');
   
   // Заголовок
@@ -3227,8 +3227,8 @@ const showCarModelDetails = (year, month, monthName) => {
   const pieColor = d3.scaleOrdinal()
     .domain(pieData.map(d => d.name))
     .range([
-      '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981',
-      '#0ea5e9', '#6366f1', '#a855f7', '#d946ef', '#f43f5e'
+      '#8b5cf6', '#a78bfa', '#c084fc', '#7c3aed', '#6d28d9',
+      '#9333ea', '#a855f7', '#d8b4fe', '#6366f1', '#818cf8'
     ]);
   
   // Создаем генератор пончика с закругленными краями
@@ -3387,7 +3387,7 @@ const showCarModelDetails = (year, month, monthName) => {
   centerGroup.append('circle')
     .attr('r', pieRadius * 0.48)
     .attr('fill', isDarkMode ? 'rgba(17, 24, 39, 0.7)' : 'rgba(248, 250, 252, 0.8)')
-    .attr('stroke', isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)')
+    .attr('stroke', isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)')
     .attr('stroke-width', 1);
   
   const centerText = centerGroup.append('text')
@@ -3410,7 +3410,7 @@ const showCarModelDetails = (year, month, monthName) => {
     .attr('text-anchor', 'middle')
     .attr('dy', '2em')
     .style('font-size', isMobile ? '0.9rem' : '1.1rem')
-    .style('fill', '#60a5fa')
+    .style('fill', '#a78bfa')
     .style('font-weight', '500')
     .text('100%');
   
@@ -3448,7 +3448,7 @@ const showCarModelDetails = (year, month, monthName) => {
     .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.4)' : 'rgba(255, 255, 255, 0.8)')
     .style('border-radius', '12px')
     .style('padding', isMobile ? '12px' : '16px')
-    .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)'}`)
+    .style('border', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)'}`)
     .style('display', 'flex')
     .style('flex-direction', 'column');
   
@@ -3553,8 +3553,8 @@ const showCarModelDetails = (year, month, monthName) => {
       t('models.topSeller'),
       modelName,
       `${topModelCount} ${t('table.headers.count').toLowerCase()}`,
-'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
-     '59, 130, 246'
+     '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+     '139, 92, 246'
    );
  }
  
@@ -3603,7 +3603,7 @@ const showCarModelDetails = (year, month, monthName) => {
    fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css';
    head.appendChild(fontAwesome);
  }
-};      
+};
   
 const showRegionDetails = async (year, month, monthName) => {
   if (!mainChartRef.current) return;
@@ -3634,7 +3634,7 @@ const showRegionDetails = async (year, month, monthName) => {
     .style('margin-bottom', '20px')
     .style('padding-bottom', '15px')
     .style('gap', '15px')
-    .style('border-bottom', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)'}`);
+    .style('border-bottom', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)'}`);
   
   // Добавляем иконку и анимированный заголовок
   const titleSection = header.append('div')
@@ -3643,14 +3643,14 @@ const showRegionDetails = async (year, month, monthName) => {
     .style('gap', '12px');
     
   titleSection.append('div')
-    .style('background', isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)')
+    .style('background', isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)')
     .style('width', '40px')
     .style('height', '40px')
     .style('border-radius', '10px')
     .style('display', 'flex')
     .style('align-items', 'center')
     .style('justify-content', 'center')
-    .html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>');
+    .html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>');
   
   titleSection.append('h2')
     .style('font-size', isMobile ? '1.2rem' : '1.5rem')
@@ -3704,7 +3704,7 @@ const showRegionDetails = async (year, month, monthName) => {
           .style('height', '100px')
           .style('color', isDarkMode ? '#9ca3af' : '#64748b')
           .html(`
-            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-500"></div>
             <span class="ml-3">${t('regions.loadingData')}</span>
           `);
       }
@@ -3924,7 +3924,7 @@ const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
       .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.4)' : 'rgba(255, 255, 255, 0.8)')
       .style('border-radius', '12px')
       .style('padding', '15px')
-      .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)'}`)
+      .style('border', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)'}`)
       .style('display', 'flex')
       .style('flex-direction', 'column');
 
@@ -3974,11 +3974,11 @@ const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
         .style('grid-template-columns', '8% 32% 20% 15% 25%')
         .style('padding', '10px 8px')
         .style('background', backgroundColor)
-        .style('border-left', i < 3 ? `3px solid ${d3.interpolateReds(0.3 + i * 0.2)}` : 'none')
+        .style('border-left', i < 3 ? `3px solid ${d3.interpolatePurples(0.3 + i * 0.2)}` : 'none')
         .style('cursor', 'pointer')
         .style('transition', 'all 0.2s')
         .on('mouseover', function() { 
-          d3.select(this).style('background', isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'); 
+          d3.select(this).style('background', isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)'); 
         })
         .on('mouseout', function() { 
           d3.select(this).style('background', backgroundColor); 
@@ -4046,7 +4046,7 @@ const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
       barContainer.append('div')
         .style('height', '100%')
         .style('width', `${(region.sales / regions[0].sales) * 100}%`)
-        .style('background', d3.interpolateReds(0.3 + (region.sales / regions[0].sales) * 0.7))
+        .style('background', d3.interpolatePurples(0.3 + (region.sales / regions[0].sales) * 0.7))
         .style('border-radius', '4px')
         .style('transform', 'scaleX(0)')
         .style('transform-origin', 'left')
@@ -4061,7 +4061,7 @@ const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
       .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.4)' : 'rgba(255, 255, 255, 0.8)')
       .style('border-radius', '12px')
       .style('padding', '15px')
-      .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)'}`);
+      .style('border', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)'}`);
     
     pieChartContainer.append('h3')
       .style('font-size', '1.1rem')
@@ -4099,7 +4099,7 @@ const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
     // Создаем цветовую схему
     const pieColor = d3.scaleOrdinal()
       .domain(pieData.map(d => d.name))
-      .range(d3.quantize(t => d3.interpolateBlues(t * 0.8 + 0.1), pieData.length));
+      .range(d3.quantize(t => d3.interpolatePurples(t * 0.8 + 0.1), pieData.length));
     
     // Функция для обновления круговой диаграммы
     const updatePieChart = () => {
@@ -4243,7 +4243,7 @@ const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
         .attr('text-anchor', 'middle')
         .attr('dy', '1.5em')
         .style('font-size', '1rem')
-        .style('fill', '#60a5fa')
+        .style('fill', '#a78bfa')
         .text('100%');
       
       // Добавляем количество контрактов
@@ -4370,7 +4370,7 @@ const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
       .style('background', isDarkMode ? 'rgba(30, 41, 59, 0.5)' : 'rgba(226, 232, 240, 0.5)')
       .style('border-radius', '8px')
       .style('padding', '12px 15px')
-      .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)'}`);
+      .style('border', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)'}`);
     
     // Добавляем заголовок
     rangeSelector.append('div')
@@ -4487,7 +4487,7 @@ const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
       .style('background', isDarkMode ? 'rgba(17, 24, 39, 0.4)' : 'rgba(255, 255, 255, 0.8)')
       .style('border-radius', '12px')
       .style('padding', '15px')
-      .style('border', `1px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)'}`);
+      .style('border', `1px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)'}`);
    
     compareChartContainer.append('h3')
       .style('font-size', '1.1rem')
@@ -4505,7 +4505,7 @@ const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
       .style('height', '100px')
       .style('color', isDarkMode ? '#9ca3af' : '#64748b')
       .html(`
-        <div style="width: 25px; height: 25px; border-radius: 50%; border: 2px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}; border-top-color: #3b82f6; animation: spin 1s linear infinite;"></div>
+        <div style="width: 25px; height: 25px; border-radius: 50%; border: 2px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)'}; border-top-color: #8b5cf6; animation: spin 1s linear infinite;"></div>
         <span style="margin-left: 10px;">${t('regions.loadingData')}</span>
       `);
     
@@ -4581,8 +4581,8 @@ const response = await fetch(`https://uzavtoanalytics.uz/dashboard/proxy`, {
       .style('width', `${spinnerSize}px`)
       .style('height', `${spinnerSize}px`)
       .style('border-radius', '50%')
-      .style('border', `3px solid ${isDarkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}`)
-      .style('border-top-color', '#3b82f6')
+      .style('border', `3px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)'}`)
+      .style('border-top-color', '#8b5cf6')
       .style('animation', 'spin 1s linear infinite')
       .style('margin-right', '10px');
     
@@ -4759,14 +4759,14 @@ const startPeriodResponse = await fetch(`https://uzavtoanalytics.uz/dashboard/pr
       console.log(`Обработано ${processedStartRegions.length} регионов начального периода и ${processedEndRegions.length} регионов конечного периода`);
       
       // Проверяем наличие данных
-      if (processedStartRegions.length === 0 && processedEndRegions.length === 0) {
-        loader.remove();
-        comparisonContainer.append('div')
-          .style('display', 'flex')
-          .style('justify-content', 'center')
-          .style('align-items', 'center')
-          .style('height', '200px')
-        .style('color', isDarkMode ? '#9ca3af' : '#64748b')
+if (processedStartRegions.length === 0 && processedEndRegions.length === 0) {
+       loader.remove();
+       comparisonContainer.append('div')
+         .style('display', 'flex')
+         .style('justify-content', 'center')
+         .style('align-items', 'center')
+         .style('height', '200px')
+         .style('color', isDarkMode ? '#9ca3af' : '#64748b')
          .text(t('regions.noData'));
        return;
      }
@@ -4919,12 +4919,12 @@ const startPeriodResponse = await fetch(`https://uzavtoanalytics.uz/dashboard/pr
      
      currentGradient.append('stop')
        .attr('offset', '0%')
-       .attr('stop-color', '#60a5fa')
+       .attr('stop-color', '#a78bfa')
        .attr('stop-opacity', 1);
      
      currentGradient.append('stop')
        .attr('offset', '100%')
-       .attr('stop-color', '#3b82f6')
+       .attr('stop-color', '#8b5cf6')
        .attr('stop-opacity', 0.8);
      
      // Градиент для предыдущего периода
@@ -5011,7 +5011,7 @@ const startPeriodResponse = await fetch(`https://uzavtoanalytics.uz/dashboard/pr
        .attr('y', d => yScale(d.currentSales) - 5)
        .attr('text-anchor', 'middle')
        .style('font-size', '0.7rem')
-       .style('fill', isDarkMode ? '#93c5fd' : '#3b82f6')
+       .style('fill', isDarkMode ? '#c4b5fd' : '#8b5cf6')
        .style('opacity', 0)
        .text(d => formatProfitCompact(d.currentSales))
        .transition()
@@ -5058,7 +5058,7 @@ const startPeriodResponse = await fetch(`https://uzavtoanalytics.uz/dashboard/pr
          .on('mouseover', function(event, d) {
            const value = isPrevious ? d.previousSales : d.currentSales;
            const periodName = isPrevious ? startPeriodName : endPeriodName;
-           const color = isPrevious ? '#94a3b8' : '#3b82f6';
+           const color = isPrevious ? '#94a3b8' : '#8b5cf6';
            
            // Увеличиваем столбец при наведении
            d3.select(this)
@@ -5146,7 +5146,7 @@ const startPeriodResponse = await fetch(`https://uzavtoanalytics.uz/dashboard/pr
      .style('height', '200px')
      .style('color', isDarkMode ? '#9ca3af' : '#64748b')
      .html(`
-       <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+       <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-500"></div>
        <span class="ml-3">${t('regions.loadingData')}</span>
      `);
 
@@ -5275,6 +5275,7 @@ const startPeriodResponse = await fetch(`https://uzavtoanalytics.uz/dashboard/pr
  
  console.groupEnd(); // Завершаем группу логирования
 };
+
 const showSelectionOptions = (year, month, monthName) => {
   if (!mainChartRef.current) return;
   d3.selectAll('.chart-tooltip, .bar-tooltip, .model-tooltip').remove();
@@ -5684,7 +5685,6 @@ const renderDailySalesTotalRow = () => {
   );
 };
 
-// Вспомогательная функция для получения дня недели с переводом
 const getDayOfWeek = (dateStr) => {
   const date = new Date(dateStr);
   const dayOfWeek = date.getDay();
@@ -5699,7 +5699,6 @@ const getDayOfWeek = (dateStr) => {
   ];
   return weekdays[dayOfWeek];
 };
-
 
 return (
   <div 
@@ -5716,7 +5715,7 @@ return (
    <motion.h1 
   initial={{ opacity: 0, y: -20 }}
   animate={{ opacity: 1, y: 0 }}
-  className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent"
+  className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-500 to-purple-600 bg-clip-text text-transparent"
   style={{ color: 'transparent' }}
 >
   {t('title')}
@@ -5814,8 +5813,7 @@ return (
            <button 
   className="transition-colors text-white px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-1"
   style={{
-    backgroundColor: '#3b82f6',
-    ':hover': { backgroundColor: '#2563eb' }
+    backgroundColor: '#8b5cf6',
   }}
   onClick={refreshDataWithDateRange}
 >
@@ -6011,8 +6009,8 @@ return (
       <button 
         className={`transition-colors text-white px-4 py-1.5 rounded-md text-sm font-medium flex items-center gap-1 ${
           isDarkMode 
-            ? 'bg-blue-600 hover:bg-blue-700' 
-            : 'bg-blue-600 hover:bg-blue-700'
+            ? 'bg-purple-600 hover:bg-purple-700' 
+            : 'bg-purple-600 hover:bg-purple-700'
         }`}
         onClick={fetchDailySalesData}
       >

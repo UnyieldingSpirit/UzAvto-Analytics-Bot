@@ -1923,8 +1923,8 @@ data.forEach((model, index) => {
                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                  !isWholesale
                    ? isDark 
-                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
-                     : 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                     ? 'bg-purple-600 text-white shadow-lg shadow-blue-900/30'
+                     : 'bg-purple-600 text-white shadow-lg shadow-blue-600/30'
                    : isDark
                      ? 'bg-transparent text-slate-300 hover:bg-slate-700'
                      : 'bg-transparent text-gray-700 hover:bg-gray-200'
@@ -2000,7 +2000,7 @@ data.forEach((model, index) => {
            <div className="flex items-center ml-auto mt-2 md:mt-0">
              <span className={`${isDark ? 'text-slate-400' : 'text-gray-600'} text-sm`}>{t('filters.currentView')}:</span>
              <div className="flex items-center ml-2">
-               <span className="text-blue-400 font-medium text-sm">
+               <span className="text-purple-400 font-medium text-sm">
                  {currentView === 'general' 
                    ? t('views.general')
                    : currentView === 'region' 
@@ -2042,8 +2042,8 @@ data.forEach((model, index) => {
                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                      statusView === 'chart' 
                        ? isDark 
-                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
-                         : 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                         ? 'bg-purple-600 text-white shadow-lg shadow-blue-900/30'
+                         : 'bg-purple-600 text-white shadow-lg shadow-blue-600/30'
                        : isDark
                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                          : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
@@ -2056,8 +2056,8 @@ data.forEach((model, index) => {
                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                      statusView === 'table' 
                        ? isDark 
-                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
-                         : 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                         ? 'bg-purple-600 text-white shadow-lg shadow-blue-900/30'
+                         : 'bg-purple-600 text-white shadow-lg shadow-blue-600/30'
                        : isDark
                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                          : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'

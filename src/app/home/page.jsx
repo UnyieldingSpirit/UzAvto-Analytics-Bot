@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import AuthForm from '../shared/components/AuthForm';
+import AnalyticsReports from "../shared/components/AnalyticsReports";
 
 
 export default function StatisticsPage() {
@@ -17,7 +17,7 @@ export default function StatisticsPage() {
 
   return (
     <>
-   <AuthForm />
+   <AnalyticsReports />
     </>
   );
 }

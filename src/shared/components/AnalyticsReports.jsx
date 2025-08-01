@@ -71,12 +71,12 @@ const D3CarVisualization = ({ data, selectedModel }) => {
     
     gradient.append("stop")
       .attr("offset", "0%")
-      .attr("stop-color", "#3b82f6")
+      .attr("stop-color", "#8b5cf6")
       .attr("stop-opacity", 0.8);
     
     gradient.append("stop")
       .attr("offset", "100%")
-      .attr("stop-color", "#8b5cf6")
+      .attr("stop-color", "#a78bfa")
       .attr("stop-opacity", 0.8);
     
     const g = svg.append("g")
@@ -448,7 +448,7 @@ const YearComparison = ({ currentData, onYearSelect }) => {
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"
+          className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full"
         />
       </div>
     );
@@ -477,7 +477,7 @@ const YearComparison = ({ currentData, onYearSelect }) => {
             }}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
               selectedYears.includes(year)
-                ? 'bg-blue-500 text-white'
+                ? 'bg-purple-600 text-white'
                 : isDark 
                   ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -597,7 +597,7 @@ const YearComparison = ({ currentData, onYearSelect }) => {
                     key={year}
                     type="monotone"
                     dataKey={`sales${year}`}
-                    stroke={['#3b82f6', '#8b5cf6', '#ec4899'][index]}
+                    stroke={['#8b5cf6', '#a78bfa', '#c084fc'][index]}
                     strokeWidth={3}
                     dot={{ fill: ['#3b82f6', '#8b5cf6', '#ec4899'][index], r: 4 }}
                     activeDot={{ r: 6 }}
@@ -886,7 +886,7 @@ const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-20 h-20 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"
+            className="w-20 h-20 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"
           />
           <p className={isDark ? 'text-gray-400' : 'text-gray-600'}>{t('states.loading')}</p>
         </motion.div>
@@ -907,7 +907,7 @@ const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/
               <motion.div
                 animate={{ rotate: [0, 360] }}
                 transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg"
+                className="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-r from-purple-600 to-purple-800 rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg"
               >
                 <Brain className="w-6 h-6 lg:w-8 lg:h-8 text-white" />
               </motion.div>
@@ -935,7 +935,7 @@ const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/
                   onClick={() => setActiveView(view.id)}
                   className={`px-4 py-2 lg:px-6 lg:py-3 rounded-lg lg:rounded-xl font-medium transition-all flex items-center gap-2 text-sm lg:text-base ${
                     activeView === view.id
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
+                      ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg'
                       : isDark 
                         ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                         : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -966,7 +966,7 @@ const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/
                       value={processedData.totalSales}
                       label={t('metrics.totalSold')}
                       icon={<Car className="w-5 h-5 lg:w-6 lg:h-6 text-white" />}
-                      color="from-blue-500 to-cyan-500"
+                      color="from-purple-500 to-purple-600"
                       delay={0}
                       suffix={` ${t('metrics.units')}`}
                     />
@@ -982,14 +982,14 @@ const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/
                       value={Object.keys(processedData.modelStats).length}
                       label={t('metrics.models')}
                       icon={<Package className="w-5 h-5 lg:w-6 lg:h-6 text-white" />}
-                      color="from-purple-500 to-pink-500"
+                      color="from-purple-600 to-purple-700"
                       delay={0.2}
                     />
                     <AnimatedStat
                       value={Object.keys(processedData.colorStats).length}
                       label={t('metrics.colors')}
                       icon={<Palette className="w-5 h-5 lg:w-6 lg:h-6 text-white" />}
-                      color="from-orange-500 to-red-500"
+                      color="from-pink-500 to-rose-500"
                       delay={0.3}
                     />
                   </div>
@@ -998,8 +998,8 @@ const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/
                     <ReportCard
                       title={t('reports.bestSelling.title')}
                       subtitle={t('reports.bestSelling.subtitle')}
-                      gradient="bg-gradient-to-br from-blue-600/20 to-blue-800/20"
-                      icon={<TrendingUp className="w-6 h-6 lg:w-8 lg:h-8 text-blue-400" />}
+                      gradient="bg-gradient-to-br from-purple-600/20 to-purple-800/20"
+                      icon={<TrendingUp className="w-6 h-6 lg:w-8 lg:h-8 text-purple-400" />}
                     >
                       <div className="space-y-3 lg:space-y-4">
                         <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-100/50'} rounded-xl p-3 lg:p-4`}>
@@ -1019,8 +1019,8 @@ const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/
                           </div>
                         </div>
                         
-                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 lg:p-4">
-                          <p className="text-blue-300 text-xs lg:text-sm">
+                        <div className="bg-blue-500/10 border border-purple-500/20 rounded-lg p-3 lg:p-4">
+                          <p className="text-dark-300 text-xs lg:text-sm">
                             {t('reports.bestSelling.result', {
                               year: '2025',
                               model: processedData.bestCombination.model,
@@ -1036,7 +1036,7 @@ const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/
                     <ReportCard
                       title={t('reports.mostProfitable.title')}
                       subtitle={t('reports.mostProfitable.subtitle')}
-                      gradient="bg-gradient-to-br from-green-600/20 to-green-800/20"
+                      gradient="bg-gradient-to-br from-purple-600/20 to-purple-800/20"
                       icon={<Award className="w-6 h-6 lg:w-8 lg:h-8 text-green-400" />}
                     >
                       <div className="space-y-3 lg:space-y-4">
@@ -1051,7 +1051,7 @@ const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/
                         </div>
                         
                         <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 lg:p-4">
-                          <p className="text-green-300 text-xs lg:text-sm">
+                          <p className="text-dark-300 text-xs lg:text-sm">
                             {t('reports.mostProfitable.result', {
                               year: '2025',
                               model: processedData.mostProfitableModel[0],
@@ -1092,7 +1092,7 @@ const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/
                         </div>
                         
                         <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 lg:p-4">
-                          <p className="text-purple-300 text-xs lg:text-sm">
+                          <p className="text-dark-300 text-xs lg:text-sm">
                             {t('reports.bestSellingColor.result', {
                               year: '2025',
                               color: processedData.bestSellingColor[0],
@@ -1138,7 +1138,7 @@ const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/
                                 .sort((a, b) => b[1].total - a[1].total)
                                 .slice(0, 5)
                                 .map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'][index]} />
+                                  <Cell key={`cell-${index}`} fill={['#8b5cf6', '#a78bfa', '#c084fc', '#7c3aed', '#6d28d9'][index]} />
                                 ))}
                             </Bar>
                           </BarChart>
@@ -1202,7 +1202,7 @@ const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/
                           }))}>
                             <defs>
                               <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
                                 <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                               </linearGradient>
                             </defs>
@@ -1374,17 +1374,17 @@ const response = await axiosInstance.post('https://uzavtoanalytics.uz/dashboard/
            fire(0.25, {
              spread: 26,
              startVelocity: 55,
-             colors: ['#3b82f6', '#8b5cf6']
+             colors: ['#8b5cf6', '#a78bfa']
            });
            fire(0.2, {
              spread: 60,
-             colors: ['#ec4899', '#f59e0b']
+             colors: ['#c084fc', '#d8b4fe']
            });
            fire(0.35, {
              spread: 100,
              decay: 0.91,
              scalar: 0.8,
-             colors: ['#10b981', '#06b6d4']
+             colors: ['#7c3aed', '#6d28d9']
            });
          }}
          className="w-14 h-14 lg:w-16 lg:h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-2xl animate-pulse"

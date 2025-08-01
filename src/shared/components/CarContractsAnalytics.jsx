@@ -2963,7 +2963,7 @@ const loadMoneyReturnData = (year) => {
     // Показываем загрузку
     chartDiv.innerHTML = `
       <div class="flex flex-col items-center justify-center h-64">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-blue-500 mb-4"></div>
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-purple-500 mb-4"></div>
         <p class="text-gray-400">Загрузка данных...</p>
       </div>
     `;
@@ -4223,7 +4223,7 @@ const StatisticsCards = () => {
           "bg-gray-200",
           "bg-gray-700"
         )}>
-          <div className={`h-full rounded-full ${isCalculating ? 'bg-blue-500/50 animate-pulse' : 'bg-blue-500'}`} 
+          <div className={`h-full rounded-full ${isCalculating ? 'bg-purple-500/50 animate-pulse' : 'bg-purple-500'}`} 
                style={{ width: '70%' }}></div>
         </div>
       </div>
@@ -4351,13 +4351,13 @@ const CarModelThumbnail = ({ model, isSelected, onClick }) => {
   // Определяем цвет для активного таба
   const getTabColor = () => {
     switch(activeTab) {
-      case 'contracts': return 'from-blue-500 to-blue-600';
+      case 'contracts': return 'from-purple-500 to-purple-600';
       case 'sales': return 'from-green-500 to-green-600';
       case 'stock': return 'from-purple-500 to-purple-600';
       case 'retail': return 'from-orange-500 to-orange-600';
       case 'wholesale': return 'from-indigo-500 to-indigo-600';
       case 'promotions': return 'from-red-500 to-red-600';
-      default: return 'from-blue-500 to-blue-600';
+      default: return 'from-purple-500 to-purple-600';
     }
   };
   
@@ -4530,7 +4530,7 @@ const stats = getStats();
     </div>
     <button 
       onClick={applyDateFilter}
-      className="ml-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md flex items-center transition-colors"
+      className="ml-2 bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md flex items-center transition-colors"
     >
       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -4576,8 +4576,8 @@ const stats = getStats();
   activeTab === 'contracts' 
     ? themeClass(
         'border-b-2',
-        'text-blue-600 border-blue-600',
-        'text-blue-400 border-blue-400'
+        'text-purple-600 border-purple-600',
+        'text-purple-400 border-purple-400'
       )
     : themeClass(
         '',
@@ -4596,7 +4596,7 @@ const stats = getStats();
   <button
     className={`py-3 px-6 font-medium flex items-center ${
       activeTab === 'sales' 
-        ? 'text-blue-400 border-b-2 border-blue-400' 
+        ? 'text-purple-400 border-b-2 border-purple-400' 
         : 'text-gray-400 hover:text-gray-300'
     }`}
     onClick={() => setActiveTab('sales')}
@@ -4610,7 +4610,7 @@ const stats = getStats();
   <button
     className={`py-3 px-6 font-medium flex items-center ${
       activeTab === 'retail' 
-        ? 'text-blue-400 border-b-2 border-blue-400' 
+        ? 'text-purple-400 border-b-2 border-purple-400' 
         : 'text-gray-400 hover:text-gray-300'
     }`}
     onClick={() => setActiveTab('retail')}
@@ -4624,7 +4624,7 @@ const stats = getStats();
   <button
     className={`py-3 px-6 font-medium flex items-center ${
       activeTab === 'wholesale' 
-        ? 'text-blue-400 border-b-2 border-blue-400' 
+        ? 'text-purple-400 border-b-2 border-purple-400' 
         : 'text-gray-400 hover:text-gray-300'
     }`}
     onClick={() => setActiveTab('wholesale')}
@@ -4638,7 +4638,7 @@ const stats = getStats();
   <button
     className={`py-3 px-6 font-medium flex items-center ${
       activeTab === 'promotions' 
-        ? 'text-blue-400 border-b-2 border-blue-400' 
+        ? 'text-purple-400 border-b-2 border-purple-400' 
         : 'text-gray-400 hover:text-gray-300'
     }`}
     onClick={() => setActiveTab('promotions')}
@@ -4666,7 +4666,7 @@ const stats = getStats();
           <button 
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
               viewMode === 'cards' 
-                ? 'bg-blue-600 text-white shadow-md' 
+                ? 'bg-purple-600 text-white shadow-md' 
                 : 'text-gray-400 hover:text-white'
             }`}
             onClick={() => setViewMode('cards')}
@@ -4681,7 +4681,7 @@ const stats = getStats();
           <button 
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
               viewMode === 'list' 
-                ? 'bg-blue-600 text-white shadow-md' 
+                ? 'bg-purple-600 text-white shadow-md' 
                 : 'text-gray-400 hover:text-white'
             }`}
             onClick={() => setViewMode('list')}
@@ -4752,7 +4752,7 @@ const stats = getStats();
         </div>
         <div className="flex items-center">
           <button 
-            className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 py-2 text-sm flex items-center transition-colors"
+            className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-3 py-2 text-sm flex items-center transition-colors"
             onClick={() => {
               fetchData(getApiUrlForTab(activeTab));
             }}
@@ -4929,7 +4929,7 @@ const stats = getStats();
         </h3>
         
         <button 
-          className="mt-auto text-blue-400 hover:text-white transition-all duration-200 flex items-center text-sm px-4 py-2 bg-blue-600/20 hover:bg-blue-600/40 rounded-md border border-blue-500/30 shadow-sm w-fit"
+          className="mt-auto text-purple-400 hover:text-white transition-all duration-200 flex items-center text-sm px-4 py-2 bg-purple-600/20 hover:bg-purple-600/40 rounded-md border border-purple-500/30 shadow-sm w-fit"
           onClick={() => setSelectedModel('all')}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
