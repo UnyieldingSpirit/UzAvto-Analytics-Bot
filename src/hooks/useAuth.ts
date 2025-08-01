@@ -32,9 +32,9 @@ export function useAuth(): UseAuthReturn {
             axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
         } else {
             // Если нет токена и мы не на странице авторизации - редиректим
-            const publicPaths = ['/auth', '/onboarding'];
+            const publicPaths = ['/', '/onboarding'];
             if (!publicPaths.includes(pathname)) {
-                router.push('/auth');
+                router.push('/');
             }
         }
         setLoading(false);
@@ -79,7 +79,7 @@ export function useAuth(): UseAuthReturn {
         delete axios.defaults.headers.common['Authorization'];
         setToken(null);
         setIsAuthenticated(false);
-        router.push('/auth');
+        router.push('/');
     };
 
     const checkAuth = () => {

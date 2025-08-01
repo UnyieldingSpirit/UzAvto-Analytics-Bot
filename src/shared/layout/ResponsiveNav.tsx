@@ -226,7 +226,7 @@ const categoryColors = {
 
   const navItems: NavItem[] = [
     {
-      path: '/',
+      path: '/home',
       label: t('dashboard'),
       translationKey: 'dashboard',
       category: 'main',

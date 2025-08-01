@@ -11,7 +11,7 @@ export default function StatisticsPage() {
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
     if (!isAuthenticated) {
-      router.push('/auth');
+      router.push('/');
     }
   }, [router]);
 

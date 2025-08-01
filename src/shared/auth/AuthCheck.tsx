@@ -14,7 +14,7 @@ export default function AuthCheck({ children }: { children: React.ReactNode }) {
     // Если пользователь не авторизован и не находится на странице авторизации,
     // перенаправляем на страницу авторизации
     if (!isAuthenticated && pathname !== '/auth') {
-      router.push('/auth');
+      router.push('/');
     }
   }, [router, pathname]);
 

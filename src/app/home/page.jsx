@@ -2,8 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import AnalyticsReports from "../shared/components/AnalyticsReports";
-
+import AnalyticsReports  from '../../shared/components/AnalyticsReports';
 
 export default function StatisticsPage() {
   const router = useRouter();
@@ -11,7 +10,7 @@ export default function StatisticsPage() {
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
     if (!isAuthenticated) {
-      router.push('/auth');
+      router.push('/');
     }
   }, [router]);
 

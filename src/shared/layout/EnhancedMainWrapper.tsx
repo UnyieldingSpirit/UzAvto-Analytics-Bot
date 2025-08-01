@@ -27,7 +27,7 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
   const isDark = mode === 'dark';
   
   // Проверяем, находимся ли мы на странице авторизации
-  const isAuthPage = pathname === '/auth';
+  const isAuthPage = pathname === '/';
   // Проверяем, находимся ли мы на странице онбординга
   const isOnboardingPage = pathname === '/onboarding';
 
@@ -46,7 +46,7 @@ export default function EnhancedMainWrapper({ children }: EnhancedMainWrapperPro
       
       // Если нет токена или не авторизован, и мы не на странице авторизации или онбординга
       if ((!token || !isAuthenticated) && !isAuthPage && !isOnboardingPage) {
-        router.push('/auth');
+        router.push('/');
       }
     }
   }, [pathname, router, isAuthPage, isOnboardingPage]);
