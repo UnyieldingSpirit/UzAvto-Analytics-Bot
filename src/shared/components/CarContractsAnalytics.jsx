@@ -2354,49 +2354,44 @@ const renderCharts = () => {
 const renderContractsCharts = () => {
   const { regionData, modelData, monthlyData } = getFilteredData();
   
-    renderBarChart(regionContractsRef, regionData, 'contracts', 'name', getRegionChartTitle(), '#4CAF50');
-    renderBarChart(modelContractsRef, modelData, 'contracts', 'name', getModelChartTitle(), '#2196F3');
-    renderTimelineChart(timelineContractsRef, monthlyData, 'contracts', 'month', getTimelineChartTitle());
+  renderBarChart(regionContractsRef, regionData, 'contracts', 'name', getRegionChartTitle(), '#8b5cf6');
+  renderBarChart(modelContractsRef, modelData, 'contracts', 'name', getModelChartTitle(), '#a78bfa');
+  renderTimelineChart(timelineContractsRef, monthlyData, 'contracts', 'month', getTimelineChartTitle());
 };
   
   // Render sales section charts
 const renderSalesCharts = () => {
   const { regionData, modelData, monthlyData } = getFilteredData();
   
-  // Рендерим графики реализации по регионам и моделям
   renderBarChart(
     regionSalesRef, 
     regionData, 
-    'sales', // Используем 'sales' как ключ для реализации
+    'sales',
     'name', 
     getRegionChartTitle(), 
-    '#FF9800'
+    '#9333ea'
   );
   
-  // Для графика модификаций, убедимся что данные структурированы правильно
   if (selectedModel !== 'all') {
-    // Если выбрана конкретная модель, рендерим информацию о модификациях
     renderBarChart(
       modelSalesRef, 
       modelData, 
       'sales', 
       'name', 
       getModelChartTitle(), 
-      '#E91E63'
+      '#c084fc'
     );
   } else {
-    // Если модель не выбрана, рендерим информацию по всем моделям
     renderBarChart(
       modelSalesRef, 
       modelData, 
       'sales', 
       'name', 
       getModelChartTitle(), 
-      '#E91E63'
+      '#c084fc'
     );
   }
   
-  // Рендерим временной график
   renderTimelineChart(
     timelineSalesRef, 
     monthlyData, 
@@ -2407,51 +2402,38 @@ const renderSalesCharts = () => {
 };
   
   // Render stock section charts
-  const renderStockCharts = () => {
-    const { regionData, modelData, monthlyData } = getFilteredData();
-    
-    renderBarChart(regionStockRef, regionData, 'stock', 'name', getRegionChartTitle(), '#9C27B0');
-    renderBarChart(modelStockRef, modelData, 'stock', 'name', getModelChartTitle(), '#607D8B');
-    renderTimelineChart(stockTrendRef, monthlyData, 'stock', 'month', getTimelineChartTitle());
-  };
+const renderStockCharts = () => {
+  const { regionData, modelData, monthlyData } = getFilteredData();
+  
+  renderBarChart(regionStockRef, regionData, 'stock', 'name', getRegionChartTitle(), '#7c3aed');
+  renderBarChart(modelStockRef, modelData, 'stock', 'name', getModelChartTitle(), '#6366f1');
+  renderTimelineChart(stockTrendRef, monthlyData, 'stock', 'month', getTimelineChartTitle());
+};
 
 // Создайте отдельные референсы для каждого таба или переиспользуйте корректно
 const renderRetailCharts = () => {
   const { regionData, modelData, monthlyData } = getFilteredData();
   
-  // Проверяем наличие данных
-  console.log("Retail data for charts:", {
-    regionData: regionData.length,
-    modelData: modelData.length,
-    monthlyData: monthlyData.length
-  });
-  
-  // ВАЖНЫЙ МОМЕНТ: Проверяем, существуют ли DOM-элементы
-  if (!regionContractsRef.current || !modelContractsRef.current || !timelineContractsRef.current) {
-    console.error("DOM references not initialized for retail charts");
-    return;
-  }
-
-  renderBarChart(regionContractsRef, regionData, 'retail', 'name', getRegionChartTitle(), '#FF5722');
-  renderBarChart(modelContractsRef, modelData, 'retail', 'name', getModelChartTitle(), '#03A9F4');
-  renderTimelineChart(timelineContractsRef, monthlyData, 'retail', 'month', getTimelineChartTitle());
-}
+  renderBarChart(regionRetailRef, regionData, 'retail', 'name', getRegionChartTitle(), '#a855f7');
+  renderBarChart(modelRetailRef, modelData, 'retail', 'name', getModelChartTitle(), '#d946ef');
+  renderTimelineChart(timelineRetailRef, monthlyData, 'retail', 'month', getTimelineChartTitle());
+};
 
  const renderWholesaleCharts = () => {
    const { regionData, modelData, monthlyData } = getFilteredData();
    
-   renderBarChart(regionContractsRef, regionData, 'wholesale', 'name', getRegionChartTitle(), '#9C27B0');
-   renderBarChart(modelContractsRef, modelData, 'wholesale', 'name', getModelChartTitle(), '#FF9800');
+   renderBarChart(regionContractsRef, regionData, 'wholesale', 'name', getRegionChartTitle(), '#7e22ce');
+   renderBarChart(modelContractsRef, modelData, 'wholesale', 'name', getModelChartTitle(), '#9f1239');
    renderTimelineChart(timelineContractsRef, monthlyData, 'wholesale', 'month', getTimelineChartTitle());
  };
 
- const renderPromotionsCharts = () => {
-   const { regionData, modelData, monthlyData } = getFilteredData();
-   
-   renderBarChart(regionContractsRef, regionData, 'promotions', 'name', getRegionChartTitle(), '#4CAF50');
-   renderBarChart(modelContractsRef, modelData, 'promotions', 'name', getModelChartTitle(), '#F44336');
-   renderTimelineChart(timelineContractsRef, monthlyData, 'promotions', 'month', getTimelineChartTitle());
- };
+const renderPromotionsCharts = () => {
+  const { regionData, modelData, monthlyData } = getFilteredData();
+  
+  renderBarChart(regionPromotionsRef, regionData, 'promotions', 'name', getRegionChartTitle(), '#581c87');
+  renderBarChart(modelPromotionsRef, modelData, 'promotions', 'name', getModelChartTitle(), '#6b21a8');
+  renderTimelineChart(timelinePromotionsRef, monthlyData, 'promotions', 'month', getTimelineChartTitle());
+};
  
 const getMetricNameForChart = () => {
   switch(activeTab) {
@@ -3093,31 +3075,16 @@ const loadMoneyReturnData = (year) => {
 
   
 const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
-  if (!ref.current) return;
+  if (!ref.current || !data || data.length === 0) return;
   
   const container = ref.current;
   container.innerHTML = '';
-  
-  // Проверяем наличие данных
-  if (!data || data.length === 0) {
-    container.innerHTML = `<div class="flex items-center justify-center h-full text-gray-500">${t.charts.noData}</div>`;
-    return;
-  }
-  
-  // Фильтруем данные, удаляя строки с нулевыми значениями или undefined
-  data = data.filter(d => {
-    return d[labelKey] && 
-           d[valueKey] !== undefined && 
-           d[valueKey] !== null && 
-           d[valueKey] > 0;
-  });
   
   if (data.length === 0) {
     container.innerHTML = `<div class="flex items-center justify-center h-full text-gray-500">${t.charts.noDataAfterFilter}</div>`;
     return;
   }
   
-  // Используем стандартные отступы
   const margin = { top: 30, right: 30, bottom: 100, left: 60 };
   const width = container.clientWidth - margin.left - margin.right;
   const height = container.clientHeight - margin.top - margin.bottom;
@@ -3129,7 +3096,6 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
     
-  // Простой градиент
   const defs = svg.append("defs");
   const gradient = defs.append("linearGradient")
     .attr("id", `barGradient-${valueKey}`)
@@ -3146,7 +3112,6 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .attr("stop-color", color)
     .attr("stop-opacity", 0.3);
     
-  // Градиент для выделенного региона
   const selectedGradient = defs.append("linearGradient")
     .attr("id", "selectedBarGradient")
     .attr("x1", "0%").attr("y1", "0%")
@@ -3154,15 +3119,14 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     
   selectedGradient.append("stop")
     .attr("offset", "0%")
-    .attr("stop-color", "#ff9800")
+    .attr("stop-color", "#a78bfa")
     .attr("stop-opacity", 0.9);
     
   selectedGradient.append("stop")
     .attr("offset", "100%")
-    .attr("stop-color", "#ff9800")
+    .attr("stop-color", "#a78bfa")
     .attr("stop-opacity", 0.4);
     
-  // Шкалы
   const x = d3.scaleBand()
     .domain(data.map(d => d[labelKey]))
     .range([0, width])
@@ -3173,7 +3137,6 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .range([height, 0])
     .nice();
     
-  // Сетка
   svg.append("g")
     .attr("class", "grid")
     .call(d3.axisLeft(y)
@@ -3183,7 +3146,6 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .style("stroke", themeMode === 'dark' ? "#333" : "#e5e5e5")
     .style("stroke-opacity", themeMode === 'dark' ? "0.1" : "0.3");
     
-  // Оси
   svg.append("g")
     .attr("transform", `translate(0,${height})`)
     .call(d3.axisBottom(x))
@@ -3199,7 +3161,6 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .selectAll("text")
     .style("fill", themeMode === 'dark' ? "#999" : "#666");
   
-  // Заголовок
   svg.append("text")
     .attr("x", width / 2)
     .attr("y", -10)
@@ -3208,7 +3169,6 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .style("fill", themeMode === 'dark' ? "#fff" : "#333")
     .text(title);
     
-  // Полоски с простой анимацией и выделением выбранного региона
   svg.selectAll(".bar")
     .data(data)
     .enter().append("rect")
@@ -3216,7 +3176,6 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .attr("x", d => x(d[labelKey]))
     .attr("width", x.bandwidth())
     .attr("fill", d => {
-      // Если это график регионов и регион выбран, используем другой цвет
       if (labelKey === 'name' && d.isSelected) {
         return "url(#selectedBarGradient)";
       }
@@ -3231,7 +3190,6 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .attr("y", d => y(d[valueKey]))
     .attr("height", d => height - y(d[valueKey]));
   
-  // Метки значений
   svg.selectAll(".label")
     .data(data)
     .enter().append("text")
@@ -3240,51 +3198,14 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
     .attr("y", d => y(d[valueKey]) - 5)
     .attr("text-anchor", "middle")
     .style("font-size", "12px")
-    .style("fill", d => d.isSelected ? "#ff9800" : (themeMode === 'dark' ? "#fff" : "#333"))
-    .style("opacity", 0)
+    .style("fill", d => d.isSelected ? "#a78bfa" : (themeMode === 'dark' ? "#ccc" : "#666"))
     .text(d => {
-      if (d[valueKey] >= 1000000) return (d[valueKey] / 1000000).toFixed(1) + t.units.million;
-      if (d[valueKey] >= 1000) return (d[valueKey] / 1000).toFixed(0) + t.units.thousand;
+      if (d[valueKey] === 0) return "";
+      if (d[valueKey] >= 1000000) return (d[valueKey] / 1000000).toFixed(1) + 'M';
+      if (d[valueKey] >= 1000) return (d[valueKey] / 1000).toFixed(0) + 'K';
       return d[valueKey];
-    })
-    .transition()
-    .duration(500)
-    .delay(500)
-    .style("opacity", 1);
+    });
     
-  // Если есть выбранный регион, добавляем индикатор
-  if (selectedRegion !== 'all' && labelKey === 'name') {
-    const selectedItem = data.find(d => d.id === selectedRegion);
-    if (selectedItem) {
-      svg.append("text")
-        .attr("x", x(selectedItem[labelKey]) + x.bandwidth() / 2)
-        .attr("y", y(selectedItem[valueKey]) - 25)
-        .attr("text-anchor", "middle")
-        .style("font-size", "11px")
-        .style("font-weight", "bold")
-        .style("fill", "#ff9800")
-        .text(t.charts.tooltips.selected)
-        .style("opacity", 0)
-        .transition()
-        .duration(500)
-        .delay(800)
-        .style("opacity", 1);
-    }
-  }
-  
-  // Перевод названий метрик
-  const getMetricLocalizedName = (key) => {
-    switch(key) {
-      case 'contracts': return t.charts.tooltips.contracts;
-      case 'sales': return t.charts.tooltips.sales;
-      case 'stock': return t.charts.tooltips.stock;
-      case 'retail': return t.charts.tooltips.retail;
-      case 'wholesale': return t.charts.tooltips.wholesale;
-      case 'promotions': return t.charts.tooltips.promotions;
-      default: return key;
-    }
-  };
-  
   // Добавляем интерактивность
   svg.selectAll(".bar")
     .on("mouseover", function(event, d) {
@@ -3293,21 +3214,18 @@ const renderBarChart = (ref, data, valueKey, labelKey, title, color) => {
         .duration(200)
         .attr("opacity", 0.8);
         
-      // Показать дополнительную информацию при наведении
-      const tooltip = d3.select("body").selectAll(".tooltip")
-        .data([null])
-        .join("div")
+      const tooltip = d3.select("body").append("div")
         .attr("class", "tooltip")
-        .style("position", "absolute")
-        .style("background-color", themeMode === 'dark' ? "rgba(30, 41, 59, 0.9)" : "rgba(255, 255, 255, 0.95)")
-        .style("color", themeMode === 'dark' ? "#fff" : "#333")
-        .style("padding", "8px 12px")
-        .style("border-radius", "4px")
-        .style("font-size", "12px")
-        .style("pointer-events", "none")
         .style("opacity", 0)
-        .style("z-index", 1000)
+        .style("position", "absolute")
+        .style("background-color", themeMode === 'dark' ? "rgba(30, 41, 59, 0.95)" : "rgba(255, 255, 255, 0.95)")
+        .style("color", themeMode === 'dark' ? "#fff" : "#333")
+        .style("padding", "10px")
+        .style("border-radius", "6px")
+        .style("font-size", "14px")
         .style("box-shadow", "0 4px 6px rgba(0, 0, 0, 0.1)")
+        .style("pointer-events", "none")
+        .style("z-index", 1000)
         .style("border", themeMode === 'dark' ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.1)");
         
       tooltip
@@ -3359,9 +3277,9 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
   let activeYears = [selectedYear]; // Инициализируем текущим выбранным годом
   
   const yearColors = {
-    '2023': { color: '#FF5252', name: '2023' },
-    '2024': { color: '#4CAF50', name: '2024' },
-    '2025': { color: '#2196F3', name: '2025' }
+    '2023': { color: '#c084fc', name: '2023' }, // светло-фиолетовый
+    '2024': { color: '#a78bfa', name: '2024' }, // средне-фиолетовый
+    '2025': { color: '#8b5cf6', name: '2025' }  // темно-фиолетовый
   };
   
   // Селектор года (добавляем до основного графика)
@@ -3371,7 +3289,7 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
   let regionInfo = '';
   if (selectedRegion !== 'all') {
     const regionName = regionsList.find(r => r.id === selectedRegion)?.name || t.filters.region;
-    regionInfo = `<div class="text-sm flex items-center ${themeMode === 'dark' ? 'text-blue-400' : 'text-blue-600'}">
+    regionInfo = `<div class="text-sm flex items-center ${themeMode === 'dark' ? 'text-purple-400' : 'text-purple-600'}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -3386,15 +3304,15 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
       <div class="text-sm ${themeMode === 'dark' ? 'text-gray-400' : 'text-gray-600'} ml-2">${t.charts.yearComparison}:</div>
     </div>
     <div class="${themeMode === 'dark' ? 'bg-gray-700 border-gray-700' : 'bg-gray-100 border-gray-300'} rounded-lg p-1 flex items-center border">
-      <label class="year-btn relative overflow-hidden ${activeYears.includes('2023') ? 'active-year bg-red-600 text-white' : (themeMode === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900')} px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all">
+      <label class="year-btn relative overflow-hidden ${activeYears.includes('2023') ? 'active-year bg-purple-600 text-white' : (themeMode === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900')} px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all">
         <input type="checkbox" class="year-checkbox absolute opacity-0" data-year="2023" ${activeYears.includes('2023') ? 'checked' : ''}>
         ${t.yearComparison.year2023}
       </label>
-      <label class="year-btn relative overflow-hidden ${activeYears.includes('2024') ? 'active-year bg-green-600 text-white' : (themeMode === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900')} px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all">
+      <label class="year-btn relative overflow-hidden ${activeYears.includes('2024') ? 'active-year bg-violet-600 text-white' : (themeMode === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900')} px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all">
         <input type="checkbox" class="year-checkbox absolute opacity-0" data-year="2024" ${activeYears.includes('2024') ? 'checked' : ''}>
         ${t.yearComparison.year2024}
       </label>
-      <label class="year-btn relative overflow-hidden ${activeYears.includes('2025') ? 'active-year bg-blue-600 text-white' : (themeMode === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900')} px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all">
+      <label class="year-btn relative overflow-hidden ${activeYears.includes('2025') ? 'active-year bg-indigo-600 text-white' : (themeMode === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900')} px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all">
         <input type="checkbox" class="year-checkbox absolute opacity-0" data-year="2025" ${activeYears.includes('2025') ? 'checked' : ''}>
         ${t.yearComparison.year2025}
       </label>
@@ -3418,11 +3336,11 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
        newSelectedYears.push(checkbox.dataset.year);
        // Добавляем класс активной кнопки
        if (checkbox.dataset.year === '2023') {
-         yearBtn.className = "year-btn relative overflow-hidden active-year bg-red-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
+         yearBtn.className = "year-btn relative overflow-hidden active-year bg-purple-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
        } else if (checkbox.dataset.year === '2024') {
-         yearBtn.className = "year-btn relative overflow-hidden active-year bg-green-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
+         yearBtn.className = "year-btn relative overflow-hidden active-year bg-violet-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
        } else {
-         yearBtn.className = "year-btn relative overflow-hidden active-year bg-blue-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
+         yearBtn.className = "year-btn relative overflow-hidden active-year bg-indigo-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
        }
      } else {
        // Неактивная кнопка
@@ -3438,7 +3356,7 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
      graphContainer.innerHTML = `
        <div class="flex items-center justify-center h-64">
          <div class="flex flex-col items-center">
-           <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mb-3"></div>
+           <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-500 mb-3"></div>
            <p class="text-gray-400 text-sm">${t.charts.loading}</p>
          </div>
        </div>
@@ -3456,11 +3374,11 @@ const renderTimelineChart = (ref, data, valueKey, labelKey, title) => {
      
      const defaultYearBtn = yearSelector.querySelector(`.year-checkbox[data-year="${defaultYear}"]`).parentElement;
      if (defaultYear === '2023') {
-       defaultYearBtn.className = "year-btn relative overflow-hidden active-year bg-red-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
+       defaultYearBtn.className = "year-btn relative overflow-hidden active-year bg-purple-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
      } else if (defaultYear === '2024') {
-       defaultYearBtn.className = "year-btn relative overflow-hidden active-year bg-green-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
+       defaultYearBtn.className = "year-btn relative overflow-hidden active-year bg-violet-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
      } else {
-       defaultYearBtn.className = "year-btn relative overflow-hidden active-year bg-blue-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
+       defaultYearBtn.className = "year-btn relative overflow-hidden active-year bg-indigo-600 text-white px-3 py-1 text-sm font-medium rounded-md mx-0.5 cursor-pointer transition-all";
      }
      
      activeYears = [defaultYear];
@@ -3530,7 +3448,7 @@ const fetchYearData = (year) => {
            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
          </svg>
          <p class="text-gray-400 text-center mb-1">${t.charts.noData}</p>
-         <button class="mt-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors flex items-center" id="retry-load-btn">
+         <button class="mt-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-md transition-colors flex items-center" id="retry-load-btn">
            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
            </svg>
@@ -3961,7 +3879,7 @@ const fetchYearData = (year) => {
    loadingIndicator.className = 'flex items-center justify-center h-64';
    loadingIndicator.innerHTML = `
      <div class="flex flex-col items-center">
-       <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-3"></div>
+       <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mb-3"></div>
        <p class="text-gray-400 text-sm">${t.charts.loading}</p>
      </div>
    `;
@@ -4514,8 +4432,8 @@ const stats = getStats();
         onChange={(e) => setStartDate(e.target.value)}
        className={themeClass(
   "rounded-md px-3 py-2 transition-colors",
-  "bg-gray-50 border border-gray-300 text-gray-900",
-  "bg-gray-700 border border-gray-600 text-white"
+  "bg-purple-50 border border-purple-300 text-purple-900",
+  "bg-purple-700 border border-purple-600 text-white"
 )}
       />
     </div>
@@ -4525,7 +4443,7 @@ const stats = getStats();
         type="date" 
         value={endDate}
         onChange={(e) => setEndDate(e.target.value)}
-        className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white"
+        className="bg-purple-700 border border-purple-600 rounded-md px-3 py-2 text-white"
       />
     </div>
     <button 
@@ -4551,11 +4469,11 @@ const stats = getStats();
         <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
       </svg>
      <p className={themeClass("", "text-gray-700", "text-gray-300")}>
-        <span className="font-medium text-blue-400">{t.filters.activeFilters}:</span> {getFilterDescription()}
+        <span className="font-medium text-[#a78bfa]">{t.filters.activeFilters}:</span> {getFilterDescription()}
       </p>
     </div>
     <button 
-      className="text-sm text-blue-400 hover:text-blue-300 flex items-center"
+      className="text-sm text-[#8b5cf6] hover:text-[#8b5cf6] flex items-center"
       onClick={() => {
         setSelectedRegion('all');
         setSelectedModel('all');
@@ -4667,7 +4585,7 @@ const stats = getStats();
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
               viewMode === 'cards' 
                 ? 'bg-purple-600 text-white shadow-md' 
-                : 'text-gray-400 hover:text-white'
+                : 'text-gray-400 '
             }`}
             onClick={() => setViewMode('cards')}
           >
@@ -4682,7 +4600,7 @@ const stats = getStats();
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
               viewMode === 'list' 
                 ? 'bg-purple-600 text-white shadow-md' 
-                : 'text-gray-400 hover:text-white'
+                : 'text-gray-400'
             }`}
             onClick={() => setViewMode('list')}
           >
@@ -5315,11 +5233,11 @@ const stats = getStats();
 
         {/* Рассрочка для сотрудников Узавтосаноат */}
         <div className={themeClass(
-          "p-4 rounded-lg border-l-4 border-blue-400",
+          "p-4 rounded-lg border-l-4 border-[#a78bfa]",
           "bg-gray-100",
           "bg-gray-700"
         )}>
-          <h4 className="text-lg font-medium text-blue-400 mb-2">{t.promotions.employeeBenefits}</h4>
+          <h4 className="text-lg font-medium text-[#a78bfa] mb-2">{t.promotions.employeeBenefits}</h4>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className={themeClass("", "text-gray-600", "text-gray-300")}>{t.promotions.organization}:</span>

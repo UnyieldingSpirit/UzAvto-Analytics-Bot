@@ -353,7 +353,7 @@ const fetchYearData = async (year) => {
       }
     }
     
-    // Рисуем столбцы предыдущего года
+    // Рисуем столбцы предыдущего года (изменен цвет на фиолетовый)
     svg.selectAll(".bar-prev-year")
       .data(previousYearData)
       .enter().append("rect")
@@ -362,7 +362,7 @@ const fetchYearData = async (year) => {
       .attr("y", d => y(d.value))
       .attr("width", barWidth)
       .attr("height", d => height - margin.top - margin.bottom - y(d.value))
-      .attr("fill", "#4CAF50")
+      .attr("fill", "#a78bfa") // Изменено с #4CAF50 на светло-фиолетовый
       .attr("rx", 3)
       .attr("ry", 3)
       .style("cursor", "pointer")
@@ -398,7 +398,7 @@ const fetchYearData = async (year) => {
           .attr("opacity", 1);
       });
     
-    // Рисуем столбцы текущего года, но только для доступных месяцев
+    // Рисуем столбцы текущего года, но только для доступных месяцев (изменен цвет на фиолетовый)
     svg.selectAll(".bar-curr-year")
       .data(filteredCurrentYearData)
       .enter().append("rect")
@@ -407,7 +407,7 @@ const fetchYearData = async (year) => {
       .attr("y", d => y(d.value))
       .attr("width", barWidth)
       .attr("height", d => height - margin.top - margin.bottom - y(d.value))
-      .attr("fill", "#2196F3")
+      .attr("fill", "#8b5cf6") // Изменено с #2196F3 на темно-фиолетовый
       .attr("rx", 3)
       .attr("ry", 3)
       .style("cursor", "pointer")
@@ -470,11 +470,11 @@ const fetchYearData = async (year) => {
     // Добавляем цветовые индикаторы под графиком для лучшей читаемости
     const indicatorsY = height - margin.top - margin.bottom + 35;
 
-    // Индикатор для предыдущего года
+    // Индикатор для предыдущего года (изменен цвет на фиолетовый)
     svg.append("rect")
       .attr("width", 12)
       .attr("height", 12)
-      .attr("fill", "#4CAF50")
+      .attr("fill", "#a78bfa") // Изменено с #4CAF50 на светло-фиолетовый
       .attr("rx", 2)
       .attr("ry", 2)
       .attr("x", width / 2 - 120)
@@ -487,11 +487,11 @@ const fetchYearData = async (year) => {
       .style("fill", "#ccc")
       .text(`${previousYear} ${t.ui.year}`);
 
-    // Индикатор для текущего года
+    // Индикатор для текущего года (изменен цвет на фиолетовый)
     svg.append("rect")
       .attr("width", 12)
       .attr("height", 12)
-      .attr("fill", "#2196F3")
+      .attr("fill", "#8b5cf6") // Изменено с #2196F3 на темно-фиолетовый
       .attr("rx", 2)
       .attr("ry", 2)
       .attr("x", width / 2 + 20)
@@ -504,14 +504,14 @@ const fetchYearData = async (year) => {
       .style("fill", "#ccc")
       .text(`${currentYear} ${t.ui.year}`);
     
-    // Добавляем линию текущего месяца
+    // Добавляем линию текущего месяца (изменен цвет на фиолетовый)
     if (currentMonth < 12) {
       svg.append("line")
         .attr("x1", x(MONTHS[currentMonth]) + x.bandwidth())
         .attr("y1", 0)
         .attr("x2", x(MONTHS[currentMonth]) + x.bandwidth())
         .attr("y2", height - margin.top - margin.bottom)
-        .attr("stroke", "#FF9800")
+        .attr("stroke", "#c084fc") // Изменено с #FF9800 на розово-фиолетовый
         .attr("stroke-width", 1)
         .attr("stroke-dasharray", "4,4");
       
@@ -520,7 +520,7 @@ const fetchYearData = async (year) => {
         .attr("y", -10)
         .attr("text-anchor", "middle")
         .style("font-size", "10px")
-        .style("fill", "#FF9800")
+        .style("fill", "#c084fc") // Изменено с #FF9800 на розово-фиолетовый
         .text(t.ui.currentMonth);
     }
   };
@@ -535,7 +535,7 @@ const fetchYearData = async (year) => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-primary dark:border-primary-dark"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-purple-600 dark:border-purple-400"></div>
       </div>
     );
   }
@@ -548,7 +548,7 @@ const fetchYearData = async (year) => {
         </svg>
         <p className="text-gray-400 text-center mb-3">{error}</p>
         <button 
-          className="mt-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors" 
+          className="mt-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-md transition-colors" 
           onClick={() => {
             setIsLoading(true);
             setError(null);
