@@ -64,6 +64,7 @@ const themeClass = (baseClasses, lightSpecific = '', darkSpecific = '') => {
   return `${baseClasses} ${themeSpecific}`.trim();
 };
 
+
 const extractMonthlyReturnData = (apiData, year) => {
   const months = [
     { month: t.charts.monthData.january, value: 0 },
